@@ -33,6 +33,13 @@ export default async function DealerPage({ params }: { params: Promise<{ slug: s
   const specialties: string[] = dealer.specialties ?? [];
 
   const addressParts = [(dealer as any).address, dealer.location, dealer.state, (dealer as any).zip].filter(Boolean);
+  const DAYS = [
+    { key: 'mon', label: 'Monday' }, { key: 'tue', label: 'Tuesday' },
+    { key: 'wed', label: 'Wednesday' }, { key: 'thu', label: 'Thursday' },
+    { key: 'fri', label: 'Friday' }, { key: 'sat', label: 'Saturday' },
+    { key: 'sun', label: 'Sunday' },
+  ] as const;
+  const hours = (dealer as any).hours as Record<string, { open: string; close: string; closed: boolean }> | null;
   const mapQuery = encodeURIComponent(addressParts.length > 0 ? addressParts.join(', ') : dealer.name);
   const mapSrc = `https://maps.google.com/maps?q=${mapQuery}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
 
@@ -133,24 +140,46 @@ export default async function DealerPage({ params }: { params: Promise<{ slug: s
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden mb-8">
-          <div className="px-6 py-4 border-b border-zinc-100 flex items-center gap-2">
-            <svg className="w-4 h-4 text-zinc-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-            </svg>
-            <span className="text-sm font-semibold text-zinc-600">
-              {addressParts.join(', ')}
-            </span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Map */}
+          <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-zinc-100 flex items-center gap-2">
+              <svg className="w-4 h-4 text-zinc-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+              </svg>
+              <span className="text-sm font-semibold text-zinc-600">{addressParts.join(', ')}</span>
+            </div>
+            <iframe src={mapSrc} className="w-full h-56" style={{ border: 0 }}
+              allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"
+              title={`Map of ${dealer.name}`} />
           </div>
-          <iframe
-            src={mapSrc}
-            className="w-full h-64"
-            style={{ border: 0 }}
-            allowFullScreen
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            title={`Map of ${dealer.name}`}
-          />
+
+          {/* Business Hours */}
+          {hours && (
+            <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
+              <h3 className="text-sm font-bold text-zinc-700 mb-4 flex items-center gap-2">
+                <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Business Hours
+              </h3>
+              <div className="space-y-2">
+                {DAYS.map(({ key, label }) => {
+                  const day = hours[key];
+                  if (!day) return null;
+                  return (
+                    <div key={key} className="flex justify-between text-sm">
+                      <span className="text-zinc-600 font-medium">{label}</span>
+                      {day.closed
+                        ? <span className="text-zinc-400">Closed</span>
+                        : <span className="text-zinc-800">{day.open} – {day.close}</span>
+                      }
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="mb-6 flex items-center justify-between">

@@ -7,7 +7,8 @@ CREATE TABLE watchlists (
   car_id       text        NOT NULL,
   price_at_add integer     NOT NULL DEFAULT 0,
   added_at     timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (user_id, car_id)
+  UNIQUE (user_id, car_id),
+  FOREIGN KEY (car_id) REFERENCES cars(id) ON DELETE CASCADE
 );
 
 ALTER TABLE watchlists ENABLE ROW LEVEL SECURITY;

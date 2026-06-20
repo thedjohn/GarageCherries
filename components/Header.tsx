@@ -90,6 +90,9 @@ export default function Header() {
                   </svg>
                   Watchlist
                 </Link>
+                <Link href="/account/profile" className="text-sm text-zinc-400 hover:text-red-400 transition-colors">
+                  Account
+                </Link>
                 <button onClick={signOut} className="text-sm text-zinc-400 hover:text-red-400 transition-colors">
                   Sign Out
                 </button>
@@ -139,6 +142,7 @@ export default function Header() {
               {auth.status === 'buyer' && (
                 <>
                   <Link href="/account/watchlist" className="block py-2 font-semibold hover:text-red-400" onClick={() => setMenuOpen(false)}>My Watchlist</Link>
+                  <Link href="/account/profile" className="block py-2 text-zinc-400 hover:text-red-400" onClick={() => setMenuOpen(false)}>Account Settings</Link>
                   <button onClick={() => { signOut(); setMenuOpen(false); }} className="block py-2 text-zinc-400 hover:text-red-400 text-left w-full">Sign Out</button>
                 </>
               )}

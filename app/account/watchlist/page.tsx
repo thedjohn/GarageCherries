@@ -16,13 +16,23 @@ export default async function WatchlistPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/account/login');
 
-  const { data: entries } = await supabase
-    .from('watchlists')
-    .select('id, car_id, price_at_add, added_at, cars(*)')
-    .eq('user_id', user.id)
-    .order('added_at', { ascending: false });
+  const [{ data: watchRows }, { data: profile }] = await Promise.all([
+    supabase.from('watchlists').select('id, car_id, price_at_add, added_at')
+      .eq('user_id', user.id).order('added_at', { ascending: false }),
+    supabase.from('profiles').select('full_name').eq('id', user.id).single(),
+  ]);
 
-  const items = (entries ?? []).filter((e: any) => e.cars);
+  const carIds = (watchRows ?? []).map((r: any) => r.car_id);
+  const { data: carsData } = carIds.length
+    ? await supabase.from('cars').select('*').in('id', carIds)
+    : { data: [] };
+
+  const carsById = Object.fromEntries((carsData ?? []).map((c: any) => [c.id, c]));
+  const items = (watchRows ?? [])
+    .map((e: any) => ({ ...e, cars: carsById[e.car_id] ?? null }))
+    .filter((e: any) => e.cars);
+
+  const displayName = profile?.full_name || user.email;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
@@ -33,9 +43,12 @@ export default async function WatchlistPage() {
             {items.length} saved listing{items.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-zinc-400">{user.email}</p>
-          <SignOutButton />
+        <div className="text-right space-y-1">
+          <p className="text-sm font-medium text-zinc-700">{displayName}</p>
+          <div className="flex items-center gap-3 justify-end text-xs">
+            <Link href="/account/profile" className="text-red-600 hover:underline">Account settings</Link>
+            <SignOutButton />
+          </div>
         </div>
       </div>
 
@@ -63,13 +76,8 @@ export default async function WatchlistPage() {
                 className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 flex gap-4 items-center">
                 <Link href={listingUrl} className="shrink-0">
                   {car.images?.[0] ? (
-                    <Image
-                      src={car.images[0]}
-                      alt={car.title}
-                      width={128}
-                      height={80}
-                      className="w-32 h-20 object-cover rounded-xl"
-                    />
+                    <Image src={car.images[0]} alt={car.title} width={128} height={80}
+                      className="w-32 h-20 object-cover rounded-xl" />
                   ) : (
                     <div className="w-32 h-20 bg-zinc-100 rounded-xl flex items-center justify-center text-3xl">🚗</div>
                   )}
@@ -96,9 +104,7 @@ export default async function WatchlistPage() {
                       </span>
                     )}
                     {entry.price_at_add > 0 && (
-                      <span className="text-xs text-zinc-400">
-                        Saved at {formatPrice(entry.price_at_add)}
-                      </span>
+                      <span className="text-xs text-zinc-400">Saved at {formatPrice(entry.price_at_add)}</span>
                     )}
                   </div>
                 </div>
@@ -112,4 +118,3 @@ export default async function WatchlistPage() {
     </div>
   );
 }
-
