@@ -54,7 +54,10 @@ function LoginForm() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Password</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide">Password</label>
+                <Link href="/account/forgot-password" className="text-xs text-red-600 hover:underline">Forgot password?</Link>
+              </div>
               <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
