@@ -9,6 +9,8 @@ import ContactSellerForm from '@/components/ContactSellerForm';
 import ViewTracker from '@/components/ViewTracker';
 import { formatPrice, formatMileage, toSegment, makeFromSegment } from '@/lib/data';
 import { fetchCar, fetchCars, fetchDealerById, fetchModelsByMake } from '@/lib/db';
+import { createClient } from '@/lib/supabase/server';
+import WatchButton from '@/components/WatchButton';
 
 const BASE_URL = 'https://www.garagecherries.com';
 
@@ -82,6 +84,20 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
     if (!car) notFound();
 
     const dealer = await fetchDealerById(car.sellerId);
+
+    // Check if the logged-in user is watching this car
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    let isWatched = false;
+    if (user) {
+      const { data: watchEntry } = await supabase
+        .from('watchlists')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('car_id', car.id)
+        .single();
+      isWatched = !!watchEntry;
+    }
 
     const similar = await fetchCars({ make: car.make, limit: 5 });
     const fallbackCars = similar.filter(c => c.id !== car.id).slice(0, 4);
@@ -265,6 +281,12 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                   carId={car.id}
                   carTitle={car.title}
                   sellerName={car.sellerName}
+                />
+                <WatchButton
+                  carId={car.id}
+                  currentPrice={car.price}
+                  initialWatched={isWatched}
+                  isLoggedIn={!!user}
                 />
                 {car.lotNumber && <p className="text-xs text-zinc-400 text-center mt-4">Lot # {car.lotNumber}</p>}
 
