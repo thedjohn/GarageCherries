@@ -61,10 +61,9 @@ export default function Header() {
           </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+          <nav className="hidden md:flex items-center gap-5 text-sm font-medium">
             <Link href="/listings" className="hover:text-red-400 transition-colors">Browse</Link>
-            <Link href="/listings?condition=Excellent" className="hover:text-red-400 transition-colors">Collector Cars</Link>
-            <Link href="/listings?bodyStyle=Convertible" className="hover:text-red-400 transition-colors">Convertibles</Link>
+            <Link href="/cars" className="hover:text-red-400 transition-colors">Car Guide</Link>
             <Link href="/dealers" className="hover:text-red-400 transition-colors">Dealers</Link>
             <Link href="/sell" className="hover:text-red-400 transition-colors">Sell Your Car</Link>
             <Link href="/pricing" className="hover:text-red-400 transition-colors">Pricing</Link>
@@ -148,8 +147,7 @@ export default function Header() {
         {menuOpen && (
           <div className="md:hidden border-t border-zinc-700 py-3 space-y-2 text-sm">
             <Link href="/listings" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Browse</Link>
-            <Link href="/listings?condition=Excellent" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Collector Cars</Link>
-            <Link href="/listings?bodyStyle=Convertible" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Convertibles</Link>
+            <Link href="/cars" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Car Guide</Link>
             <Link href="/dealers" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Dealers</Link>
             <Link href="/sell" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Sell Your Car</Link>
             <Link href="/pricing" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Pricing</Link>
