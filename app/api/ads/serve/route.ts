@@ -45,15 +45,16 @@ export async function GET(request: NextRequest) {
     .eq('id', pick.id)
     .single();
 
-  // Log impression (fire-and-forget)
-  admin.from('ad_events').insert({
-    ad_id: ad.id,
-    event_type: 'impression',
-    page_path: url.searchParams.get('path') ?? '',
-    geo_state: state,
-  }).then(() => {
-    admin.from('ads').update({ impressions: (ad.impressions ?? 0) + 1 }).eq('id', ad.id);
-  });
+  // Log impression — awaited so counter is reliable
+  await Promise.allSettled([
+    admin.from('ad_events').insert({
+      ad_id: ad.id,
+      event_type: 'impression',
+      page_path: url.searchParams.get('path') ?? '',
+      geo_state: state,
+    }),
+    admin.rpc('inc_ad_impressions', { ad_id: ad.id }),
+  ]);
 
   return NextResponse.json({
     ad: {

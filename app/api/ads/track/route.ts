@@ -15,11 +15,8 @@ export async function POST(request: NextRequest) {
     geo_state: state ?? '',
   });
 
-  // Increment click counter
-  const { data: ad } = await admin.from('ads').select('clicks').eq('id', adId).single();
-  if (ad) {
-    await admin.from('ads').update({ clicks: (ad.clicks ?? 0) + 1 }).eq('id', adId);
-  }
+  // Atomic increment — race-condition safe
+  await admin.rpc('inc_ad_clicks', { ad_id: adId });
 
   return NextResponse.json({ ok: true });
 }
