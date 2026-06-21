@@ -16,8 +16,10 @@ CREATE TABLE IF NOT EXISTS price_history (
 );
 CREATE INDEX IF NOT EXISTS price_history_car_id_idx ON price_history(car_id, changed_at ASC);
 ALTER TABLE price_history ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "anyone can read price history" ON price_history FOR SELECT USING (true);
-CREATE POLICY IF NOT EXISTS "service role can insert price history" ON price_history FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "anyone can read price history" ON price_history;
+CREATE POLICY "anyone can read price history" ON price_history FOR SELECT USING (true);
+DROP POLICY IF EXISTS "service role can insert price history" ON price_history;
+CREATE POLICY "service role can insert price history" ON price_history FOR INSERT WITH CHECK (true);
 
 -- 3. Buyer offers
 CREATE TABLE IF NOT EXISTS offers (
@@ -36,8 +38,10 @@ CREATE TABLE IF NOT EXISTS offers (
 CREATE INDEX IF NOT EXISTS offers_car_id_idx    ON offers(car_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS offers_dealer_id_idx ON offers(dealer_id, created_at DESC);
 ALTER TABLE offers ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "buyers can manage own offers"       ON offers FOR ALL     USING (buyer_id = auth.uid());
-CREATE POLICY IF NOT EXISTS "dealers can read offers their cars" ON offers FOR SELECT  USING (dealer_id = auth.uid()::text);
+DROP POLICY IF EXISTS "buyers can manage own offers" ON offers;
+CREATE POLICY "buyers can manage own offers" ON offers FOR ALL USING (buyer_id = auth.uid());
+DROP POLICY IF EXISTS "dealers can read offers their cars" ON offers;
+CREATE POLICY "dealers can read offers their cars" ON offers FOR SELECT USING (dealer_id = auth.uid()::text);
 
 -- 4. Dealer reviews
 CREATE TABLE IF NOT EXISTS dealer_reviews (
@@ -51,9 +55,12 @@ CREATE TABLE IF NOT EXISTS dealer_reviews (
 );
 CREATE INDEX IF NOT EXISTS dealer_reviews_dealer_id_idx ON dealer_reviews(dealer_id, created_at DESC);
 ALTER TABLE dealer_reviews ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "anyone can read reviews"   ON dealer_reviews FOR SELECT USING (true);
-CREATE POLICY IF NOT EXISTS "buyers can write reviews"  ON dealer_reviews FOR INSERT WITH CHECK (reviewer_id = auth.uid());
-CREATE POLICY IF NOT EXISTS "buyers can delete own reviews" ON dealer_reviews FOR DELETE USING (reviewer_id = auth.uid());
+DROP POLICY IF EXISTS "anyone can read reviews" ON dealer_reviews;
+CREATE POLICY "anyone can read reviews" ON dealer_reviews FOR SELECT USING (true);
+DROP POLICY IF EXISTS "buyers can write reviews" ON dealer_reviews;
+CREATE POLICY "buyers can write reviews" ON dealer_reviews FOR INSERT WITH CHECK (reviewer_id = auth.uid());
+DROP POLICY IF EXISTS "buyers can delete own reviews" ON dealer_reviews;
+CREATE POLICY "buyers can delete own reviews" ON dealer_reviews FOR DELETE USING (reviewer_id = auth.uid());
 
 -- 5. Sold tracking on cars
 ALTER TABLE cars ADD COLUMN IF NOT EXISTS is_sold    boolean    DEFAULT false;
