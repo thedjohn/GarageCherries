@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: June 2026*
+*Last updated: June 2026 — current as of commit 2db0b42*
 
 ---
 
@@ -13,6 +13,7 @@
 - [x] Featured listings — badge on card, prioritized on homepage
 - [x] Recently listed section on homepage
 - [x] Listing card component with price, condition, mileage, location, photos
+- [x] Database-driven makes — make filter dropdown and make/model URL pages work for any make present in the database; `/api/makes` endpoint serves distinct makes to client components
 
 ### Listing Detail Pages
 - [x] Full photo gallery with thumbnail navigation
@@ -45,6 +46,7 @@
 - [x] Message Watchers — notify all watchers of a specific car
 - [x] Price history recorded automatically on every price edit
 - [x] Mark as Sold with confirmation modal
+- [x] Free-text make input with `<datalist>` autocomplete — dealers can enter any make, not limited to a hardcoded list
 
 ### AI Features (Powered by Claude)
 - [x] **Smart Search** — `/api/ai/smart-search`
@@ -103,7 +105,8 @@
 - [x] Supabase Storage (car photo uploads)
 - [x] Server components + client components correctly separated
 - [x] `createClient()` (async, RLS-enforced) and `createAdminClient()` (sync, service role) pattern
-- [x] Centralized data fetching in `lib/db.ts`
+- [x] Centralized data fetching in `lib/db.ts` — includes `fetchMakes()` and `resolveMake()` for database-driven make resolution
+- [x] `/api/makes` — GET endpoint returning distinct makes from the cars table, used by SearchFilters and dealer dashboard datalist
 - [x] Database migration file (`supabase/migrations/002_new_features.sql`)
 - [x] Deployed to Vercel with GitHub auto-deploy on push to `main`
 
@@ -119,7 +122,7 @@
 | **Homepage Spotlight** | Featured listings appear on homepage | No paid weekly spotlight product |
 | **Sold Listings Archive** | `is_sold` flag on cars, Mark Sold in dashboard | No public `/sold` browsable page for buyers |
 | **Dealer Self-Serve Signup** | Login page exists | Admin must manually create dealer accounts in Supabase |
-| **Collector Cars / Convertibles Nav** | Was in original nav | Removed when Car Guide added — not yet restored |
+| **Collector Cars / Convertibles Nav** | Was in original nav | Replaced with Guides, Events, Dealers, Sell, Pricing links — original make-specific nav links not restored |
 | **Bold Search Result Add-On** | Listed on pricing page | No implementation or payment flow |
 
 ---
@@ -210,8 +213,7 @@
 5. **Build dealer self-serve signup** — removes manual onboarding bottleneck
 6. **Recruit 10–20 dealers** — inventory volume drives everything else
 7. **Add Google Analytics or Plausible** — need visibility into what traffic you have
-8. **Restore Collector Cars / Convertibles nav links** — quick win, already in the data
-9. **Build `/account/inquiries`** — completes the buyer account experience
+8. **Build `/account/inquiries`** — completes the buyer account experience
 10. **Build public `/sold` archive page** — SEO value + buyer trust signal
 
 ---
