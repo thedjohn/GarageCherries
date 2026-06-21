@@ -2,6 +2,8 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Classic Car Market Report — June 2026 | GarageCherries',
   description: 'Monthly classic car market data: average prices by make, most-watched models, price trends, and market insights from GarageCherries listings.',

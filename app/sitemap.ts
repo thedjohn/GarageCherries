@@ -2,6 +2,8 @@ import { MetadataRoute } from 'next';
 import { createAdminClient } from '@/lib/supabase/server';
 import { toSegment } from '@/lib/data';
 
+export const dynamic = 'force-dynamic';
+
 const BASE_URL = 'https://www.garagecherries.com';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
