@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 // POST /api/email/price-drops — send price drop notifications to watchers
 // Finds all watchlisted cars that had a price reduction in the past 7 days
 export async function POST(request: NextRequest) {
@@ -93,7 +91,7 @@ export async function POST(request: NextRequest) {
     `;
 
     try {
-      await resend.emails.send({
+      await new Resend(process.env.RESEND_API_KEY).emails.send({
         from: 'GarageCherries <noreply@garagecherries.com>',
         to: email,
         subject: `Price drop on ${userCars.length} car${userCars.length !== 1 ? 's' : ''} you're watching`,

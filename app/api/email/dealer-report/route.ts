@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 // POST /api/email/dealer-report — send monthly performance report to all dealers
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -103,7 +101,7 @@ export async function POST(request: NextRequest) {
     `;
 
     try {
-      await resend.emails.send({
+      await new Resend(process.env.RESEND_API_KEY).emails.send({
         from: 'GarageCherries <noreply@garagecherries.com>',
         to: dealer.email,
         subject: `Your GarageCherries monthly report — ${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,

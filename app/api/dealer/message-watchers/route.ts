@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -44,7 +42,7 @@ export async function POST(request: NextRequest) {
 
       const unsubUrl = `${origin}/unsubscribe?id=${watcher.id}`;
 
-      await resend.emails.send({
+      await new Resend(process.env.RESEND_API_KEY).emails.send({
         from:    'GarageCherries <notifications@garagecherries.com>',
         to:      email,
         subject: `Message from the seller — ${car.title}`,

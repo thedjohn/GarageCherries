@@ -3,7 +3,6 @@ import { Resend } from 'resend';
 import type { Car } from '@/lib/types';
 import { formatPrice, toSegment } from '@/lib/data';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const BASE_URL = 'https://www.garagecherries.com';
 
 function scoreMatch(car: Car, s: any): number {
@@ -151,7 +150,7 @@ export async function matchAndNotifyAlerts(car: Car) {
         last_matched_at: now.toISOString(),
       }).eq('id', s.id);
 
-      await resend.emails.send({
+      await new Resend(process.env.RESEND_API_KEY).emails.send({
         from: 'GarageCherries <notifications@garagecherries.com>',
         to: email,
         subject: `New match for your "${alertName(s)}" — ${formatPrice(car.price)}`,

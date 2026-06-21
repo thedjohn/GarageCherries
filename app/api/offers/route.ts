@@ -3,8 +3,6 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { createClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function POST(request: NextRequest) {
   const { carId, carTitle, dealerId, amount, buyerName, buyerEmail, message } = await request.json();
 
@@ -45,7 +43,7 @@ export async function POST(request: NextRequest) {
     const fmt = (n: number) =>
       new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 
-    await resend.emails.send({
+    await new Resend(process.env.RESEND_API_KEY).emails.send({
       from: 'GarageCherries <offers@garagecherries.com>',
       to: dealerEmail,
       subject: `New offer on ${carTitle}: ${fmt(amount)}`,
@@ -72,7 +70,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Confirm email to buyer
-  await resend.emails.send({
+  await new Resend(process.env.RESEND_API_KEY).emails.send({
     from: 'GarageCherries <offers@garagecherries.com>',
     to: buyerEmail,
     subject: `Your offer on ${carTitle} has been sent`,

@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 // POST /api/email/digest — manually trigger fresh listings digest
 // Sends a summary of new listings in the past 7 days to subscribed users
 export async function POST(request: NextRequest) {
@@ -77,7 +75,7 @@ export async function POST(request: NextRequest) {
   let sent = 0;
   for (const email of subscriberEmails) {
     try {
-      await resend.emails.send({
+      await new Resend(process.env.RESEND_API_KEY).emails.send({
         from: 'GarageCherries <noreply@garagecherries.com>',
         to: email,
         subject: `🚗 ${cars.length} new classic cars this week — GarageCherries`,

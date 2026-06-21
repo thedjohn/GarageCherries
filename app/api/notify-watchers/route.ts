@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createAdminClient } from '@/lib/supabase/server';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 function toSegment(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
@@ -49,7 +47,7 @@ export async function POST(request: NextRequest) {
       const email = userData?.user?.email;
       if (!email) continue;
 
-      await resend.emails.send({
+      await new Resend(process.env.RESEND_API_KEY).emails.send({
         from: 'GarageCherries Alerts <noreply@garagecherries.com>',
         to: email,
         subject: `Price Drop: ${car.title} is now ${fmt(newPrice)}`,
