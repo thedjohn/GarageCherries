@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { fetchDealers } from '@/lib/db';
+import DealerBadge from '@/components/DealerBadge';
 
 export const metadata: Metadata = {
   title: 'Classic Car Dealers',
@@ -39,9 +40,12 @@ export default async function DealersPage() {
               ) : null}
             </div>
 
-            <h2 className="font-bold text-zinc-900 text-lg group-hover:text-red-600 transition-colors leading-tight mb-1">
-              {dealer.name}
-            </h2>
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <h2 className="font-bold text-zinc-900 text-lg group-hover:text-red-600 transition-colors leading-tight">
+                {dealer.name}
+              </h2>
+              <DealerBadge listingCount={dealer.listingCount} size="sm" />
+            </div>
 
             <div className="flex items-center gap-1 text-sm text-zinc-400 mb-3">
               <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">

@@ -4,6 +4,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import CarCard from '@/components/CarCard';
 import { fetchDealer, fetchCars } from '@/lib/db';
+import { createClient } from '@/lib/supabase/server';
+import DealerReviews from '@/components/DealerReviews';
+import DealerBadge from '@/components/DealerBadge';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -28,6 +31,9 @@ export default async function DealerPage({ params }: { params: Promise<{ slug: s
   if (!dealer) notFound();
 
   const listings = await fetchCars({ sellerId: dealer.id });
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   const paragraphs = (dealer.description ?? '').split('\n\n').filter(Boolean);
   const specialties: string[] = dealer.specialties ?? [];
@@ -87,7 +93,10 @@ export default async function DealerPage({ params }: { params: Promise<{ slug: s
             <div className="flex-1">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div>
-                  <h1 className="text-2xl md:text-3xl font-extrabold text-zinc-900">{dealer.name}</h1>
+                  <div className="flex items-center gap-3 flex-wrap mb-1">
+                    <h1 className="text-2xl md:text-3xl font-extrabold text-zinc-900">{dealer.name}</h1>
+                    <DealerBadge listingCount={listings.length} />
+                  </div>
                   <div className="flex items-center gap-2 text-zinc-500 text-sm mt-1">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
@@ -200,6 +209,8 @@ export default async function DealerPage({ params }: { params: Promise<{ slug: s
             {listings.map(car => <CarCard key={car.id} car={car} />)}
           </div>
         )}
+
+        <DealerReviews dealerId={dealer.id} isLoggedIn={!!user} />
       </div>
     </>
   );

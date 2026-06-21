@@ -15,6 +15,7 @@ interface DbCar {
   transmission: string; color: string; interior_color?: string; seat_material?: string; seating_type?: string; description: string;
   location: string; state: string; featured: boolean;
   listed_at: string; images: string[]; seller_id: string;
+  is_sold?: boolean;
 }
 interface DbDealer {
   id: string; slug: string; name: string;
@@ -161,6 +162,8 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ carId: car!.id, oldPrice, newPrice: payload.price }),
         }).catch(console.error);
+        // Record price change in history (fire-and-forget)
+        void supabase.rpc('record_price_change', { p_car_id: car!.id, p_price: payload.price });
       }
     } else {
       const uid = Date.now();
@@ -546,6 +549,8 @@ export default function DealerDashboard() {
   const [listings, setListings] = useState<DbCar[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [markSoldId, setMarkSoldId] = useState<string | null>(null);
+  const [markingSold, setMarkingSold] = useState(false);
   const [watcherCounts, setWatcherCounts]   = useState<Record<string, number>>({});
   const [watcherMessaged, setWatcherMessaged] = useState<Record<string, boolean>>({});
   const [metrics, setMetrics] = useState<{
@@ -569,7 +574,7 @@ export default function DealerDashboard() {
       setDealer(dealerRow);
       const { data: cars } = await supabase
         .from('cars')
-        .select('id, slug, title, year, make, model, price, mileage, condition, body_style, engine, horsepower, torque, cylinders, displacement, forced_induction, fuel_type, num_speeds, drive_type, transmission, color, interior_color, seat_material, seating_type, description, location, state, featured, listed_at, images, seller_id')
+        .select('id, slug, title, year, make, model, price, mileage, condition, body_style, engine, horsepower, torque, cylinders, displacement, forced_induction, fuel_type, num_speeds, drive_type, transmission, color, interior_color, seat_material, seating_type, description, location, state, featured, listed_at, images, seller_id, is_sold')
         .eq('seller_id', dealerRow.id)
         .order('created_at', { ascending: false });
       setListings(cars ?? []);
@@ -601,6 +606,19 @@ export default function DealerDashboard() {
     const supabase = createClient();
     await supabase.from('cars').delete().eq('id', id);
     setDeleteConfirm(null);
+    loadData();
+  };
+
+  const handleMarkSold = async () => {
+    if (!markSoldId) return;
+    setMarkingSold(true);
+    await fetch('/api/cars/sold', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ carId: markSoldId }),
+    });
+    setMarkingSold(false);
+    setMarkSoldId(null);
     loadData();
   };
 
@@ -673,6 +691,26 @@ export default function DealerDashboard() {
         onClose={() => setModalCar(null)}
         onSaved={() => { loadData(); }}
       />
+    )}
+
+    {/* Mark Sold confirmation */}
+    {markSoldId && (
+      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+          <h2 className="font-bold text-zinc-900 mb-2">Mark as sold?</h2>
+          <p className="text-zinc-500 text-sm mb-5">This will mark the listing as sold. The listing will remain visible in the sold archive.</p>
+          <div className="flex gap-3">
+            <button onClick={() => setMarkSoldId(null)}
+              className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2 rounded-xl text-sm hover:bg-zinc-50">
+              Cancel
+            </button>
+            <button onClick={handleMarkSold} disabled={markingSold}
+              className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-bold py-2 rounded-xl text-sm">
+              {markingSold ? 'Saving…' : 'Mark Sold'}
+            </button>
+          </div>
+        </div>
+      </div>
     )}
 
     {/* Delete confirmation */}
@@ -859,6 +897,14 @@ export default function DealerDashboard() {
                       <td className="px-4 py-3 text-zinc-400 text-xs">{car.listed_at}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3 justify-end">
+                          {car.is_sold ? (
+                            <span className="text-xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">Sold</span>
+                          ) : (
+                            <button onClick={() => setMarkSoldId(car.id)}
+                              className="text-xs text-green-700 hover:text-green-900 font-medium transition-colors border border-green-200 hover:border-green-400 px-2 py-0.5 rounded-full">
+                              Mark Sold
+                            </button>
+                          )}
                           <button onClick={() => setModalCar(car)}
                             className="text-xs text-zinc-500 hover:text-zinc-900 font-medium transition-colors">
                             Edit

@@ -12,6 +12,9 @@ import { fetchCar, fetchCars, fetchDealerById, fetchModelsByMake } from '@/lib/d
 import { createClient } from '@/lib/supabase/server';
 import WatchButton from '@/components/WatchButton';
 import AdSlot from '@/components/AdSlot';
+import FinancingCalculator from '@/components/FinancingCalculator';
+import PriceHistoryChart from '@/components/PriceHistoryChart';
+import MakeOfferButton from '@/components/MakeOfferButton';
 
 const BASE_URL = 'https://www.garagecherries.com';
 
@@ -134,7 +137,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
     return (
       <>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-        {car.sellerId && <ViewTracker listingId={car.id} dealerId={car.sellerId} />}
+        {car.sellerId && <ViewTracker listingId={car.id} dealerId={car.sellerId} userId={user?.id} />}
         <div className="max-w-7xl mx-auto px-4 py-8">
           <nav className="text-sm text-zinc-500 mb-6 flex flex-wrap gap-2">
             <Link href="/" className="hover:text-red-600">Home</Link><span>/</span>
@@ -289,6 +292,13 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                   initialWatched={isWatched}
                   isLoggedIn={!!user}
                 />
+                <MakeOfferButton
+                  carId={car.id}
+                  carTitle={car.title}
+                  askingPrice={car.price}
+                  dealerId={car.sellerId}
+                  isLoggedIn={!!user}
+                />
                 {car.lotNumber && <p className="text-xs text-zinc-400 text-center mt-4">Lot # {car.lotNumber}</p>}
 
                 <ValuationWidget
@@ -339,6 +349,11 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                 )}
               </div>
             </div>
+          </div>
+
+          <div className="mt-8 space-y-6">
+            <PriceHistoryChart carId={car.id} currentPrice={car.price} />
+            {car.price > 0 && <FinancingCalculator price={car.price} />}
           </div>
 
           <SimilarCarsSection
