@@ -1,11 +1,16 @@
 'use client';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useCallback } from 'react';
-import { MAKES, BODY_STYLES, CONDITIONS, STATES } from '@/lib/types';
+import { useState, useCallback, useEffect } from 'react';
+import { BODY_STYLES, CONDITIONS, STATES } from '@/lib/types';
 
 export default function SearchFilters() {
   const router = useRouter();
   const params = useSearchParams();
+
+  const [makes, setMakes] = useState<string[]>([]);
+  useEffect(() => {
+    fetch('/api/makes').then(r => r.json()).then(d => setMakes(d.makes ?? []));
+  }, []);
 
   const [filters, setFilters] = useState({
     make:         params.get('make')        || '',
@@ -47,7 +52,7 @@ export default function SearchFilters() {
             <select value={filters.make} onChange={e => set('make', e.target.value === 'All Makes' ? '' : e.target.value)}
               className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
               <option value="">All Makes</option>
-              {MAKES.filter(m => m !== 'All Makes').map(m => <option key={m} value={m}>{m}</option>)}
+              {makes.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
 

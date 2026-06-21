@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MAKES, BODY_STYLES, CONDITIONS } from '@/lib/types';
+
 import { createClient } from '@/lib/supabase/client';
 import { formatPrice } from '@/lib/data';
 
@@ -220,10 +221,11 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Make *</label>
-              <select required value={fields.make} onChange={e => set('make', e.target.value)} className={inp}>
-                <option value="">Select...</option>
-                {MAKES.filter(m => m !== 'All Makes').map(m => <option key={m}>{m}</option>)}
-              </select>
+              <input required list="makes-list" placeholder="e.g. Chevrolet, BMW, Jaguar" value={fields.make}
+                onChange={e => set('make', e.target.value)} className={inp} />
+              <datalist id="makes-list">
+                {MAKES.filter(m => m !== 'All Makes').map(m => <option key={m} value={m} />)}
+              </datalist>
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Model *</label>

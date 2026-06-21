@@ -7,8 +7,8 @@ import ValuationWidget from '@/components/ValuationWidget';
 import SimilarCarsSection from '@/components/SimilarCarsSection';
 import ContactSellerForm from '@/components/ContactSellerForm';
 import ViewTracker from '@/components/ViewTracker';
-import { formatPrice, formatMileage, toSegment, makeFromSegment } from '@/lib/data';
-import { fetchCar, fetchCars, fetchDealerById, fetchModelsByMake } from '@/lib/db';
+import { formatPrice, formatMileage, toSegment } from '@/lib/data';
+import { fetchCar, fetchCars, fetchDealerById, fetchModelsByMake, resolveMake } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
 import WatchButton from '@/components/WatchButton';
 import AdSlot from '@/components/AdSlot';
@@ -44,7 +44,7 @@ export async function generateMetadata({ params }: { params: Promise<{ segments:
 
   // Model page
   if (segments.length === 2) {
-    const make = makeFromSegment(segments[0]);
+    const make = await resolveMake(segments[0]);
     if (!make) return {};
     const model = decodeURIComponent(segments[1]).replace(/-/g, ' ');
     const cars = await fetchCars({ make, model });
@@ -58,7 +58,7 @@ export async function generateMetadata({ params }: { params: Promise<{ segments:
 
   // Make page
   if (segments.length === 1) {
-    const make = makeFromSegment(segments[0]);
+    const make = await resolveMake(segments[0]);
     if (!make) return {};
     const cars = await fetchCars({ make });
     return {
@@ -374,7 +374,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
 
   // ── Make page: /listings/dodge ──
   if (segments.length === 1) {
-    const make = makeFromSegment(segments[0]);
+    const make = await resolveMake(segments[0]);
     if (!make) notFound();
 
     const [cars, models] = await Promise.all([
@@ -421,7 +421,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
 
   // ── Make + Model page: /listings/dodge/charger ──
   if (segments.length === 2) {
-    const make = makeFromSegment(segments[0]);
+    const make = await resolveMake(segments[0]);
     if (!make) notFound();
 
     // Reconstruct model name from URL segment (best-effort; DB query validates it exists)

@@ -156,3 +156,20 @@ export async function fetchModelsByMake(make: string): Promise<string[]> {
   const models = [...new Set((data ?? []).map(c => c.model))].sort();
   return models;
 }
+
+export async function fetchMakes(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from('cars').select('make');
+  const makes = [...new Set((data ?? []).map(c => c.make as string))]
+    .filter(Boolean)
+    .sort();
+  return makes;
+}
+
+// Resolves a URL segment (e.g. "bmw", "mercedes-benz") to the
+// properly-cased make string as stored in the DB (e.g. "BMW", "Mercedes-Benz")
+export async function resolveMake(seg: string): Promise<string | null> {
+  const makes = await fetchMakes();
+  const match = makes.find(m => m.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') === seg);
+  return match ?? null;
+}
