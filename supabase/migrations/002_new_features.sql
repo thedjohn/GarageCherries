@@ -3,9 +3,18 @@
 -- Run this in the Supabase Dashboard → SQL Editor
 -- ============================================================
 
--- 1. Add user_id to listing_views (for personalized email digests)
+-- 1. listing_views (create if not exists, then add user_id if missing)
+CREATE TABLE IF NOT EXISTS listing_views (
+  id         uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  listing_id text NOT NULL,
+  dealer_id  text,
+  ip_hash    text,
+  viewed_at  timestamptz DEFAULT now(),
+  user_id    uuid REFERENCES auth.users(id) ON DELETE SET NULL
+);
 ALTER TABLE listing_views ADD COLUMN IF NOT EXISTS user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
-CREATE INDEX IF NOT EXISTS listing_views_user_id_idx ON listing_views(user_id, viewed_at DESC);
+CREATE INDEX IF NOT EXISTS listing_views_listing_id_idx ON listing_views(listing_id, viewed_at DESC);
+CREATE INDEX IF NOT EXISTS listing_views_user_id_idx    ON listing_views(user_id, viewed_at DESC);
 
 -- 2. Price history (tracks price changes on listings)
 CREATE TABLE IF NOT EXISTS price_history (
