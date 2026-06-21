@@ -165,12 +165,20 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
     } else {
       const uid = Date.now();
       const slug = `${toSlug(title)}-${uid}`;
+      const newCarId = `${dealerId}-${uid}`;
       const { error } = await supabase.from('cars').insert({
-        ...payload, id: `${dealerId}-${uid}`, slug,
+        ...payload, id: newCarId, slug,
         seller_id: dealerId, seller_name: dealerName,
         featured: false, listed_at: new Date().toISOString().split('T')[0],
       });
       dbError = error;
+      if (!error) {
+        fetch('/api/alerts/match', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ carId: newCarId }),
+        }).catch(() => {});
+      }
     }
 
     setSaving(false);

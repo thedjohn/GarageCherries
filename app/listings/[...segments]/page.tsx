@@ -11,6 +11,7 @@ import { formatPrice, formatMileage, toSegment, makeFromSegment } from '@/lib/da
 import { fetchCar, fetchCars, fetchDealerById, fetchModelsByMake } from '@/lib/db';
 import { createClient } from '@/lib/supabase/server';
 import WatchButton from '@/components/WatchButton';
+import AdSlot from '@/components/AdSlot';
 
 const BASE_URL = 'https://www.garagecherries.com';
 
@@ -300,6 +301,8 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                   bodyStyle={car.bodyStyle}
                   engine={car.engine}
                 />
+
+                <AdSlot carState={car.state} pagePath={canonicalUrl} />
 
                 {mapAddressParts.length > 0 && (
                   <div className="mt-4 rounded-xl overflow-hidden border border-zinc-100">

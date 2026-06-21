@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import CarCard from '@/components/CarCard';
 import SearchFilters from '@/components/SearchFilters';
 import SmartSearchBar from '@/components/SmartSearchBar';
+import SaveSearchButton from '@/components/SaveSearchButton';
 import { fetchCars } from '@/lib/db';
 
 export const metadata: Metadata = {
@@ -46,7 +47,15 @@ export default async function ListingsPage({ searchParams }: Props) {
 
       <SmartSearchBar />
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      {hasFilters && (
+        <div className="mt-3 mb-1">
+          <Suspense>
+            <SaveSearchButton />
+          </Suspense>
+        </div>
+      )}
+
+      <div className="flex flex-col lg:flex-row gap-8 mt-4">
         <Suspense>
           <SearchFilters />
         </Suspense>
