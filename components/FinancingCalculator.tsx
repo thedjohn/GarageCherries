@@ -64,7 +64,7 @@ export default function FinancingCalculator({ price }: { price: number }) {
 
             <div>
               <div className="flex justify-between text-xs text-zinc-500 mb-1">
-                <span>Interest rate</span><span className="font-semibold">{rate.toFixed(1)}% APR</span>
+                <span>Interest rate</span><span className="font-semibold">{rate.toFixed(1)}% APR (Annual Percentage Rate)</span>
               </div>
               <input type="range" min={3} max={15} step={0.1} value={rate} onChange={e => setRate(Number(e.target.value))}
                 className="w-full accent-red-600" />

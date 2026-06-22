@@ -203,7 +203,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                       <div><dt className="text-xs text-zinc-400 uppercase tracking-wide">Miles</dt><dd className="font-bold text-zinc-900">{formatMileage(car.mileage)}</dd></div>
                       {car.vin && (
                         <div>
-                          <dt className="text-xs text-zinc-400 uppercase tracking-wide">VIN</dt>
+                          <dt className="text-xs text-zinc-400 uppercase tracking-wide">VIN (Vehicle Identification Number)</dt>
                           <dd className="font-mono text-sm text-zinc-900 break-all">{car.vin}</dd>
                         </div>
                       )}
@@ -225,7 +225,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                       {(car as any).displacement && <div><dt className="text-xs text-zinc-400 uppercase tracking-wide">Displacement</dt><dd className="font-bold text-zinc-900">{(car as any).displacement}</dd></div>}
                       {(car as any).cylinders && <div><dt className="text-xs text-zinc-400 uppercase tracking-wide">Cylinders</dt><dd className="font-bold text-zinc-900">{(car as any).cylinders}-cylinder</dd></div>}
                       {(car as any).horsepower && <div><dt className="text-xs text-zinc-400 uppercase tracking-wide">Horsepower</dt><dd className="font-bold text-zinc-900">{(car as any).horsepower} hp</dd></div>}
-                      {(car as any).torque && <div><dt className="text-xs text-zinc-400 uppercase tracking-wide">Torque</dt><dd className="font-bold text-zinc-900">{(car as any).torque} lb-ft</dd></div>}
+                      {(car as any).torque && <div><dt className="text-xs text-zinc-400 uppercase tracking-wide">Torque</dt><dd className="font-bold text-zinc-900">{(car as any).torque} lb-ft (pound-feet)</dd></div>}
                       {(car as any).forcedInduction && <div><dt className="text-xs text-zinc-400 uppercase tracking-wide">Forced Induction</dt><dd className="font-bold text-zinc-900">{(car as any).forcedInduction}</dd></div>}
                       {(car as any).fuelType && <div><dt className="text-xs text-zinc-400 uppercase tracking-wide">Fuel Type</dt><dd className="font-bold text-zinc-900">{(car as any).fuelType}</dd></div>}
                       {car.transmission && <div><dt className="text-xs text-zinc-400 uppercase tracking-wide">Transmission</dt><dd className="font-bold text-zinc-900">{car.transmission}</dd></div>}

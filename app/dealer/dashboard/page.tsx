@@ -247,11 +247,11 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
 
           {/* VIN */}
           <div>
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">VIN</label>
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">VIN — Vehicle Identification Number</label>
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="17-char VIN (or pre-1981 manufacturer VIN)"
+                placeholder="17-character VIN (pre-1981 vehicles: use manufacturer serial number)"
                 value={fields.vin}
                 onChange={e => { set('vin', e.target.value); setVinStatus(null); }}
                 maxLength={17}
@@ -283,12 +283,12 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
                 </p>
                 <p>{vinStatus.message}</p>
                 {vinStatus.nhtsaMake && (
-                  <p className="mt-1">NHTSA records: {vinStatus.nhtsaYear} {vinStatus.nhtsaMake} {vinStatus.nhtsaModel}</p>
+                  <p className="mt-1">NHTSA (National Highway Traffic Safety Administration) records: {vinStatus.nhtsaYear} {vinStatus.nhtsaMake} {vinStatus.nhtsaModel}</p>
                 )}
                 {vinStatus.nicbUrl && (
                   <a href={vinStatus.nicbUrl} target="_blank" rel="noopener noreferrer"
                     className="inline-block mt-1.5 underline opacity-70 hover:opacity-100">
-                    Check stolen vehicle status on NICB →
+                    Check stolen vehicle status on NICB (National Insurance Crime Bureau) →
                   </a>
                 )}
               </div>
@@ -355,14 +355,14 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
                 onChange={e => set('horsepower', e.target.value)} className={inp} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Torque (lb-ft)</label>
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Torque (lb-ft / pound-feet)</label>
               <input type="number" min="0" placeholder="707" value={fields.torque}
                 onChange={e => set('torque', e.target.value)} className={inp} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Forced Induction</label>
               <select value={fields.forcedInduction} onChange={e => set('forcedInduction', e.target.value)} className={inp}>
-                <option value="">None / N/A</option>
+                <option value="">None</option>
                 <option>Supercharged</option>
                 <option>Turbocharged</option>
                 <option>Twin-Turbocharged</option>
@@ -398,10 +398,10 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Drive Type</label>
               <select value={fields.driveType} onChange={e => set('driveType', e.target.value)} className={inp}>
                 <option value="">Select...</option>
-                <option>RWD</option>
-                <option>FWD</option>
-                <option>AWD</option>
-                <option>4WD</option>
+                <option value="RWD">RWD — Rear-Wheel Drive</option>
+                <option value="FWD">FWD — Front-Wheel Drive</option>
+                <option value="AWD">AWD — All-Wheel Drive</option>
+                <option value="4WD">4WD — Four-Wheel Drive</option>
               </select>
             </div>
             <div>

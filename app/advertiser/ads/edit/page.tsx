@@ -137,13 +137,13 @@ function EditAdInner() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">CTA Button Label</label>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Button Text (Call to Action)</label>
                 <input type="text" maxLength={20} value={form.ctaLabel} onChange={e => set('ctaLabel', e.target.value)}
                   placeholder="Learn More"
                   className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">CTA URL</label>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Button Link URL</label>
                 <input type="url" value={form.ctaUrl} onChange={e => set('ctaUrl', e.target.value)}
                   placeholder="https://yoursite.com"
                   className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
