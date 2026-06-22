@@ -48,6 +48,17 @@ export default async function ListingsPage({ searchParams }: Props) {
 
       <SmartSearchBar />
 
+      <div className="mt-4">
+        <SponsorCard
+          name="Detail 360"
+          tagline="Professional auto detailing for your classic. St. Louis, MO."
+          logoUrl="https://lirp.cdn-website.com/ef1e4ee0/dms3rep/multi/opt/detail-360-logo-sq-204w.jpg"
+          href="https://www.detail360stl.com/"
+          cta="Book a Detail"
+          layout="horizontal"
+        />
+      </div>
+
       {hasFilters && (
         <div className="mt-3 mb-1">
           <Suspense>
@@ -62,17 +73,6 @@ export default async function ListingsPage({ searchParams }: Props) {
         </Suspense>
 
         <div className="flex-1">
-          <div className="mb-5">
-            <SponsorCard
-              name="Detail 360"
-              tagline="Professional auto detailing for your classic. St. Louis, MO."
-              logoUrl="https://lirp.cdn-website.com/ef1e4ee0/dms3rep/multi/opt/detail-360-logo-sq-204w.jpg"
-              href="https://www.detail360stl.com/"
-              cta="Book a Detail"
-              layout="horizontal"
-            />
-          </div>
-
           {cars.length === 0 ? (
             <div className="bg-white rounded-xl border border-zinc-100 p-16 text-center">
               <p className="text-4xl mb-4">🔍</p>
