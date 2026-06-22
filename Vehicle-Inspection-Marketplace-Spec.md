@@ -98,13 +98,136 @@ Inspectors apply at `/inspector/signup`. Fields collected:
 **Certification options:** ASE Certified, Former Dealership Technician, Classic Car Club of America (CCCA), Concours Judge, Licensed Mechanic, Independent Inspector
 
 #### Inspector Review & Approval
-All inspector applications are reviewed by GarageCherries before the account goes live. Review checks:
-- Valid phone number (call to verify)
-- Verifiable experience or certifications
-- Geographic coverage matches stated ZIP/radius
-- No conflicts of interest (e.g., already a registered dealer)
+All inspector applications are reviewed by GarageCherries before the account goes live.
 
-Approval SLA: 48 business hours.
+Approval SLA: 48 business hours. See full vetting criteria below.
+
+---
+
+## Inspector Vetting Criteria
+
+### Non-Negotiable Requirements (All Applicants)
+
+These must be satisfied before any application proceeds to review:
+
+| Requirement | How Verified |
+|---|---|
+| Government-issued photo ID | Upload during application; manually reviewed |
+| Verifiable phone number | Staff callback within 24 hours of application |
+| Physical address in stated service area | Cross-checked against ZIP code and service radius |
+| Liability insurance (minimum $500k general liability) | Certificate of insurance uploaded at application |
+| No active dealer or advertiser account on GarageCherries | Checked against internal user database by email |
+| No financial interest in the vehicle being inspected | Attestation on application; spot-checked |
+
+> **Why liability insurance is required:** Inspectors visit private homes and handle vehicles they don't own. Without insurance, a dropped tool or a test drive incident creates uninsured liability for both the inspector and the platform.
+
+---
+
+### Credential Evaluation
+
+Classic car inspection requires different expertise than modern vehicle repair. ASE certification is a positive signal but is not sufficient on its own — ASE tests cover modern OBD-II systems, fuel injection, and electronic diagnostics that have little relevance to a 1967 Camaro with a carburetor and drum brakes.
+
+Credentials are evaluated in three tiers:
+
+#### Tier 1 — Strong Signal (any one qualifies)
+| Credential | What It Signals | Verification Method |
+|---|---|---|
+| ASE Master Technician | Broad, tested mechanical competence | ASE name lookup at ase.com |
+| Concours judging experience (AACA, CCCA, Amelia) | Deep knowledge of originality, correct parts, body quality | Self-reported; verified by reference call to show organizer or club |
+| Documented restoration of 3+ classic vehicles | Hands-on full-system experience | Photos, receipts, or reference from owner of restored vehicle |
+| 5+ years as a classic car specialist (shop or independent) | Sustained professional experience | Employment verification or 2 client references |
+
+#### Tier 2 — Supporting Credential (strengthens application, not standalone)
+| Credential | Notes |
+|---|---|
+| ASE Certification (non-Master) | Counts toward modern systems knowledge |
+| Marque club membership (Mustang Club, Mopar, Corvette Club, etc.) | Signals community engagement and make-specific interest |
+| CCCA or AACA membership | Active collector car community involvement |
+| Former dealership technician | Professional shop discipline; verify with employment reference |
+| Vocational/trade school automotive certification | Entry-level formal training |
+
+#### Tier 3 — Not Sufficient Alone
+| Credential | Why It's Insufficient |
+|---|---|
+| General ASE certification only (non-Master, no classic experience) | Covers modern systems; limited relevance to pre-1980 vehicles |
+| "Car enthusiast" or hobbyist self-description | No verifiable skill |
+| YouTube / social media presence | Not a professional credential |
+| Modern dealership service experience only | Different skill set; no classic car overlap |
+
+---
+
+### Phone Interview (Required for All Applicants)
+
+Every applicant who passes the document review receives a 15-minute phone interview with a GarageCherries team member. The purpose is to assess practical classic car knowledge — not to quiz the applicant, but to hear how they talk about cars.
+
+**Interview guide:**
+
+1. *"Tell me about the last classic car you inspected or worked on. What did you find?"*
+   - **Good answer:** Specific — mentions matching numbers, date-coded parts, panel gaps, body stampings, correct carburetor for the model year, originality of components.
+   - **Weak answer:** General — mentions fluid condition, tire tread, whether it started. These are real checks but suggest a modern-vehicle inspection mindset.
+
+2. *"How do you verify whether an engine is numbers-matching on a pre-1970 American muscle car?"*
+   - **Good answer:** Knows to check the VIN-stamped pad on the block, the partial VIN suffix, the build sheet if available, and date codes on major components.
+   - **Weak answer:** Doesn't know what numbers-matching means, or thinks it's just matching the VIN on the door to the title.
+
+3. *"What are the three most common structural issues you look for on a unibody car from the 1960s?"*
+   - **Good answer:** Floor pan rust, frame rail rust/repair, torque box cracking, poorly repaired accident damage, evidence of rocker panel replacement.
+   - **Weak answer:** Can't answer or gives generic responses.
+
+4. *"Have you ever told a buyer not to purchase a car? What happened?"*
+   - Looking for: willingness to give honest, unfavorable assessments. This is a trust signal for buyers. An inspector who never recommends against buying is not useful.
+
+**Interview outcome:** Pass / Conditional Pass (require additional credential) / Fail. Noted in internal admin record.
+
+---
+
+### Probationary Period
+
+New inspectors are approved on a **probationary** basis for their first 3 inspections. During probation:
+
+- All submitted reports are reviewed by a GarageCherries team member before publishing to the listing
+- Inspector is notified of any report quality issues (missing photos, incomplete sections, vague notes)
+- If all 3 reports meet quality standards, inspector graduates to **Full Approval** and reports publish automatically
+- If a report fails review, inspector receives feedback and one opportunity to revise; a second failure results in account suspension
+
+---
+
+### Ongoing Quality Monitoring
+
+Approval is not permanent. Inspectors are monitored continuously:
+
+| Trigger | Action |
+|---|---|
+| Rating drops below 3.8 (rolling 10 reviews) | Flagged for admin review; temporarily removed from new job matching |
+| Two buyer complaints about inaccurate reports | Mandatory re-review; probationary status reinstated |
+| Missed job without 24-hour notice (2 occurrences) | Warning; 3rd occurrence = suspension |
+| Insurance certificate expires | 14-day grace period to renew; suspended if not renewed |
+| Inspector found to have financial interest in an inspected vehicle | Immediate suspension; review for permanent removal |
+
+---
+
+### Conflict of Interest Policy
+
+Inspectors may not inspect:
+- A vehicle they have previously owned
+- A vehicle listed by a dealer or seller they have a financial relationship with
+- A vehicle they are considering purchasing
+- A vehicle owned by a family member or business partner
+
+Sellers and buyers attest at booking that they have no prior relationship with the assigned inspector. GarageCherries cross-references inspector and seller accounts for shared email domains, phone numbers, or addresses.
+
+---
+
+### Inspector Tiers (Earned Over Time)
+
+As inspectors complete more jobs and accumulate reviews, they advance through tiers that affect their visibility in search results:
+
+| Tier | Requirements | Benefit |
+|---|---|---|
+| **Provisional** | Approved, 0–2 completed inspections | Listed but ranked lower |
+| **Verified** | 3+ completed, rating ≥ 4.0 | Standard ranking; "Verified Inspector" badge |
+| **Elite** | 25+ completed, rating ≥ 4.5, no complaints | Top of search results; "Elite Inspector" badge on listing reports |
+| **Specialist** | Elite + documented marque expertise | Shown first for listings matching their specialty |
 
 #### Inspector Profile (Public)
 Public-facing page at `/inspectors/[slug]`:
