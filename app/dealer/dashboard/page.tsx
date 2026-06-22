@@ -17,6 +17,7 @@ interface DbCar {
   location: string; state: string; featured: boolean;
   listed_at: string; images: string[]; seller_id: string;
   is_sold?: boolean;
+  vin?: string; vin_verified?: boolean;
 }
 interface DbDealer {
   id: string; slug: string; name: string;
@@ -37,6 +38,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
 }) {
   const isEdit = !!car;
   const [fields, setFields] = useState({
+    vin:          car?.vin                      ?? '',
     year:         car ? String(car.year)        : '',
     make:         car?.make                     ?? '',
     model:        car?.model                    ?? '',
@@ -68,6 +70,13 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
   const [newImages, setNewImages] = useState<{ file: File; preview: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [vinStatus, setVinStatus] = useState<{
+    verified: boolean; vinValid: boolean; preStandard?: boolean;
+    makeMatch: boolean | null; modelMatch: boolean | null; yearMatch: boolean | null;
+    nhtsaMake?: string; nhtsaModel?: string; nhtsaYear?: string;
+    message: string; nicbUrl?: string;
+  } | null>(car?.vin ? { verified: car.vin_verified ?? false, vinValid: true, makeMatch: null, modelMatch: null, yearMatch: null, message: 'Previously saved.' } : null);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -84,6 +93,22 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
       if (description) set('description', description);
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const verifyVin = async () => {
+    if (!fields.vin.trim()) return;
+    setVerifying(true);
+    try {
+      const res = await fetch('/api/cars/verify-vin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vin: fields.vin, make: fields.make, model: fields.model, year: fields.year }),
+      });
+      const data = await res.json();
+      setVinStatus(data);
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -149,6 +174,12 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
       state:        fields.state.toUpperCase().slice(0, 2),
       images:       allImages,
       featured,
+      vin:          fields.vin.trim().toUpperCase() || null,
+      vin_verified: vinStatus?.verified ?? false,
+      vin_make:     vinStatus?.nhtsaMake ?? null,
+      vin_model:    vinStatus?.nhtsaModel ?? null,
+      vin_year:     vinStatus?.nhtsaYear ? parseInt(vinStatus.nhtsaYear) : null,
+      vin_checked_at: vinStatus ? new Date().toISOString() : null,
     };
 
     let dbError;
@@ -213,6 +244,57 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+
+          {/* VIN */}
+          <div>
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">VIN</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="17-char VIN (or pre-1981 manufacturer VIN)"
+                value={fields.vin}
+                onChange={e => { set('vin', e.target.value); setVinStatus(null); }}
+                maxLength={17}
+                className={`flex-1 border rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-500 ${
+                  vinStatus ? (vinStatus.verified ? 'border-green-400 bg-green-50' : 'border-zinc-200') : 'border-zinc-200'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={verifyVin}
+                disabled={verifying || !fields.vin.trim()}
+                className="shrink-0 px-4 py-2 text-xs font-bold bg-zinc-900 hover:bg-zinc-700 disabled:opacity-40 text-white rounded-xl transition-colors"
+              >
+                {verifying ? 'Checking…' : 'Verify'}
+              </button>
+            </div>
+            {vinStatus && (
+              <div className={`mt-2 rounded-xl px-4 py-3 text-xs leading-relaxed ${
+                vinStatus.verified
+                  ? 'bg-green-50 border border-green-200 text-green-800'
+                  : vinStatus.preStandard
+                  ? 'bg-blue-50 border border-blue-200 text-blue-800'
+                  : vinStatus.vinValid
+                  ? 'bg-yellow-50 border border-yellow-200 text-yellow-800'
+                  : 'bg-red-50 border border-red-200 text-red-800'
+              }`}>
+                <p className="font-semibold mb-1">
+                  {vinStatus.verified ? '✅ VIN Verified' : vinStatus.preStandard ? 'ℹ️ Pre-1981 VIN' : vinStatus.vinValid ? '⚠️ VIN Decoded — Mismatch' : '❌ Invalid VIN'}
+                </p>
+                <p>{vinStatus.message}</p>
+                {vinStatus.nhtsaMake && (
+                  <p className="mt-1">NHTSA records: {vinStatus.nhtsaYear} {vinStatus.nhtsaMake} {vinStatus.nhtsaModel}</p>
+                )}
+                {vinStatus.nicbUrl && (
+                  <a href={vinStatus.nicbUrl} target="_blank" rel="noopener noreferrer"
+                    className="inline-block mt-1.5 underline opacity-70 hover:opacity-100">
+                    Check stolen vehicle status on NICB →
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Year *</label>

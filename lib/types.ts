@@ -22,6 +22,11 @@ export interface Car {
   featured: boolean;
   listedAt: string;
   lotNumber?: string;
+  vin?: string;
+  vinVerified?: boolean;
+  vinMake?: string;
+  vinModel?: string;
+  vinYear?: number;
   // Rich detail fields
   headline?: string;
   hobbySegment?: string;

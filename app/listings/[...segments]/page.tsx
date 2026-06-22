@@ -150,9 +150,16 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
               <div className="relative">
-                {car.featured && (
-                  <span className="absolute top-4 left-4 z-10 bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg">FEATURED</span>
-                )}
+                <div className="absolute top-4 left-4 z-10 flex gap-2">
+                  {car.featured && (
+                    <span className="bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg">FEATURED</span>
+                  )}
+                  {car.vinVerified && (
+                    <span className="bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1">
+                      ✓ VIN Verified
+                    </span>
+                  )}
+                </div>
                 <ImageGallery images={car.images} title={car.title} />
               </div>
 
@@ -193,6 +200,12 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                       <div><dt className="text-xs text-zinc-400 uppercase tracking-wide">Model</dt><dd className="font-bold text-zinc-900">{car.model}</dd></div>
                       {car.hobbySegment && <div><dt className="text-xs text-zinc-400 uppercase tracking-wide">Hobby Segment</dt><dd className="font-bold text-zinc-900">{car.hobbySegment}</dd></div>}
                       <div><dt className="text-xs text-zinc-400 uppercase tracking-wide">Miles</dt><dd className="font-bold text-zinc-900">{formatMileage(car.mileage)}</dd></div>
+                      {car.vin && (
+                        <div>
+                          <dt className="text-xs text-zinc-400 uppercase tracking-wide">VIN</dt>
+                          <dd className="font-mono text-sm text-zinc-900 break-all">{car.vin}</dd>
+                        </div>
+                      )}
                     </dl>
                   </div>
                   <div>

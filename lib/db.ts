@@ -38,6 +38,11 @@ function adaptCar(data: any): Car {
     options:              data.options ?? undefined,
     descriptionParagraphs: data.description_paragraphs ?? undefined,
     lotNumber:            data.lot_number ?? undefined,
+    vin:                  data.vin ?? undefined,
+    vinVerified:          data.vin_verified ?? false,
+    vinMake:              data.vin_make ?? undefined,
+    vinModel:             data.vin_model ?? undefined,
+    vinYear:              data.vin_year ?? undefined,
   };
 }
 
