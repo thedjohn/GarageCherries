@@ -326,6 +326,29 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                   engine={car.engine}
                 />
 
+                {/* Phase 1 inspection affiliate — replace href with affiliate link once Lemon Squad agreement is signed */}
+                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">🔍</span>
+                    <h3 className="font-bold text-zinc-900 text-sm">Get This Car Inspected</h3>
+                  </div>
+                  <p className="text-xs text-zinc-500 leading-relaxed mb-4">
+                    Have a certified mobile inspector examine this vehicle before you buy — covering body, frame, engine, drivetrain, and interior. Reports typically delivered within 24 hours.
+                  </p>
+                  <div className="text-xs text-zinc-400 mb-3">Starting from <span className="font-semibold text-zinc-700">$99</span> · Nationwide mobile service</div>
+                  <a
+                    href={`https://www.lemonsquad.com/order?year=${car.year}&make=${encodeURIComponent(car.make)}&model=${encodeURIComponent(car.model)}&zip=${encodeURIComponent((dealer as any)?.zip ?? car.state)}&utm_source=garagecherries&utm_medium=listing&utm_campaign=inspection`}
+                    target="_blank"
+                    rel="noopener noreferrer sponsored"
+                    className="block w-full bg-zinc-900 hover:bg-zinc-700 text-white font-bold text-center py-2.5 rounded-xl text-sm transition-colors"
+                  >
+                    Book an Inspection →
+                  </a>
+                  <p className="text-[10px] text-zinc-400 text-center mt-2">
+                    We may earn a referral fee if you book through this link.
+                  </p>
+                </div>
+
                 <AdSlot carState={car.state} pagePath={canonicalUrl} />
 
                 <SponsorCard
