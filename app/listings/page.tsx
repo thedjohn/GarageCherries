@@ -4,7 +4,7 @@ import CarCard from '@/components/CarCard';
 import SearchFilters from '@/components/SearchFilters';
 import SmartSearchBar from '@/components/SmartSearchBar';
 import SaveSearchButton from '@/components/SaveSearchButton';
-import { fetchCars } from '@/lib/db';
+import { fetchCars, fetchMakes } from '@/lib/db';
 import SponsorCard from '@/components/SponsorCard';
 
 export const metadata: Metadata = {
@@ -23,17 +23,20 @@ interface Props {
 
 export default async function ListingsPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const cars = await fetchCars({
-    make:         sp.make,
-    yearMin:      sp.yearMin  ? Number(sp.yearMin)  : undefined,
-    yearMax:      sp.yearMax  ? Number(sp.yearMax)  : undefined,
-    priceMin:     sp.priceMin ? Number(sp.priceMin) : undefined,
-    priceMax:     sp.priceMax ? Number(sp.priceMax) : undefined,
-    condition:    sp.condition,
-    bodyStyle:    sp.bodyStyle,
-    transmission: sp.transmission as any,
-    state:        sp.state,
-  });
+  const [cars, makes] = await Promise.all([
+    fetchCars({
+      make:         sp.make,
+      yearMin:      sp.yearMin  ? Number(sp.yearMin)  : undefined,
+      yearMax:      sp.yearMax  ? Number(sp.yearMax)  : undefined,
+      priceMin:     sp.priceMin ? Number(sp.priceMin) : undefined,
+      priceMax:     sp.priceMax ? Number(sp.priceMax) : undefined,
+      condition:    sp.condition,
+      bodyStyle:    sp.bodyStyle,
+      transmission: sp.transmission as any,
+      state:        sp.state,
+    }),
+    fetchMakes(),
+  ]);
 
   const hasFilters = Object.values(sp).some(Boolean);
 
@@ -69,7 +72,7 @@ export default async function ListingsPage({ searchParams }: Props) {
 
       <div className="flex flex-col lg:flex-row gap-8 mt-4">
         <Suspense>
-          <SearchFilters />
+          <SearchFilters initialMakes={makes} />
         </Suspense>
 
         <div className="flex-1">

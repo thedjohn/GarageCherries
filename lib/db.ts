@@ -171,6 +171,12 @@ export async function fetchMakes(): Promise<string[]> {
   return makes;
 }
 
+export async function fetchCarCount(): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase.from('cars').select('*', { count: 'exact', head: true });
+  return count ?? 0;
+}
+
 // Resolves a URL segment (e.g. "bmw", "mercedes-benz") to the
 // properly-cased make string as stored in the DB (e.g. "BMW", "Mercedes-Benz")
 export async function resolveMake(seg: string): Promise<string | null> {

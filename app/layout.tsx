@@ -23,14 +23,13 @@ export const metadata: Metadata = {
     title: 'GarageCherries — Classic & Collector Cars For Sale',
     description: 'Buy and sell classic cars, muscle cars, and collector vehicles. Browse thousands of listings from trusted dealers across the United States.',
     url: BASE_URL,
-    images: [{ url: '/og-default.jpg', width: 1200, height: 630, alt: 'GarageCherries Classic Cars' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'GarageCherries — Classic & Collector Cars For Sale',
     description: 'Buy and sell classic cars, muscle cars, and collector vehicles.',
-    images: ['/og-default.jpg'],
   },
+  icons: { icon: '/favicon.svg', shortcut: '/favicon.svg' },
   robots: {
     index: true,
     follow: true,

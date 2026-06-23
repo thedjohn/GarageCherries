@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 interface SponsorCardProps {
   name: string;
   tagline: string;
@@ -19,9 +21,11 @@ export default function SponsorCard({
           rel="noopener noreferrer sponsored"
           className="flex items-center gap-5 px-5 py-4 group"
         >
-          <img
+          <Image
             src={logoUrl}
             alt={`${name} logo`}
+            width={56}
+            height={56}
             className="w-14 h-14 object-contain rounded-xl shrink-0 bg-white p-1"
           />
           <div className="flex-1 min-w-0">
@@ -48,9 +52,11 @@ export default function SponsorCard({
         rel="noopener noreferrer sponsored"
         className="flex flex-col items-center gap-3 px-5 pb-5 group"
       >
-        <img
+        <Image
           src={logoUrl}
           alt={`${name} logo`}
+          width={80}
+          height={80}
           className="w-20 h-20 object-contain rounded-xl"
         />
         <div className="text-center">

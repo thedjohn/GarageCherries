@@ -1,16 +1,13 @@
 'use client';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { BODY_STYLES, CONDITIONS, STATES } from '@/lib/types';
 
-export default function SearchFilters() {
+export default function SearchFilters({ initialMakes }: { initialMakes: string[] }) {
   const router = useRouter();
   const params = useSearchParams();
 
-  const [makes, setMakes] = useState<string[]>([]);
-  useEffect(() => {
-    fetch('/api/makes').then(r => r.json()).then(d => setMakes(d.makes ?? []));
-  }, []);
+  const makes = initialMakes;
 
   const [filters, setFilters] = useState({
     make:         params.get('make')        || '',
