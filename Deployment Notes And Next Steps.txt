@@ -1,0 +1,17 @@
+Hosting
+
+Vercel (current) — Stay here
+
+Cost: Free (Hobby) → $20/mo (Pro)
+
+Why it's right for you now:
+- Zero-config Next.js deployment — it's made by the same team
+- Edge network CDN globally out of the box
+- Preview deployments on every push (huge for testing)
+- Automatic SSL, image optimization, serverless functions all included
+- No DevOps — you focus on the product
+
+When to upgrade from Hobby → Pro ($20/mo):
+- When you add a custom domain (garagecherries.com)
+- When you need password-protected preview URLs for stakeholders
+- When you hit Hobby bandwidth/build limits

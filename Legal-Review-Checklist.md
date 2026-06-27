@@ -204,6 +204,114 @@ Already partially covered in the Terms. Strengthen it:
 
 ---
 
+## Seller & Listing Verification
+
+These measures validate that a seller actually possesses the vehicle listed, protecting buyers from fraud and strengthening GarageCherries' credibility as a marketplace.
+
+### 16. VIN Verification (NHTSA API — Free)
+
+**What it is:** The NHTSA maintains a free public API that decodes any VIN and returns the official make, model, year, and body style.
+
+**Why it matters:** A fabricated or mismatched VIN is a primary indicator of listing fraud. Verifying the VIN against stated listing details catches errors and deception at submission time.
+
+**What's needed:**
+- [ ] Require VIN on all listings (dealer and private seller)
+- [ ] Call the NHTSA VIN decoder API at listing submission to confirm VIN matches stated make/model/year
+- [ ] Display a "VIN Verified" badge on passing listings
+- [ ] Block or flag listings where VIN does not match
+
+**API:** `https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/{VIN}?format=json` (free, no key required)
+
+---
+
+### 17. Stolen Vehicle Check (NICB VINCheck — Free)
+
+**What it is:** The National Insurance Crime Bureau (NICB) maintains a database of vehicles reported stolen or salvaged. Their VINCheck tool is publicly accessible.
+
+**Why it matters:** Listing a stolen vehicle on a marketplace creates legal liability for the platform. A "Not reported stolen" badge is a meaningful trust signal buyers recognize.
+
+**What's needed:**
+- [ ] Integrate NICB VINCheck at listing submission (or as a scheduled background check)
+- [ ] Display a "Not Reported Stolen" badge on cleared listings
+- [ ] Automatically suppress or flag listings that return a stolen/salvage hit
+- [ ] Review NICB's terms of service for commercial API usage — a partner agreement may be required
+
+**API:** nicb.org/vincheck (manual lookup available; contact NICB for bulk/commercial API access)
+
+---
+
+### 18. Carfax / AutoCheck Partner Badge
+
+**What it is:** Carfax and AutoCheck (Experian) offer dealer partner programs that display a vehicle history report badge on listings. Buyers immediately recognize these as credibility signals.
+
+**Why it matters:** A Carfax badge communicates that the history is on record — accident history, title issues, service records. It is one of the most recognized trust signals in used car sales.
+
+**What's needed:**
+- [ ] Apply for the Carfax Advantage Dealer program or AutoCheck partner program
+- [ ] Display report badges on eligible listings (requires VIN to be present — see item 16)
+- [ ] Review partner agreement for display requirements and fees
+- [ ] Note: Carfax reports also flag odometer rollbacks — supports compliance with item 6 (Odometer Disclosure)
+
+---
+
+### 19. State Dealer License Verification
+
+**What it is:** All 50 states maintain public databases of licensed motor vehicle dealers. Most are searchable by license number or business name.
+
+**Why it matters:** Verifying a dealer's license at onboarding ensures only legitimate, licensed dealers list on the platform — reducing fraud risk and supporting the warranty made in dealer Terms (item 9).
+
+**What's needed:**
+- [ ] Add a dealer license number field to the dealer onboarding form
+- [ ] Manually verify license against the applicable state database before approving the account
+- [ ] Display a "Licensed Dealer" badge on dealer profiles
+- [ ] Re-verify licenses annually (licenses expire; dealers can lose them)
+- [ ] Consider building a lookup tool against state DMV APIs for the most active dealer states (CA, TX, FL, NY, IL)
+
+---
+
+### 20. Photo Authenticity Requirement
+
+**What it is:** Require sellers to include at least one photo showing the vehicle with a handwritten GarageCherries listing code (or a printed card with the listing ID) visibly in frame. Used by Bring a Trailer and Cars & Bids.
+
+**Why it matters:** Stock photos and photos stolen from other listings cannot include a code specific to this listing. This single requirement eliminates the most common form of listing photo fraud.
+
+**What's needed:**
+- [ ] Generate a unique listing code at the time a listing is created
+- [ ] Require at least one submitted photo to include the code (enforced via dealer dashboard instructions; optionally reviewed manually for early listings)
+- [ ] Add a note in listing submission UI: "At least one photo must show the vehicle with your listing code [XXXX-XXXX] visibly displayed"
+- [ ] Consider AI-assisted photo review to flag listings where no photo contains text matching the code
+
+---
+
+### 21. Identity Verification for Dealers (Stripe Identity / KYC)
+
+**What it is:** Stripe Identity is a Know Your Customer (KYC) product that verifies a government-issued ID during onboarding. It confirms the dealer account is associated with a real, identified person.
+
+**Why it matters:** Deters fraudulent dealer accounts from being created. Creates a paper trail if a dealer commits fraud — law enforcement can be provided with verified identity records.
+
+**What's needed:**
+- [ ] Integrate Stripe Identity into the dealer onboarding flow (requires Stripe account — aligns with Stripe wiring for payments)
+- [ ] Store verification status (verified / pending / failed) on the dealer record
+- [ ] Display a "Identity Verified" badge on dealer profiles
+- [ ] Review Stripe Identity pricing (currently ~$1.50 per verification) and include in dealer onboarding cost model
+- [ ] Update Privacy Policy to disclose that identity documents are collected and processed by Stripe during dealer onboarding
+
+---
+
+### 22. Listing Fraud Warnings for Buyers
+
+**What it is:** Prominent buyer-facing warnings in the listing inquiry flow about common fraud tactics in the collector car market.
+
+**Why it matters:** GarageCherries' Terms already include fraud warnings, but placing them at the point of transaction (inquiry form, not just a Terms page) significantly improves buyer protection and reduces platform liability.
+
+**What's needed:**
+- [ ] Add a fraud warning callout on the listing detail page near the contact/inquiry button
+- [ ] Warn specifically against: wire transfers, gift card payments, cryptocurrency without escrow, sellers requesting deposit before viewing
+- [ ] Link to recommended escrow services (Escrow.com, Pavaso)
+- [ ] Consider a one-click "Report this listing" button on every listing detail page
+
+---
+
 ## Recommended Next Steps
 
 1. **Retain an attorney** experienced in internet/marketplace law and automotive transactions. DMCA registration, FTC affiliate disclosures, and state dealer licensing are the three areas where errors create the most acute liability.
