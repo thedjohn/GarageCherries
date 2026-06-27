@@ -12,7 +12,6 @@ import { fetchCar, fetchCars, fetchDealerById, fetchModelsByMake, resolveMake } 
 import { createClient } from '@/lib/supabase/server';
 import WatchButton from '@/components/WatchButton';
 import AdSlot from '@/components/AdSlot';
-import SponsorCard from '@/components/SponsorCard';
 import FinancingCalculator from '@/components/FinancingCalculator';
 import PriceHistoryChart from '@/components/PriceHistoryChart';
 import MakeOfferButton from '@/components/MakeOfferButton';
@@ -350,14 +349,6 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                 </div>
 
                 <AdSlot carState={car.state} pagePath={canonicalUrl} />
-
-                <SponsorCard
-                  name="Detail 360"
-                  tagline="Professional auto detailing for your classic. St. Louis, MO."
-                  logoUrl="https://lirp.cdn-website.com/ef1e4ee0/dms3rep/multi/opt/detail-360-logo-sq-204w.jpg"
-                  href="https://www.detail360stl.com/"
-                  cta="Book a Detail"
-                />
 
                 {mapAddressParts.length > 0 && (
                   <div className="mt-4 rounded-xl overflow-hidden border border-zinc-100">

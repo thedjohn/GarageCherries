@@ -5,7 +5,6 @@ import SearchFilters from '@/components/SearchFilters';
 import SmartSearchBar from '@/components/SmartSearchBar';
 import SaveSearchButton from '@/components/SaveSearchButton';
 import { fetchCars, fetchMakes } from '@/lib/db';
-import SponsorCard from '@/components/SponsorCard';
 
 export const metadata: Metadata = {
   title: 'Classic Cars For Sale',
@@ -50,17 +49,6 @@ export default async function ListingsPage({ searchParams }: Props) {
       </div>
 
       <SmartSearchBar />
-
-      <div className="mt-4">
-        <SponsorCard
-          name="Detail 360"
-          tagline="Professional auto detailing for your classic. St. Louis, MO."
-          logoUrl="https://lirp.cdn-website.com/ef1e4ee0/dms3rep/multi/opt/detail-360-logo-sq-204w.jpg"
-          href="https://www.detail360stl.com/"
-          cta="Book a Detail"
-          layout="horizontal"
-        />
-      </div>
 
       {hasFilters && (
         <div className="mt-3 mb-1">
