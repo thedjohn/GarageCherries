@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { formatPrice, toSegment } from '@/lib/data';
+import AccountTabBar from '@/components/AccountTabBar';
 
 type Tab = 'watchlist' | 'messages' | 'alerts' | 'settings';
 
@@ -234,37 +235,18 @@ function AccountPage() {
   ];
 
   if (!userId) {
-    return <div className="max-w-4xl mx-auto px-4 py-20 text-center text-zinc-400">Loading…</div>;
+    return (
+      <>
+        <AccountTabBar />
+        <div className="max-w-4xl mx-auto px-4 py-20 text-center text-zinc-400">Loading…</div>
+      </>
+    );
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10">
-      <h1 className="text-2xl font-extrabold text-zinc-900 mb-1">My Account</h1>
-      <p className="text-sm text-zinc-500 mb-6">{email}</p>
-
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-zinc-200 mb-8">
-        {TABS.map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold rounded-t-lg transition-colors border-b-2 -mb-px ${
-              tab === t.key
-                ? 'border-red-600 text-red-600 bg-white'
-                : 'border-transparent text-zinc-500 hover:text-zinc-800 hover:bg-zinc-50'
-            }`}
-          >
-            {t.label}
-            {t.count !== undefined && t.count > 0 && (
-              <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center ${
-                tab === t.key ? 'bg-red-100 text-red-600' : 'bg-zinc-200 text-zinc-600'
-              }`}>
-                {t.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+    <>
+      <AccountTabBar />
+      <div className="max-w-4xl mx-auto px-4 py-8">
 
       {/* Watchlist tab */}
       {tab === 'watchlist' && (
@@ -513,6 +495,7 @@ function AccountPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

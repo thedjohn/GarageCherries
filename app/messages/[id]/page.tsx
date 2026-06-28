@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import AccountTabBar from '@/components/AccountTabBar';
 
 interface Message {
   id: string;
@@ -99,24 +100,20 @@ export default function ChatPage() {
   );
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col h-[calc(100vh-80px)]">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-4">
-        <Link href="/messages" className="text-zinc-400 hover:text-zinc-700">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </Link>
-        <div className="flex-1 min-w-0">
-          <h1 className="font-bold text-zinc-900 truncate">{listingTitle}</h1>
-          {listingId && (
-            <Link href={`/listings/plymouth/baracuda/${listingId}/${listingId}`}
-              className="text-xs text-red-600 hover:underline">
-              View listing →
-            </Link>
-          )}
+    <>
+      <AccountTabBar />
+      <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col h-[calc(100vh-160px)]">
+        {/* Conversation header */}
+        <div className="flex items-center gap-3 mb-4 pb-4 border-b border-zinc-100">
+          <Link href="/account?tab=messages" className="text-zinc-400 hover:text-zinc-700 shrink-0">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </Link>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-bold text-zinc-900 truncate">{listingTitle || 'Conversation'}</h1>
+          </div>
         </div>
-      </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-3 pb-4">
@@ -162,22 +159,23 @@ export default function ChatPage() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <form onSubmit={sendMessage} className="flex gap-2 pt-3 border-t border-zinc-100">
-        <input
-          value={body}
-          onChange={e => setBody(e.target.value)}
-          placeholder="Type a message…"
-          className="flex-1 border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-          disabled={sending}
-        />
-        <button
-          type="submit"
-          disabled={sending || !body.trim()}
-          className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-bold px-5 py-2.5 rounded-xl transition-colors text-sm">
-          Send
-        </button>
-      </form>
-    </div>
+        {/* Input */}
+        <form onSubmit={sendMessage} className="flex gap-2 pt-3 border-t border-zinc-100">
+          <input
+            value={body}
+            onChange={e => setBody(e.target.value)}
+            placeholder="Type a message…"
+            className="flex-1 border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+            disabled={sending}
+          />
+          <button
+            type="submit"
+            disabled={sending || !body.trim()}
+            className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-bold px-5 py-2.5 rounded-xl transition-colors text-sm">
+            Send
+          </button>
+        </form>
+      </div>
+    </>
   );
 }
