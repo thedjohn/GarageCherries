@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -9,17 +9,22 @@ type AuthState =
   | { status: 'none' }
   | { status: 'dealer' }
   | { status: 'advertiser' }
-  | { status: 'buyer'; email: string };
+  | { status: 'buyer'; email: string; name: string };
+
+interface Counts { watchlist: number; messages: number; alerts: number }
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [auth, setAuth] = useState<AuthState>({ status: 'loading' });
+  const [counts, setCounts] = useState<Counts>({ watchlist: 0, messages: 0, alerts: 0 });
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   useEffect(() => {
     const supabase = createClient();
 
-    async function resolveAuth(userId: string | null, email: string | null) {
+    async function resolveAuth(userId: string | null, email: string | null, name: string | null) {
       if (!userId) { setAuth({ status: 'none' }); return; }
       const [{ data: dealer }, { data: advertiser }] = await Promise.all([
         supabase.from('dealers').select('id').eq('id', userId).single(),
@@ -27,18 +32,41 @@ export default function Header() {
       ]);
       if (dealer) { setAuth({ status: 'dealer' }); return; }
       if (advertiser) { setAuth({ status: 'advertiser' }); return; }
-      setAuth({ status: 'buyer', email: email ?? '' });
+      setAuth({ status: 'buyer', email: email ?? '', name: name ?? email ?? '' });
+      // Fetch counts for badge display
+      const [watchRes, alertRes, convRes] = await Promise.all([
+        supabase.from('watchlists').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+        supabase.from('saved_searches').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+        fetch('/api/conversations'),
+      ]);
+      const convJson = await convRes.json();
+      setCounts({
+        watchlist: watchRes.count ?? 0,
+        alerts: alertRes.count ?? 0,
+        messages: convJson.conversations?.length ?? 0,
+      });
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      resolveAuth(session?.user?.id ?? null, session?.user?.email ?? null);
+      resolveAuth(session?.user?.id ?? null, session?.user?.email ?? null, session?.user?.user_metadata?.full_name ?? null);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      resolveAuth(session?.user?.id ?? null, session?.user?.email ?? null);
+      resolveAuth(session?.user?.id ?? null, session?.user?.email ?? null, session?.user?.user_metadata?.full_name ?? null);
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const signOut = async () => {
@@ -90,32 +118,79 @@ export default function Header() {
               </>
             )}
             {auth.status === 'buyer' && (
-              <>
-                <Link href="/account/watchlist" className="text-sm font-medium hover:text-red-400 transition-colors flex items-center gap-1.5">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                  </svg>
-                  Watchlist
-                </Link>
-                <Link href="/messages" className="text-sm font-medium hover:text-red-400 transition-colors flex items-center gap-1.5">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                  Messages
-                </Link>
-                <Link href="/account/alerts" className="text-sm font-medium hover:text-red-400 transition-colors flex items-center gap-1.5">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                  Alerts
-                </Link>
-                <Link href="/account/profile" className="text-sm text-zinc-400 hover:text-red-400 transition-colors">
-                  Account
-                </Link>
-                <button onClick={signOut} className="text-sm text-zinc-400 hover:text-red-400 transition-colors">
-                  Sign Out
+              <div className="relative" ref={dropdownRef}>
+                {/* Avatar button */}
+                <button
+                  onClick={() => setDropdownOpen(o => !o)}
+                  className="relative focus:outline-none"
+                  title={auth.name || auth.email}
+                >
+                  <div className="w-9 h-9 rounded-full bg-red-600 flex items-center justify-center text-white text-sm font-bold ring-2 ring-transparent hover:ring-red-400 transition-all">
+                    {(auth.name || auth.email).charAt(0).toUpperCase()}
+                  </div>
+                  {(counts.watchlist + counts.messages + counts.alerts) > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                      {Math.min(counts.watchlist + counts.messages + counts.alerts, 9)}
+                    </span>
+                  )}
                 </button>
-              </>
+
+                {/* GoDaddy-style panel */}
+                {dropdownOpen && (
+                  <div className="absolute right-0 top-full mt-3 w-64 bg-white rounded-xl shadow-xl border border-zinc-200 z-50 overflow-hidden">
+                    {/* Centered profile header */}
+                    <div className="flex flex-col items-center pt-6 pb-4 px-4 border-b border-zinc-100">
+                      <div className="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center text-white text-2xl font-bold mb-3">
+                        {(auth.name || auth.email).charAt(0).toUpperCase()}
+                      </div>
+                      <p className="font-bold text-zinc-900 text-base leading-tight text-center">{auth.name || 'My Account'}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5 text-center truncate w-full">{auth.email}</p>
+                    </div>
+
+                    {/* Menu links */}
+                    <div className="py-2">
+                      <Link href="/account?tab=watchlist"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center justify-between px-5 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors">
+                        <span>Watchlist</span>
+                        {counts.watchlist > 0 && (
+                          <span className="bg-zinc-100 text-zinc-600 text-xs font-bold rounded-full px-2 py-0.5">{counts.watchlist}</span>
+                        )}
+                      </Link>
+                      <Link href="/account?tab=messages"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center justify-between px-5 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors">
+                        <span>Messages</span>
+                        {counts.messages > 0 && (
+                          <span className="bg-zinc-100 text-zinc-600 text-xs font-bold rounded-full px-2 py-0.5">{counts.messages}</span>
+                        )}
+                      </Link>
+                      <Link href="/account?tab=alerts"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center justify-between px-5 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors">
+                        <span>Car Alerts</span>
+                        {counts.alerts > 0 && (
+                          <span className="bg-zinc-100 text-zinc-600 text-xs font-bold rounded-full px-2 py-0.5">{counts.alerts}</span>
+                        )}
+                      </Link>
+                      <Link href="/account?tab=settings"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center px-5 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors">
+                        Account Settings
+                      </Link>
+                    </div>
+
+                    {/* Sign out */}
+                    <div className="border-t border-zinc-100 py-2">
+                      <button
+                        onClick={() => { setDropdownOpen(false); signOut(); }}
+                        className="w-full text-left px-5 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors">
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
             {auth.status === 'dealer' && (
               <>
@@ -173,9 +248,19 @@ export default function Header() {
               )}
               {auth.status === 'buyer' && (
                 <>
-                  <Link href="/account/watchlist" className="block py-2 font-semibold hover:text-red-400" onClick={() => setMenuOpen(false)}>My Watchlist</Link>
-                  <Link href="/account/alerts" className="block py-2 font-semibold hover:text-red-400" onClick={() => setMenuOpen(false)}>Car Alerts</Link>
-                  <Link href="/account/profile" className="block py-2 text-zinc-400 hover:text-red-400" onClick={() => setMenuOpen(false)}>Account Settings</Link>
+                  <Link href="/account?tab=watchlist" className="flex justify-between py-2 font-semibold hover:text-red-400" onClick={() => setMenuOpen(false)}>
+                    <span>Watchlist</span>
+                    {counts.watchlist > 0 && <span className="bg-zinc-700 text-white text-xs font-bold rounded-full px-2 py-0.5">{counts.watchlist}</span>}
+                  </Link>
+                  <Link href="/account?tab=messages" className="flex justify-between py-2 font-semibold hover:text-red-400" onClick={() => setMenuOpen(false)}>
+                    <span>Messages</span>
+                    {counts.messages > 0 && <span className="bg-zinc-700 text-white text-xs font-bold rounded-full px-2 py-0.5">{counts.messages}</span>}
+                  </Link>
+                  <Link href="/account?tab=alerts" className="flex justify-between py-2 font-semibold hover:text-red-400" onClick={() => setMenuOpen(false)}>
+                    <span>Car Alerts</span>
+                    {counts.alerts > 0 && <span className="bg-zinc-700 text-white text-xs font-bold rounded-full px-2 py-0.5">{counts.alerts}</span>}
+                  </Link>
+                  <Link href="/account?tab=settings" className="block py-2 text-zinc-400 hover:text-red-400" onClick={() => setMenuOpen(false)}>Account Settings</Link>
                   <button onClick={() => { signOut(); setMenuOpen(false); }} className="block py-2 text-zinc-400 hover:text-red-400 text-left w-full">Sign Out</button>
                 </>
               )}
