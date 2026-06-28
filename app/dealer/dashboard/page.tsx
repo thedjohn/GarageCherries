@@ -3,7 +3,6 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MAKES, BODY_STYLES, CONDITIONS } from '@/lib/types';
-
 import { createClient } from '@/lib/supabase/client';
 import { formatPrice } from '@/lib/data';
 
@@ -16,8 +15,6 @@ interface DbCar {
   transmission: string; color: string; interior_color?: string; seat_material?: string; seating_type?: string; description: string;
   location: string; state: string; featured: boolean;
   listed_at: string; images: string[]; seller_id: string;
-  is_sold?: boolean;
-  vin?: string; vin_verified?: boolean;
 }
 interface DbDealer {
   id: string; slug: string; name: string;
@@ -38,7 +35,6 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
 }) {
   const isEdit = !!car;
   const [fields, setFields] = useState({
-    vin:          car?.vin                      ?? '',
     year:         car ? String(car.year)        : '',
     make:         car?.make                     ?? '',
     model:        car?.model                    ?? '',
@@ -70,13 +66,6 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
   const [newImages, setNewImages] = useState<{ file: File; preview: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [vinStatus, setVinStatus] = useState<{
-    verified: boolean; vinValid: boolean; preStandard?: boolean;
-    makeMatch: boolean | null; modelMatch: boolean | null; yearMatch: boolean | null;
-    nhtsaMake?: string; nhtsaModel?: string; nhtsaYear?: string;
-    message: string; nicbUrl?: string;
-  } | null>(car?.vin ? { verified: car.vin_verified ?? false, vinValid: true, makeMatch: null, modelMatch: null, yearMatch: null, message: 'Previously saved.' } : null);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -93,22 +82,6 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
       if (description) set('description', description);
     } finally {
       setGenerating(false);
-    }
-  };
-
-  const verifyVin = async () => {
-    if (!fields.vin.trim()) return;
-    setVerifying(true);
-    try {
-      const res = await fetch('/api/cars/verify-vin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vin: fields.vin, make: fields.make, model: fields.model, year: fields.year }),
-      });
-      const data = await res.json();
-      setVinStatus(data);
-    } finally {
-      setVerifying(false);
     }
   };
 
@@ -174,46 +147,21 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
       state:        fields.state.toUpperCase().slice(0, 2),
       images:       allImages,
       featured,
-      vin:          fields.vin.trim().toUpperCase() || null,
-      vin_verified: vinStatus?.verified ?? false,
-      vin_make:     vinStatus?.nhtsaMake ?? null,
-      vin_model:    vinStatus?.nhtsaModel ?? null,
-      vin_year:     vinStatus?.nhtsaYear ? parseInt(vinStatus.nhtsaYear) : null,
-      vin_checked_at: vinStatus ? new Date().toISOString() : null,
     };
 
     let dbError;
     if (isEdit) {
-      const oldPrice = car!.price;
       const { error } = await supabase.from('cars').update(payload).eq('id', car!.id);
       dbError = error;
-      // Fire-and-forget: notify watchers if the price dropped
-      if (!dbError && payload.price !== oldPrice) {
-        fetch('/api/notify-watchers', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ carId: car!.id, oldPrice, newPrice: payload.price }),
-        }).catch(console.error);
-        // Record price change in history (fire-and-forget)
-        void supabase.rpc('record_price_change', { p_car_id: car!.id, p_price: payload.price });
-      }
     } else {
       const uid = Date.now();
       const slug = `${toSlug(title)}-${uid}`;
-      const newCarId = `${dealerId}-${uid}`;
       const { error } = await supabase.from('cars').insert({
-        ...payload, id: newCarId, slug,
+        ...payload, id: `${dealerId}-${uid}`, slug,
         seller_id: dealerId, seller_name: dealerName,
         featured: false, listed_at: new Date().toISOString().split('T')[0],
       });
       dbError = error;
-      if (!error) {
-        fetch('/api/alerts/match', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ carId: newCarId }),
-        }).catch(() => {});
-      }
     }
 
     setSaving(false);
@@ -244,57 +192,6 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-
-          {/* VIN */}
-          <div>
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">VIN — Vehicle Identification Number</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="17-character VIN (pre-1981 vehicles: use manufacturer serial number)"
-                value={fields.vin}
-                onChange={e => { set('vin', e.target.value); setVinStatus(null); }}
-                maxLength={17}
-                className={`flex-1 border rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-500 ${
-                  vinStatus ? (vinStatus.verified ? 'border-green-400 bg-green-50' : 'border-zinc-200') : 'border-zinc-200'
-                }`}
-              />
-              <button
-                type="button"
-                onClick={verifyVin}
-                disabled={verifying || !fields.vin.trim()}
-                className="shrink-0 px-4 py-2 text-xs font-bold bg-zinc-900 hover:bg-zinc-700 disabled:opacity-40 text-white rounded-xl transition-colors"
-              >
-                {verifying ? 'Checking…' : 'Verify'}
-              </button>
-            </div>
-            {vinStatus && (
-              <div className={`mt-2 rounded-xl px-4 py-3 text-xs leading-relaxed ${
-                vinStatus.verified
-                  ? 'bg-green-50 border border-green-200 text-green-800'
-                  : vinStatus.preStandard
-                  ? 'bg-blue-50 border border-blue-200 text-blue-800'
-                  : vinStatus.vinValid
-                  ? 'bg-yellow-50 border border-yellow-200 text-yellow-800'
-                  : 'bg-red-50 border border-red-200 text-red-800'
-              }`}>
-                <p className="font-semibold mb-1">
-                  {vinStatus.verified ? '✅ VIN Verified' : vinStatus.preStandard ? 'ℹ️ Pre-1981 VIN' : vinStatus.vinValid ? '⚠️ VIN Decoded — Mismatch' : '❌ Invalid VIN'}
-                </p>
-                <p>{vinStatus.message}</p>
-                {vinStatus.nhtsaMake && (
-                  <p className="mt-1">NHTSA (National Highway Traffic Safety Administration) records: {vinStatus.nhtsaYear} {vinStatus.nhtsaMake} {vinStatus.nhtsaModel}</p>
-                )}
-                {vinStatus.nicbUrl && (
-                  <a href={vinStatus.nicbUrl} target="_blank" rel="noopener noreferrer"
-                    className="inline-block mt-1.5 underline opacity-70 hover:opacity-100">
-                    Check stolen vehicle status on NICB (National Insurance Crime Bureau) →
-                  </a>
-                )}
-              </div>
-            )}
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Year *</label>
@@ -303,11 +200,10 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Make *</label>
-              <input required list="makes-list" placeholder="e.g. Chevrolet, BMW, Jaguar" value={fields.make}
-                onChange={e => set('make', e.target.value)} className={inp} />
-              <datalist id="makes-list">
-                {MAKES.filter(m => m !== 'All Makes').map(m => <option key={m} value={m} />)}
-              </datalist>
+              <select required value={fields.make} onChange={e => set('make', e.target.value)} className={inp}>
+                <option value="">Select...</option>
+                {MAKES.filter(m => m !== 'All Makes').map(m => <option key={m}>{m}</option>)}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Model *</label>
@@ -355,14 +251,14 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
                 onChange={e => set('horsepower', e.target.value)} className={inp} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Torque (lb-ft / pound-feet)</label>
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Torque (lb-ft)</label>
               <input type="number" min="0" placeholder="707" value={fields.torque}
                 onChange={e => set('torque', e.target.value)} className={inp} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Forced Induction</label>
               <select value={fields.forcedInduction} onChange={e => set('forcedInduction', e.target.value)} className={inp}>
-                <option value="">None</option>
+                <option value="">None / N/A</option>
                 <option>Supercharged</option>
                 <option>Turbocharged</option>
                 <option>Twin-Turbocharged</option>
@@ -398,10 +294,10 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Drive Type</label>
               <select value={fields.driveType} onChange={e => set('driveType', e.target.value)} className={inp}>
                 <option value="">Select...</option>
-                <option value="RWD">RWD — Rear-Wheel Drive</option>
-                <option value="FWD">FWD — Front-Wheel Drive</option>
-                <option value="AWD">AWD — All-Wheel Drive</option>
-                <option value="4WD">4WD — Four-Wheel Drive</option>
+                <option>RWD</option>
+                <option>FWD</option>
+                <option>AWD</option>
+                <option>4WD</option>
               </select>
             </div>
             <div>
@@ -539,104 +435,15 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
   );
 }
 
-// ─── Message Watchers Modal ───────────────────────────────────────────────────
-function MessageWatchersModal({ car, count, onClose }: { car: DbCar; count: number; onClose: () => void }) {
-  const [message, setMessage] = useState('');
-  const [sending, setSending] = useState(false);
-  const [sent, setSent]       = useState<number | null>(null);
-  const [error, setError]     = useState('');
-  const MAX = 500;
-
-  const handleSend = async () => {
-    if (!message.trim()) { setError('Please write a message.'); return; }
-    setSending(true); setError('');
-    const res = await fetch('/api/dealer/message-watchers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ carId: car.id, message }),
-    });
-    setSending(false);
-    const json = await res.json();
-    if (!res.ok) { setError(json.error ?? 'Failed to send.'); return; }
-    setSent(json.sent);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-        {sent !== null ? (
-          <div className="text-center py-4">
-            <div className="text-4xl mb-3">📬</div>
-            <h2 className="text-lg font-bold text-zinc-900 mb-2">
-              {sent === 0 ? 'No messages sent' : `Sent to ${sent} buyer${sent !== 1 ? 's' : ''}`}
-            </h2>
-            <p className="text-sm text-zinc-500 mb-5">
-              {sent === 0
-                ? 'No eligible watchers found (they may have already been messaged or unsubscribed).'
-                : 'Each buyer received a one-time email. This cannot be sent again for this listing.'}
-            </p>
-            <button onClick={onClose} className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm">Done</button>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-bold text-zinc-900">Message watchers</h2>
-                <p className="text-sm text-zinc-500 mt-0.5">{car.title}</p>
-              </div>
-              <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 text-xl leading-none">✕</button>
-            </div>
-
-            <div className="bg-blue-50 rounded-xl px-4 py-3 text-sm text-blue-700 mb-4">
-              <strong>{count}</strong> {count === 1 ? 'buyer has' : 'buyers have'} this car saved and allowed seller contact.
-              This message can only be sent <strong>once</strong> per listing.
-            </div>
-
-            <textarea
-              value={message}
-              onChange={e => { setMessage(e.target.value.slice(0, MAX)); setError(''); }}
-              rows={5}
-              placeholder="e.g. I'm open to a reasonable offer — feel free to reach out. The car is in excellent shape and available for viewing this weekend."
-              className="w-full border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
-            />
-            <p className="text-xs text-zinc-400 text-right mt-1">{message.length}/{MAX}</p>
-
-            <p className="text-xs text-zinc-400 mt-2 mb-4">
-              Buyers will receive this via email. Their addresses are never shared with you.
-            </p>
-
-            {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{error}</p>}
-
-            <div className="flex gap-3">
-              <button onClick={onClose} className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2.5 rounded-xl text-sm hover:bg-zinc-50">
-                Cancel
-              </button>
-              <button onClick={handleSend} disabled={sending || !message.trim()}
-                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
-                {sending ? 'Sending…' : 'Send message'}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export default function DealerDashboard() {
   const router = useRouter();
   const [tab, setTab] = useState<'overview' | 'inventory' | 'inquiries' | 'settings'>('overview');
-  const [modalCar, setModalCar] = useState<DbCar | null | 'new'>(null);
-  const [messageTarget, setMessageTarget] = useState<DbCar | null>(null);
+  const [modalCar, setModalCar] = useState<DbCar | null | 'new'>(null); // null=closed, 'new'=add, DbCar=edit
   const [dealer, setDealer] = useState<DbDealer | null>(null);
   const [listings, setListings] = useState<DbCar[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [markSoldId, setMarkSoldId] = useState<string | null>(null);
-  const [markingSold, setMarkingSold] = useState(false);
-  const [watcherCounts, setWatcherCounts]   = useState<Record<string, number>>({});
-  const [watcherMessaged, setWatcherMessaged] = useState<Record<string, boolean>>({});
   const [metrics, setMetrics] = useState<{
     views30d: number; viewsDelta: number | null;
     inquiries30d: number; inquiriesDelta: number | null;
@@ -658,22 +465,10 @@ export default function DealerDashboard() {
       setDealer(dealerRow);
       const { data: cars } = await supabase
         .from('cars')
-        .select('id, slug, title, year, make, model, price, mileage, condition, body_style, engine, horsepower, torque, cylinders, displacement, forced_induction, fuel_type, num_speeds, drive_type, transmission, color, interior_color, seat_material, seating_type, description, location, state, featured, listed_at, images, seller_id, is_sold')
+        .select('id, slug, title, year, make, model, price, mileage, condition, body_style, engine, horsepower, torque, cylinders, displacement, forced_induction, fuel_type, num_speeds, drive_type, transmission, color, interior_color, seat_material, seating_type, description, location, state, featured, listed_at, images, seller_id')
         .eq('seller_id', dealerRow.id)
         .order('created_at', { ascending: false });
       setListings(cars ?? []);
-
-      // Load watcher counts for all cars
-      if (cars?.length) {
-        const ids = cars.map((c: DbCar) => c.id).join(',');
-        fetch(`/api/dealer/watcher-counts?carIds=${ids}`)
-          .then(r => r.json())
-          .then(({ counts, messaged }) => {
-            if (counts) setWatcherCounts(counts);
-            if (messaged) setWatcherMessaged(messaged);
-          })
-          .catch(() => {});
-      }
 
       // Load real metrics
       fetch('/api/dealer/metrics')
@@ -690,19 +485,6 @@ export default function DealerDashboard() {
     const supabase = createClient();
     await supabase.from('cars').delete().eq('id', id);
     setDeleteConfirm(null);
-    loadData();
-  };
-
-  const handleMarkSold = async () => {
-    if (!markSoldId) return;
-    setMarkingSold(true);
-    await fetch('/api/cars/sold', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ carId: markSoldId }),
-    });
-    setMarkingSold(false);
-    setMarkSoldId(null);
     loadData();
   };
 
@@ -757,15 +539,6 @@ export default function DealerDashboard() {
 
   return (
     <>
-    {/* Message watchers modal */}
-    {messageTarget && (
-      <MessageWatchersModal
-        car={messageTarget}
-        count={watcherCounts[messageTarget.id] ?? 0}
-        onClose={() => { setMessageTarget(null); loadData(); }}
-      />
-    )}
-
     {/* Vehicle modal */}
     {modalCar !== null && dealer && (
       <VehicleModal
@@ -775,26 +548,6 @@ export default function DealerDashboard() {
         onClose={() => setModalCar(null)}
         onSaved={() => { loadData(); }}
       />
-    )}
-
-    {/* Mark Sold confirmation */}
-    {markSoldId && (
-      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
-          <h2 className="font-bold text-zinc-900 mb-2">Mark as sold?</h2>
-          <p className="text-zinc-500 text-sm mb-5">This will mark the listing as sold. The listing will remain visible in the sold archive.</p>
-          <div className="flex gap-3">
-            <button onClick={() => setMarkSoldId(null)}
-              className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2 rounded-xl text-sm hover:bg-zinc-50">
-              Cancel
-            </button>
-            <button onClick={handleMarkSold} disabled={markingSold}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-bold py-2 rounded-xl text-sm">
-              {markingSold ? 'Saving…' : 'Mark Sold'}
-            </button>
-          </div>
-        </div>
-      </div>
     )}
 
     {/* Delete confirmation */}
@@ -940,16 +693,13 @@ export default function DealerDashboard() {
                     <th className="text-left px-5 py-3 font-semibold">Vehicle</th>
                     <th className="text-left px-4 py-3 font-semibold">Price</th>
                     <th className="text-left px-4 py-3 font-semibold">Condition</th>
-                    <th className="text-left px-4 py-3 font-semibold">Watchers</th>
+                    <th className="text-left px-4 py-3 font-semibold">Status</th>
                     <th className="text-left px-4 py-3 font-semibold">Listed</th>
                     <th className="px-4 py-3"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {listings.map(car => {
-                    const count    = watcherCounts[car.id] ?? 0;
-                    const messaged = watcherMessaged[car.id] ?? false;
-                    return (
+                  {listings.map(car => (
                     <tr key={car.id} className="border-t border-zinc-50 hover:bg-zinc-50 transition-colors">
                       <td className="px-5 py-3">
                         <p className="font-semibold text-zinc-900">{car.title}</p>
@@ -964,31 +714,11 @@ export default function DealerDashboard() {
                         }`}>{car.condition}</span>
                       </td>
                       <td className="px-4 py-3">
-                        {count > 0 && !messaged ? (
-                          <button onClick={() => setMessageTarget(car)}
-                            className="flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 transition-colors">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                            {count} watching
-                          </button>
-                        ) : messaged ? (
-                          <span className="text-xs text-zinc-400">✓ Messaged</span>
-                        ) : (
-                          <span className="text-xs text-zinc-300">—</span>
-                        )}
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Active</span>
                       </td>
                       <td className="px-4 py-3 text-zinc-400 text-xs">{car.listed_at}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3 justify-end">
-                          {car.is_sold ? (
-                            <span className="text-xs font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">Sold</span>
-                          ) : (
-                            <button onClick={() => setMarkSoldId(car.id)}
-                              className="text-xs text-green-700 hover:text-green-900 font-medium transition-colors border border-green-200 hover:border-green-400 px-2 py-0.5 rounded-full">
-                              Mark Sold
-                            </button>
-                          )}
                           <button onClick={() => setModalCar(car)}
                             className="text-xs text-zinc-500 hover:text-zinc-900 font-medium transition-colors">
                             Edit
@@ -1004,8 +734,7 @@ export default function DealerDashboard() {
                         </div>
                       </td>
                     </tr>
-                    );
-                  })}
+                  ))}
                 </tbody>
               </table>
             )}
@@ -1117,40 +846,7 @@ function InquiriesTab({ dealerName, realInquiries }: { dealerName: string; realI
 }
 
 // ─── Dealer Settings ──────────────────────────────────────────────────────────
-const DAYS = [
-  { key: 'mon', label: 'Monday' },
-  { key: 'tue', label: 'Tuesday' },
-  { key: 'wed', label: 'Wednesday' },
-  { key: 'thu', label: 'Thursday' },
-  { key: 'fri', label: 'Friday' },
-  { key: 'sat', label: 'Saturday' },
-  { key: 'sun', label: 'Sunday' },
-] as const;
-
-const TIME_SLOTS = [
-  '6:00 AM','6:30 AM','7:00 AM','7:30 AM','8:00 AM','8:30 AM',
-  '9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM',
-  '12:00 PM','12:30 PM','1:00 PM','1:30 PM','2:00 PM','2:30 PM',
-  '3:00 PM','3:30 PM','4:00 PM','4:30 PM','5:00 PM','5:30 PM',
-  '6:00 PM','6:30 PM','7:00 PM','7:30 PM','8:00 PM','8:30 PM',
-  '9:00 PM','10:00 PM',
-];
-
-type DayKey = 'mon'|'tue'|'wed'|'thu'|'fri'|'sat'|'sun';
-type DayHours = { open: string; close: string; closed: boolean };
-type WeekHours = Record<DayKey, DayHours>;
-
-const DEFAULT_HOURS: WeekHours = {
-  mon: { open: '9:00 AM', close: '6:00 PM', closed: false },
-  tue: { open: '9:00 AM', close: '6:00 PM', closed: false },
-  wed: { open: '9:00 AM', close: '6:00 PM', closed: false },
-  thu: { open: '9:00 AM', close: '6:00 PM', closed: false },
-  fri: { open: '9:00 AM', close: '6:00 PM', closed: false },
-  sat: { open: '10:00 AM', close: '4:00 PM', closed: false },
-  sun: { open: '10:00 AM', close: '3:00 PM', closed: true },
-};
-
-function DealerSettings({ dealer, onSaved }: { dealer: DbDealer & { phone?: string; email?: string; location?: string; state?: string; description?: string; website?: string; specialties?: string[]; logo?: string; hours?: WeekHours }; onSaved: () => void }) {
+function DealerSettings({ dealer, onSaved }: { dealer: DbDealer & { phone?: string; email?: string; location?: string; state?: string; description?: string; website?: string; specialties?: string[] }; onSaved: () => void }) {
   const [fields, setFields] = useState({
     name:        dealer.name        ?? '',
     phone:       dealer.phone       ?? '',
@@ -1163,46 +859,15 @@ function DealerSettings({ dealer, onSaved }: { dealer: DbDealer & { phone?: stri
     website:     dealer.website     ?? '',
     specialties: (dealer.specialties ?? []).join(', '),
   });
-  const [logoUrl, setLogoUrl]     = useState<string>(dealer.logo ?? '');
-  const [logoFile, setLogoFile]   = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string>(dealer.logo ?? '');
-  const [hours, setHours]         = useState<WeekHours>(dealer.hours ?? DEFAULT_HOURS);
-  const [saving, setSaving]       = useState(false);
-  const [saved, setSaved]         = useState(false);
-  const [error, setError]         = useState('');
-  const logoInputRef              = useRef<HTMLInputElement>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
   const set = (k: string, v: string) => { setFields(f => ({ ...f, [k]: v })); setSaved(false); };
-  const setDay = (day: DayKey, field: keyof DayHours, value: string | boolean) =>
-    setHours(h => ({ ...h, [day]: { ...h[day], [field]: value } }));
-
-  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setLogoFile(file);
-    setLogoPreview(URL.createObjectURL(file));
-    setSaved(false);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError('');
-
-    let finalLogoUrl = logoUrl;
-
-    // Upload logo if a new file was selected
-    if (logoFile) {
-      const supabase = createClient();
-      const ext = logoFile.name.split('.').pop() ?? 'jpg';
-      const path = `${dealer.id}/logo.${ext}`;
-      const { error: uploadErr } = await supabase.storage
-        .from('dealer-logos').upload(path, logoFile, { upsert: true });
-      if (uploadErr) { setError('Logo upload failed: ' + uploadErr.message); setSaving(false); return; }
-      const { data: { publicUrl } } = supabase.storage.from('dealer-logos').getPublicUrl(path);
-      finalLogoUrl = publicUrl;
-      setLogoUrl(publicUrl);
-    }
-
     const res = await fetch('/api/dealer/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1217,15 +882,12 @@ function DealerSettings({ dealer, onSaved }: { dealer: DbDealer & { phone?: stri
         description: fields.description,
         website:     fields.website,
         specialties: fields.specialties.split(',').map(s => s.trim()).filter(Boolean),
-        logo:        finalLogoUrl,
-        hours,
       }),
     });
     setSaving(false);
     const json = await res.json();
     if (!res.ok) { setError(json.error ?? 'Save failed'); return; }
     setSaved(true);
-    setLogoFile(null);
     onSaved();
   };
 
@@ -1234,33 +896,7 @@ function DealerSettings({ dealer, onSaved }: { dealer: DbDealer & { phone?: stri
   return (
     <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-6 max-w-2xl">
       <h2 className="font-bold text-zinc-800 text-lg mb-6">Dealer Profile</h2>
-      <form onSubmit={handleSubmit} className="space-y-6">
-
-        {/* Logo */}
-        <div>
-          <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">Dealership Logo</label>
-          <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-2xl border border-zinc-200 bg-zinc-50 flex items-center justify-center overflow-hidden shrink-0">
-              {logoPreview
-                ? <img src={logoPreview} alt="Logo preview" className="w-full h-full object-contain" />
-                : <span className="text-3xl">🏎️</span>
-              }
-            </div>
-            <div>
-              <button type="button" onClick={() => logoInputRef.current?.click()}
-                className="text-sm border border-zinc-200 hover:bg-zinc-50 px-4 py-2 rounded-xl font-medium transition-colors">
-                {logoPreview ? 'Change logo' : 'Upload logo'}
-              </button>
-              {logoPreview && (
-                <button type="button" onClick={() => { setLogoPreview(''); setLogoUrl(''); setLogoFile(null); }}
-                  className="ml-2 text-sm text-zinc-400 hover:text-red-500 transition-colors">Remove</button>
-              )}
-              <p className="text-xs text-zinc-400 mt-1">JPG, PNG or WebP · Max 2MB</p>
-              <input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleLogoSelect} />
-            </div>
-          </div>
-        </div>
-
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Dealership Name *</label>
@@ -1271,7 +907,7 @@ function DealerSettings({ dealer, onSaved }: { dealer: DbDealer & { phone?: stri
             <input type="tel" value={fields.phone} onChange={e => set('phone', e.target.value)} placeholder="(314) 555-0100" className={inp} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Email <span className="font-normal normal-case text-zinc-400">(login — not editable)</span></label>
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Email <span className="font-normal normal-case text-zinc-400">(login email — not editable)</span></label>
             <input type="email" value={fields.email} readOnly className={`${inp} bg-zinc-50 text-zinc-400 cursor-not-allowed`} />
           </div>
           <div className="col-span-2">
@@ -1303,37 +939,6 @@ function DealerSettings({ dealer, onSaved }: { dealer: DbDealer & { phone?: stri
             <textarea rows={5} value={fields.description} onChange={e => set('description', e.target.value)}
               placeholder="Tell buyers about your dealership..."
               className="w-full border border-zinc-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" />
-          </div>
-        </div>
-
-        {/* Business Hours */}
-        <div>
-          <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">Business Hours</label>
-          <div className="border border-zinc-200 rounded-xl overflow-hidden">
-            {DAYS.map(({ key, label }, i) => (
-              <div key={key} className={`flex items-center gap-3 px-4 py-3 text-sm ${i > 0 ? 'border-t border-zinc-100' : ''}`}>
-                <span className="w-24 font-medium text-zinc-700 shrink-0">{label}</span>
-                <label className="flex items-center gap-1.5 text-zinc-500 text-xs shrink-0">
-                  <input type="checkbox" checked={hours[key].closed}
-                    onChange={e => setDay(key, 'closed', e.target.checked)}
-                    className="rounded" />
-                  Closed
-                </label>
-                {!hours[key].closed && (
-                  <div className="flex items-center gap-2 flex-1">
-                    <select value={hours[key].open} onChange={e => setDay(key, 'open', e.target.value)}
-                      className="flex-1 border border-zinc-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
-                      {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    <span className="text-zinc-400 text-xs shrink-0">to</span>
-                    <select value={hours[key].close} onChange={e => setDay(key, 'close', e.target.value)}
-                      className="flex-1 border border-zinc-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
-                      {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </div>
-                )}
-              </div>
-            ))}
           </div>
         </div>
 

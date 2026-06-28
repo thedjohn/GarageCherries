@@ -3,8 +3,9 @@ import { Metadata } from 'next';
 import CarCard from '@/components/CarCard';
 import SearchFilters from '@/components/SearchFilters';
 import SmartSearchBar from '@/components/SmartSearchBar';
-import SaveSearchButton from '@/components/SaveSearchButton';
-import { fetchCars, fetchMakes } from '@/lib/db';
+import { searchCars } from '@/lib/data';
+import { createClient } from '@/lib/supabase/server';
+import type { Car } from '@/lib/types';
 
 export const metadata: Metadata = {
   title: 'Classic Cars For Sale',
@@ -22,21 +23,41 @@ interface Props {
 
 export default async function ListingsPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const [cars, makes] = await Promise.all([
-    fetchCars({
-      make:         sp.make,
-      yearMin:      sp.yearMin  ? Number(sp.yearMin)  : undefined,
-      yearMax:      sp.yearMax  ? Number(sp.yearMax)  : undefined,
-      priceMin:     sp.priceMin ? Number(sp.priceMin) : undefined,
-      priceMax:     sp.priceMax ? Number(sp.priceMax) : undefined,
-      condition:    sp.condition,
-      bodyStyle:    sp.bodyStyle,
-      transmission: sp.transmission as any,
-      state:        sp.state,
-    }),
-    fetchMakes(),
-  ]);
 
+  // Fetch approved listings from Supabase
+  const supabase = await createClient();
+  const { data: dbRows } = await supabase
+    .from('cars')
+    .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at')
+    .eq('status', 'approved')
+    .order('created_at', { ascending: false });
+
+  const dbCars: Car[] = (dbRows ?? []).map(r => ({
+    id: r.id, slug: r.slug, title: r.title,
+    year: r.year, make: r.make, model: r.model,
+    price: r.price, mileage: r.mileage,
+    location: r.location ?? '', state: r.state ?? '',
+    condition: r.condition, bodyStyle: r.body_style,
+    transmission: r.transmission, engine: r.engine,
+    color: r.color, images: r.images ?? [],
+    description: r.description,
+    sellerId: '', sellerName: r.seller_name ?? '', sellerPhone: r.seller_phone ?? '',
+    featured: r.featured ?? false, listedAt: r.listed_at ?? '',
+  }));
+
+  const staticCars = searchCars({
+    make:         sp.make,
+    yearMin:      sp.yearMin  ? Number(sp.yearMin)  : undefined,
+    yearMax:      sp.yearMax  ? Number(sp.yearMax)  : undefined,
+    priceMin:     sp.priceMin ? Number(sp.priceMin) : undefined,
+    priceMax:     sp.priceMax ? Number(sp.priceMax) : undefined,
+    condition:    sp.condition  as any,
+    bodyStyle:    sp.bodyStyle,
+    transmission: sp.transmission as any,
+    state:        sp.state,
+  });
+
+  const cars = [...dbCars, ...staticCars];
   const hasFilters = Object.values(sp).some(Boolean);
 
   return (
@@ -50,17 +71,9 @@ export default async function ListingsPage({ searchParams }: Props) {
 
       <SmartSearchBar />
 
-      {hasFilters && (
-        <div className="mt-3 mb-1">
-          <Suspense>
-            <SaveSearchButton />
-          </Suspense>
-        </div>
-      )}
-
-      <div className="flex flex-col lg:flex-row gap-8 mt-4">
+      <div className="flex flex-col lg:flex-row gap-8">
         <Suspense>
-          <SearchFilters initialMakes={makes} />
+          <SearchFilters />
         </Suspense>
 
         <div className="flex-1">

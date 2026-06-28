@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { createHash } from 'crypto';
 
 export async function POST(request: NextRequest) {
-  const { listingId, dealerId, userId } = await request.json();
+  const { listingId, dealerId } = await request.json();
   if (!listingId || !dealerId) return NextResponse.json({ ok: false });
 
   // Hash the IP so we never store raw IPs
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   if (!existing) {
-    await supabase.from('listing_views').insert({ listing_id: listingId, dealer_id: dealerId, ip_hash: ipHash, user_id: userId ?? null });
+    await supabase.from('listing_views').insert({ listing_id: listingId, dealer_id: dealerId, ip_hash: ipHash });
   }
 
   return NextResponse.json({ ok: true });

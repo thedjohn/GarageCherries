@@ -38,12 +38,19 @@ export default function Footer() {
           <div>
             <h3 className="text-white font-semibold mb-3 text-sm uppercase tracking-wider">Company</h3>
             <ul className="space-y-2 text-sm">
+<<<<<<< HEAD
               <li><Link href="/about" className="hover:text-white transition-colors">About Us</Link></li>
               <li><Link href="/contact" className="hover:text-white transition-colors">Contact</Link></li>
               <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
               <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
               <li><Link href="/advertiser/signup" className="hover:text-white transition-colors">Advertise With Us</Link></li>
               <li><Link href="/advertiser/login" className="hover:text-white transition-colors">Advertiser Login</Link></li>
+=======
+              <li><Link href="/" className="hover:text-white transition-colors">About Us</Link></li>
+              <li><Link href="/" className="hover:text-white transition-colors">Contact</Link></li>
+              <li><Link href="/" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+              <li><Link href="/" className="hover:text-white transition-colors">Terms of Service</Link></li>
+>>>>>>> 092818e (Wire up sell form to Supabase, add admin approval page, show DB listings in browse)
             </ul>
           </div>
         </div>

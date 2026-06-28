@@ -9,3 +9,14 @@ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvbWl1eG5
 
 
 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvbWl1eG5wdm5nY3J2dGd6cGFlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTQ3MTM1OCwiZXhwIjoyMDk3MDQ3MzU4fQ.kCsx8ys3sA1w0xTPDJ7eIi2uAldHcdRlHEf_fNgByBU
+
+
+API Key Claude 
+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
+
+
+LLC (https://bsd.sos.mo.gov/)
+User ID: GarageCherries
+Password: 66Barracuda
+Security Question: What is the mainden name of your maternal grandmother? 
+Answer: Simpson

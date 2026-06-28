@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+<<<<<<< HEAD
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -47,6 +48,12 @@ export default function Header() {
     router.push('/');
     router.refresh();
   };
+=======
+import { useState } from 'react';
+
+export default function Header() {
+  const [menuOpen, setMenuOpen] = useState(false);
+>>>>>>> 092818e (Wire up sell form to Supabase, add admin approval page, show DB listings in browse)
 
   return (
     <header className="bg-zinc-900 text-white shadow-lg sticky top-0 z-50">
@@ -61,6 +68,7 @@ export default function Header() {
           </Link>
 
           {/* Desktop nav */}
+<<<<<<< HEAD
           <nav className="hidden md:flex items-center gap-5 text-sm font-medium">
             <Link href="/listings" className="hover:text-red-400 transition-colors">Browse</Link>
             <Link href="/cars" className="hover:text-red-400 transition-colors">Car Guide</Link>
@@ -131,6 +139,26 @@ export default function Header() {
                 </button>
               </>
             )}
+=======
+          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+            <Link href="/listings" className="hover:text-red-400 transition-colors">Browse</Link>
+            <Link href="/listings?condition=Excellent" className="hover:text-red-400 transition-colors">Collector Cars</Link>
+            <Link href="/listings?bodyStyle=Convertible" className="hover:text-red-400 transition-colors">Convertibles</Link>
+            <Link href="/dealers" className="hover:text-red-400 transition-colors">Dealers</Link>
+            <Link href="/sell" className="hover:text-red-400 transition-colors">Sell Your Car</Link>
+            <Link href="/pricing" className="hover:text-red-400 transition-colors">Pricing</Link>
+          </nav>
+
+          {/* CTA */}
+          <div className="hidden md:flex items-center gap-3">
+            <Link href="/dealer/login" className="text-sm font-medium hover:text-red-400 transition-colors">Sign In</Link>
+            <Link
+              href="/sell"
+              className="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+            >
+              Post a Listing
+            </Link>
+>>>>>>> 092818e (Wire up sell form to Supabase, add admin approval page, show DB listings in browse)
           </div>
 
           {/* Mobile menu button */}
@@ -147,6 +175,7 @@ export default function Header() {
         {/* Mobile menu */}
         {menuOpen && (
           <div className="md:hidden border-t border-zinc-700 py-3 space-y-2 text-sm">
+<<<<<<< HEAD
             <Link href="/listings" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Browse</Link>
             <Link href="/cars" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Car Guide</Link>
             <Link href="/guides" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Buyer's Guides</Link>
@@ -186,6 +215,15 @@ export default function Header() {
                 </>
               )}
             </div>
+=======
+            <Link href="/listings" className="block py-2 hover:text-red-400">Browse</Link>
+            <Link href="/listings?condition=Excellent" className="block py-2 hover:text-red-400">Collector Cars</Link>
+            <Link href="/listings?bodyStyle=Convertible" className="block py-2 hover:text-red-400">Convertibles</Link>
+            <Link href="/dealers" className="block py-2 hover:text-red-400">Dealers</Link>
+            <Link href="/sell" className="block py-2 hover:text-red-400">Sell Your Car</Link>
+            <Link href="/pricing" className="block py-2 hover:text-red-400">Pricing</Link>
+            <Link href="/sell" className="block mt-2 bg-red-600 text-center py-2 rounded-lg font-semibold">Post a Listing</Link>
+>>>>>>> 092818e (Wire up sell form to Supabase, add admin approval page, show DB listings in browse)
           </div>
         )}
       </div>

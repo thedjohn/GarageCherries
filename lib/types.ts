@@ -22,11 +22,14 @@ export interface Car {
   featured: boolean;
   listedAt: string;
   lotNumber?: string;
+<<<<<<< HEAD
   vin?: string;
   vinVerified?: boolean;
   vinMake?: string;
   vinModel?: string;
   vinYear?: number;
+=======
+>>>>>>> 092818e (Wire up sell form to Supabase, add admin approval page, show DB listings in browse)
   // Rich detail fields
   headline?: string;
   hobbySegment?: string;

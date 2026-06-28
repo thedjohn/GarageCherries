@@ -1,14 +1,7 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
 import CarCard from '@/components/CarCard';
-import { fetchCars, fetchCarCount } from '@/lib/db';
+import { searchCars } from '@/lib/data';
 import { MAKES, BODY_STYLES } from '@/lib/types';
-
-export const metadata: Metadata = {
-  title: 'GarageCherries — Classic & Collector Cars For Sale',
-  description: 'Browse thousands of classic cars, muscle cars, and collector vehicles from private sellers and dealers across the USA. Search by make, year, price, and condition.',
-  alternates: { canonical: 'https://www.garagecherries.com' },
-};
 
 const BODY_STYLE_ICONS: Record<string, string> = {
   'Coupe': '🏎️',
@@ -19,12 +12,9 @@ const BODY_STYLE_ICONS: Record<string, string> = {
   'Hardtop': '🚙',
 };
 
-export default async function HomePage() {
-  const [featured, recent, totalCount] = await Promise.all([
-    fetchCars({ featured: true }),
-    fetchCars({ limit: 8 }),
-    fetchCarCount(),
-  ]);
+export default function HomePage() {
+  const featured = searchCars({ featured: true });
+  const recent   = searchCars({}).slice(0, 8);
 
   return (
     <>
@@ -63,7 +53,7 @@ export default async function HomePage() {
           </div>
 
           <div className="flex flex-wrap justify-center gap-6 mt-8 text-sm text-zinc-400">
-            <span>{totalCount.toLocaleString()} listing{totalCount !== 1 ? 's' : ''}</span>
+            <span>12,400+ listings</span>
             <span>·</span>
             <span>All 50 states</span>
             <span>·</span>

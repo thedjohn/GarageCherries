@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 import { createAdminClient } from '@/lib/supabase/server';
 import { createHash } from 'crypto';
 
+const resend = new Resend(process.env.RESEND_API_KEY);
 const FALLBACK_EMAIL = process.env.INQUIRY_FALLBACK_EMAIL ?? 'derek_ljohnson@yahoo.com';
 
 export async function POST(request: NextRequest) {
@@ -61,7 +62,7 @@ export async function POST(request: NextRequest) {
 
   // Send email
   try {
-    await new Resend(process.env.RESEND_API_KEY).emails.send({
+    await resend.emails.send({
       from: 'GarageCherries <noreply@garagecherries.com>',
       to: sellerEmail,
       replyTo: buyerEmail,
