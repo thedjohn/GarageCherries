@@ -56,7 +56,7 @@ export default function SellPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
       <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-zinc-900">Post Your Classic Car</h1>
+        <h1 className="text-3xl font-extrabold text-zinc-900">Post Your Car</h1>
         <p className="text-zinc-500 mt-1">It&apos;s free and takes less than 5 minutes.</p>
       </div>
 

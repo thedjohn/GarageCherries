@@ -67,8 +67,8 @@ export async function generateMetadata({ params }: { params: Promise<{ segments:
     if (!make) return {};
     const count = CARS.filter(c => c.make === make).length;
     return {
-      title: `${make} Classic Cars For Sale`,
-      description: `Browse ${count} classic ${make} cars for sale on GarageCherries. Find ${make} muscle cars, convertibles, and collector vehicles from dealers nationwide.`,
+      title: `${make} Cars For Sale`,
+      description: `Browse ${count} ${make} cars for sale on GarageCherries. Find ${make} muscle cars, sports cars, supercars, and collector vehicles from dealers nationwide.`,
       alternates: { canonical: `${BASE_URL}/listings/${segments[0]}` },
     };
   }
@@ -467,7 +467,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
         </nav>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-extrabold text-zinc-900">{make} Classic Cars For Sale</h1>
+          <h1 className="text-3xl font-extrabold text-zinc-900">{make} Cars For Sale</h1>
           <p className="text-zinc-500 mt-1">{cars.length} listing{cars.length !== 1 ? 's' : ''}</p>
         </div>
 

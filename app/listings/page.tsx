@@ -7,8 +7,8 @@ import { createClient } from '@/lib/supabase/server';
 import type { Car } from '@/lib/types';
 
 export const metadata: Metadata = {
-  title: 'Classic Cars For Sale',
-  description: 'Browse thousands of classic cars, muscle cars, and collector vehicles for sale from trusted dealers across the United States. Filter by make, year, price, and condition.',
+  title: 'Cars For Sale — Classic, Muscle, Sport & Collector',
+  description: 'Browse thousands of classic, muscle, sport, supercar, and collector vehicles for sale from trusted dealers across the United States. Filter by make, year, price, and condition.',
   alternates: { canonical: 'https://www.garagecherries.com/listings' },
 };
 
@@ -60,7 +60,7 @@ export default async function ListingsPage({ searchParams }: Props) {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-6">
         <h1 className="text-3xl font-extrabold text-zinc-900">
-          {hasFilters ? 'Search Results' : 'All Classic Cars'}
+          {hasFilters ? 'Search Results' : 'All Cars'}
         </h1>
         <p className="text-zinc-500 mt-1">{cars.length} listing{cars.length !== 1 ? 's' : ''} found</p>
       </div>

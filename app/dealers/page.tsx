@@ -4,8 +4,8 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
-  title: 'Classic Car Dealers',
-  description: 'Browse trusted classic car dealers across the United States on GarageCherries. Find local dealers specializing in muscle cars, collector vehicles, and vintage automobiles.',
+  title: 'Car Dealers — Classic, Muscle, Sport & Collector',
+  description: 'Browse trusted specialty car dealers across the United States on GarageCherries. Find local dealers specializing in classic, muscle, sport, and collector vehicles.',
   alternates: { canonical: 'https://www.garagecherries.com/dealers' },
 };
 
@@ -32,7 +32,7 @@ export default async function DealersPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
       <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-zinc-900">Classic Car Dealers</h1>
+        <h1 className="text-3xl font-extrabold text-zinc-900">Car Dealers</h1>
         <p className="text-zinc-500 mt-1">{dealerList.length} verified dealer{dealerList.length !== 1 ? 's' : ''} across the United States</p>
       </div>
 

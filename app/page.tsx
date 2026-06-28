@@ -50,7 +50,7 @@ export default async function HomePage() {
         <div className="relative max-w-7xl mx-auto px-4 py-20 md:py-32 text-center">
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-4 leading-tight">
             Find Your Dream<br />
-            <span className="text-red-500">Classic Car</span>
+            <span className="text-red-500">Car</span>
           </h1>
           <p className="text-zinc-300 text-lg md:text-xl max-w-xl mx-auto mb-10">
             Thousands of classic, muscle, and collector cars from private sellers and dealers across the USA.
@@ -83,7 +83,7 @@ export default async function HomePage() {
             <span>·</span>
             <span>All 50 states</span>
             <span>·</span>
-            <span>Muscle, Classic &amp; Collector</span>
+            <span>Classic, Muscle, Sport &amp; Supercar</span>
           </div>
         </div>
       </section>
@@ -129,7 +129,7 @@ export default async function HomePage() {
       {/* Sell CTA banner */}
       <section className="bg-red-600 text-white py-16 mt-8">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-extrabold mb-4">Ready to Sell Your Classic?</h2>
+          <h2 className="text-3xl md:text-4xl font-extrabold mb-4">Ready to Sell Your Car?</h2>
           <p className="text-red-100 text-lg mb-8">Reach thousands of serious buyers across the country. List your car in minutes.</p>
           <Link href="/sell"
             className="inline-block bg-white text-red-600 font-bold text-lg px-10 py-4 rounded-xl hover:bg-red-50 transition-colors shadow-lg">
