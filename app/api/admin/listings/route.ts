@@ -10,12 +10,36 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { id, action } = await req.json();
-  if (!id || !['approve', 'reject'].includes(action)) {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-  }
+  const body = await req.json();
+  const { id, action } = body;
+  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
   const admin = createAdminClient();
+
+  // Edit update — action is absent when editing fields directly
+  if (!action) {
+    const { year, make, model, price, mileage, condition, body_style, transmission,
+            engine, color, location, state, description, seller_name, seller_phone,
+            seller_email, featured, status } = body;
+    const slug = `${year}-${String(make).toLowerCase().replace(/\s+/g, '-')}-${String(model).toLowerCase().replace(/\s+/g, '-')}-${id.slice(0, 8)}`;
+    const { error } = await admin.from('listings').update({
+      slug, title: `${year} ${make} ${model}`, year: Number(year), make, model,
+      price: Number(price) || 0,
+      mileage: mileage !== '' && mileage != null ? Number(mileage) : null,
+      condition, body_style, transmission,
+      engine: engine || null, color: color || null,
+      location, state, description,
+      seller_name, seller_phone, seller_email,
+      featured: !!featured, status,
+    }).eq('id', id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true });
+  }
+
+  // Approve / reject
+  if (!['approve', 'reject'].includes(action)) {
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  }
   const { error } = await admin
     .from('listings')
     .update({ status: action === 'approve' ? 'approved' : 'rejected' })
