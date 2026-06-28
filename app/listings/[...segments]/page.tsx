@@ -305,7 +305,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
               <p className="text-3xl font-bold text-red-600 mt-2 mb-5">{formatPrice(car.price)}</p>
 
               <div className="border-t border-zinc-100 pt-4 mb-4">
-                <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-2">Dealer</p>
+                <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-2">{dealer ? 'Dealer' : 'Seller'}</p>
                 {dealer ? (
                   <Link href={`/dealers/${dealer.slug}`} className="font-bold text-red-600 hover:underline block">{car.sellerName}</Link>
                 ) : (
@@ -324,7 +324,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
 
               <a href={`tel:${car.sellerPhone.replace(/\D/g, '')}`}
                 className="block w-full bg-red-600 hover:bg-red-700 text-white font-bold text-center py-3 rounded-xl transition-colors mb-3">
-                Call Dealer
+                {dealer ? 'Call Dealer' : 'Call Seller'}
               </a>
               {dealer && (
                 <Link href={`/dealers/${dealer.slug}`}
@@ -366,7 +366,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
             </div>
 
             <div className="lg:hidden bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
-              <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-2">Dealer</p>
+              <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-2">{dealer ? 'Dealer' : 'Seller'}</p>
               {dealer ? (
                 <Link href={`/dealers/${dealer.slug}`} className="font-bold text-red-600 hover:underline block">{car.sellerName}</Link>
               ) : (
@@ -375,7 +375,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
               <p className="text-sm text-zinc-500 mb-4">{formatPhone(car.sellerPhone)}</p>
               <a href={`tel:${car.sellerPhone.replace(/\D/g, '')}`}
                 className="block w-full bg-red-600 text-white font-bold text-center py-3 rounded-xl mb-3">
-                Call Dealer
+                {dealer ? 'Call Dealer' : 'Call Seller'}
               </a>
               {dealer && (
                 <Link href={`/dealers/${dealer.slug}`}
