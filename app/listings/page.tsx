@@ -3,7 +3,6 @@ import { Metadata } from 'next';
 import CarCard from '@/components/CarCard';
 import SearchFilters from '@/components/SearchFilters';
 import SmartSearchBar from '@/components/SmartSearchBar';
-import { searchCars } from '@/lib/data';
 import { createClient } from '@/lib/supabase/server';
 import type { Car } from '@/lib/types';
 
@@ -24,15 +23,26 @@ interface Props {
 export default async function ListingsPage({ searchParams }: Props) {
   const sp = await searchParams;
 
-  // Fetch approved listings from Supabase
   const supabase = await createClient();
-  const { data: dbRows } = await supabase
+  let query = supabase
     .from('listings')
     .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at')
     .eq('status', 'approved')
-    .order('created_at', { ascending: false });
+    .order('listed_at', { ascending: false });
 
-  const dbCars: Car[] = (dbRows ?? []).map(r => ({
+  if (sp.make && sp.make !== 'All Makes') query = query.eq('make', sp.make);
+  if (sp.yearMin)      query = query.gte('year', Number(sp.yearMin));
+  if (sp.yearMax)      query = query.lte('year', Number(sp.yearMax));
+  if (sp.priceMin)     query = query.gte('price', Number(sp.priceMin));
+  if (sp.priceMax)     query = query.lte('price', Number(sp.priceMax));
+  if (sp.condition && sp.condition !== 'All')      query = query.eq('condition', sp.condition);
+  if (sp.bodyStyle && sp.bodyStyle !== 'All Styles') query = query.eq('body_style', sp.bodyStyle);
+  if (sp.transmission) query = query.eq('transmission', sp.transmission);
+  if (sp.state)        query = query.eq('state', sp.state);
+
+  const { data: dbRows } = await query;
+
+  const cars: Car[] = (dbRows ?? []).map(r => ({
     id: r.id, slug: r.slug, title: r.title,
     year: r.year, make: r.make, model: r.model,
     price: r.price, mileage: r.mileage,
@@ -44,20 +54,6 @@ export default async function ListingsPage({ searchParams }: Props) {
     sellerId: '', sellerName: r.seller_name ?? '', sellerPhone: r.seller_phone ?? '',
     featured: r.featured ?? false, listedAt: r.listed_at ?? '',
   }));
-
-  const staticCars = searchCars({
-    make:         sp.make,
-    yearMin:      sp.yearMin  ? Number(sp.yearMin)  : undefined,
-    yearMax:      sp.yearMax  ? Number(sp.yearMax)  : undefined,
-    priceMin:     sp.priceMin ? Number(sp.priceMin) : undefined,
-    priceMax:     sp.priceMax ? Number(sp.priceMax) : undefined,
-    condition:    sp.condition  as any,
-    bodyStyle:    sp.bodyStyle,
-    transmission: sp.transmission as any,
-    state:        sp.state,
-  });
-
-  const cars = [...dbCars, ...staticCars];
   const hasFilters = Object.values(sp).some(Boolean);
 
   return (

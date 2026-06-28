@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import CarCard from '@/components/CarCard';
-import { searchCars } from '@/lib/data';
+import { createClient } from '@/lib/supabase/server';
 import { MAKES, BODY_STYLES } from '@/lib/types';
+import type { Car } from '@/lib/types';
 
 const BODY_STYLE_ICONS: Record<string, string> = {
   'Coupe': '🏎️',
@@ -12,9 +13,34 @@ const BODY_STYLE_ICONS: Record<string, string> = {
   'Hardtop': '🚙',
 };
 
-export default function HomePage() {
-  const featured = searchCars({ featured: true });
-  const recent   = searchCars({}).slice(0, 8);
+function toCarShape(r: Record<string, unknown>): Car {
+  return {
+    id: r.id as string, slug: r.slug as string, title: r.title as string,
+    year: r.year as number, make: r.make as string, model: r.model as string,
+    price: r.price as number, mileage: r.mileage as number | null,
+    location: (r.location as string) ?? '', state: (r.state as string) ?? '',
+    condition: r.condition as string, bodyStyle: r.body_style as string,
+    transmission: r.transmission as string, engine: r.engine as string | null,
+    color: r.color as string | null, images: (r.images as string[]) ?? [],
+    description: r.description as string,
+    sellerId: '', sellerName: (r.seller_name as string) ?? '',
+    sellerPhone: (r.seller_phone as string) ?? '',
+    featured: (r.featured as boolean) ?? false,
+    listedAt: (r.listed_at as string) ?? '',
+  };
+}
+
+export default async function HomePage() {
+  const supabase = await createClient();
+  const { data: rows } = await supabase
+    .from('listings')
+    .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at')
+    .eq('status', 'approved')
+    .order('listed_at', { ascending: false });
+
+  const allCars = (rows ?? []).map(toCarShape);
+  const featured = allCars.filter(c => c.featured);
+  const recent = allCars.slice(0, 8);
 
   return (
     <>
