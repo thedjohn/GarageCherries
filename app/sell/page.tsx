@@ -222,7 +222,14 @@ export default function SellPage() {
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Phone *</label>
               <input type="tel" name="sellerPhone" required placeholder="(615) 555-0100"
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
+                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300"
+                onChange={e => {
+                  const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  let formatted = digits;
+                  if (digits.length >= 7) formatted = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+                  else if (digits.length >= 4) formatted = `(${digits.slice(0,3)}) ${digits.slice(3)}`;
+                  e.target.value = formatted;
+                }} />
             </div>
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Email *</label>

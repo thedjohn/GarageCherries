@@ -8,7 +8,7 @@ import SimilarCarsSection from '@/components/SimilarCarsSection';
 import ContactSellerForm from '@/components/ContactSellerForm';
 import ViewTracker from '@/components/ViewTracker';
 import {
-  searchCars, getCar, getDealerById, formatPrice, formatMileage,
+  searchCars, getCar, getDealerById, formatPrice, formatMileage, formatPhone,
   toSegment, makeFromSegment, modelFromSegment, CARS,
 } from '@/lib/data';
 
@@ -319,7 +319,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                   {mapAddressParts.join(', ')}
                 </a>
                 {dealer?.since && <p className="text-xs text-zinc-400 mt-0.5">Est. {dealer.since}</p>}
-                <p className="text-sm text-zinc-500 mt-1">{car.sellerPhone}</p>
+                <p className="text-sm text-zinc-500 mt-1">{formatPhone(car.sellerPhone)}</p>
               </div>
 
               <a href={`tel:${car.sellerPhone.replace(/\D/g, '')}`}
@@ -372,7 +372,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
               ) : (
                 <p className="font-bold text-zinc-800">{car.sellerName}</p>
               )}
-              <p className="text-sm text-zinc-500 mb-4">{car.sellerPhone}</p>
+              <p className="text-sm text-zinc-500 mb-4">{formatPhone(car.sellerPhone)}</p>
               <a href={`tel:${car.sellerPhone.replace(/\D/g, '')}`}
                 className="block w-full bg-red-600 text-white font-bold text-center py-3 rounded-xl mb-3">
                 Call Dealer

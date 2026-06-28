@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { formatPhone } from '@/lib/data';
 
 const ADMIN_EMAIL = 'derek_ljohnson@yahoo.com';
 
@@ -93,7 +94,7 @@ export default function AdminPage() {
                 }`}>{l.status}</span>
               </div>
               <p className="text-sm text-zinc-500">{l.condition} · {l.location}, {l.state} · ${l.price?.toLocaleString()}</p>
-              <p className="text-sm text-zinc-500">{l.seller_name} · {l.seller_phone} · {l.seller_email}</p>
+              <p className="text-sm text-zinc-500">{l.seller_name} · {formatPhone(l.seller_phone)} · {l.seller_email}</p>
               <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{l.description}</p>
               {l.status === 'pending' && (
                 <div className="flex gap-2 mt-3">
