@@ -111,9 +111,9 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
     for (const img of newImages) {
       const ext = img.file.name.split('.').pop();
       const path = `cars/${dealerId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from('car-images').upload(path, img.file);
+      const { error: uploadError } = await supabase.storage.from('listing-images').upload(path, img.file);
       if (uploadError) { setError('Image upload failed: ' + uploadError.message); setSaving(false); return; }
-      const { data: { publicUrl } } = supabase.storage.from('car-images').getPublicUrl(path);
+      const { data: { publicUrl } } = supabase.storage.from('listing-images').getPublicUrl(path);
       uploadedUrls.push(publicUrl);
     }
 
