@@ -68,8 +68,13 @@ export default function AccountPageWrapper() {
 function AccountPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Derive tab directly from URL on every render — no stale state
-  const tab = (searchParams.get('tab') as Tab) || 'watchlist';
+  const [tab, setTab] = useState<Tab>(() => (searchParams.get('tab') as Tab) || 'watchlist');
+
+  // Keep tab in sync when URL changes (e.g. clicking AccountTabBar links)
+  useEffect(() => {
+    const t = (searchParams.get('tab') as Tab) || 'watchlist';
+    setTab(t);
+  }, [searchParams]);
 
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState('');
