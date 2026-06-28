@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -50,7 +49,6 @@ export async function POST(req: NextRequest) {
   });
   if (msgErr) return NextResponse.json({ error: msgErr.message }, { status: 500 });
 
-  // Update last_message_at
   await admin.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId);
 
   return NextResponse.json({ conversationId });
@@ -61,12 +59,37 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not logged in' }, { status: 401 });
 
-  const { data, error } = await supabase
+  // Buyer conversations
+  const { data: buyerConvs } = await supabase
     .from('conversations')
-    .select('id, listing_id, listing_title, seller_email, last_message_at, created_at')
+    .select('id, listing_id, listing_title, seller_email, buyer_name, last_message_at, created_at')
     .eq('buyer_id', user.id)
     .order('last_message_at', { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ conversations: data });
+  // Seller conversations (listings where this user is the seller)
+  const admin = createAdminClient();
+  const { data: sellerListings } = await admin
+    .from('listings')
+    .select('id')
+    .eq('seller_id', user.id);
+
+  const sellerListingIds = (sellerListings ?? []).map(l => l.id);
+
+  let sellerConvs: any[] = [];
+  if (sellerListingIds.length > 0) {
+    const { data } = await admin
+      .from('conversations')
+      .select('id, listing_id, listing_title, seller_email, buyer_name, buyer_email, last_message_at, created_at')
+      .in('listing_id', sellerListingIds)
+      .order('last_message_at', { ascending: false });
+    sellerConvs = data ?? [];
+  }
+
+  // Merge, deduplicate by id
+  const all = [...(buyerConvs ?? []), ...sellerConvs];
+  const seen = new Set<string>();
+  const conversations = all.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; })
+    .sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime());
+
+  return NextResponse.json({ conversations, userId: user.id });
 }

@@ -8,12 +8,15 @@ interface Conversation {
   listing_id: string;
   listing_title: string;
   seller_email: string;
+  buyer_name: string;
+  buyer_email?: string;
   last_message_at: string;
   created_at: string;
 }
 
 export default function MessagesInbox() {
   const [convs, setConvs] = useState<Conversation[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [authed, setAuthed] = useState(false);
 
@@ -24,7 +27,10 @@ export default function MessagesInbox() {
       setAuthed(true);
       fetch('/api/conversations')
         .then(r => r.json())
-        .then(({ conversations }) => setConvs(conversations ?? []))
+        .then(({ conversations, userId: uid }) => {
+          setConvs(conversations ?? []);
+          setUserId(uid);
+        })
         .finally(() => setLoading(false));
     });
   }, []);
@@ -57,25 +63,28 @@ export default function MessagesInbox() {
         </div>
       ) : (
         <div className="space-y-3">
-          {convs.map(c => (
-            <Link key={c.id} href={`/messages/${c.id}`}
-              className="flex items-center gap-4 bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 hover:border-red-200 hover:shadow-md transition-all group">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0 text-red-600 font-bold text-lg">
-                🚗
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-zinc-900 truncate group-hover:text-red-600 transition-colors">
-                  {c.listing_title}
-                </p>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  {new Date(c.last_message_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </p>
-              </div>
-              <svg className="w-4 h-4 text-zinc-300 group-hover:text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
-          ))}
+          {convs.map(c => {
+            const isSeller = c.seller_email === userId;
+            return (
+              <Link key={c.id} href={`/messages/${c.id}`}
+                className="flex items-center gap-4 bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 hover:border-red-200 hover:shadow-md transition-all group">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0 text-red-600 font-bold text-lg">
+                  🚗
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-zinc-900 truncate group-hover:text-red-600 transition-colors">
+                    {c.listing_title}
+                  </p>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    {isSeller ? `Buyer: ${c.buyer_name}` : 'You are the buyer'} · {new Date(c.last_message_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </p>
+                </div>
+                <svg className="w-4 h-4 text-zinc-300 group-hover:text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

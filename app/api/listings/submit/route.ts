@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const admin = createAdminClient();
+
+  // Capture the logged-in user's ID as seller_id
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const sellerId = user?.id ?? null;
 
   const imageFiles = formData.getAll('images') as File[];
   const imageUrls: string[] = [];
@@ -50,6 +55,7 @@ export async function POST(req: NextRequest) {
     seller_email: formData.get('sellerEmail'),
     featured: false,
     status: 'pending',
+    seller_id: sellerId,
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
