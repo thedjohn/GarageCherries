@@ -1,45 +1,54 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 interface Props {
   carId: string;
   carTitle: string;
   sellerName: string;
+  sellerEmail?: string;
 }
 
-export default function ContactSellerForm({ carId, carTitle, sellerName }: Props) {
+export default function ContactSellerForm({ carId, carTitle, sellerName, sellerEmail }: Props) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [fields, setFields] = useState({ name: '', email: '', phone: '', message: '' });
+  const [user, setUser] = useState<{ id: string; email: string; name: string } | null>(null);
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
 
-  const set = (k: string, v: string) => setFields(f => ({ ...f, [k]: v }));
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user: u } }) => {
+      if (u) setUser({ id: u.id, email: u.email ?? '', name: u.user_metadata?.full_name || u.email || '' });
+    });
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!user) {
+      router.push(`/account/login?return=/listings`);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/inquire', {
+      const res = await fetch('/api/conversations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          carId,
-          carTitle,
-          buyerName: fields.name,
-          buyerEmail: fields.email,
-          buyerPhone: fields.phone,
-          message: fields.message,
+          listingId: carId,
+          listingTitle: carTitle,
+          sellerEmail: sellerEmail || 'noreply@garagecherries.com',
+          buyerName: user.name,
+          message,
         }),
       });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? 'Failed to send. Please try again.');
-        return;
-      }
-      setSent(true);
+      const json = await res.json();
+      if (!res.ok) { setError(json.error ?? 'Failed to send.'); return; }
+      router.push(`/messages/${json.conversationId}`);
     } catch {
       setError('Failed to send. Please try again.');
     } finally {
@@ -61,35 +70,26 @@ export default function ContactSellerForm({ carId, carTitle, sellerName }: Props
   return (
     <div className="mt-4 border-t border-zinc-100 pt-4">
       <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-3">
-        Message {sellerName}
+        Message {sellerName || 'Seller'}
       </p>
 
-      {sent ? (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-          <p className="text-2xl mb-1">✅</p>
-          <p className="text-sm font-bold text-green-800">Message sent!</p>
-          <p className="text-xs text-green-600 mt-1">{sellerName} will reply to your email directly.</p>
+      {!user ? (
+        <div className="bg-zinc-50 rounded-xl p-4 text-center">
+          <p className="text-sm text-zinc-600 mb-3">Sign in to message this seller.</p>
+          <button
+            onClick={() => router.push(`/account/login?return=/listings`)}
+            className="bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-6 py-2 rounded-xl transition-colors">
+            Sign In to Message
+          </button>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-3">
-          <input
-            type="text" required placeholder="Your name"
-            value={fields.name} onChange={e => set('name', e.target.value)}
-            className="w-full border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-          />
-          <input
-            type="email" required placeholder="Your email"
-            value={fields.email} onChange={e => set('email', e.target.value)}
-            className="w-full border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-          />
-          <input
-            type="tel" placeholder="Your phone (optional)"
-            value={fields.phone} onChange={e => set('phone', e.target.value)}
-            className="w-full border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-          />
           <textarea
-            required rows={3} placeholder={`Hi, I'm interested in the ${carTitle}. Is it still available?`}
-            value={fields.message} onChange={e => set('message', e.target.value)}
+            required
+            rows={3}
+            placeholder={`Hi, I'm interested in the ${carTitle}. Is it still available?`}
+            value={message}
+            onChange={e => setMessage(e.target.value)}
             className="w-full border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
           />
           {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
@@ -103,7 +103,7 @@ export default function ContactSellerForm({ carId, carTitle, sellerName }: Props
               {loading ? 'Sending…' : 'Send Message'}
             </button>
           </div>
-          <p className="text-xs text-zinc-400 text-center">The seller will reply directly to your email.</p>
+          <p className="text-xs text-zinc-400 text-center">Your message history is saved in My Messages.</p>
         </form>
       )}
     </div>

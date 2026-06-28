@@ -361,6 +361,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                 carId={car.id}
                 carTitle={car.title}
                 sellerName={car.sellerName}
+                sellerEmail={(car as any).sellerEmail}
               />
               {car.lotNumber && <p className="text-xs text-zinc-400 text-center mt-4">Lot # {car.lotNumber}</p>}
 

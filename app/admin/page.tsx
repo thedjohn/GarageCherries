@@ -42,20 +42,28 @@ export default function AdminPage() {
   const [editFields, setEditFields] = useState<EditFields | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [tab, setTab] = useState<'listings' | 'messages'>('listings');
+  const [conversations, setConversations] = useState<any[]>([]);
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email === ADMIN_EMAIL) {
         setAuthed(true);
-        supabase
-          .from('listings')
-          .select('id,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,location,state,seller_name,seller_phone,seller_email,images,description,featured,status,created_at')
-          .order('created_at', { ascending: false })
-          .then(({ data }) => {
-            setListings((data ?? []) as Listing[]);
-            setLoading(false);
-          });
+        Promise.all([
+          supabase
+            .from('listings')
+            .select('id,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,location,state,seller_name,seller_phone,seller_email,images,description,featured,status,created_at')
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('conversations')
+            .select('id,listing_title,buyer_name,buyer_email,seller_email,last_message_at,created_at')
+            .order('last_message_at', { ascending: false }),
+        ]).then(([{ data: listingData }, { data: convData }]) => {
+          setListings((listingData ?? []) as Listing[]);
+          setConversations(convData ?? []);
+          setLoading(false);
+        });
       } else {
         setLoading(false);
       }
@@ -122,8 +130,40 @@ export default function AdminPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
-      <h1 className="text-2xl font-extrabold text-zinc-900 mb-2">Admin — Listings</h1>
-      <p className="text-zinc-400 text-sm mb-8">{pending.length} pending · {approved.length} approved · {rejected.length} rejected</p>
+      <h1 className="text-2xl font-extrabold text-zinc-900 mb-2">Admin</h1>
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 bg-zinc-100 rounded-xl p-1 w-fit">
+        <button onClick={() => setTab('listings')}
+          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === 'listings' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>
+          Listings <span className="ml-1 text-xs text-zinc-400">{pending.length} pending</span>
+        </button>
+        <button onClick={() => setTab('messages')}
+          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === 'messages' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>
+          Messages <span className="ml-1 text-xs text-zinc-400">{conversations.length}</span>
+        </button>
+      </div>
+
+      {tab === 'messages' && (
+        <div className="space-y-3 mb-8">
+          {conversations.length === 0 && (
+            <div className="text-center py-20 text-zinc-400">No conversations yet.</div>
+          )}
+          {conversations.map((c: any) => (
+            <div key={c.id} className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <p className="font-bold text-zinc-900">{c.listing_title}</p>
+                <span className="text-xs text-zinc-400 shrink-0">{new Date(c.last_message_at).toLocaleDateString()}</span>
+              </div>
+              <p className="text-sm text-zinc-500">Buyer: {c.buyer_name} · {c.buyer_email}</p>
+              <p className="text-sm text-zinc-500">Seller email: {c.seller_email}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === 'listings' && <>
+      <p className="text-zinc-400 text-sm mb-6">{pending.length} pending · {approved.length} approved · {rejected.length} rejected</p>
 
       {listings.length === 0 && (
         <div className="text-center py-20 text-zinc-400">No listings submitted yet.</div>
@@ -163,6 +203,7 @@ export default function AdminPage() {
           </div>
         ))}
       </div>
+      </>}
 
       {/* Edit modal */}
       {editing && editFields && (
