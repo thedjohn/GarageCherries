@@ -1,43 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import sharp from 'sharp';
-
-async function watermark(buffer: Buffer, mimeType: string): Promise<Buffer> {
-  const image = sharp(buffer);
-  const { width = 800, height = 600 } = await image.metadata();
-
-  const fontSize = Math.max(16, Math.round(width * 0.032));
-  const padX = Math.round(width * 0.02);
-  const padY = Math.round(height * 0.02);
-  const pillH = fontSize + 14;
-  const text = 'GarageCherries.com';
-  const approxTextW = text.length * fontSize * 0.58;
-  const pillW = Math.round(approxTextW + 24);
-
-  const svg = `
-    <svg width="${pillW}" height="${pillH}" xmlns="http://www.w3.org/2000/svg">
-      <rect x="0" y="0" width="${pillW}" height="${pillH}" rx="5" fill="black" fill-opacity="0.52"/>
-      <text
-        x="${pillW / 2}" y="${pillH / 2 + fontSize * 0.36}"
-        font-family="Arial, sans-serif"
-        font-size="${fontSize}"
-        font-weight="bold"
-        fill="white"
-        fill-opacity="0.92"
-        text-anchor="middle"
-      >${text}</text>
-    </svg>`;
-
-  return image
-    .composite([{
-      input: Buffer.from(svg),
-      gravity: 'southeast',
-      top: height - pillH - padY,
-      left: width - pillW - padX,
-    }])
-    .jpeg({ quality: 88 })
-    .toBuffer();
-}
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
@@ -48,12 +10,12 @@ export async function POST(req: NextRequest) {
 
   for (const file of imageFiles) {
     if (!file.size) continue;
-    const original = Buffer.from(await file.arrayBuffer());
-    const stamped = await watermark(original, file.type);
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+    const bytes = await file.arrayBuffer();
+    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const { error: uploadError } = await admin.storage
       .from('listing-images')
-      .upload(path, stamped, { contentType: 'image/jpeg' });
+      .upload(path, Buffer.from(bytes), { contentType: file.type });
     if (!uploadError) {
       const { data } = admin.storage.from('listing-images').getPublicUrl(path);
       imageUrls.push(data.publicUrl);
