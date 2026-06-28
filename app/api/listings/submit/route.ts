@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
   const slug = `${year}-${make.toLowerCase().replace(/\s+/g, '-')}-${model.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
 
   const { error } = await admin.from('listings').insert({
+    id: crypto.randomUUID(),
     slug,
     title: `${year} ${make} ${model}`,
     year,
