@@ -7,7 +7,9 @@ export default function SellPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
+  const [dragOver, setDragOver] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragIndex = useRef<number | null>(null);
 
   const handleImageAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -26,13 +28,19 @@ export default function SellPage() {
     });
   };
 
-  const moveImage = (from: number, to: number) => {
+  const onDragStart = (i: number) => { dragIndex.current = i; };
+
+  const onDrop = (i: number) => {
+    const from = dragIndex.current;
+    if (from === null || from === i) { setDragOver(null); return; }
     setImages(prev => {
       const next = [...prev];
       const [item] = next.splice(from, 1);
-      next.splice(to, 0, item);
+      next.splice(i, 0, item);
       return next;
     });
+    dragIndex.current = null;
+    setDragOver(null);
   };
 
   if (submitted) {
@@ -150,22 +158,23 @@ export default function SellPage() {
           {images.length > 0 && (
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mb-4">
               {images.map((img, i) => (
-                <div key={img.preview} className="relative group aspect-square rounded-xl overflow-hidden border-2 border-zinc-100">
-                  {i === 0 && (
-                    <span className="absolute top-1 left-1 z-10 text-[10px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded">Cover</span>
-                  )}
+                <div
+                  key={img.preview}
+                  draggable
+                  onDragStart={() => onDragStart(i)}
+                  onDragOver={e => { e.preventDefault(); setDragOver(i); }}
+                  onDragLeave={() => setDragOver(null)}
+                  onDrop={() => onDrop(i)}
+                  className={`relative group aspect-square rounded-xl overflow-hidden border-2 cursor-grab active:cursor-grabbing transition-all ${dragOver === i ? 'border-red-500 scale-105' : 'border-zinc-100'}`}
+                >
+                  {/* Order badge */}
+                  <span className={`absolute top-1 left-1 z-10 text-[10px] font-bold px-1.5 py-0.5 rounded ${i === 0 ? 'bg-red-600 text-white' : 'bg-black/60 text-white'}`}>
+                    {i === 0 ? 'Cover' : i + 1}
+                  </span>
                   <img src={img.preview} alt="" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
-                    {i > 0 && (
-                      <button type="button" onClick={() => moveImage(i, i - 1)}
-                        className="text-white text-xs bg-white/20 hover:bg-white/40 rounded px-1.5 py-1">←</button>
-                    )}
-                    {i < images.length - 1 && (
-                      <button type="button" onClick={() => moveImage(i, i + 1)}
-                        className="text-white text-xs bg-white/20 hover:bg-white/40 rounded px-1.5 py-1">→</button>
-                    )}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-1">
                     <button type="button" onClick={() => removeImage(i)}
-                      className="text-white text-xs bg-red-600/80 hover:bg-red-600 rounded px-1.5 py-1">✕</button>
+                      className="text-white text-xs bg-red-600/90 hover:bg-red-600 rounded px-1.5 py-1">✕</button>
                   </div>
                 </div>
               ))}
