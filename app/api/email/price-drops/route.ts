@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
   // Get current car data
   const { data: cars } = await admin
-    .from('cars')
+    .from('listings')
     .select('id, title, price, make, model, slug')
     .in('id', carIds);
 

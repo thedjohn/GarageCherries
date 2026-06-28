@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
   // Get car details for the email
   const { data: car } = await supabase
-    .from('cars')
+    .from('listings')
     .select('title, make, model, slug')
     .eq('id', carId)
     .single();

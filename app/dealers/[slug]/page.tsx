@@ -50,7 +50,7 @@ export default async function DealerPage({ params }: { params: Promise<{ slug: s
 
   // Load cars from Supabase for this dealer
   const { data: dbCars } = await supabase
-    .from('cars')
+    .from('listings')
     .select('id, slug, title, year, make, model, price, mileage, condition, body_style, images, location, state, seller_id, seller_name, seller_phone, featured, listed_at')
     .eq('seller_id', dealer.id)
     .order('created_at', { ascending: false });

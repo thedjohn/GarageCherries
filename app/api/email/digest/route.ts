@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
   // Get listings from the past 7 days
   const { data: cars } = await admin
-    .from('cars')
+    .from('listings')
     .select('id, title, make, model, year, price, slug, images, condition, location, state')
     .gte('listed_at', oneWeekAgo)
     .eq('is_sold', false)

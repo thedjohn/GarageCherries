@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   if (!carId) return NextResponse.json({ error: 'carId required' }, { status: 400 });
 
   const admin = createAdminClient();
-  const { data: car } = await admin.from('cars').select('*').eq('id', carId).single();
+  const { data: car } = await admin.from('listings').select('*').eq('id', carId).single();
   if (!car) return NextResponse.json({ error: 'Car not found' }, { status: 404 });
 
   // Adapt raw DB row to Car shape

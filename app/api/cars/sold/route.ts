@@ -13,12 +13,12 @@ export async function POST(request: NextRequest) {
 
   // Verify ownership
   const admin = createAdminClient();
-  const { data: car } = await admin.from('cars').select('id, seller_id, title').eq('id', carId).single();
+  const { data: car } = await admin.from('listings').select('id, seller_id, title').eq('id', carId).single();
   if (!car || car.seller_id !== user.id) {
     return NextResponse.json({ error: 'Not authorized to update this listing' }, { status: 403 });
   }
 
-  const { error } = await admin.from('cars').update({
+  const { error } = await admin.from('listings').update({
     is_sold: true,
     sold_at: new Date().toISOString(),
     sold_price: soldPrice ?? null,

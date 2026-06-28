@@ -17,7 +17,7 @@ export async function PATCH(req: NextRequest) {
 
   const admin = createAdminClient();
   const { error } = await admin
-    .from('cars')
+    .from('listings')
     .update({ status: action === 'approve' ? 'approved' : 'rejected' })
     .eq('id', id);
 

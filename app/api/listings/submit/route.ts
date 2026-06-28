@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   const model = String(formData.get('model'));
   const slug = `${year}-${make.toLowerCase().replace(/\s+/g, '-')}-${model.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
 
-  const { error } = await admin.from('cars').insert({
+  const { error } = await admin.from('listings').insert({
     slug,
     title: `${year} ${make} ${model}`,
     year,

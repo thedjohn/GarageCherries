@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const { data: car } = await supabase
-      .from('cars')
+      .from('listings')
       .select('seller_id, seller_name')
       .eq('id', carId)
       .single();

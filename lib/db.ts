@@ -83,7 +83,7 @@ export interface FetchCarsFilters {
 
 export async function fetchCars(filters: FetchCarsFilters = {}): Promise<Car[]> {
   const supabase = await createClient();
-  let query = supabase.from('cars').select('*').order('created_at', { ascending: false });
+  let query = supabase.from('listings').select('*').order('created_at', { ascending: false });
 
   if (filters.make && filters.make !== 'All Makes')
     query = query.eq('make', filters.make);
@@ -118,7 +118,7 @@ export async function fetchCars(filters: FetchCarsFilters = {}): Promise<Car[]> 
 
 export async function fetchCar(id: string): Promise<Car | null> {
   const supabase = await createClient();
-  const { data } = await supabase.from('cars').select('*').eq('id', id).single();
+  const { data } = await supabase.from('listings').select('*').eq('id', id).single();
   return data ? adaptCar(data) : null;
 }
 
@@ -138,7 +138,7 @@ export async function fetchDealers(): Promise<DealerWithCount[]> {
   const supabase = await createClient();
   const [{ data: dealers }, { data: cars }] = await Promise.all([
     supabase.from('dealers').select('*').order('name'),
-    supabase.from('cars').select('seller_id'),
+    supabase.from('listings').select('seller_id'),
   ]);
 
   const countMap: Record<string, number> = {};
@@ -155,7 +155,7 @@ export async function fetchDealers(): Promise<DealerWithCount[]> {
 export async function fetchModelsByMake(make: string): Promise<string[]> {
   const supabase = await createClient();
   const { data } = await supabase
-    .from('cars')
+    .from('listings')
     .select('model')
     .eq('make', make);
   const models = [...new Set((data ?? []).map(c => c.model))].sort();
@@ -164,7 +164,7 @@ export async function fetchModelsByMake(make: string): Promise<string[]> {
 
 export async function fetchMakes(): Promise<string[]> {
   const supabase = await createClient();
-  const { data } = await supabase.from('cars').select('make');
+  const { data } = await supabase.from('listings').select('make');
   const makes = [...new Set((data ?? []).map(c => c.make as string))]
     .filter(Boolean)
     .sort();
@@ -173,7 +173,7 @@ export async function fetchMakes(): Promise<string[]> {
 
 export async function fetchCarCount(): Promise<number> {
   const supabase = await createClient();
-  const { count } = await supabase.from('cars').select('*', { count: 'exact', head: true });
+  const { count } = await supabase.from('listings').select('*', { count: 'exact', head: true });
   return count ?? 0;
 }
 

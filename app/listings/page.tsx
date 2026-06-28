@@ -27,7 +27,7 @@ export default async function ListingsPage({ searchParams }: Props) {
   // Fetch approved listings from Supabase
   const supabase = await createClient();
   const { data: dbRows } = await supabase
-    .from('cars')
+    .from('listings')
     .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at')
     .eq('status', 'approved')
     .order('created_at', { ascending: false });

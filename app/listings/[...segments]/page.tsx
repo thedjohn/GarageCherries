@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ segments:
     if (!car || car.id !== id) {
       const { createClient } = await import('@/lib/supabase/server');
       const supabase = await createClient();
-      const { data } = await supabase.from('cars').select('*').eq('id', id).neq('status', 'rejected').single();
+      const { data } = await supabase.from('listings').select('*').eq('id', id).neq('status', 'rejected').single();
       if (data) car = { ...data, bodyStyle: data.body_style, listedAt: data.listed_at, sellerId: data.seller_id, sellerName: data.seller_name, sellerPhone: data.seller_phone } as any;
     }
     if (!car) return {};
@@ -95,7 +95,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
     if (!car || car.id !== id) {
       const { createClient } = await import('@/lib/supabase/server');
       const supabase = await createClient();
-      const { data } = await supabase.from('cars').select('*').eq('id', id).neq('status', 'rejected').single();
+      const { data } = await supabase.from('listings').select('*').eq('id', id).neq('status', 'rejected').single();
       if (!data) notFound();
       // Adapt snake_case DB row to Car shape
       car = {

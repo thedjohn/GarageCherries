@@ -21,7 +21,7 @@ export default async function MarketReportPage() {
 
   // Pull all active listings
   const { data: cars } = await admin
-    .from('cars')
+    .from('listings')
     .select('make, model, price, condition, listed_at, is_sold, sold_at, views')
     .eq('is_sold', false)
     .order('listed_at', { ascending: false });
@@ -57,13 +57,13 @@ export default async function MarketReportPage() {
   // Sold this month
   const thisMonth = now.toISOString().slice(0, 7);
   const { data: soldThisMonth } = await admin
-    .from('cars')
+    .from('listings')
     .select('id')
     .eq('is_sold', true)
     .gte('sold_at', `${thisMonth}-01T00:00:00Z`);
 
   const { data: totalSold } = await admin
-    .from('cars')
+    .from('listings')
     .select('id', { count: 'exact', head: true })
     .eq('is_sold', true);
 

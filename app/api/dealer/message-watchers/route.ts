@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   const { data: dealer } = await admin.from('dealers').select('id, name').or(`id.eq.${user.id},email.eq.${user.email}`).single();
   if (!dealer) return NextResponse.json({ error: 'Dealer not found' }, { status: 403 });
 
-  const { data: car } = await admin.from('cars').select('id, title, slug, make, model').eq('id', carId).eq('seller_id', dealer.id).single();
+  const { data: car } = await admin.from('listings').select('id, title, slug, make, model').eq('id', carId).eq('seller_id', dealer.id).single();
   if (!car) return NextResponse.json({ error: 'Car not found or not yours' }, { status: 403 });
 
   // Find eligible watchers: opted in, not yet messaged, not blocked

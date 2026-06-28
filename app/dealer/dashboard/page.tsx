@@ -151,12 +151,12 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
 
     let dbError;
     if (isEdit) {
-      const { error } = await supabase.from('cars').update(payload).eq('id', car!.id);
+      const { error } = await supabase.from('listings').update(payload).eq('id', car!.id);
       dbError = error;
     } else {
       const uid = Date.now();
       const slug = `${toSlug(title)}-${uid}`;
-      const { error } = await supabase.from('cars').insert({
+      const { error } = await supabase.from('listings').insert({
         ...payload, id: `${dealerId}-${uid}`, slug,
         seller_id: dealerId, seller_name: dealerName,
         featured: false, listed_at: new Date().toISOString().split('T')[0],
@@ -464,7 +464,7 @@ export default function DealerDashboard() {
     if (dealerRow) {
       setDealer(dealerRow);
       const { data: cars } = await supabase
-        .from('cars')
+        .from('listings')
         .select('id, slug, title, year, make, model, price, mileage, condition, body_style, engine, horsepower, torque, cylinders, displacement, forced_induction, fuel_type, num_speeds, drive_type, transmission, color, interior_color, seat_material, seating_type, description, location, state, featured, listed_at, images, seller_id')
         .eq('seller_id', dealerRow.id)
         .order('created_at', { ascending: false });
@@ -483,7 +483,7 @@ export default function DealerDashboard() {
 
   const deleteCar = async (id: string) => {
     const supabase = createClient();
-    await supabase.from('cars').delete().eq('id', id);
+    await supabase.from('listings').delete().eq('id', id);
     setDeleteConfirm(null);
     loadData();
   };

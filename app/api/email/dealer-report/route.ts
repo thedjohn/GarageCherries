@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     // Get their listings
     const { data: cars } = await admin
-      .from('cars')
+      .from('listings')
       .select('id, title, price, views, is_sold')
       .eq('seller_id', dealer.id);
 

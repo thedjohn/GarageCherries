@@ -35,7 +35,7 @@ export default function AdminPage() {
       if (user?.email === ADMIN_EMAIL) {
         setAuthed(true);
         supabase
-          .from('cars')
+          .from('listings')
           .select('id,title,year,make,model,price,condition,location,state,seller_name,seller_phone,seller_email,images,description,status,created_at')
           .order('created_at', { ascending: false })
           .then(({ data }) => {

@@ -24,7 +24,7 @@ export default async function WatchlistPage() {
 
   const carIds = (watchRows ?? []).map((r: any) => r.car_id);
   const { data: carsData } = carIds.length
-    ? await supabase.from('cars').select('*').in('id', carIds)
+    ? await supabase.from('listings').select('*').in('id', carIds)
     : { data: [] };
 
   const carsById = Object.fromEntries((carsData ?? []).map((c: any) => [c.id, c]));

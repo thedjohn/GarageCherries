@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 
   // Active listings + avg days on market
   const { data: cars } = await admin
-    .from('cars')
+    .from('listings')
     .select('listed_at')
     .eq('seller_id', dealerId);
 
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
   let listingTitles: Record<string, string> = {};
   if (listingIds.length > 0) {
     const { data: titles } = await admin
-      .from('cars')
+      .from('listings')
       .select('id, title')
       .in('id', listingIds);
     listingTitles = Object.fromEntries((titles ?? []).map(t => [t.id, t.title]));
