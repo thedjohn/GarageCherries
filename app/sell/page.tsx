@@ -87,8 +87,8 @@ export default function SellPage() {
                 className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Mileage *</label>
-              <input type="number" name="mileage" required min="0" placeholder="42000"
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Mileage</label>
+              <input type="number" name="mileage" min="0" placeholder="Leave blank if unknown"
                 className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
             </div>
             <div>

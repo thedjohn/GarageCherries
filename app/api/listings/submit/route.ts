@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     make,
     model,
     price: Number(formData.get('price')) || 0,
-    mileage: Number(formData.get('mileage')) || 0,
+    mileage: formData.get('mileage') ? Number(formData.get('mileage')) : null,
     location: formData.get('city'),
     state: formData.get('state'),
     condition: formData.get('condition'),
