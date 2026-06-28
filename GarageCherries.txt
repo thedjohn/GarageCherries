@@ -1,22 +1,9 @@
-Th3DJ0hn!GarageCherries
+GarageCherries project notes
 
-supabase
-https://comiuxnpvngcrvtgzpae.supabase.co
+Supabase project: https://comiuxnpvngcrvtgzpae.supabase.co
+Supabase dashboard: https://supabase.com/dashboard/project/comiuxnpvngcrvtgzpae/settings/api-keys/legacy
 
-https://supabase.com/dashboard/project/comiuxnpvngcrvtgzpae/settings/api-keys/legacy
+LLC portal: https://bsd.sos.mo.gov/
+LLC User ID: GarageCherries
 
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvbWl1eG5wdm5nY3J2dGd6cGFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NzEzNTgsImV4cCI6MjA5NzA0NzM1OH0.YPcAhtXFe0pvbs8TdHM71FCdWPVuuA8FUvvxJJapg44
-
-
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNvbWl1eG5wdm5nY3J2dGd6cGFlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTQ3MTM1OCwiZXhwIjoyMDk3MDQ3MzU4fQ.kCsx8ys3sA1w0xTPDJ7eIi2uAldHcdRlHEf_fNgByBU
-
-
-API Key Claude 
-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
-
-
-LLC (https://bsd.sos.mo.gov/)
-User ID: GarageCherries
-Password: 66Barracuda
-Security Question: What is the mainden name of your maternal grandmother? 
-Answer: Simpson
+All API keys and passwords are stored in .env.local (not committed to git).
