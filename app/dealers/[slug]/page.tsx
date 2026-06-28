@@ -3,15 +3,14 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import CarCard from '@/components/CarCard';
-import { getDealer, CARS, formatPhone } from '@/lib/data';
+import { formatPhone } from '@/lib/data';
 import { createClient } from '@/lib/supabase/server';
-import { toSegment } from '@/lib/data';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const supabase = await createClient();
   const { data } = await supabase.from('dealers').select('name, location, state, description').eq('slug', slug).single();
-  const dealer = data ?? getDealer(slug);
+  const dealer = data;
   if (!dealer) return {};
   const title = `${dealer.name} — Classic Car Dealer`;
   const desc = dealer.description
@@ -28,51 +27,32 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function DealerPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
-  // Try Supabase first, fall back to mock data
   const supabase = await createClient();
-  const { data: dbDealer } = await supabase
+  const { data: dealer } = await supabase
     .from('dealers')
     .select('*')
     .eq('slug', slug)
     .single();
 
-  const mockDealer = getDealer(slug);
-  const dealer = dbDealer ?? (mockDealer ? {
-    id: mockDealer.id, slug: mockDealer.slug, name: mockDealer.name,
-    phone: mockDealer.phone, email: mockDealer.email,
-    location: mockDealer.location, state: mockDealer.state,
-    description: mockDealer.description, specialties: mockDealer.specialties,
-    since: mockDealer.since, logo: mockDealer.logo ?? null,
-    website: mockDealer.website ?? null,
-  } : null);
-
   if (!dealer) notFound();
 
-  // Load cars from Supabase for this dealer
   const { data: dbCars } = await supabase
     .from('listings')
-    .select('id, slug, title, year, make, model, price, mileage, condition, body_style, images, location, state, seller_id, seller_name, seller_phone, featured, listed_at')
+    .select('id, slug, title, year, make, model, price, mileage, condition, body_style, images, location, state, seller_id, seller_name, seller_phone, featured, listed_at, transmission, engine, color, description')
     .eq('seller_id', dealer.id)
-    .order('created_at', { ascending: false });
+    .eq('status', 'approved')
+    .order('listed_at', { ascending: false });
 
-  // Also include mock cars for this dealer (for seeded data not yet in Supabase)
-  const mockCars = CARS.filter(c => c.sellerId === dealer.id);
-  const dbCarIds = new Set((dbCars ?? []).map(c => c.id));
-  const combinedMockCars = mockCars.filter(c => !dbCarIds.has(c.id));
-
-  // Adapt DB cars to Car shape for CarCard
-  const adaptedDbCars = (dbCars ?? []).map(c => ({
+  const allListings = (dbCars ?? []).map(c => ({
     id: c.id, slug: c.slug, title: c.title, year: c.year,
     make: c.make, model: c.model, price: c.price, mileage: c.mileage,
-    condition: c.condition as any, bodyStyle: c.body_style,
+    condition: c.condition, bodyStyle: c.body_style,
     images: c.images ?? [], location: c.location ?? '', state: c.state ?? '',
     sellerId: c.seller_id, sellerName: c.seller_name ?? '',
     sellerPhone: c.seller_phone ?? '', featured: c.featured ?? false,
-    listedAt: c.listed_at, transmission: 'Automatic' as any,
-    engine: '', color: '', description: '',
+    listedAt: c.listed_at ?? '', transmission: c.transmission ?? '',
+    engine: c.engine ?? null, color: c.color ?? null, description: c.description ?? '',
   }));
-
-  const allListings = [...adaptedDbCars, ...combinedMockCars];
 
   const paragraphs = (dealer.description ?? '').split('\n\n').filter(Boolean);
   const specialties: string[] = dealer.specialties ?? [];
