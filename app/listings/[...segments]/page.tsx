@@ -8,7 +8,7 @@ import SimilarCarsSection from '@/components/SimilarCarsSection';
 import ContactSellerForm from '@/components/ContactSellerForm';
 import ViewTracker from '@/components/ViewTracker';
 import {
-  searchCars, getCar, getDealerById, formatPrice, formatMileage, formatPhone,
+  getCar, getDealerById, formatPrice, formatMileage, formatPhone,
   toSegment, makeFromSegment, modelFromSegment, CARS,
 } from '@/lib/data';
 
@@ -147,7 +147,26 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
       }
     }
 
-    const similar = searchCars({ make: car.make }).filter(c => c.id !== car.id).slice(0, 4);
+    const { createClient: createForSimilar } = await import('@/lib/supabase/server');
+    const supabaseForSimilar = await createForSimilar();
+    const { data: similarRows } = await supabaseForSimilar
+      .from('listings')
+      .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,images,featured,listed_at')
+      .eq('status', 'approved')
+      .eq('make', car.make)
+      .neq('id', car.id)
+      .limit(4);
+    const similar = (similarRows ?? []).map((r: any) => ({
+      id: r.id, slug: r.slug, title: r.title,
+      year: r.year, make: r.make, model: r.model,
+      price: r.price, mileage: r.mileage,
+      location: r.location ?? '', state: r.state ?? '',
+      condition: r.condition, bodyStyle: r.body_style,
+      images: r.images ?? [], featured: r.featured ?? false,
+      listedAt: r.listed_at ?? '',
+      sellerId: '', sellerName: '', sellerPhone: '',
+      transmission: '', engine: null, color: null, description: '',
+    }));
 
     const mapAddressParts = [(dealer as any)?.address, (dealer as any)?.location ?? car.location, (dealer as any)?.state ?? car.state, (dealer as any)?.zip].filter(Boolean);
     const mapQuery = encodeURIComponent(mapAddressParts.join(', '));
@@ -408,8 +427,27 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
     const make = makeFromSegment(segments[0]);
     if (!make) notFound();
 
-    const cars = searchCars({ make });
-    const models = [...new Set(CARS.filter(c => c.make === make).map(c => c.model))].sort();
+    const { createClient: createForMake } = await import('@/lib/supabase/server');
+    const supabaseForMake = await createForMake();
+    const { data: makeRows } = await supabaseForMake
+      .from('listings')
+      .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,images,featured,listed_at,transmission,engine,color,description,seller_name,seller_phone')
+      .eq('status', 'approved')
+      .eq('make', make)
+      .order('listed_at', { ascending: false });
+    const cars = (makeRows ?? []).map((r: any) => ({
+      id: r.id, slug: r.slug, title: r.title,
+      year: r.year, make: r.make, model: r.model,
+      price: r.price, mileage: r.mileage,
+      location: r.location ?? '', state: r.state ?? '',
+      condition: r.condition, bodyStyle: r.body_style,
+      transmission: r.transmission, engine: r.engine, color: r.color,
+      images: r.images ?? [], featured: r.featured ?? false,
+      listedAt: r.listed_at ?? '', sellerId: '',
+      sellerName: r.seller_name ?? '', sellerPhone: r.seller_phone ?? '',
+      description: r.description,
+    }));
+    const models = [...new Set(cars.map((c: any) => c.model))].sort();
 
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -428,8 +466,8 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
           <div className="mb-8">
             <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wide mb-3">Browse by Model</h2>
             <div className="flex flex-wrap gap-2">
-              {models.map(model => {
-                const count = CARS.filter(c => c.make === make && c.model === model).length;
+              {models.map((model: string) => {
+                const count = cars.filter((c: any) => c.model === model).length;
                 return (
                   <Link key={model} href={`/listings/${segments[0]}/${toSegment(model)}`}
                     className="px-4 py-2 bg-white border border-zinc-200 rounded-full text-sm font-medium text-zinc-700 hover:border-red-400 hover:text-red-600 transition-colors shadow-sm">
@@ -442,7 +480,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {cars.map(car => <CarCard key={car.id} car={car} />)}
+          {cars.map((car: any) => <CarCard key={car.id} car={car} />)}
         </div>
       </div>
     );
@@ -455,7 +493,27 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
     const model = modelFromSegment(make, segments[1]);
     if (!model) notFound();
 
-    const cars = searchCars({ make, model });
+    const { createClient: createForModel } = await import('@/lib/supabase/server');
+    const supabaseForModel = await createForModel();
+    const { data: modelRows } = await supabaseForModel
+      .from('listings')
+      .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,images,featured,listed_at,transmission,engine,color,description,seller_name,seller_phone')
+      .eq('status', 'approved')
+      .eq('make', make)
+      .eq('model', model)
+      .order('listed_at', { ascending: false });
+    const cars = (modelRows ?? []).map((r: any) => ({
+      id: r.id, slug: r.slug, title: r.title,
+      year: r.year, make: r.make, model: r.model,
+      price: r.price, mileage: r.mileage,
+      location: r.location ?? '', state: r.state ?? '',
+      condition: r.condition, bodyStyle: r.body_style,
+      transmission: r.transmission, engine: r.engine, color: r.color,
+      images: r.images ?? [], featured: r.featured ?? false,
+      listedAt: r.listed_at ?? '', sellerId: '',
+      sellerName: r.seller_name ?? '', sellerPhone: r.seller_phone ?? '',
+      description: r.description,
+    }));
 
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -472,7 +530,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {cars.map(car => <CarCard key={car.id} car={car} />)}
+          {cars.map((car: any) => <CarCard key={car.id} car={car} />)}
         </div>
       </div>
     );
