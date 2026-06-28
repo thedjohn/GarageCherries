@@ -3,6 +3,8 @@ import { Geist } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { MessengerProvider } from '@/lib/messenger-context';
+import MessengerWidget from '@/components/MessengerWidget';
 
 const geist = Geist({ subsets: ['latin'] });
 
@@ -43,9 +45,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={`${geist.className} bg-zinc-50 text-zinc-900 min-h-screen flex flex-col`}>
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <MessengerProvider>
+          <Header />
+          <main className="flex-1">{children}</main>
+          <Footer />
+          <MessengerWidget />
+        </MessengerProvider>
       </body>
     </html>
   );

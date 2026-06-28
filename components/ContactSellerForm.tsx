@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useMessenger } from '@/lib/messenger-context';
 
 interface Props {
   carId: string;
@@ -13,6 +14,7 @@ interface Props {
 
 export default function ContactSellerForm({ carId, carTitle, sellerName, sellerEmail }: Props) {
   const router = useRouter();
+  const { openChat } = useMessenger();
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<{ id: string; email: string; name: string } | null>(null);
   const [message, setMessage] = useState('');
@@ -48,7 +50,10 @@ export default function ContactSellerForm({ carId, carTitle, sellerName, sellerE
       });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? 'Failed to send.'); return; }
-      router.push(`/messages/${json.conversationId}`);
+      setOpen(false);
+      setMessage('');
+      // Open the floating messenger widget
+      openChat(json.conversationId, carTitle);
     } catch {
       setError('Failed to send. Please try again.');
     } finally {
@@ -103,7 +108,6 @@ export default function ContactSellerForm({ carId, carTitle, sellerName, sellerE
               {loading ? 'Sending…' : 'Send Message'}
             </button>
           </div>
-          <p className="text-xs text-zinc-400 text-center">Your message history is saved in My Messages.</p>
         </form>
       )}
     </div>
