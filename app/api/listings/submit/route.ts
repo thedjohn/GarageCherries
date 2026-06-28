@@ -52,10 +52,10 @@ export async function POST(req: NextRequest) {
     const stamped = await watermark(original, file.type);
     const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
     const { error: uploadError } = await admin.storage
-      .from('listing-images')
+      .from('car-images')
       .upload(path, stamped, { contentType: 'image/jpeg' });
     if (!uploadError) {
-      const { data } = admin.storage.from('listing-images').getPublicUrl(path);
+      const { data } = admin.storage.from('car-images').getPublicUrl(path);
       imageUrls.push(data.publicUrl);
     }
   }
