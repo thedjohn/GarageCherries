@@ -6,11 +6,11 @@ interface Props {
   year: number;
   make: string;
   model: string;
-  mileage?: number;
+  mileage?: number | null;
   condition?: string;
   price: number;
   bodyStyle?: string;
-  engine?: string;
+  engine?: string | null;
 }
 
 export default function ValuationWidget({ year, make, model, mileage, condition, price, bodyStyle, engine }: Props) {

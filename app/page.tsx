@@ -16,8 +16,8 @@ const BODY_STYLE_ICONS: Record<string, string> = {
 function toCarShape(r: Record<string, unknown>): Car {
   return {
     id: r.id as string, slug: r.slug as string, title: r.title as string,
-    year: r.year as number, make: r.make as string, model: r.model as string,
-    price: r.price as number, mileage: r.mileage as number | null,
+    year: Number(r.year), make: r.make as string, model: r.model as string,
+    price: Number(r.price), mileage: r.mileage != null ? Number(r.mileage) : null,
     location: (r.location as string) ?? '', state: (r.state as string) ?? '',
     condition: r.condition as string, bodyStyle: r.body_style as string,
     transmission: r.transmission as string, engine: r.engine as string | null,

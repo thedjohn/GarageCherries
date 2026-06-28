@@ -9,7 +9,7 @@ interface Props {
   make: string;
   model: string;
   bodyStyle?: string;
-  engine?: string;
+  engine?: string | null;
   price: number;
   condition?: string;
   fallbackCars?: any[];

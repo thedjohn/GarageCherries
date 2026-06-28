@@ -23,7 +23,7 @@ function scoreMatch(car: Car, s: any): number {
   }
   if (s.mileage_max) {
     possible += 1;
-    if (car.mileage <= s.mileage_max) matched += 1;
+    if (car.mileage != null && car.mileage <= s.mileage_max) matched += 1;
   }
   if (s.condition?.length) {
     possible += 1;
@@ -58,7 +58,7 @@ function matchBadges(car: Car, s: any): string {
   if (s.model) checks.push(`✓ Model: ${car.model}`);
   if (s.year_min || s.year_max) checks.push(`✓ Year: ${car.year}`);
   if (s.price_max && car.price <= s.price_max) checks.push(`✓ Price: ${formatPrice(car.price)}`);
-  if (s.mileage_max && car.mileage <= s.mileage_max) checks.push(`✓ Mileage: ${car.mileage.toLocaleString()} mi`);
+  if (s.mileage_max && car.mileage != null && car.mileage <= s.mileage_max) checks.push(`✓ Mileage: ${car.mileage.toLocaleString()} mi`);
   if (s.condition?.includes(car.condition)) checks.push(`✓ Condition: ${car.condition}`);
   if (s.transmission && car.transmission === s.transmission) checks.push(`✓ Transmission: ${car.transmission}`);
   return checks.join(' &nbsp;&nbsp; ');
@@ -83,7 +83,7 @@ function buildEmail(car: Car, s: any, listingUrl: string, alertId: string): stri
 
     <h3 style="font-size:18px;font-weight:700;margin:0 0 4px">${car.title}</h3>
     <p style="font-size:15px;color:#ef4444;font-weight:700;margin:0 0 8px">${formatPrice(car.price)}</p>
-    <p style="font-size:13px;color:#71717a;margin:0 0 16px">${car.mileage.toLocaleString()} miles &nbsp;·&nbsp; ${car.condition} &nbsp;·&nbsp; ${car.location}, ${car.state}</p>
+    <p style="font-size:13px;color:#71717a;margin:0 0 16px">${car.mileage != null ? car.mileage.toLocaleString() + ' miles' : ''} &nbsp;·&nbsp; ${car.condition} &nbsp;·&nbsp; ${car.location}, ${car.state}</p>
 
     <div style="background:#f4f4f5;border-radius:8px;padding:12px 16px;font-size:12px;color:#52525b;margin-bottom:24px">${badges}</div>
 
