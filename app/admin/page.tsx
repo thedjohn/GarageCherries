@@ -147,25 +147,18 @@ export default function AdminPage() {
               <p className="text-sm text-zinc-500">{l.condition} · {l.location}, {l.state} · ${l.price?.toLocaleString()}</p>
               <p className="text-sm text-zinc-500">{l.seller_name} · {formatPhone(l.seller_phone)} · {l.seller_email}</p>
               <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{l.description}</p>
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() => openEdit(l)}
-                  className="px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-semibold rounded-lg">
-                  Edit
-                </button>
-                {l.status === 'pending' && (
-                  <>
-                    <button onClick={() => handleAction(l.id, 'approve')} disabled={!!working}
-                      className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
-                      {working === l.id + 'approve' ? 'Approving…' : 'Approve'}
-                    </button>
-                    <button onClick={() => handleAction(l.id, 'reject')} disabled={!!working}
-                      className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
-                      {working === l.id + 'reject' ? 'Rejecting…' : 'Reject'}
-                    </button>
-                  </>
-                )}
-              </div>
+              {l.status === 'pending' && (
+                <div className="flex gap-2 mt-3">
+                  <button onClick={() => handleAction(l.id, 'approve')} disabled={!!working}
+                    className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
+                    {working === l.id + 'approve' ? 'Approving…' : 'Approve'}
+                  </button>
+                  <button onClick={() => handleAction(l.id, 'reject')} disabled={!!working}
+                    className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
+                    {working === l.id + 'reject' ? 'Rejecting…' : 'Reject'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ))}
