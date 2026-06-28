@@ -82,7 +82,10 @@ export default function AdminPage() {
         {listings.map(l => (
           <div key={l.id} className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5 flex gap-4">
             {l.images?.[0] && (
-              <img src={l.images[0]} alt={l.title} className="w-32 h-24 object-cover rounded-xl shrink-0" />
+              <div className="shrink-0">
+                <img src={l.images[0]} alt={l.title} className="w-32 h-24 object-cover rounded-xl" />
+                <a href={l.images[0]} target="_blank" rel="noreferrer" className="text-[10px] text-blue-500 underline break-all block w-32 mt-1">view url</a>
+              </div>
             )}
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2 mb-1">
