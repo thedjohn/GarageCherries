@@ -68,8 +68,8 @@ export default function AccountPageWrapper() {
 function AccountPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialTab = (searchParams.get('tab') as Tab) || 'watchlist';
-  const [tab, setTab] = useState<Tab>(initialTab);
+  // Derive tab directly from URL on every render — no stale state
+  const tab = (searchParams.get('tab') as Tab) || 'watchlist';
 
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState('');

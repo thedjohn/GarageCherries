@@ -27,8 +27,11 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true);
   const [reported, setReported] = useState<Set<string>>(new Set());
   const bottomRef = useRef<HTMLDivElement>(null);
+  const initialScrollDone = useRef(false);
 
   useEffect(() => {
+    initialScrollDone.current = false;
+    setMessages([]);
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { router.push(`/account/login?return=/messages/${id}`); return; }
@@ -72,9 +75,15 @@ export default function ChatPage() {
     return () => { supabase.removeChannel(channel); };
   }, [id, userId]);
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom: instant on first load, smooth on new incoming messages
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length === 0) return;
+    if (!initialScrollDone.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'instant' });
+      initialScrollDone.current = true;
+    } else {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   async function sendMessage(e: React.FormEvent) {
