@@ -49,11 +49,11 @@ export async function POST(req: NextRequest) {
   for (const file of imageFiles) {
     if (!file.size) continue;
     const original = Buffer.from(await file.arrayBuffer());
-    const stamped = await watermark(original, file.type);
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const { error: uploadError } = await admin.storage
       .from('listing-images')
-      .upload(path, stamped, { contentType: 'image/jpeg' });
+      .upload(path, original, { contentType: file.type });
     if (!uploadError) {
       const { data } = admin.storage.from('listing-images').getPublicUrl(path);
       imageUrls.push(data.publicUrl);
