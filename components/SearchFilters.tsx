@@ -1,23 +1,15 @@
 'use client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useCallback } from 'react';
-<<<<<<< HEAD
-import { BODY_STYLES, CONDITIONS, STATES } from '@/lib/types';
-
-export default function SearchFilters({ initialMakes }: { initialMakes: string[] }) {
-  const router = useRouter();
-  const params = useSearchParams();
-
-  const makes = initialMakes;
-
-=======
 import { MAKES, BODY_STYLES, CONDITIONS, STATES } from '@/lib/types';
 
-export default function SearchFilters() {
+export default function SearchFilters({ initialMakes }: { initialMakes?: string[] }) {
   const router = useRouter();
   const params = useSearchParams();
 
->>>>>>> 092818e (Wire up sell form to Supabase, add admin approval page, show DB listings in browse)
+  const makes = initialMakes ?? MAKES.filter(m => m !== 'All Makes');
+
+
   const [filters, setFilters] = useState({
     make:         params.get('make')        || '',
     yearMin:      params.get('yearMin')     || '',
@@ -55,16 +47,10 @@ export default function SearchFilters() {
           {/* Make */}
           <div>
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Make</label>
-<<<<<<< HEAD
             <select value={filters.make} onChange={e => set('make', e.target.value === 'All Makes' ? '' : e.target.value)}
               className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
               <option value="">All Makes</option>
               {makes.map(m => <option key={m} value={m}>{m}</option>)}
-=======
-            <select value={filters.make} onChange={e => set('make', e.target.value)}
-              className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-              {MAKES.map(m => <option key={m}>{m}</option>)}
->>>>>>> 092818e (Wire up sell form to Supabase, add admin approval page, show DB listings in browse)
             </select>
           </div>
 
@@ -113,12 +99,8 @@ export default function SearchFilters() {
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Body Style</label>
             <select value={filters.bodyStyle} onChange={e => set('bodyStyle', e.target.value === 'All Styles' ? '' : e.target.value)}
               className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-<<<<<<< HEAD
               <option value="">All Styles</option>
               {BODY_STYLES.filter(b => b !== 'All Styles').map(b => <option key={b} value={b}>{b}</option>)}
-=======
-              {BODY_STYLES.map(b => <option key={b}>{b}</option>)}
->>>>>>> 092818e (Wire up sell form to Supabase, add admin approval page, show DB listings in browse)
             </select>
           </div>
 
@@ -145,12 +127,8 @@ export default function SearchFilters() {
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">State</label>
             <select value={filters.state} onChange={e => set('state', e.target.value === 'All States' ? '' : e.target.value)}
               className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-<<<<<<< HEAD
               <option value="">All States</option>
               {STATES.filter(s => s !== 'All States').map(s => <option key={s} value={s}>{s}</option>)}
-=======
-              {STATES.map(s => <option key={s}>{s}</option>)}
->>>>>>> 092818e (Wire up sell form to Supabase, add admin approval page, show DB listings in browse)
             </select>
           </div>
 

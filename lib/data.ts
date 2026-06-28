@@ -1,7 +1,4 @@
-<<<<<<< HEAD
-import { MAKES } from './types';
-=======
-import { Car, Dealer } from './types';
+import { Car, Dealer, MAKES } from './types';
 
 export const CARS: Car[] = [
   {
@@ -219,17 +216,13 @@ export const CARS: Car[] = [
     featured: false, listedAt: '2025-05-17',
   },
 ];
->>>>>>> 092818e (Wire up sell form to Supabase, add admin approval page, show DB listings in browse)
 
 export function toSegment(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
 export function makeFromSegment(seg: string): string | undefined {
-<<<<<<< HEAD
   return MAKES.find(m => toSegment(m) === seg);
-=======
-  return CARS.find(c => toSegment(c.make) === seg)?.make;
 }
 
 export function modelFromSegment(make: string, seg: string): string | undefined {
@@ -259,7 +252,6 @@ export function searchCars(filters: Partial<{
     }
     return true;
   });
->>>>>>> 092818e (Wire up sell form to Supabase, add admin approval page, show DB listings in browse)
 }
 
 export function formatPrice(price: number): string {
@@ -269,8 +261,6 @@ export function formatPrice(price: number): string {
 export function formatMileage(miles: number): string {
   return new Intl.NumberFormat('en-US').format(miles) + ' mi';
 }
-<<<<<<< HEAD
-=======
 
 export const DEALERS: Dealer[] = [
   {
@@ -393,4 +383,3 @@ export function getDealerById(id: string): Dealer | undefined {
 export function getCar(slug: string): Car | undefined {
   return CARS.find(c => c.slug === slug);
 }
->>>>>>> 092818e (Wire up sell form to Supabase, add admin approval page, show DB listings in browse)

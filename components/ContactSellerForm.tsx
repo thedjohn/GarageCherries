@@ -51,11 +51,7 @@ export default function ContactSellerForm({ carId, carTitle, sellerName }: Props
     return (
       <button
         onClick={() => setOpen(true)}
-<<<<<<< HEAD
         className="block w-full bg-zinc-800 border-2 border-zinc-700 text-white hover:bg-red-600 hover:border-red-500 font-bold py-3 rounded-xl transition-colors text-sm text-center mt-3"
-=======
-        className="block w-full border-2 border-zinc-700 text-white hover:border-red-500 hover:bg-red-600 font-bold py-3 rounded-xl transition-colors text-sm text-center mt-3"
->>>>>>> 092818e (Wire up sell form to Supabase, add admin approval page, show DB listings in browse)
       >
         Message Seller
       </button>
