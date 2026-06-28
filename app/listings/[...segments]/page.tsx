@@ -324,27 +324,33 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
               <p className="text-3xl font-bold text-red-600 mt-2 mb-5">{formatPrice(car.price)}</p>
 
               <div className="border-t border-zinc-100 pt-4 mb-4">
-                <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-2">{dealer ? 'Dealer' : 'Seller'}</p>
+                <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-2">{dealer ? 'Dealer' : 'Private Seller'}</p>
                 {dealer ? (
-                  <Link href={`/dealers/${dealer.slug}`} className="font-bold text-red-600 hover:underline block">{car.sellerName}</Link>
+                  <>
+                    <Link href={`/dealers/${dealer.slug}`} className="font-bold text-red-600 hover:underline block">{car.sellerName}</Link>
+                    <a href={mapsLink} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-red-600 transition-colors mt-1 w-fit">
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                      </svg>
+                      {mapAddressParts.join(', ')}
+                    </a>
+                    {dealer.since && <p className="text-xs text-zinc-400 mt-0.5">Est. {dealer.since}</p>}
+                    <p className="text-sm text-zinc-500 mt-1">{formatPhone(car.sellerPhone)}</p>
+                  </>
                 ) : (
-                  <p className="font-bold text-zinc-800">{car.sellerName}</p>
+                  <p className="text-sm text-zinc-500">{car.location}{car.state ? `, ${car.state}` : ''}</p>
                 )}
-                <a href={mapsLink} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-red-600 transition-colors mt-1 w-fit">
-                  <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                  </svg>
-                  {mapAddressParts.join(', ')}
-                </a>
-                {dealer?.since && <p className="text-xs text-zinc-400 mt-0.5">Est. {dealer.since}</p>}
-                <p className="text-sm text-zinc-500 mt-1">{formatPhone(car.sellerPhone)}</p>
               </div>
 
-              <a href={`tel:${car.sellerPhone.replace(/\D/g, '')}`}
-                className="block w-full bg-red-600 hover:bg-red-700 text-white font-bold text-center py-3 rounded-xl transition-colors mb-3">
-                {dealer ? 'Call Dealer' : 'Call Seller'}
-              </a>
+              {dealer ? (
+                <a href={`tel:${car.sellerPhone.replace(/\D/g, '')}`}
+                  className="block w-full bg-red-600 hover:bg-red-700 text-white font-bold text-center py-3 rounded-xl transition-colors mb-3">
+                  Call Dealer
+                </a>
+              ) : (
+                <p className="text-xs text-zinc-400 text-center mb-3">Contact this seller using the form below</p>
+              )}
               {dealer && (
                 <Link href={`/dealers/${dealer.slug}`}
                   className="block w-full border-2 border-red-600 text-red-600 hover:bg-red-50 font-bold py-3 rounded-xl transition-colors text-sm text-center">
@@ -385,17 +391,19 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
             </div>
 
             <div className="lg:hidden bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
-              <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-2">{dealer ? 'Dealer' : 'Seller'}</p>
+              <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-2">{dealer ? 'Dealer' : 'Private Seller'}</p>
               {dealer ? (
-                <Link href={`/dealers/${dealer.slug}`} className="font-bold text-red-600 hover:underline block">{car.sellerName}</Link>
+                <>
+                  <Link href={`/dealers/${dealer.slug}`} className="font-bold text-red-600 hover:underline block">{car.sellerName}</Link>
+                  <p className="text-sm text-zinc-500 mb-4">{formatPhone(car.sellerPhone)}</p>
+                  <a href={`tel:${car.sellerPhone.replace(/\D/g, '')}`}
+                    className="block w-full bg-red-600 text-white font-bold text-center py-3 rounded-xl mb-3">
+                    Call Dealer
+                  </a>
+                </>
               ) : (
-                <p className="font-bold text-zinc-800">{car.sellerName}</p>
+                <p className="text-sm text-zinc-500 mb-4">{car.location}{car.state ? `, ${car.state}` : ''}</p>
               )}
-              <p className="text-sm text-zinc-500 mb-4">{formatPhone(car.sellerPhone)}</p>
-              <a href={`tel:${car.sellerPhone.replace(/\D/g, '')}`}
-                className="block w-full bg-red-600 text-white font-bold text-center py-3 rounded-xl mb-3">
-                {dealer ? 'Call Dealer' : 'Call Seller'}
-              </a>
               {dealer && (
                 <Link href={`/dealers/${dealer.slug}`}
                   className="block w-full border-2 border-red-600 text-red-600 font-bold text-center py-2.5 rounded-xl text-sm">
