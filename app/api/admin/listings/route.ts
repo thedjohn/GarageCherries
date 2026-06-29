@@ -55,9 +55,14 @@ export async function PATCH(req: NextRequest) {
   if (!['approve', 'reject'].includes(action)) {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
+  const update: Record<string, unknown> = {
+    status: action === 'approve' ? 'approved' : 'rejected',
+  };
+  if (action === 'approve') update.listed_at = new Date().toISOString();
+
   const { error } = await admin
     .from('listings')
-    .update({ status: action === 'approve' ? 'approved' : 'rejected' })
+    .update(update)
     .eq('id', id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
