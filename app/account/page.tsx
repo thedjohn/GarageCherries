@@ -111,6 +111,7 @@ function AccountPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [alertsLoading, setAlertsLoading] = useState(false);
   const [showAlertForm, setShowAlertForm] = useState(false);
+  const [editingAlertId, setEditingAlertId] = useState<string | null>(null);
   const [alertForm, setAlertForm] = useState({ name: '', make: '', model: '', year_min: '', year_max: '', price_min: '', price_max: '', condition: '', body_style: '', state: '' });
   const [alertSaving, setAlertSaving] = useState(false);
   const [alertError, setAlertError] = useState('');
@@ -236,6 +237,44 @@ function AccountPage() {
     setCounts(c => ({ ...c, alerts: Math.max(0, c.alerts - 1) }));
   };
 
+  const alertFields = () => ({
+    name: alertForm.name || null,
+    make: alertForm.make || null,
+    model: alertForm.model || null,
+    year_min: alertForm.year_min ? Number(alertForm.year_min) : null,
+    year_max: alertForm.year_max ? Number(alertForm.year_max) : null,
+    price_min: alertForm.price_min ? Number(alertForm.price_min) : null,
+    price_max: alertForm.price_max ? Number(alertForm.price_max) : null,
+    condition: alertForm.condition || null,
+    body_style: alertForm.body_style || null,
+    state: alertForm.state || null,
+  });
+
+  const resetAlertForm = () => {
+    setAlertForm({ name: '', make: '', model: '', year_min: '', year_max: '', price_min: '', price_max: '', condition: '', body_style: '', state: '' });
+    setShowAlertForm(false);
+    setEditingAlertId(null);
+    setAlertError('');
+  };
+
+  const openEditAlert = (a: Alert) => {
+    setAlertForm({
+      name: a.name || '',
+      make: a.make || '',
+      model: a.model || '',
+      year_min: a.year_min ? String(a.year_min) : '',
+      year_max: a.year_max ? String(a.year_max) : '',
+      price_min: a.price_min ? String(a.price_min) : '',
+      price_max: a.price_max ? String(a.price_max) : '',
+      condition: a.condition || '',
+      body_style: a.body_style || '',
+      state: a.state || '',
+    });
+    setEditingAlertId(a.id);
+    setShowAlertForm(true);
+    setAlertError('');
+  };
+
   const createAlert = async (e: React.FormEvent) => {
     e.preventDefault();
     if (alerts.length >= 10) { setAlertError('You have reached the 10 alert limit.'); return; }
@@ -243,25 +282,24 @@ function AccountPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setAlertError('Not logged in.'); setAlertSaving(false); return; }
-    const { data, error } = await supabase.from('saved_searches').insert({
-      user_id: user.id,
-      name: alertForm.name || null,
-      make: alertForm.make || null,
-      model: alertForm.model || null,
-      year_min: alertForm.year_min ? Number(alertForm.year_min) : null,
-      year_max: alertForm.year_max ? Number(alertForm.year_max) : null,
-      price_min: alertForm.price_min ? Number(alertForm.price_min) : null,
-      price_max: alertForm.price_max ? Number(alertForm.price_max) : null,
-      condition: alertForm.condition || null,
-      body_style: alertForm.body_style || null,
-      state: alertForm.state || null,
-    }).select().single();
+    const { data, error } = await supabase.from('saved_searches').insert({ user_id: user.id, ...alertFields() }).select().single();
     setAlertSaving(false);
     if (error) { setAlertError(error.message); return; }
     setAlerts(prev => [data as Alert, ...prev]);
     setCounts(c => ({ ...c, alerts: c.alerts + 1 }));
-    setAlertForm({ name: '', make: '', model: '', year_min: '', year_max: '', price_min: '', price_max: '', condition: '', body_style: '', state: '' });
-    setShowAlertForm(false);
+    resetAlertForm();
+  };
+
+  const updateAlert = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAlertId) return;
+    setAlertSaving(true); setAlertError('');
+    const supabase = createClient();
+    const { data, error } = await supabase.from('saved_searches').update(alertFields()).eq('id', editingAlertId).select().single();
+    setAlertSaving(false);
+    if (error) { setAlertError(error.message); return; }
+    setAlerts(prev => prev.map(a => a.id === editingAlertId ? (data as Alert) : a));
+    resetAlertForm();
   };
 
   const saveProfile = async (e: React.FormEvent) => {
@@ -445,7 +483,7 @@ function AccountPage() {
         <div>
           <div className="flex items-center justify-between mb-5">
             <p className="text-sm text-zinc-500">{alerts.length}/10 alerts used</p>
-            {alerts.length < 10 && !showAlertForm && (
+            {alerts.length < 10 && !showAlertForm && !editingAlertId && (
               <button onClick={() => setShowAlertForm(true)}
                 className="bg-red-600 hover:bg-red-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors">
                 + New Alert
@@ -453,10 +491,10 @@ function AccountPage() {
             )}
           </div>
 
-          {/* New alert form */}
+          {/* New / Edit alert form */}
           {showAlertForm && (
-            <form onSubmit={createAlert} className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-6 mb-5">
-              <h2 className="font-bold text-zinc-900 mb-4">New Alert</h2>
+            <form onSubmit={editingAlertId ? updateAlert : createAlert} className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-6 mb-5">
+              <h2 className="font-bold text-zinc-900 mb-4">{editingAlertId ? 'Edit Alert' : 'New Alert'}</h2>
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Alert Name (optional)</label>
@@ -531,13 +569,13 @@ function AccountPage() {
               </div>
               {alertError && <p className="text-sm text-red-600 mt-3">{alertError}</p>}
               <div className="flex gap-3 mt-5">
-                <button type="button" onClick={() => { setShowAlertForm(false); setAlertError(''); }}
+                <button type="button" onClick={resetAlertForm}
                   className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2.5 rounded-xl hover:bg-zinc-50">
                   Cancel
                 </button>
                 <button type="submit" disabled={alertSaving}
                   className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition-colors">
-                  {alertSaving ? 'Saving…' : 'Save Alert'}
+                  {alertSaving ? 'Saving…' : editingAlertId ? 'Update Alert' : 'Save Alert'}
                 </button>
               </div>
             </form>
@@ -572,6 +610,12 @@ function AccountPage() {
                       )}
                     </div>
                   </div>
+                  <button onClick={() => openEditAlert(a)}
+                    className="text-zinc-300 hover:text-zinc-600 transition-colors p-2" title="Edit alert">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
                   <button onClick={() => deleteAlert(a.id)}
                     className="text-zinc-300 hover:text-red-500 transition-colors p-2" title="Delete alert">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
