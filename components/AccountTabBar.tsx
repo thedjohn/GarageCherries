@@ -53,10 +53,15 @@ function AccountTabBarInner() {
           window.dispatchEvent(new CustomEvent('gc:new-message', { detail: payload.payload }));
           // Browser notification if tab not focused
           if (document.visibilityState === 'hidden' && Notification.permission === 'granted') {
-            new Notification('New message on GarageCherries', {
-              body: `${payload.payload.senderName}: ${payload.payload.listingTitle}`,
+            const { conversationId, senderName, listingTitle } = payload.payload;
+            const n = new Notification('New message on GarageCherries', {
+              body: `${senderName}: ${listingTitle}`,
               icon: '/favicon.ico',
             });
+            n.onclick = () => {
+              window.focus();
+              window.location.href = `/account?tab=messages&open=${conversationId}`;
+            };
           }
         })
         .subscribe();

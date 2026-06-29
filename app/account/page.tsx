@@ -112,6 +112,26 @@ function AccountPage() {
     setTab(t);
   }, [searchParams]);
 
+  // Auto-open conversation when arriving from a notification click (?open=convId)
+  useEffect(() => {
+    const convId = searchParams.get('open');
+    if (!convId || tab !== 'messages') return;
+    // Wait for conversations to load then open the chat
+    const tryOpen = () => {
+      const conv = conversations.find(c => c.id === convId);
+      if (conv) {
+        openChat(conv.id, conv.listing_title);
+        markConvRead(conv.id, conv.last_message_at);
+        setConversations(prev => prev.map(c => c.id === convId ? { ...c, unread: false } : c));
+        // Remove ?open= from URL without triggering navigation
+        const url = new URL(window.location.href);
+        url.searchParams.delete('open');
+        window.history.replaceState({}, '', url.toString());
+      }
+    };
+    if (conversations.length > 0) tryOpen();
+  }, [searchParams, conversations, tab, openChat]);
+
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [counts, setCounts] = useState({ watchlist: 0, messages: 0, alerts: 0 });
