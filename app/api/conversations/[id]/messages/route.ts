@@ -53,6 +53,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!body?.trim()) return NextResponse.json({ error: 'Empty message' }, { status: 400 });
 
   const admin = createAdminClient();
+
+  // Fetch conversation details to find recipient and listing title
+  const { data: conv } = await admin
+    .from('conversations')
+    .select('buyer_id, listing_id, listing_title')
+    .eq('id', id)
+    .single();
+
   const { error } = await admin.from('messages').insert({
     conversation_id: id,
     sender_id: user.id,
@@ -61,6 +69,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  await admin.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', id);
+  const now = new Date().toISOString();
+  await admin.from('conversations').update({ last_message_at: now }).eq('id', id);
+
+  // Broadcast to recipient's private notification channel
+  if (conv) {
+    let recipientId: string | null = null;
+    if (conv.buyer_id === user.id) {
+      // Sender is buyer — notify seller
+      const { data: listing } = await admin.from('listings').select('seller_id').eq('id', conv.listing_id).single();
+      recipientId = listing?.seller_id ?? null;
+    } else {
+      // Sender is seller — notify buyer
+      recipientId = conv.buyer_id;
+    }
+    if (recipientId) {
+      await admin.channel(`notifications:${recipientId}`).send({
+        type: 'broadcast',
+        event: 'new-message',
+        payload: {
+          conversationId: id,
+          listingTitle: conv.listing_title,
+          senderName: senderName || user.email,
+          sentAt: now,
+        },
+      });
+    }
+  }
+
   return NextResponse.json({ success: true });
 }

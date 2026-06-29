@@ -42,6 +42,27 @@ function AccountTabBarInner() {
     };
     window.addEventListener('gc:watchlist-change', onWatchlistChange);
     window.addEventListener('gc:conv-read', onConvRead);
+
+    // Realtime: subscribe to new messages broadcast for this user
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      const channel = supabase
+        .channel(`notifications:${user.id}`)
+        .on('broadcast', { event: 'new-message' }, (payload) => {
+          setCounts(c => ({ ...c, messages: c.messages + 1 }));
+          window.dispatchEvent(new CustomEvent('gc:new-message', { detail: payload.payload }));
+          // Browser notification if tab not focused
+          if (document.visibilityState === 'hidden' && Notification.permission === 'granted') {
+            new Notification('New message on GarageCherries', {
+              body: `${payload.payload.senderName}: ${payload.payload.listingTitle}`,
+              icon: '/favicon.ico',
+            });
+          }
+        })
+        .subscribe();
+      return () => { supabase.removeChannel(channel); };
+    });
+
     return () => {
       window.removeEventListener('gc:watchlist-change', onWatchlistChange);
       window.removeEventListener('gc:conv-read', onConvRead);

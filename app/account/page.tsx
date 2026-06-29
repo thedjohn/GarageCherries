@@ -65,6 +65,23 @@ interface Profile {
   phone: string;
 }
 
+function NotificationPermissionButton() {
+  const [status, setStatus] = useState<NotificationPermission | 'unsupported'>('default');
+  useEffect(() => {
+    setStatus('Notification' in window ? Notification.permission : 'unsupported');
+  }, []);
+  if (status === 'unsupported') return <p className="text-sm text-zinc-400">Your browser does not support notifications.</p>;
+  if (status === 'granted') return <p className="text-sm text-emerald-600 font-semibold">✓ Notifications enabled</p>;
+  if (status === 'denied') return <p className="text-sm text-zinc-400">Notifications blocked — allow them in your browser settings to enable.</p>;
+  return (
+    <button
+      onClick={() => Notification.requestPermission().then(p => setStatus(p))}
+      className="bg-zinc-900 hover:bg-zinc-700 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
+      Enable Notifications
+    </button>
+  );
+}
+
 function markConvRead(convId: string, lastMessageAt: string) {
   try {
     const map: Record<string, string> = JSON.parse(localStorage.getItem('gc_conv_read_at') ?? '{}');
@@ -229,6 +246,18 @@ function AccountPage() {
     if (tab === 'messages') loadMessages();
     if (tab === 'alerts') loadAlerts();
   }, [tab, loadWatchlist, loadMessages, loadAlerts]);
+
+  // Listen for new inbound messages and mark that conversation unread
+  useEffect(() => {
+    const onNewMessage = (e: Event) => {
+      const { conversationId, sentAt } = (e as CustomEvent).detail;
+      setConversations(prev => prev.map(c =>
+        c.id === conversationId ? { ...c, unread: true, last_message_at: sentAt } : c
+      ));
+    };
+    window.addEventListener('gc:new-message', onNewMessage);
+    return () => window.removeEventListener('gc:new-message', onNewMessage);
+  }, []);
 
   const removeFromWatchlist = async (watchId: string) => {
     const supabase = createClient();
@@ -738,6 +767,13 @@ function AccountPage() {
       {/* Settings tab */}
       {tab === 'settings' && (
         <div className="space-y-8 max-w-lg">
+          {/* Notifications */}
+          <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
+            <h2 className="text-base font-bold text-zinc-900 mb-1">Notifications</h2>
+            <p className="text-sm text-zinc-500 mb-4">Get browser notifications when you receive a new message, even when the tab is in the background.</p>
+            <NotificationPermissionButton />
+          </div>
+
           {/* Profile */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
             <h2 className="text-base font-bold text-zinc-900 mb-4">Profile</h2>
