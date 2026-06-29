@@ -348,7 +348,7 @@ function AccountPage() {
                 return (
                   <div key={item.id} className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 flex gap-4 items-center">
                     {img ? (
-                      <Link href={`/listings/${toSegment(car.make)}/${toSegment(car.model)}/${car.slug}`}>
+                      <Link href={`/listings/${toSegment(car.make)}/${toSegment(car.model)}/${car.id}/${car.slug}`}>
                         <div className="w-24 h-16 rounded-xl overflow-hidden shrink-0 bg-zinc-100 relative">
                           <Image src={img} alt={car.title} fill className="object-cover" sizes="96px" />
                         </div>
@@ -357,7 +357,7 @@ function AccountPage() {
                       <div className="w-24 h-16 rounded-xl bg-zinc-100 shrink-0 flex items-center justify-center text-zinc-300 text-2xl">🚗</div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <Link href={`/listings/${toSegment(car.make)}/${toSegment(car.model)}/${car.slug}`}
+                      <Link href={`/listings/${toSegment(car.make)}/${toSegment(car.model)}/${car.id}/${car.slug}`}
                         className="font-bold text-zinc-900 hover:text-red-600 transition-colors line-clamp-1">
                         {car.title}
                       </Link>
