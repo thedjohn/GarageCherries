@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const sellerId = req.nextUrl.searchParams.get('seller_id');
   let query = admin
     .from('listings')
-    .select('id,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,location,state,seller_name,seller_phone,seller_email,seller_id,images,description,featured,status,created_at')
+    .select('id,slug,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,location,state,seller_name,seller_phone,seller_email,seller_id,images,description,featured,status,created_at')
     .order('created_at', { ascending: false });
   if (sellerId) query = query.eq('seller_id', sellerId);
   const { data: listings, error } = await query;
