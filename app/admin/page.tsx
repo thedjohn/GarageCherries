@@ -842,12 +842,16 @@ export default function AdminPage() {
                     <p className="text-xs text-zinc-500 mt-0.5">${l.price?.toLocaleString()} · {l.location}, {l.state}</p>
                     <p className="text-xs text-zinc-400 mt-0.5">{new Date(l.created_at).toLocaleDateString()}</p>
                     <div className="flex gap-2 mt-2 flex-wrap">
-                      {l.slug && (
-                        <a href={`/listings/${l.slug}`} target="_blank" rel="noopener noreferrer"
-                          className="px-3 py-1 text-xs font-semibold border border-zinc-200 text-zinc-600 rounded-lg hover:bg-zinc-50">
-                          View ↗
-                        </a>
-                      )}
+                      {(() => {
+                        const seg = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                        const url = `/listings/${seg(l.make)}/${seg(l.model)}/${l.id}/${l.slug}`;
+                        return (
+                          <a href={url} target="_blank" rel="noopener noreferrer"
+                            className="px-3 py-1 text-xs font-semibold border border-zinc-200 text-zinc-600 rounded-lg hover:bg-zinc-50">
+                            View ↗
+                          </a>
+                        );
+                      })()}
                       {l.status === 'pending' && (adminRole === 'moderator' || adminRole === 'admin' || adminRole === 'superadmin') && <>
                         <button onClick={async () => { await handleAction(l.id, 'approve'); setSellerListings(prev => prev.map(x => x.id === l.id ? {...x, status:'approved'} : x)); }}
                           disabled={!!working}
