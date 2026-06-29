@@ -1,12 +1,18 @@
 'use client';
 import { useState, useRef } from 'react';
+import Link from 'next/link';
 import { MAKES, BODY_STYLES, CONDITIONS } from '@/lib/types';
 
 export default function SellForm() {
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [limitReached, setLimitReached] = useState(false);
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const dragIndex = useRef<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
 
   const handleImageAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -25,10 +31,7 @@ export default function SellForm() {
     });
   };
 
-  const [dragOver, setDragOver] = useState<number | null>(null);
-
   const onDragStart = (i: number) => { dragIndex.current = i; };
-
   const onDrop = (i: number) => {
     const from = dragIndex.current;
     if (from === null || from === i) { setDragOver(null); return; }
@@ -42,6 +45,58 @@ export default function SellForm() {
     setDragOver(null);
   };
 
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError('');
+
+    const formData = new FormData(e.currentTarget);
+    for (const { file } of images) {
+      formData.append('images', file);
+    }
+
+    const res = await fetch('/api/listings/submit', { method: 'POST', body: formData });
+    const json = await res.json();
+    setSubmitting(false);
+
+    if (!res.ok) {
+      if (json.error === 'LISTING_LIMIT') {
+        setLimitReached(true);
+      } else {
+        setError(json.message ?? json.error ?? 'Something went wrong. Please try again.');
+      }
+      return;
+    }
+
+    setSubmitted(true);
+  }
+
+  if (limitReached) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-24 text-center">
+        <div className="text-6xl mb-6">🚫</div>
+        <h1 className="text-2xl font-extrabold text-zinc-900 mb-3">Listing Limit Reached</h1>
+        <p className="text-zinc-500 text-base mb-6">
+          Private sellers can have up to <strong>10 active listings</strong> at a time.
+          You&apos;ve reached that limit. Once one of your listings sells or is removed, you can post again.
+        </p>
+        <p className="text-zinc-500 text-sm mb-8">
+          If you&apos;re selling multiple vehicles regularly, a <strong>Dealer account</strong> gives you unlimited listings plus a dedicated profile page.
+        </p>
+        <div className="flex gap-3 justify-center flex-wrap">
+          <Link href="/account?tab=watchlist"
+            className="px-6 py-3 border border-zinc-200 rounded-xl text-zinc-700 font-semibold hover:bg-zinc-50 transition-colors text-sm">
+            Manage My Listings
+          </Link>
+          <Link href="/contact"
+            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors text-sm">
+            Inquire About Dealer Account
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (submitted) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-24 text-center">
@@ -52,6 +107,8 @@ export default function SellForm() {
     );
   }
 
+  const inputCls = 'w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300';
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
       <div className="mb-8">
@@ -59,68 +116,63 @@ export default function SellForm() {
         <p className="text-zinc-500 mt-1">It&apos;s free and takes less than 5 minutes.</p>
       </div>
 
-      <form onSubmit={e => { e.preventDefault(); setSubmitted(true); }} className="space-y-8">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-8">
         {/* Vehicle info */}
         <section className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
           <h2 className="font-bold text-zinc-800 text-lg mb-5">Vehicle Information</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Year *</label>
-              <input type="number" required min="1900" max="2030" placeholder="1969"
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
+              <input name="year" type="number" required min="1900" max="2030" placeholder="1969" className={inputCls} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Make *</label>
-              <select required className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+              <select name="make" required className={inputCls}>
                 <option value="">Select make...</option>
                 {MAKES.filter(m => m !== 'All Makes').map(m => <option key={m}>{m}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Model *</label>
-              <input type="text" required placeholder="Camaro SS"
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
+              <input name="model" type="text" required placeholder="Camaro SS" className={inputCls} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Mileage</label>
-              <input type="number" min="0" placeholder="Leave blank if unknown"
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
+              <input name="mileage" type="number" min="0" placeholder="Leave blank if unknown" className={inputCls} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Body Style</label>
-              <select className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+              <select name="bodyStyle" className={inputCls}>
                 {BODY_STYLES.filter(b => b !== 'All Styles').map(b => <option key={b}>{b}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Condition *</label>
-              <select required className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+              <select name="condition" required className={inputCls}>
                 <option value="">Select condition...</option>
                 {CONDITIONS.filter(c => c !== 'All').map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Engine</label>
-              <input type="text" placeholder="396 V8"
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
+              <input name="engine" type="text" placeholder="396 V8" className={inputCls} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Transmission</label>
-              <select className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+              <select name="transmission" className={inputCls}>
                 <option>Manual</option>
                 <option>Automatic</option>
               </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Color</label>
-              <input type="text" placeholder="Rally Green"
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
+              <input name="color" type="text" placeholder="Rally Green" className={inputCls} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Asking Price *</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
-                <input type="number" required min="0" placeholder="89500"
+                <input name="price" type="number" required min="0" placeholder="89500"
                   className="w-full border border-zinc-200 rounded-xl pl-7 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
               </div>
             </div>
@@ -128,7 +180,8 @@ export default function SellForm() {
 
           <div className="mt-5">
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Description *</label>
-            <textarea required rows={5} placeholder="Describe your car — history, restoration work, known issues, matching numbers, etc."
+            <textarea name="description" required rows={5}
+              placeholder="Describe your car — history, restoration work, known issues, matching numbers, etc."
               className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none placeholder:text-zinc-300" />
           </div>
         </section>
@@ -141,20 +194,15 @@ export default function SellForm() {
           </div>
           <p className="text-xs text-zinc-400 mb-4">First photo is the cover. Drag to reorder. Up to 30 images, JPG/PNG/WEBP.</p>
 
-          {/* Thumbnails */}
           {images.length > 0 && (
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 mb-4">
               {images.map((img, i) => (
-                <div
-                  key={img.preview}
-                  draggable
+                <div key={img.preview} draggable
                   onDragStart={() => onDragStart(i)}
                   onDragOver={e => { e.preventDefault(); setDragOver(i); }}
                   onDragLeave={() => setDragOver(null)}
                   onDrop={() => onDrop(i)}
-                  className={`relative group aspect-square rounded-xl overflow-hidden border-2 cursor-grab active:cursor-grabbing transition-all ${dragOver === i ? 'border-red-500 scale-105' : 'border-zinc-100'}`}
-                >
-                  {/* Order badge */}
+                  className={`relative group aspect-square rounded-xl overflow-hidden border-2 cursor-grab active:cursor-grabbing transition-all ${dragOver === i ? 'border-red-500 scale-105' : 'border-zinc-100'}`}>
                   <span className={`absolute top-1 left-1 z-10 text-[10px] font-bold px-1.5 py-0.5 rounded ${i === 0 ? 'bg-red-600 text-white' : 'bg-black/60 text-white'}`}>
                     {i === 0 ? 'Cover' : i + 1}
                   </span>
@@ -168,7 +216,6 @@ export default function SellForm() {
             </div>
           )}
 
-          {/* Upload button */}
           {images.length < 30 && (
             <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-zinc-200 rounded-xl cursor-pointer hover:border-red-400 hover:bg-red-50 transition-colors">
               <span className="text-3xl mb-1">📷</span>
@@ -186,13 +233,11 @@ export default function SellForm() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">City *</label>
-              <input type="text" required placeholder="Nashville"
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
+              <input name="city" type="text" required placeholder="Nashville" className={inputCls} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">State *</label>
-              <input type="text" required maxLength={2} placeholder="TN"
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
+              <input name="state" type="text" required maxLength={2} placeholder="TN" className={inputCls} />
             </div>
           </div>
         </section>
@@ -203,13 +248,11 @@ export default function SellForm() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Name *</label>
-              <input type="text" required placeholder="John Smith"
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
+              <input name="sellerName" type="text" required placeholder="John Smith" className={inputCls} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Phone *</label>
-              <input type="tel" required placeholder="(615) 555-0100"
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300"
+              <input name="sellerPhone" type="tel" required placeholder="(615) 555-0100" className={inputCls}
                 onChange={e => {
                   const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
                   let formatted = digits;
@@ -220,15 +263,20 @@ export default function SellForm() {
             </div>
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Email *</label>
-              <input type="email" required placeholder="you@example.com"
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
+              <input name="sellerEmail" type="email" required placeholder="you@example.com" className={inputCls} />
             </div>
           </div>
         </section>
 
-        <button type="submit"
-          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-lg py-4 rounded-2xl transition-colors shadow-lg">
-          Submit My Listing — Free
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        <button type="submit" disabled={submitting}
+          className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold text-lg py-4 rounded-2xl transition-colors shadow-lg">
+          {submitting ? 'Submitting…' : 'Submit My Listing — Free'}
         </button>
       </form>
     </div>

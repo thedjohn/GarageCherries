@@ -4,66 +4,84 @@ import { createClient } from '@/lib/supabase/client';
 import { formatPhone } from '@/lib/data';
 import { MAKES, BODY_STYLES, CONDITIONS } from '@/lib/types';
 
-const ADMIN_EMAIL = 'derek_ljohnson@yahoo.com';
-
 interface Listing {
-  id: string;
-  title: string;
-  year: number;
-  make: string;
-  model: string;
-  price: number;
-  mileage: number | null;
-  condition: string;
-  body_style: string;
-  transmission: string;
-  engine: string | null;
-  color: string | null;
-  location: string;
-  state: string;
-  seller_name: string;
-  seller_phone: string;
-  seller_email: string;
-  images: string[];
-  description: string;
-  featured: boolean;
-  status: string;
-  created_at: string;
+  id: string; title: string; year: number; make: string; model: string;
+  price: number; mileage: number | null; condition: string; body_style: string;
+  transmission: string; engine: string | null; color: string | null;
+  location: string; state: string; seller_name: string; seller_phone: string;
+  seller_email: string; images: string[]; description: string;
+  featured: boolean; status: string; created_at: string;
 }
-
 type EditFields = Omit<Listing, 'id' | 'images' | 'created_at' | 'title'>;
 
+interface TeamMember { user_id: string; email: string; role: string; created_at: string; }
+interface ReportedMessage {
+  id: string; body: string; sender_name: string; sender_id: string; created_at: string;
+  conversation_id: string;
+  conversations: { listing_title: string; buyer_name: string; buyer_email: string } | null;
+}
+
+type Tab = 'listings' | 'messages' | 'reported' | 'team';
+
 export default function AdminPage() {
-  const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [authed, setAuthed] = useState(false);
+  const [adminRole, setAdminRole] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>('listings');
+
+  // Listings
+  const [listings, setListings] = useState<Listing[]>([]);
   const [working, setWorking] = useState<string | null>(null);
   const [editing, setEditing] = useState<Listing | null>(null);
   const [editFields, setEditFields] = useState<EditFields | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [tab, setTab] = useState<'listings' | 'messages'>('listings');
+
+  // Messages
   const [conversations, setConversations] = useState<any[]>([]);
+
+  // Reported
+  const [reported, setReported] = useState<ReportedMessage[]>([]);
+  const [dismissing, setDismissing] = useState<string | null>(null);
+
+  // Team
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [newEmail, setNewEmail] = useState('');
+  const [newRole, setNewRole] = useState<'moderator' | 'superadmin'>('moderator');
+  const [teamWorking, setTeamWorking] = useState(false);
+  const [teamError, setTeamError] = useState('');
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (user?.email === ADMIN_EMAIL) {
-        setAuthed(true);
-        const [listingsRes, convRes] = await Promise.all([
-          fetch('/api/admin/listings'),
-          supabase
-            .from('conversations')
-            .select('id,listing_title,buyer_name,buyer_email,seller_email,last_message_at,created_at')
-            .order('last_message_at', { ascending: false }),
-        ]);
-        const { listings: listingData } = await listingsRes.json();
-        setListings((listingData ?? []) as Listing[]);
-        setConversations(convRes.data ?? []);
-        setLoading(false);
-      } else {
-        setLoading(false);
+      if (!user) { setLoading(false); return; }
+
+      const res = await fetch('/api/admin/listings');
+      if (!res.ok) { setLoading(false); return; }
+
+      const { listings: listingData } = await res.json();
+      setListings((listingData ?? []) as Listing[]);
+
+      // Get role from admin_users via API response header or a separate call
+      const roleRes = await fetch('/api/admin/team');
+      if (roleRes.ok) {
+        const { team: teamData } = await roleRes.json();
+        setTeam(teamData ?? []);
+        const me = (teamData ?? []).find((m: TeamMember) => m.email === user.email);
+        setAdminRole(me?.role ?? 'moderator');
       }
+
+      const [convRes, reportedRes] = await Promise.all([
+        supabase.from('conversations')
+          .select('id,listing_title,buyer_name,buyer_email,seller_email,last_message_at,created_at')
+          .order('last_message_at', { ascending: false }),
+        fetch('/api/admin/reported'),
+      ]);
+      setConversations(convRes.data ?? []);
+      if (reportedRes.ok) {
+        const { reported: rep } = await reportedRes.json();
+        setReported(rep ?? []);
+      }
+      setLoading(false);
     });
   }, []);
 
@@ -82,8 +100,7 @@ export default function AdminPage() {
 
   async function saveEdit() {
     if (!editing || !editFields) return;
-    setSaving(true);
-    setSaveError('');
+    setSaving(true); setSaveError('');
     const res = await fetch('/api/admin/listings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -93,8 +110,7 @@ export default function AdminPage() {
     setSaving(false);
     if (!res.ok) { setSaveError(json.error ?? 'Save failed'); return; }
     setListings(prev => prev.map(l => l.id === editing.id
-      ? { ...l, ...editFields, title: `${editFields.year} ${editFields.make} ${editFields.model}` }
-      : l));
+      ? { ...l, ...editFields, title: `${editFields.year} ${editFields.make} ${editFields.model}` } : l));
     setEditing(null);
   }
 
@@ -112,40 +128,125 @@ export default function AdminPage() {
     setWorking(null);
   }
 
+  async function dismissReport(msgId: string) {
+    setDismissing(msgId);
+    await fetch(`/api/messages/${msgId}/report`, { method: 'DELETE' }).catch(() => {});
+    setReported(prev => prev.filter(r => r.id !== msgId));
+    setDismissing(null);
+  }
+
+  async function addTeamMember() {
+    setTeamWorking(true); setTeamError('');
+    const res = await fetch('/api/admin/team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: newEmail, role: newRole }),
+    });
+    const json = await res.json();
+    setTeamWorking(false);
+    if (!res.ok) { setTeamError(json.error ?? 'Failed'); return; }
+    setNewEmail('');
+    // Refresh team list
+    const teamRes = await fetch('/api/admin/team');
+    if (teamRes.ok) { const { team: t } = await teamRes.json(); setTeam(t ?? []); }
+  }
+
+  async function removeTeamMember(user_id: string) {
+    const res = await fetch('/api/admin/team', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id }),
+    });
+    if (res.ok) setTeam(prev => prev.filter(m => m.user_id !== user_id));
+  }
+
   if (loading) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Loading…</div>;
-  if (!authed) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Access denied.</div>;
+  if (!adminRole) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Access denied.</div>;
 
   const pending = listings.filter(l => l.status === 'pending');
   const approved = listings.filter(l => l.status === 'approved');
   const rejected = listings.filter(l => l.status === 'rejected');
-
   const set = (k: keyof EditFields, v: string | number | boolean | null) =>
     setEditFields(f => f ? { ...f, [k]: v } : f);
-
   const inputCls = 'w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500';
   const labelCls = 'block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1';
+  const tabCls = (t: Tab) => `px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === t ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
-      <h1 className="text-2xl font-extrabold text-zinc-900 mb-2">Admin</h1>
-
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-zinc-100 rounded-xl p-1 w-fit">
-        <button onClick={() => setTab('listings')}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === 'listings' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>
-          Listings <span className="ml-1 text-xs text-zinc-400">{pending.length} pending</span>
-        </button>
-        <button onClick={() => setTab('messages')}
-          className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === 'messages' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>
-          Messages <span className="ml-1 text-xs text-zinc-400">{conversations.length}</span>
-        </button>
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-2xl font-extrabold text-zinc-900">Admin</h1>
+        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${adminRole === 'superadmin' ? 'bg-red-100 text-red-700' : 'bg-zinc-100 text-zinc-600'}`}>
+          {adminRole}
+        </span>
       </div>
 
-      {tab === 'messages' && (
-        <div className="space-y-3 mb-8">
-          {conversations.length === 0 && (
-            <div className="text-center py-20 text-zinc-400">No conversations yet.</div>
+      {/* Tabs */}
+      <div className="flex gap-1 mb-6 bg-zinc-100 rounded-xl p-1 w-fit flex-wrap">
+        <button onClick={() => setTab('listings')} className={tabCls('listings')}>
+          Listings <span className="ml-1 text-xs text-zinc-400">{pending.length} pending</span>
+        </button>
+        <button onClick={() => setTab('messages')} className={tabCls('messages')}>
+          Messages <span className="ml-1 text-xs text-zinc-400">{conversations.length}</span>
+        </button>
+        <button onClick={() => setTab('reported')} className={tabCls('reported')}>
+          Reported
+          {reported.length > 0 && (
+            <span className="ml-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{reported.length}</span>
           )}
+        </button>
+        {adminRole === 'superadmin' && (
+          <button onClick={() => setTab('team')} className={tabCls('team')}>
+            Team <span className="ml-1 text-xs text-zinc-400">{team.length}</span>
+          </button>
+        )}
+      </div>
+
+      {/* Listings tab */}
+      {tab === 'listings' && <>
+        <p className="text-zinc-400 text-sm mb-6">{pending.length} pending · {approved.length} approved · {rejected.length} rejected</p>
+        {listings.length === 0 && <div className="text-center py-20 text-zinc-400">No listings submitted yet.</div>}
+        <div className="space-y-4">
+          {listings.map(l => (
+            <div key={l.id} className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5 flex gap-4">
+              {l.images?.[0] && <img src={l.images[0]} alt={l.title} className="w-32 h-24 object-cover rounded-xl shrink-0" />}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <h2 className="font-bold text-zinc-900">{l.title}</h2>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${
+                    l.status === 'approved' ? 'bg-green-100 text-green-700' :
+                    l.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                  }`}>{l.status}</span>
+                </div>
+                <p className="text-sm text-zinc-500">{l.condition} · {l.location}, {l.state} · ${l.price?.toLocaleString()}</p>
+                <p className="text-sm text-zinc-500">{l.seller_name} · {formatPhone(l.seller_phone)} · {l.seller_email}</p>
+                <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{l.description}</p>
+                <div className="flex gap-2 mt-3 flex-wrap">
+                  {l.status === 'pending' && <>
+                    <button onClick={() => handleAction(l.id, 'approve')} disabled={!!working}
+                      className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
+                      {working === l.id + 'approve' ? 'Approving…' : 'Approve'}
+                    </button>
+                    <button onClick={() => handleAction(l.id, 'reject')} disabled={!!working}
+                      className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
+                      {working === l.id + 'reject' ? 'Rejecting…' : 'Reject'}
+                    </button>
+                  </>}
+                  <button onClick={() => openEdit(l)}
+                    className="px-4 py-1.5 border border-zinc-200 text-zinc-600 text-sm font-semibold rounded-lg hover:bg-zinc-50">
+                    Edit
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </>}
+
+      {/* Messages tab */}
+      {tab === 'messages' && (
+        <div className="space-y-3">
+          {conversations.length === 0 && <div className="text-center py-20 text-zinc-400">No conversations yet.</div>}
           {conversations.map((c: any) => (
             <div key={c.id} className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
               <div className="flex items-start justify-between gap-2 mb-1">
@@ -153,152 +254,149 @@ export default function AdminPage() {
                 <span className="text-xs text-zinc-400 shrink-0">{new Date(c.last_message_at).toLocaleDateString()}</span>
               </div>
               <p className="text-sm text-zinc-500">Buyer: {c.buyer_name} · {c.buyer_email}</p>
-              <p className="text-sm text-zinc-500">Seller email: {c.seller_email}</p>
+              <p className="text-sm text-zinc-500">Seller: {c.seller_email}</p>
             </div>
           ))}
         </div>
       )}
 
-      {tab === 'listings' && <>
-      <p className="text-zinc-400 text-sm mb-6">{pending.length} pending · {approved.length} approved · {rejected.length} rejected</p>
-
-      {listings.length === 0 && (
-        <div className="text-center py-20 text-zinc-400">No listings submitted yet.</div>
+      {/* Reported tab */}
+      {tab === 'reported' && (
+        <div className="space-y-3">
+          {reported.length === 0 && (
+            <div className="text-center py-20 text-zinc-400">
+              <p className="text-3xl mb-3">✅</p>
+              <p>No reported messages.</p>
+            </div>
+          )}
+          {reported.map(r => (
+            <div key={r.id} className="bg-white rounded-2xl border border-red-100 shadow-sm p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-zinc-400 mb-1">
+                    {r.conversations?.listing_title} · reported {new Date(r.created_at).toLocaleDateString()}
+                  </p>
+                  <p className="font-semibold text-zinc-900 mb-0.5">{r.sender_name}</p>
+                  <p className="text-sm text-zinc-700 bg-red-50 rounded-lg px-3 py-2 mt-1">&ldquo;{r.body}&rdquo;</p>
+                  <p className="text-xs text-zinc-400 mt-2">
+                    Conversation: {r.conversations?.buyer_name} ({r.conversations?.buyer_email})
+                  </p>
+                </div>
+                <button
+                  onClick={() => dismissReport(r.id)}
+                  disabled={dismissing === r.id}
+                  className="px-3 py-1.5 text-xs font-semibold border border-zinc-200 rounded-lg text-zinc-500 hover:bg-zinc-50 shrink-0 disabled:opacity-50">
+                  {dismissing === r.id ? 'Dismissing…' : 'Dismiss'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
-      <div className="space-y-4">
-        {listings.map(l => (
-          <div key={l.id} className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5 flex gap-4">
-            {l.images?.[0] && (
-              <img src={l.images[0]} alt={l.title} className="w-32 h-24 object-cover rounded-xl shrink-0" />
-            )}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2 mb-1">
-                <h2 className="font-bold text-zinc-900">{l.title}</h2>
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${
-                  l.status === 'approved' ? 'bg-green-100 text-green-700' :
-                  l.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                  'bg-yellow-100 text-yellow-700'
-                }`}>{l.status}</span>
-              </div>
-              <p className="text-sm text-zinc-500">{l.condition} · {l.location}, {l.state} · ${l.price?.toLocaleString()}</p>
-              <p className="text-sm text-zinc-500">{l.seller_name} · {formatPhone(l.seller_phone)} · {l.seller_email}</p>
-              <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{l.description}</p>
-              {l.status === 'pending' && (
-                <div className="flex gap-2 mt-3">
-                  <button onClick={() => handleAction(l.id, 'approve')} disabled={!!working}
-                    className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
-                    {working === l.id + 'approve' ? 'Approving…' : 'Approve'}
-                  </button>
-                  <button onClick={() => handleAction(l.id, 'reject')} disabled={!!working}
-                    className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
-                    {working === l.id + 'reject' ? 'Rejecting…' : 'Reject'}
+      {/* Team tab — superadmin only */}
+      {tab === 'team' && adminRole === 'superadmin' && (
+        <div className="space-y-6">
+          {/* Current team */}
+          <div className="space-y-3">
+            {team.map(m => (
+              <div key={m.user_id} className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-zinc-900">{m.email}</p>
+                  <p className="text-xs text-zinc-400 mt-0.5">Added {new Date(m.created_at).toLocaleDateString()}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${m.role === 'superadmin' ? 'bg-red-100 text-red-700' : 'bg-zinc-100 text-zinc-600'}`}>
+                    {m.role}
+                  </span>
+                  <button
+                    onClick={() => removeTeamMember(m.user_id)}
+                    className="text-xs text-zinc-400 hover:text-red-600 font-semibold transition-colors">
+                    Remove
                   </button>
                 </div>
-              )}
-            </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      </>}
 
-      {/* Edit modal */}
+          {/* Add new member */}
+          <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
+            <h2 className="font-bold text-zinc-900 mb-4">Add Team Member</h2>
+            <div className="flex gap-3 flex-wrap">
+              <input
+                type="email"
+                placeholder="Email address"
+                value={newEmail}
+                onChange={e => setNewEmail(e.target.value)}
+                className="flex-1 min-w-48 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <select
+                value={newRole}
+                onChange={e => setNewRole(e.target.value as 'moderator' | 'superadmin')}
+                className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                <option value="moderator">Moderator</option>
+                <option value="superadmin">Superadmin</option>
+              </select>
+              <button
+                onClick={addTeamMember}
+                disabled={teamWorking || !newEmail}
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold text-sm rounded-lg transition-colors">
+                {teamWorking ? 'Adding…' : 'Add'}
+              </button>
+            </div>
+            {teamError && <p className="text-sm text-red-600 mt-2">{teamError}</p>}
+            <p className="text-xs text-zinc-400 mt-3">The person must already have a GarageCherries account.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Edit listing modal */}
       {editing && editFields && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setEditing(null)}>
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-6 border-b border-zinc-100">
               <h2 className="font-bold text-lg text-zinc-900">Edit Listing</h2>
               <button onClick={() => setEditing(null)} className="text-zinc-400 hover:text-zinc-700 text-xl font-bold">✕</button>
             </div>
-
             <div className="p-6 space-y-5">
-              {/* Vehicle */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>Year</label>
-                  <input type="number" value={editFields.year} onChange={e => set('year', Number(e.target.value))} className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>Make</label>
+                <div><label className={labelCls}>Year</label><input type="number" value={editFields.year} onChange={e => set('year', Number(e.target.value))} className={inputCls} /></div>
+                <div><label className={labelCls}>Make</label>
                   <select value={editFields.make} onChange={e => set('make', e.target.value)} className={inputCls}>
                     {MAKES.filter(m => m !== 'All Makes').map(m => <option key={m}>{m}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className={labelCls}>Model</label>
-                  <input value={editFields.model} onChange={e => set('model', e.target.value)} className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>Price ($)</label>
-                  <input type="number" value={editFields.price} onChange={e => set('price', Number(e.target.value))} className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>Mileage</label>
-                  <input type="number" value={editFields.mileage ?? ''} onChange={e => set('mileage', e.target.value ? Number(e.target.value) : null)} placeholder="Leave blank if unknown" className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>Condition</label>
+                <div><label className={labelCls}>Model</label><input value={editFields.model} onChange={e => set('model', e.target.value)} className={inputCls} /></div>
+                <div><label className={labelCls}>Price ($)</label><input type="number" value={editFields.price} onChange={e => set('price', Number(e.target.value))} className={inputCls} /></div>
+                <div><label className={labelCls}>Mileage</label><input type="number" value={editFields.mileage ?? ''} onChange={e => set('mileage', e.target.value ? Number(e.target.value) : null)} placeholder="Leave blank if unknown" className={inputCls} /></div>
+                <div><label className={labelCls}>Condition</label>
                   <select value={editFields.condition} onChange={e => set('condition', e.target.value)} className={inputCls}>
                     {CONDITIONS.filter(c => c !== 'All').map(c => <option key={c}>{c}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className={labelCls}>Body Style</label>
+                <div><label className={labelCls}>Body Style</label>
                   <select value={editFields.body_style} onChange={e => set('body_style', e.target.value)} className={inputCls}>
                     {BODY_STYLES.filter(b => b !== 'All Styles').map(b => <option key={b}>{b}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className={labelCls}>Transmission</label>
+                <div><label className={labelCls}>Transmission</label>
                   <select value={editFields.transmission} onChange={e => set('transmission', e.target.value)} className={inputCls}>
-                    <option>Manual</option>
-                    <option>Automatic</option>
+                    <option>Manual</option><option>Automatic</option>
                   </select>
                 </div>
-                <div>
-                  <label className={labelCls}>Engine</label>
-                  <input value={editFields.engine ?? ''} onChange={e => set('engine', e.target.value)} className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>Color</label>
-                  <input value={editFields.color ?? ''} onChange={e => set('color', e.target.value)} className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>City</label>
-                  <input value={editFields.location} onChange={e => set('location', e.target.value)} className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>State</label>
-                  <input value={editFields.state} maxLength={2} onChange={e => set('state', e.target.value.toUpperCase())} className={inputCls} />
-                </div>
+                <div><label className={labelCls}>Engine</label><input value={editFields.engine ?? ''} onChange={e => set('engine', e.target.value)} className={inputCls} /></div>
+                <div><label className={labelCls}>Color</label><input value={editFields.color ?? ''} onChange={e => set('color', e.target.value)} className={inputCls} /></div>
+                <div><label className={labelCls}>City</label><input value={editFields.location} onChange={e => set('location', e.target.value)} className={inputCls} /></div>
+                <div><label className={labelCls}>State</label><input value={editFields.state} maxLength={2} onChange={e => set('state', e.target.value.toUpperCase())} className={inputCls} /></div>
               </div>
-
-              <div>
-                <label className={labelCls}>Description</label>
-                <textarea rows={4} value={editFields.description} onChange={e => set('description', e.target.value)} className={inputCls + ' resize-none'} />
-              </div>
-
-              {/* Seller */}
+              <div><label className={labelCls}>Description</label><textarea rows={4} value={editFields.description} onChange={e => set('description', e.target.value)} className={inputCls + ' resize-none'} /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>Seller Name</label>
-                  <input value={editFields.seller_name} onChange={e => set('seller_name', e.target.value)} className={inputCls} />
-                </div>
-                <div>
-                  <label className={labelCls}>Seller Phone</label>
-                  <input value={editFields.seller_phone} onChange={e => set('seller_phone', e.target.value)} className={inputCls} />
-                </div>
-                <div className="col-span-2">
-                  <label className={labelCls}>Seller Email</label>
-                  <input type="email" value={editFields.seller_email} onChange={e => set('seller_email', e.target.value)} className={inputCls} />
-                </div>
+                <div><label className={labelCls}>Seller Name</label><input value={editFields.seller_name} onChange={e => set('seller_name', e.target.value)} className={inputCls} /></div>
+                <div><label className={labelCls}>Seller Phone</label><input value={editFields.seller_phone} onChange={e => set('seller_phone', e.target.value)} className={inputCls} /></div>
+                <div className="col-span-2"><label className={labelCls}>Seller Email</label><input type="email" value={editFields.seller_email} onChange={e => set('seller_email', e.target.value)} className={inputCls} /></div>
               </div>
-
-              {/* Status & featured */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={labelCls}>Status</label>
+                <div><label className={labelCls}>Status</label>
                   <select value={editFields.status} onChange={e => set('status', e.target.value)} className={inputCls}>
                     <option value="pending">Pending</option>
                     <option value="approved">Approved</option>
@@ -307,23 +405,16 @@ export default function AdminPage() {
                 </div>
                 <div className="flex items-end pb-1">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={editFields.featured} onChange={e => set('featured', e.target.checked)}
-                      className="w-4 h-4 accent-red-600" />
+                    <input type="checkbox" checked={editFields.featured} onChange={e => set('featured', e.target.checked)} className="w-4 h-4 accent-red-600" />
                     <span className="text-sm font-semibold text-zinc-700">Featured listing</span>
                   </label>
                 </div>
               </div>
-
               {saveError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{saveError}</p>}
             </div>
-
             <div className="flex gap-3 p-6 border-t border-zinc-100">
-              <button onClick={() => setEditing(null)}
-                className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2.5 rounded-xl hover:bg-zinc-50 transition-colors">
-                Cancel
-              </button>
-              <button onClick={saveEdit} disabled={saving}
-                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition-colors">
+              <button onClick={() => setEditing(null)} className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2.5 rounded-xl hover:bg-zinc-50 transition-colors">Cancel</button>
+              <button onClick={saveEdit} disabled={saving} className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition-colors">
                 {saving ? 'Saving…' : 'Save Changes'}
               </button>
             </div>

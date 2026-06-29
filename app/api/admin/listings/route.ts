@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
-
-const ADMIN_EMAIL = 'derek_ljohnson@yahoo.com';
+import { requireAdmin } from '@/lib/admin';
 
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.email !== ADMIN_EMAIL) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const role = await requireAdmin(user?.id ?? null);
+  if (!role) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const admin = createAdminClient();
   const { data: listings, error } = await admin
     .from('listings')
@@ -21,9 +19,8 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.email !== ADMIN_EMAIL) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const role = await requireAdmin(user?.id ?? null);
+  if (!role) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
   const { id, action } = body;

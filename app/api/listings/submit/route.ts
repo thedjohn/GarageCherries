@@ -10,6 +10,23 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const sellerId = user?.id ?? null;
 
+  // Enforce 10-listing limit for private sellers (dealers are exempt)
+  if (sellerId) {
+    const [{ data: dealer }, { count: activeCount }] = await Promise.all([
+      admin.from('dealers').select('id').eq('id', sellerId).single(),
+      admin.from('listings')
+        .select('id', { count: 'exact', head: true })
+        .eq('seller_id', sellerId)
+        .in('status', ['pending', 'approved']),
+    ]);
+    if (!dealer && (activeCount ?? 0) >= 10) {
+      return NextResponse.json({
+        error: 'LISTING_LIMIT',
+        message: 'You have reached the 10 active listing limit for private sellers. Please contact us to upgrade to a Dealer account.',
+      }, { status: 403 });
+    }
+  }
+
   const imageFiles = formData.getAll('images') as File[];
   const imageUrls: string[] = [];
 
