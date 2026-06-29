@@ -6,6 +6,7 @@ import ImageGallery from '@/components/ImageGallery';
 import ValuationWidget from '@/components/ValuationWidget';
 import SimilarCarsSection from '@/components/SimilarCarsSection';
 import ContactSellerForm from '@/components/ContactSellerForm';
+import WatchlistButton from '@/components/WatchlistButton';
 import ViewTracker from '@/components/ViewTracker';
 import {
   getCar, getDealerById, formatPrice, formatMileage, formatPhone,
@@ -357,6 +358,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                   View All Dealer Listings
                 </Link>
               )}
+              <WatchlistButton carId={car.id} price={car.price} />
               <ContactSellerForm
                 carId={car.id}
                 carTitle={car.title}
