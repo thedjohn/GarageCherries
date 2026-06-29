@@ -16,6 +16,7 @@ interface Counts { watchlist: number; messages: number; alerts: number }
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [auth, setAuth] = useState<AuthState>({ status: 'loading' });
   const [counts, setCounts] = useState<Counts>({ watchlist: 0, messages: 0, alerts: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -33,12 +34,14 @@ export default function Header() {
       if (dealer) { setAuth({ status: 'dealer' }); return; }
       if (advertiser) { setAuth({ status: 'advertiser' }); return; }
       setAuth({ status: 'buyer', email: email ?? '', name: name ?? email ?? '' });
-      // Fetch counts for badge display
-      const [watchRes, alertRes, convRes] = await Promise.all([
+      // Fetch counts for badge display + check admin status in parallel
+      const [watchRes, alertRes, convRes, adminRes] = await Promise.all([
         supabase.from('watchlists').select('id', { count: 'exact', head: true }).eq('user_id', userId),
         supabase.from('saved_searches').select('id', { count: 'exact', head: true }).eq('user_id', userId).not('last_matched_at', 'is', null),
         fetch('/api/conversations'),
+        fetch('/api/admin/team'),
       ]);
+      setIsAdmin(adminRes.ok);
       const convJson = await convRes.json();
       const allConvs: { id: string; last_message_at: string }[] = convJson.conversations ?? [];
       let unreadCount = allConvs.length;
@@ -204,6 +207,17 @@ export default function Header() {
                       </Link>
                     </div>
 
+                    {/* Admin link */}
+                    {isAdmin && (
+                      <div className="border-t border-zinc-100 py-2">
+                        <Link href="/admin"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-2 px-5 py-2.5 text-sm text-red-600 font-semibold hover:bg-red-50 transition-colors">
+                          Admin Panel
+                        </Link>
+                      </div>
+                    )}
+
                     {/* Sign out */}
                     <div className="border-t border-zinc-100 py-2">
                       <button
@@ -285,6 +299,9 @@ export default function Header() {
                     {counts.alerts > 0 && <span className="bg-zinc-700 text-white text-xs font-bold rounded-full px-2 py-0.5">{counts.alerts}</span>}
                   </Link>
                   <Link href="/account?tab=settings" className="block py-2 text-zinc-400 hover:text-red-400" onClick={() => setMenuOpen(false)}>Account Settings</Link>
+                  {isAdmin && (
+                    <Link href="/admin" className="block py-2 text-red-500 font-semibold hover:text-red-400" onClick={() => setMenuOpen(false)}>Admin Panel</Link>
+                  )}
                   <button onClick={() => { signOut(); setMenuOpen(false); }} className="block py-2 text-zinc-400 hover:text-red-400 text-left w-full">Sign Out</button>
                 </>
               )}
