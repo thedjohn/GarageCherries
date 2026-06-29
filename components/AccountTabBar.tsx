@@ -21,18 +21,31 @@ function AccountTabBarInner() {
         fetch('/api/conversations'),
       ]);
       const convJson = await convRes.json();
+      const allConvIds: string[] = (convJson.conversations ?? []).map((c: { id: string }) => c.id);
+      let unreadCount = allConvIds.length;
+      try {
+        const readIds: string[] = JSON.parse(localStorage.getItem('gc_read_convs') ?? '[]');
+        unreadCount = allConvIds.filter(id => !readIds.includes(id)).length;
+      } catch {}
       setCounts({
         watchlist: watchRes.count ?? 0,
         alerts: alertRes.count ?? 0,
-        messages: convJson.conversations?.length ?? 0,
+        messages: unreadCount,
       });
     });
 
     const onWatchlistChange = (e: Event) => {
       setCounts(c => ({ ...c, watchlist: (e as CustomEvent).detail.count }));
     };
+    const onConvRead = () => {
+      setCounts(c => ({ ...c, messages: Math.max(0, c.messages - 1) }));
+    };
     window.addEventListener('gc:watchlist-change', onWatchlistChange);
-    return () => window.removeEventListener('gc:watchlist-change', onWatchlistChange);
+    window.addEventListener('gc:conv-read', onConvRead);
+    return () => {
+      window.removeEventListener('gc:watchlist-change', onWatchlistChange);
+      window.removeEventListener('gc:conv-read', onConvRead);
+    };
   }, []);
 
   // Determine active tab from URL
