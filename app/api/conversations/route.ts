@@ -6,12 +6,29 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not logged in' }, { status: 401 });
 
-  const { listingId, listingTitle, sellerEmail, buyerName, message } = await req.json();
-  if (!listingId || !sellerEmail || !message?.trim()) {
+  const { listingId, listingTitle, buyerName, message } = await req.json();
+  if (!listingId || !message?.trim()) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }
 
   const admin = createAdminClient();
+
+  // Fetch seller email server-side — never trust the client for this
+  const { data: listing } = await admin
+    .from('listings')
+    .select('seller_email, seller_id, title')
+    .eq('id', listingId)
+    .single();
+  if (!listing) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
+
+  // Prefer auth email if seller has an account, fall back to listing seller_email
+  let resolvedSellerEmail = listing.seller_email ?? '';
+  if (listing.seller_id) {
+    const { data: { user: sellerUser } } = await admin.auth.admin.getUserById(listing.seller_id);
+    if (sellerUser?.email) resolvedSellerEmail = sellerUser.email;
+  }
+
+  const resolvedTitle = listingTitle || listing.title;
 
   // Find or create conversation
   const { data: existing } = await admin
@@ -28,11 +45,11 @@ export async function POST(req: NextRequest) {
       .from('conversations')
       .insert({
         listing_id: listingId,
-        listing_title: listingTitle,
+        listing_title: resolvedTitle,
         buyer_id: user.id,
         buyer_name: buyerName || user.email,
         buyer_email: user.email,
-        seller_email: sellerEmail,
+        seller_email: resolvedSellerEmail,
       })
       .select('id')
       .single();

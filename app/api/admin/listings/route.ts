@@ -65,3 +65,42 @@ export async function PATCH(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ success: true });
 }
+
+export async function DELETE(req: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const role = await requireAdmin(user?.id ?? null);
+  if (role !== 'superadmin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { id } = await req.json();
+  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+
+  const admin = createAdminClient();
+
+  // Fetch images before deleting so we can clean up storage
+  const { data: listing } = await admin
+    .from('listings')
+    .select('images')
+    .eq('id', id)
+    .single();
+
+  // Delete from storage
+  if (listing?.images?.length) {
+    const paths = listing.images.map((url: string) => {
+      const parts = url.split('/listing-images/');
+      return parts[1] ?? '';
+    }).filter(Boolean);
+    if (paths.length) {
+      await admin.storage.from('listing-images').remove(paths);
+    }
+  }
+
+  // Delete conversations linked to this listing
+  await admin.from('conversations').delete().eq('listing_id', id);
+
+  // Delete the listing
+  const { error } = await admin.from('listings').delete().eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ success: true });
+}

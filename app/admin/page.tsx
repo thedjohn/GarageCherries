@@ -31,6 +31,8 @@ export default function AdminPage() {
   // Listings
   const [listings, setListings] = useState<Listing[]>([]);
   const [working, setWorking] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Listing | null>(null);
   const [editing, setEditing] = useState<Listing | null>(null);
   const [editFields, setEditFields] = useState<EditFields | null>(null);
   const [saving, setSaving] = useState(false);
@@ -126,6 +128,18 @@ export default function AdminPage() {
         ? { ...l, status: action === 'approve' ? 'approved' : 'rejected' } : l));
     }
     setWorking(null);
+  }
+
+  async function deleteListing(id: string) {
+    setDeleting(id);
+    const res = await fetch('/api/admin/listings', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    setDeleting(null);
+    setConfirmDelete(null);
+    if (res.ok) setListings(prev => prev.filter(l => l.id !== id));
   }
 
   async function dismissReport(msgId: string) {
@@ -236,6 +250,12 @@ export default function AdminPage() {
                     className="px-4 py-1.5 border border-zinc-200 text-zinc-600 text-sm font-semibold rounded-lg hover:bg-zinc-50">
                     Edit
                   </button>
+                  {adminRole === 'superadmin' && (
+                    <button onClick={() => setConfirmDelete(l)}
+                      className="px-4 py-1.5 border border-red-200 text-red-600 text-sm font-semibold rounded-lg hover:bg-red-50">
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -346,6 +366,28 @@ export default function AdminPage() {
             </div>
             {teamError && <p className="text-sm text-red-600 mt-2">{teamError}</p>}
             <p className="text-xs text-zinc-400 mt-3">The person must already have a GarageCherries account.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setConfirmDelete(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="font-bold text-lg text-zinc-900 mb-2">Delete Listing?</h2>
+            <p className="text-zinc-500 text-sm mb-1">This will permanently delete:</p>
+            <p className="font-semibold text-zinc-900 mb-1">{confirmDelete.title}</p>
+            <p className="text-zinc-400 text-xs mb-6">All images and associated conversations will also be deleted. This cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDelete(null)}
+                className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2.5 rounded-xl hover:bg-zinc-50 transition-colors">
+                Cancel
+              </button>
+              <button onClick={() => deleteListing(confirmDelete.id)} disabled={deleting === confirmDelete.id}
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition-colors">
+                {deleting === confirmDelete.id ? 'Deleting…' : 'Yes, Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}
