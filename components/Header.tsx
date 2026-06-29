@@ -40,17 +40,16 @@ export default function Header() {
         fetch('/api/conversations'),
       ]);
       const convJson = await convRes.json();
-      const totalConvs: number = convJson.conversations?.length ?? 0;
-      let readCount = 0;
+      const allConvs: { id: string; last_message_at: string }[] = convJson.conversations ?? [];
+      let unreadCount = allConvs.length;
       try {
-        const readIds: string[] = JSON.parse(localStorage.getItem('gc_read_convs') ?? '[]');
-        const convIds: string[] = (convJson.conversations ?? []).map((c: { id: string }) => c.id);
-        readCount = convIds.filter((id: string) => readIds.includes(id)).length;
+        const map: Record<string, string> = JSON.parse(localStorage.getItem('gc_conv_read_at') ?? '{}');
+        unreadCount = allConvs.filter(c => !map[c.id] || new Date(c.last_message_at) > new Date(map[c.id])).length;
       } catch {}
       setCounts({
         watchlist: watchRes.count ?? 0,
         alerts: alertRes.count ?? 0,
-        messages: Math.max(0, totalConvs - readCount),
+        messages: unreadCount,
       });
     }
 
@@ -68,13 +67,18 @@ export default function Header() {
     const handleWatchlistChange = (e: Event) => {
       setCounts(prev => ({ ...prev, watchlist: (e as CustomEvent).detail.count }));
     };
+    const handleNewMessage = () => {
+      setCounts(prev => ({ ...prev, messages: prev.messages + 1 }));
+    };
     window.addEventListener('gc:conv-read', handleConvRead);
     window.addEventListener('gc:watchlist-change', handleWatchlistChange);
+    window.addEventListener('gc:new-message', handleNewMessage);
 
     return () => {
       subscription.unsubscribe();
       window.removeEventListener('gc:conv-read', handleConvRead);
       window.removeEventListener('gc:watchlist-change', handleWatchlistChange);
+      window.removeEventListener('gc:new-message', handleNewMessage);
     };
   }, []);
 
