@@ -20,8 +20,18 @@ interface ReportedMessage {
   conversation_id: string;
   conversations: { listing_title: string; buyer_name: string; buyer_email: string } | null;
 }
+interface SiteUser {
+  id: string; email: string; name: string; created_at: string;
+  type: 'buyer' | 'seller' | 'dealer';
+  suspended: { reason: string | null; suspended_at: string } | null;
+  dealer: { name: string; location: string; state: string; since: string | null } | null;
+  listings: { approved: number; pending: number; rejected: number } | null;
+  watchlist_count: number;
+  conversation_count: number;
+}
 
-type Tab = 'listings' | 'messages' | 'reported' | 'team';
+type Tab = 'listings' | 'messages' | 'reported' | 'team' | 'users';
+type UserSubTab = 'buyers' | 'sellers' | 'dealers';
 
 export default function AdminPage() {
   const [loading, setLoading] = useState(true);
@@ -51,6 +61,29 @@ export default function AdminPage() {
   const [newRole, setNewRole] = useState<'moderator' | 'superadmin'>('moderator');
   const [teamWorking, setTeamWorking] = useState(false);
   const [teamError, setTeamError] = useState('');
+
+  // Users
+  const [users, setUsers] = useState<SiteUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userSubTab, setUserSubTab] = useState<UserSubTab>('buyers');
+  const [suspendTarget, setSuspendTarget] = useState<SiteUser | null>(null);
+  const [suspendReason, setSuspendReason] = useState('');
+  const [suspendWorking, setSuspendWorking] = useState(false);
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState<SiteUser | null>(null);
+  const [deletingUser, setDeletingUser] = useState(false);
+  const [editingUser, setEditingUser] = useState<SiteUser | null>(null);
+  const [editUserName, setEditUserName] = useState('');
+  const [editUserEmail, setEditUserEmail] = useState('');
+  const [editUserSaving, setEditUserSaving] = useState(false);
+  const [promoteTarget, setPromoteTarget] = useState<SiteUser | null>(null);
+  const [promoteName, setPromoteName] = useState('');
+  const [promoteLocation, setPromoteLocation] = useState('');
+  const [promoteState, setPromoteState] = useState('');
+  const [promoteWorking, setPromoteWorking] = useState(false);
+  const [createDealer, setCreateDealer] = useState(false);
+  const [newDealer, setNewDealer] = useState({ email: '', password: '', name: '', dealerName: '', location: '', state: '' });
+  const [createWorking, setCreateWorking] = useState(false);
+  const [createError, setCreateError] = useState('');
 
   useEffect(() => {
     const supabase = createClient();
@@ -86,6 +119,98 @@ export default function AdminPage() {
       setLoading(false);
     });
   }, []);
+
+  async function loadUsers() {
+    if (users.length > 0) return;
+    setUsersLoading(true);
+    const res = await fetch('/api/admin/users');
+    if (res.ok) { const { users: u } = await res.json(); setUsers(u ?? []); }
+    setUsersLoading(false);
+  }
+
+  async function suspendUser() {
+    if (!suspendTarget) return;
+    setSuspendWorking(true);
+    await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: suspendTarget.id, action: 'suspend', reason: suspendReason }),
+    });
+    setUsers(prev => prev.map(u => u.id === suspendTarget.id
+      ? { ...u, suspended: { reason: suspendReason, suspended_at: new Date().toISOString() } } : u));
+    setSuspendTarget(null); setSuspendReason(''); setSuspendWorking(false);
+  }
+
+  async function unsuspendUser(userId: string) {
+    await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: userId, action: 'unsuspend' }),
+    });
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, suspended: null } : u));
+  }
+
+  async function saveUserEdit() {
+    if (!editingUser) return;
+    setEditUserSaving(true);
+    await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: editingUser.id, action: 'edit', name: editUserName, email: editUserEmail }),
+    });
+    setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, name: editUserName, email: editUserEmail } : u));
+    setEditingUser(null); setEditUserSaving(false);
+  }
+
+  async function promoteToDealer() {
+    if (!promoteTarget) return;
+    setPromoteWorking(true);
+    const res = await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: promoteTarget.id, action: 'promote', dealer: { name: promoteName, location: promoteLocation, state: promoteState } }),
+    });
+    if (res.ok) {
+      setUsers(prev => prev.map(u => u.id === promoteTarget.id
+        ? { ...u, type: 'dealer', dealer: { name: promoteName, location: promoteLocation, state: promoteState, since: null } } : u));
+    }
+    setPromoteTarget(null); setPromoteName(''); setPromoteLocation(''); setPromoteState(''); setPromoteWorking(false);
+  }
+
+  async function deleteUser() {
+    if (!confirmDeleteUser) return;
+    setDeletingUser(true);
+    const res = await fetch('/api/admin/users', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: confirmDeleteUser.id }),
+    });
+    if (res.ok) setUsers(prev => prev.filter(u => u.id !== confirmDeleteUser.id));
+    setConfirmDeleteUser(null); setDeletingUser(false);
+  }
+
+  async function createDealerAccount() {
+    setCreateWorking(true); setCreateError('');
+    const res = await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newDealer),
+    });
+    const json = await res.json();
+    setCreateWorking(false);
+    if (!res.ok) { setCreateError(json.error ?? 'Failed'); return; }
+    setCreateDealer(false);
+    setNewDealer({ email: '', password: '', name: '', dealerName: '', location: '', state: '' });
+    setUsers([]); // force refresh
+  }
+
+  function openEditUser(u: SiteUser) {
+    setEditingUser(u); setEditUserName(u.name); setEditUserEmail(u.email);
+  }
+
+  function openPromote(u: SiteUser) {
+    setPromoteTarget(u); setPromoteName(u.name || u.email.split('@')[0]);
+  }
 
   function openEdit(l: Listing) {
     setEditing(l);
@@ -213,6 +338,9 @@ export default function AdminPage() {
             )}
           </button>
         )}
+        <button onClick={() => { setTab('users'); loadUsers(); }} className={tabCls('users')}>
+          Users
+        </button>
         {(adminRole === 'superadmin' || adminRole === 'admin') && (
           <button onClick={() => setTab('team')} className={tabCls('team')}>
             Team <span className="ml-1 text-xs text-zinc-400">{team.length}</span>
@@ -377,6 +505,243 @@ export default function AdminPage() {
             {teamError && <p className="text-sm text-red-600 mt-2">{teamError}</p>}
             <p className="text-xs text-zinc-400 mt-3">The person must already have a GarageCherries account.</p>
           </div>}
+        </div>
+      )}
+
+      {/* Users tab */}
+      {tab === 'users' && (
+        <div>
+          {/* Sub-tabs */}
+          <div className="flex gap-1 mb-5 bg-zinc-100 rounded-xl p-1 w-fit">
+            {(['buyers','sellers','dealers'] as UserSubTab[]).map(s => (
+              <button key={s} onClick={() => setUserSubTab(s)}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-colors ${userSubTab === s ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>
+                {s}
+              </button>
+            ))}
+            {adminRole === 'superadmin' && (
+              <button onClick={() => setCreateDealer(true)}
+                className="ml-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors">
+                + New Dealer
+              </button>
+            )}
+          </div>
+
+          {usersLoading && (
+            <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-20 bg-zinc-100 rounded-2xl animate-pulse" />)}</div>
+          )}
+
+          {!usersLoading && (() => {
+            const filtered = users.filter(u =>
+              userSubTab === 'buyers' ? u.type === 'buyer' :
+              userSubTab === 'sellers' ? u.type === 'seller' : u.type === 'dealer'
+            );
+            if (filtered.length === 0) return <div className="text-center py-20 text-zinc-400">No {userSubTab} yet.</div>;
+            return (
+              <div className="space-y-3">
+                {filtered.map(u => (
+                  <div key={u.id} className={`bg-white rounded-2xl border shadow-sm p-5 ${u.suspended ? 'border-red-200' : 'border-zinc-100'}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                          <p className="font-bold text-zinc-900">{u.name || '(no name)'}</p>
+                          {u.suspended && (
+                            <span className="text-xs font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Suspended</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-zinc-500">{u.email}</p>
+                        <p className="text-xs text-zinc-400 mt-1">
+                          Joined {new Date(u.created_at).toLocaleDateString()}
+                          {u.type === 'buyer' && ` · ${u.watchlist_count} watchlist · ${u.conversation_count} messages`}
+                          {u.type === 'seller' && u.listings && ` · ${u.listings.approved} active · ${u.listings.pending} pending`}
+                          {u.type === 'dealer' && u.dealer && ` · ${u.dealer.name} · ${u.dealer.location}${u.dealer.state ? ', ' + u.dealer.state : ''}`}
+                        </p>
+                        {u.suspended?.reason && (
+                          <p className="text-xs text-red-500 mt-1">Reason: {u.suspended.reason}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap shrink-0">
+                        {/* Edit — admin+ */}
+                        {(adminRole === 'admin' || adminRole === 'superadmin') && (
+                          <button onClick={() => openEditUser(u)}
+                            className="px-3 py-1.5 text-xs font-semibold border border-zinc-200 rounded-lg text-zinc-600 hover:bg-zinc-50">
+                            Edit
+                          </button>
+                        )}
+                        {/* Suspend/Unsuspend */}
+                        {!u.suspended && (adminRole === 'moderator' || adminRole === 'admin' || adminRole === 'superadmin') &&
+                          (u.type !== 'dealer' || adminRole === 'admin' || adminRole === 'superadmin') && (
+                          <button onClick={() => setSuspendTarget(u)}
+                            className="px-3 py-1.5 text-xs font-semibold border border-orange-200 rounded-lg text-orange-600 hover:bg-orange-50">
+                            Suspend
+                          </button>
+                        )}
+                        {u.suspended && (adminRole === 'admin' || adminRole === 'superadmin') && (
+                          <button onClick={() => unsuspendUser(u.id)}
+                            className="px-3 py-1.5 text-xs font-semibold border border-green-200 rounded-lg text-green-600 hover:bg-green-50">
+                            Unsuspend
+                          </button>
+                        )}
+                        {/* Promote seller → dealer */}
+                        {u.type === 'seller' && adminRole === 'superadmin' && (
+                          <button onClick={() => openPromote(u)}
+                            className="px-3 py-1.5 text-xs font-semibold border border-blue-200 rounded-lg text-blue-600 hover:bg-blue-50">
+                            Make Dealer
+                          </button>
+                        )}
+                        {/* Delete — superadmin only */}
+                        {adminRole === 'superadmin' && (
+                          <button onClick={() => setConfirmDeleteUser(u)}
+                            className="px-3 py-1.5 text-xs font-semibold border border-red-200 rounded-lg text-red-600 hover:bg-red-50">
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Suspend modal */}
+      {suspendTarget && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSuspendTarget(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="font-bold text-lg text-zinc-900 mb-1">Suspend Account</h2>
+            <p className="text-sm text-zinc-500 mb-4">{suspendTarget.email}</p>
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Reason (optional)</label>
+            <input value={suspendReason} onChange={e => setSuspendReason(e.target.value)}
+              placeholder="e.g. Spam, abusive messages"
+              className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 mb-5" />
+            <div className="flex gap-3">
+              <button onClick={() => setSuspendTarget(null)} className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2.5 rounded-xl hover:bg-zinc-50">Cancel</button>
+              <button onClick={suspendUser} disabled={suspendWorking}
+                className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl">
+                {suspendWorking ? 'Suspending…' : 'Suspend'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit user modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setEditingUser(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="font-bold text-lg text-zinc-900 mb-4">Edit User</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Name</label>
+                <input value={editUserName} onChange={e => setEditUserName(e.target.value)}
+                  className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Email</label>
+                <input type="email" value={editUserEmail} onChange={e => setEditUserEmail(e.target.value)}
+                  className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setEditingUser(null)} className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2.5 rounded-xl hover:bg-zinc-50">Cancel</button>
+              <button onClick={saveUserEdit} disabled={editUserSaving}
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl">
+                {editUserSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Promote to dealer modal */}
+      {promoteTarget && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setPromoteTarget(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="font-bold text-lg text-zinc-900 mb-1">Promote to Dealer</h2>
+            <p className="text-sm text-zinc-500 mb-4">{promoteTarget.email}</p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Dealership Name *</label>
+                <input value={promoteName} onChange={e => setPromoteName(e.target.value)}
+                  className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">City</label>
+                  <input value={promoteLocation} onChange={e => setPromoteLocation(e.target.value)}
+                    className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">State</label>
+                  <input value={promoteState} maxLength={2} onChange={e => setPromoteState(e.target.value.toUpperCase())}
+                    className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setPromoteTarget(null)} className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2.5 rounded-xl hover:bg-zinc-50">Cancel</button>
+              <button onClick={promoteToDealer} disabled={promoteWorking || !promoteName}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl">
+                {promoteWorking ? 'Promoting…' : 'Make Dealer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create dealer modal */}
+      {createDealer && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setCreateDealer(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="font-bold text-lg text-zinc-900 mb-4">Create Dealer Account</h2>
+            <div className="space-y-4">
+              {[
+                { label: 'Dealership Name *', key: 'dealerName', type: 'text' },
+                { label: 'Contact Name', key: 'name', type: 'text' },
+                { label: 'Email *', key: 'email', type: 'email' },
+                { label: 'Password *', key: 'password', type: 'password' },
+                { label: 'City', key: 'location', type: 'text' },
+                { label: 'State', key: 'state', type: 'text' },
+              ].map(({ label, key, type }) => (
+                <div key={key}>
+                  <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">{label}</label>
+                  <input type={type} value={(newDealer as any)[key]}
+                    onChange={e => setNewDealer(d => ({ ...d, [key]: key === 'state' ? e.target.value.toUpperCase().slice(0,2) : e.target.value }))}
+                    maxLength={key === 'state' ? 2 : undefined}
+                    className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                </div>
+              ))}
+            </div>
+            {createError && <p className="text-sm text-red-600 mt-3">{createError}</p>}
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setCreateDealer(false)} className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2.5 rounded-xl hover:bg-zinc-50">Cancel</button>
+              <button onClick={createDealerAccount} disabled={createWorking || !newDealer.email || !newDealer.password || !newDealer.dealerName}
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl">
+                {createWorking ? 'Creating…' : 'Create Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete user confirmation */}
+      {confirmDeleteUser && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setConfirmDeleteUser(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <h2 className="font-bold text-lg text-zinc-900 mb-2">Delete Account?</h2>
+            <p className="text-sm text-zinc-500 mb-1">This will permanently delete:</p>
+            <p className="font-semibold text-zinc-900 mb-1">{confirmDeleteUser.email}</p>
+            <p className="text-zinc-400 text-xs mb-6">All their listings, conversations, watchlist, and alerts will also be deleted. This cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDeleteUser(null)} className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2.5 rounded-xl hover:bg-zinc-50">Cancel</button>
+              <button onClick={deleteUser} disabled={deletingUser}
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl">
+                {deletingUser ? 'Deleting…' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
