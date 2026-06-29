@@ -222,7 +222,11 @@ function AccountPage() {
     const supabase = createClient();
     await supabase.from('watchlists').delete().eq('id', watchId);
     setWatchItems(prev => prev.filter(w => w.id !== watchId));
-    setCounts(c => ({ ...c, watchlist: Math.max(0, c.watchlist - 1) }));
+    setCounts(c => {
+      const next = Math.max(0, c.watchlist - 1);
+      window.dispatchEvent(new CustomEvent('gc:watchlist-change', { detail: { count: next } }));
+      return { ...c, watchlist: next };
+    });
   };
 
   const deleteAlert = async (alertId: string) => {

@@ -27,6 +27,12 @@ function AccountTabBarInner() {
         messages: convJson.conversations?.length ?? 0,
       });
     });
+
+    const onWatchlistChange = (e: Event) => {
+      setCounts(c => ({ ...c, watchlist: (e as CustomEvent).detail.count }));
+    };
+    window.addEventListener('gc:watchlist-change', onWatchlistChange);
+    return () => window.removeEventListener('gc:watchlist-change', onWatchlistChange);
   }, []);
 
   // Determine active tab from URL

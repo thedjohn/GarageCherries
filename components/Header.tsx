@@ -65,11 +65,16 @@ export default function Header() {
     const handleConvRead = () => {
       setCounts(prev => ({ ...prev, messages: Math.max(0, prev.messages - 1) }));
     };
+    const handleWatchlistChange = (e: Event) => {
+      setCounts(prev => ({ ...prev, watchlist: (e as CustomEvent).detail.count }));
+    };
     window.addEventListener('gc:conv-read', handleConvRead);
+    window.addEventListener('gc:watchlist-change', handleWatchlistChange);
 
     return () => {
       subscription.unsubscribe();
       window.removeEventListener('gc:conv-read', handleConvRead);
+      window.removeEventListener('gc:watchlist-change', handleWatchlistChange);
     };
   }, []);
 
