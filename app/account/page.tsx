@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { formatPrice, toSegment } from '@/lib/data';
-import { MAKES } from '@/lib/types';
+import { MAKES, BODY_STYLES, CONDITIONS, STATES } from '@/lib/types';
 import AccountTabBar from '@/components/AccountTabBar';
 import { useMessenger } from '@/lib/messenger-context';
 
@@ -50,7 +50,11 @@ interface Alert {
   model: string | null;
   year_min: number | null;
   year_max: number | null;
+  price_min: number | null;
   price_max: number | null;
+  condition: string | null;
+  body_style: string | null;
+  state: string | null;
   paused: boolean;
   created_at: string;
   last_matched_at: string | null;
@@ -107,7 +111,7 @@ function AccountPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [alertsLoading, setAlertsLoading] = useState(false);
   const [showAlertForm, setShowAlertForm] = useState(false);
-  const [alertForm, setAlertForm] = useState({ name: '', make: '', model: '', year_min: '', year_max: '', price_max: '' });
+  const [alertForm, setAlertForm] = useState({ name: '', make: '', model: '', year_min: '', year_max: '', price_min: '', price_max: '', condition: '', body_style: '', state: '' });
   const [alertSaving, setAlertSaving] = useState(false);
   const [alertError, setAlertError] = useState('');
 
@@ -242,13 +246,17 @@ function AccountPage() {
       model: alertForm.model || null,
       year_min: alertForm.year_min ? Number(alertForm.year_min) : null,
       year_max: alertForm.year_max ? Number(alertForm.year_max) : null,
+      price_min: alertForm.price_min ? Number(alertForm.price_min) : null,
       price_max: alertForm.price_max ? Number(alertForm.price_max) : null,
+      condition: alertForm.condition || null,
+      body_style: alertForm.body_style || null,
+      state: alertForm.state || null,
     }).select().single();
     setAlertSaving(false);
     if (error) { setAlertError(error.message); return; }
     setAlerts(prev => [data as Alert, ...prev]);
     setCounts(c => ({ ...c, alerts: c.alerts + 1 }));
-    setAlertForm({ name: '', make: '', model: '', year_min: '', year_max: '', price_max: '' });
+    setAlertForm({ name: '', make: '', model: '', year_min: '', year_max: '', price_min: '', price_max: '', condition: '', body_style: '', state: '' });
     setShowAlertForm(false);
   };
 
@@ -479,11 +487,41 @@ function AccountPage() {
                       placeholder="e.g. 1970" min={1900} max={new Date().getFullYear() + 1}
                       className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
                   </div>
-                  <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Max Price</label>
-                    <input type="number" value={alertForm.price_max} onChange={e => setAlertForm(f => ({ ...f, price_max: e.target.value }))}
-                      placeholder="No limit"
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Min Price</label>
+                    <input type="number" value={alertForm.price_min} onChange={e => setAlertForm(f => ({ ...f, price_min: String(Math.max(0, Number(e.target.value))) }))}
+                      placeholder="No minimum" min={0}
                       className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Max Price</label>
+                    <input type="number" value={alertForm.price_max} onChange={e => setAlertForm(f => ({ ...f, price_max: String(Math.max(0, Number(e.target.value))) }))}
+                      placeholder="No limit" min={0}
+                      className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Condition</label>
+                    <select value={alertForm.condition} onChange={e => setAlertForm(f => ({ ...f, condition: e.target.value }))}
+                      className="w-full border border-zinc-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
+                      <option value="">Any Condition</option>
+                      {CONDITIONS.filter(c => c !== 'All').map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Body Style</label>
+                    <select value={alertForm.body_style} onChange={e => setAlertForm(f => ({ ...f, body_style: e.target.value }))}
+                      className="w-full border border-zinc-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
+                      <option value="">Any Style</option>
+                      {BODY_STYLES.filter(b => b !== 'All Styles').map(b => <option key={b}>{b}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">State</label>
+                    <select value={alertForm.state} onChange={e => setAlertForm(f => ({ ...f, state: e.target.value }))}
+                      className="w-full border border-zinc-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
+                      <option value="">Any State</option>
+                      {STATES.filter(s => s !== 'All States').map(s => <option key={s}>{s}</option>)}
+                    </select>
                   </div>
                 </div>
               </div>
