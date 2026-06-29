@@ -40,7 +40,8 @@ export default async function ListingsPage({ searchParams }: Props) {
   if (sp.transmission) query = query.eq('transmission', sp.transmission);
   if (sp.state)        query = query.eq('state', sp.state);
 
-  const { data: dbRows } = await query;
+  const { data: dbRows, error: listingsError } = await query;
+  if (listingsError) console.error('Listings query error:', listingsError.message, listingsError.details);
 
   const cars: Car[] = (dbRows ?? []).map(r => ({
     id: r.id, slug: r.slug, title: r.title,
