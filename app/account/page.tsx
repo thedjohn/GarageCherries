@@ -52,7 +52,7 @@ interface Alert {
   year_max: number | null;
   price_min: number | null;
   price_max: number | null;
-  condition: string | null;
+  condition: string[] | string | null;
   body_style: string | null;
   state: string | null;
   paused: boolean;
@@ -245,7 +245,7 @@ function AccountPage() {
     year_max: alertForm.year_max ? Number(alertForm.year_max) : null,
     price_min: alertForm.price_min ? Number(alertForm.price_min) : null,
     price_max: alertForm.price_max ? Number(alertForm.price_max) : null,
-    condition: alertForm.condition || null,
+    condition: alertForm.condition ? [alertForm.condition] : null,
     body_style: alertForm.body_style || null,
     state: alertForm.state || null,
   });
@@ -266,7 +266,7 @@ function AccountPage() {
       year_max: a.year_max ? String(a.year_max) : '',
       price_min: a.price_min ? String(a.price_min) : '',
       price_max: a.price_max ? String(a.price_max) : '',
-      condition: a.condition || '',
+      condition: (Array.isArray(a.condition) ? a.condition[0] : a.condition) || '',
       body_style: a.body_style || '',
       state: a.state || '',
     });
@@ -341,7 +341,8 @@ function AccountPage() {
 
   const alertTags = (a: Alert) => {
     const tags: string[] = [];
-    if (a.condition) tags.push(a.condition);
+    const cond = Array.isArray(a.condition) ? a.condition[0] : a.condition;
+    if (cond) tags.push(cond);
     if (a.body_style) tags.push(a.body_style);
     if (a.state) tags.push(a.state);
     if (a.price_min && a.price_max) tags.push(`$${a.price_min.toLocaleString()}–$${a.price_max.toLocaleString()}`);
