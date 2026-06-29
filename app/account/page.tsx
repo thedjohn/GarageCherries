@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { formatPrice, toSegment } from '@/lib/data';
+import { MAKES } from '@/lib/types';
 import AccountTabBar from '@/components/AccountTabBar';
 import { useMessenger } from '@/lib/messenger-context';
 
@@ -105,6 +106,10 @@ function AccountPage() {
   // Alerts
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [alertsLoading, setAlertsLoading] = useState(false);
+  const [showAlertForm, setShowAlertForm] = useState(false);
+  const [alertForm, setAlertForm] = useState({ name: '', make: '', model: '', year_min: '', year_max: '', price_max: '' });
+  const [alertSaving, setAlertSaving] = useState(false);
+  const [alertError, setAlertError] = useState('');
 
   // Settings
   const [fullName, setFullName] = useState('');
@@ -221,6 +226,30 @@ function AccountPage() {
     await supabase.from('saved_searches').delete().eq('id', alertId);
     setAlerts(prev => prev.filter(a => a.id !== alertId));
     setCounts(c => ({ ...c, alerts: Math.max(0, c.alerts - 1) }));
+  };
+
+  const createAlert = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (alerts.length >= 10) { setAlertError('You have reached the 10 alert limit.'); return; }
+    setAlertSaving(true); setAlertError('');
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setAlertError('Not logged in.'); setAlertSaving(false); return; }
+    const { data, error } = await supabase.from('saved_searches').insert({
+      user_id: user.id,
+      name: alertForm.name || null,
+      make: alertForm.make || null,
+      model: alertForm.model || null,
+      year_min: alertForm.year_min ? Number(alertForm.year_min) : null,
+      year_max: alertForm.year_max ? Number(alertForm.year_max) : null,
+      price_max: alertForm.price_max ? Number(alertForm.price_max) : null,
+    }).select().single();
+    setAlertSaving(false);
+    if (error) { setAlertError(error.message); return; }
+    setAlerts(prev => [data as Alert, ...prev]);
+    setCounts(c => ({ ...c, alerts: c.alerts + 1 }));
+    setAlertForm({ name: '', make: '', model: '', year_min: '', year_max: '', price_max: '' });
+    setShowAlertForm(false);
   };
 
   const saveProfile = async (e: React.FormEvent) => {
@@ -402,24 +431,89 @@ function AccountPage() {
       {/* Alerts tab */}
       {tab === 'alerts' && (
         <div>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-5">
             <p className="text-sm text-zinc-500">{alerts.length}/10 alerts used</p>
-            <Link href="/listings" className="bg-red-600 hover:bg-red-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors">
-              + New Alert
-            </Link>
+            {alerts.length < 10 && !showAlertForm && (
+              <button onClick={() => setShowAlertForm(true)}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors">
+                + New Alert
+              </button>
+            )}
           </div>
+
+          {/* New alert form */}
+          {showAlertForm && (
+            <form onSubmit={createAlert} className="bg-white rounded-2xl border border-zinc-200 shadow-sm p-6 mb-5">
+              <h2 className="font-bold text-zinc-900 mb-4">New Alert</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Alert Name (optional)</label>
+                  <input value={alertForm.name} onChange={e => setAlertForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g. Dream Mustang"
+                    className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Make</label>
+                    <select value={alertForm.make} onChange={e => setAlertForm(f => ({ ...f, make: e.target.value, model: '' }))}
+                      className="w-full border border-zinc-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
+                      <option value="">Any Make</option>
+                      {MAKES.filter(m => m !== 'All Makes').map(m => <option key={m}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Model</label>
+                    <input value={alertForm.model} onChange={e => setAlertForm(f => ({ ...f, model: e.target.value }))}
+                      placeholder="Any model"
+                      className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Year From</label>
+                    <input type="number" value={alertForm.year_min} onChange={e => setAlertForm(f => ({ ...f, year_min: e.target.value }))}
+                      placeholder="e.g. 1965" min={1900} max={new Date().getFullYear() + 1}
+                      className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Year To</label>
+                    <input type="number" value={alertForm.year_max} onChange={e => setAlertForm(f => ({ ...f, year_max: e.target.value }))}
+                      placeholder="e.g. 1970" min={1900} max={new Date().getFullYear() + 1}
+                      className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Max Price</label>
+                    <input type="number" value={alertForm.price_max} onChange={e => setAlertForm(f => ({ ...f, price_max: e.target.value }))}
+                      placeholder="No limit"
+                      className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                  </div>
+                </div>
+              </div>
+              {alertError && <p className="text-sm text-red-600 mt-3">{alertError}</p>}
+              <div className="flex gap-3 mt-5">
+                <button type="button" onClick={() => { setShowAlertForm(false); setAlertError(''); }}
+                  className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2.5 rounded-xl hover:bg-zinc-50">
+                  Cancel
+                </button>
+                <button type="submit" disabled={alertSaving}
+                  className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition-colors">
+                  {alertSaving ? 'Saving…' : 'Save Alert'}
+                </button>
+              </div>
+            </form>
+          )}
+
           {alertsLoading ? (
             <div className="space-y-3">
               {[1,2].map(i => <div key={i} className="h-16 bg-zinc-100 rounded-2xl animate-pulse" />)}
             </div>
-          ) : alerts.length === 0 ? (
+          ) : alerts.length === 0 && !showAlertForm ? (
             <div className="bg-white rounded-2xl border border-zinc-100 p-16 text-center">
               <p className="text-5xl mb-4">🔔</p>
               <h2 className="text-xl font-bold text-zinc-800 mb-2">No alerts yet</h2>
-              <p className="text-zinc-500 text-sm mb-6">Browse listings, set filters, then click "Notify me when a match lists."</p>
-              <Link href="/listings" className="bg-red-600 hover:bg-red-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-colors">
-                Browse Listings
-              </Link>
+              <p className="text-zinc-500 text-sm mb-6">Get notified by email when a listing matches your criteria.</p>
+              <button onClick={() => setShowAlertForm(true)}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-colors">
+                Create Your First Alert
+              </button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -436,10 +530,8 @@ function AccountPage() {
                       )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => deleteAlert(a.id)}
-                    className="text-zinc-300 hover:text-red-500 transition-colors p-2"
-                    title="Delete alert">
+                  <button onClick={() => deleteAlert(a.id)}
+                    className="text-zinc-300 hover:text-red-500 transition-colors p-2" title="Delete alert">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
