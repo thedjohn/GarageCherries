@@ -40,10 +40,17 @@ export default function Header() {
         fetch('/api/conversations'),
       ]);
       const convJson = await convRes.json();
+      const totalConvs: number = convJson.conversations?.length ?? 0;
+      let readCount = 0;
+      try {
+        const readIds: string[] = JSON.parse(localStorage.getItem('gc_read_convs') ?? '[]');
+        const convIds: string[] = (convJson.conversations ?? []).map((c: { id: string }) => c.id);
+        readCount = convIds.filter((id: string) => readIds.includes(id)).length;
+      } catch {}
       setCounts({
         watchlist: watchRes.count ?? 0,
         alerts: alertRes.count ?? 0,
-        messages: convJson.conversations?.length ?? 0,
+        messages: Math.max(0, totalConvs - readCount),
       });
     }
 
@@ -55,7 +62,15 @@ export default function Header() {
       resolveAuth(session?.user?.id ?? null, session?.user?.email ?? null, session?.user?.user_metadata?.full_name ?? null);
     });
 
-    return () => subscription.unsubscribe();
+    const handleConvRead = () => {
+      setCounts(prev => ({ ...prev, messages: Math.max(0, prev.messages - 1) }));
+    };
+    window.addEventListener('gc:conv-read', handleConvRead);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('gc:conv-read', handleConvRead);
+    };
   }, []);
 
   // Close dropdown when clicking outside

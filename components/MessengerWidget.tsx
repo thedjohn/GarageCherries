@@ -40,6 +40,14 @@ export default function MessengerWidget() {
     fetch(`/api/conversations/${conversationId}/messages`)
       .then(r => r.json())
       .then(({ messages: msgs }) => setMessages(msgs ?? []));
+    // Mark as read
+    try {
+      const existing: string[] = JSON.parse(localStorage.getItem('gc_read_convs') ?? '[]');
+      if (!existing.includes(conversationId)) {
+        localStorage.setItem('gc_read_convs', JSON.stringify([...existing, conversationId]));
+        window.dispatchEvent(new CustomEvent('gc:conv-read', { detail: { convId: conversationId } }));
+      }
+    } catch {}
   }, [conversationId]);
 
   // Realtime subscription

@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { formatPrice, toSegment } from '@/lib/data';
 import AccountTabBar from '@/components/AccountTabBar';
+import { useMessenger } from '@/lib/messenger-context';
 
 type Tab = 'watchlist' | 'messages' | 'alerts' | 'settings';
 
@@ -57,6 +58,16 @@ interface Profile {
   phone: string;
 }
 
+function markConvRead(convId: string) {
+  try {
+    const existing: string[] = JSON.parse(localStorage.getItem('gc_read_convs') ?? '[]');
+    if (!existing.includes(convId)) {
+      localStorage.setItem('gc_read_convs', JSON.stringify([...existing, convId]));
+      window.dispatchEvent(new CustomEvent('gc:conv-read', { detail: { convId } }));
+    }
+  } catch {}
+}
+
 export default function AccountPageWrapper() {
   return (
     <Suspense fallback={<div className="max-w-4xl mx-auto px-4 py-20 text-center text-zinc-400">Loading…</div>}>
@@ -68,6 +79,7 @@ export default function AccountPageWrapper() {
 function AccountPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { openChat } = useMessenger();
   const [tab, setTab] = useState<Tab>(() => (searchParams.get('tab') as Tab) || 'watchlist');
 
   // Keep tab in sync when URL changes (e.g. clicking AccountTabBar links)
@@ -342,8 +354,12 @@ function AccountPage() {
           ) : (
             <div className="space-y-3">
               {conversations.map(conv => (
-                <Link key={conv.id} href={`/messages/${conv.id}`}
-                  className="flex items-center gap-4 bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 hover:border-red-200 hover:shadow transition-all">
+                <button key={conv.id}
+                  onClick={() => {
+                    openChat(conv.id, conv.listing_title);
+                    markConvRead(conv.id);
+                  }}
+                  className="w-full flex items-center gap-4 bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 hover:border-red-200 hover:shadow transition-all text-left">
                   <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold text-sm shrink-0">
                     🚗
                   </div>
@@ -357,7 +373,7 @@ function AccountPage() {
                   <svg className="w-4 h-4 text-zinc-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
-                </Link>
+                </button>
               ))}
             </div>
           )}

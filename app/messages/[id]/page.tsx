@@ -26,8 +26,14 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [reported, setReported] = useState<Set<string>>(new Set());
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const initialScrollDone = useRef(false);
+
+  // Prevent page scroll — footer height causes overflow otherwise
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
 
   useEffect(() => {
     initialScrollDone.current = false;
@@ -51,6 +57,15 @@ export default function ChatPage() {
       const json = await res.json();
       setMessages(json.messages ?? []);
       setLoading(false);
+
+      // Mark as read
+      try {
+        const existing: string[] = JSON.parse(localStorage.getItem('gc_read_convs') ?? '[]');
+        if (!existing.includes(id)) {
+          localStorage.setItem('gc_read_convs', JSON.stringify([...existing, id]));
+          window.dispatchEvent(new CustomEvent('gc:conv-read', { detail: { convId: id } }));
+        }
+      } catch {}
     });
   }, [id, router]);
 
@@ -78,11 +93,13 @@ export default function ChatPage() {
   // Scroll to bottom: instant on first load, smooth on new incoming messages
   useEffect(() => {
     if (messages.length === 0) return;
+    const el = messagesContainerRef.current;
+    if (!el) return;
     if (!initialScrollDone.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'instant' });
+      el.scrollTop = el.scrollHeight;
       initialScrollDone.current = true;
     } else {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
     }
   }, [messages]);
 
@@ -111,7 +128,7 @@ export default function ChatPage() {
   return (
     <>
       <AccountTabBar />
-      <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col h-[calc(100vh-160px)]">
+      <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col" style={{ height: 'calc(100vh - 64px - 56px)' }}>
         {/* Conversation header */}
         <div className="flex items-center gap-3 mb-4 pb-4 border-b border-zinc-100">
           <Link href="/account?tab=messages" className="text-zinc-400 hover:text-zinc-700 shrink-0">
@@ -125,7 +142,7 @@ export default function ChatPage() {
         </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-3 pb-4">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto space-y-3 pb-4">
         {messages.length === 0 && (
           <p className="text-center text-zinc-400 text-sm py-8">No messages yet. Start the conversation below.</p>
         )}
@@ -165,7 +182,6 @@ export default function ChatPage() {
             </div>
           );
         })}
-        <div ref={bottomRef} />
       </div>
 
         {/* Input */}
