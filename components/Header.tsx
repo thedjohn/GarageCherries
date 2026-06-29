@@ -183,7 +183,7 @@ export default function Header() {
                       <Link href="/account?tab=alerts"
                         onClick={() => setDropdownOpen(false)}
                         className="flex items-center justify-between px-5 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors">
-                        <span>Car Alerts</span>
+                        <span>Alerts</span>
                         {counts.alerts > 0 && (
                           <span className="bg-zinc-100 text-zinc-600 text-xs font-bold rounded-full px-2 py-0.5">{counts.alerts}</span>
                         )}
@@ -272,7 +272,7 @@ export default function Header() {
                     {counts.messages > 0 && <span className="bg-zinc-700 text-white text-xs font-bold rounded-full px-2 py-0.5">{counts.messages}</span>}
                   </Link>
                   <Link href="/account?tab=alerts" className="flex justify-between py-2 font-semibold hover:text-red-400" onClick={() => setMenuOpen(false)}>
-                    <span>Car Alerts</span>
+                    <span>Alerts</span>
                     {counts.alerts > 0 && <span className="bg-zinc-700 text-white text-xs font-bold rounded-full px-2 py-0.5">{counts.alerts}</span>}
                   </Link>
                   <Link href="/account?tab=settings" className="block py-2 text-zinc-400 hover:text-red-400" onClick={() => setMenuOpen(false)}>Account Settings</Link>
