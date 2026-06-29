@@ -3,6 +3,21 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 
 const ADMIN_EMAIL = 'derek_ljohnson@yahoo.com';
 
+export async function GET() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || user.email !== ADMIN_EMAIL) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const admin = createAdminClient();
+  const { data: listings, error } = await admin
+    .from('listings')
+    .select('id,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,location,state,seller_name,seller_phone,seller_email,images,description,featured,status,created_at')
+    .order('created_at', { ascending: false });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ listings: listings ?? [] });
+}
+
 export async function PATCH(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

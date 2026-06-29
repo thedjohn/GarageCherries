@@ -47,23 +47,20 @@ export default function AdminPage() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (user?.email === ADMIN_EMAIL) {
         setAuthed(true);
-        Promise.all([
-          supabase
-            .from('listings')
-            .select('id,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,location,state,seller_name,seller_phone,seller_email,images,description,featured,status,created_at')
-            .order('created_at', { ascending: false }),
+        const [listingsRes, convRes] = await Promise.all([
+          fetch('/api/admin/listings'),
           supabase
             .from('conversations')
             .select('id,listing_title,buyer_name,buyer_email,seller_email,last_message_at,created_at')
             .order('last_message_at', { ascending: false }),
-        ]).then(([{ data: listingData }, { data: convData }]) => {
-          setListings((listingData ?? []) as Listing[]);
-          setConversations(convData ?? []);
-          setLoading(false);
-        });
+        ]);
+        const { listings: listingData } = await listingsRes.json();
+        setListings((listingData ?? []) as Listing[]);
+        setConversations(convRes.data ?? []);
+        setLoading(false);
       } else {
         setLoading(false);
       }
