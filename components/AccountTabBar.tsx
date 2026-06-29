@@ -17,7 +17,7 @@ function AccountTabBarInner() {
       if (!user) return;
       const [watchRes, alertRes, convRes] = await Promise.all([
         supabase.from('watchlists').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('saved_searches').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('saved_searches').select('id', { count: 'exact', head: true }).eq('user_id', user.id).not('last_matched_at', 'is', null),
         fetch('/api/conversations'),
       ]);
       const convJson = await convRes.json();

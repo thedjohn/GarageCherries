@@ -36,7 +36,7 @@ export default function Header() {
       // Fetch counts for badge display
       const [watchRes, alertRes, convRes] = await Promise.all([
         supabase.from('watchlists').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-        supabase.from('saved_searches').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+        supabase.from('saved_searches').select('id', { count: 'exact', head: true }).eq('user_id', userId).not('last_matched_at', 'is', null),
         fetch('/api/conversations'),
       ]);
       const convJson = await convRes.json();
