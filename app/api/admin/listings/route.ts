@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
-import { requireAdmin } from '@/lib/admin';
+import { requireAdmin, hasRole } from '@/lib/admin';
 
 export async function GET() {
   const supabase = await createClient();
@@ -28,8 +28,9 @@ export async function PATCH(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Edit update — action is absent when editing fields directly
+  // Edit update — requires admin or above
   if (!action) {
+    if (!hasRole(role, 'admin')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { year, make, model, price, mileage, condition, body_style, transmission,
             engine, color, location, state, description, seller_name, seller_phone,
             seller_email, featured, status } = body;
@@ -48,7 +49,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true });
   }
 
-  // Approve / reject
+  // Approve / reject — requires moderator or above
+  if (!hasRole(role, 'moderator')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!['approve', 'reject'].includes(action)) {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }

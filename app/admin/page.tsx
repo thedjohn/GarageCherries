@@ -195,21 +195,25 @@ export default function AdminPage() {
         </span>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — visible tabs depend on role */}
       <div className="flex gap-1 mb-6 bg-zinc-100 rounded-xl p-1 w-fit flex-wrap">
-        <button onClick={() => setTab('listings')} className={tabCls('listings')}>
-          Listings <span className="ml-1 text-xs text-zinc-400">{pending.length} pending</span>
-        </button>
+        {adminRole !== 'support' && (
+          <button onClick={() => setTab('listings')} className={tabCls('listings')}>
+            Listings <span className="ml-1 text-xs text-zinc-400">{pending.length} pending</span>
+          </button>
+        )}
         <button onClick={() => setTab('messages')} className={tabCls('messages')}>
           Messages <span className="ml-1 text-xs text-zinc-400">{conversations.length}</span>
         </button>
-        <button onClick={() => setTab('reported')} className={tabCls('reported')}>
-          Reported
-          {reported.length > 0 && (
-            <span className="ml-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{reported.length}</span>
-          )}
-        </button>
-        {adminRole === 'superadmin' && (
+        {adminRole !== 'support' && (
+          <button onClick={() => setTab('reported')} className={tabCls('reported')}>
+            Reported
+            {reported.length > 0 && (
+              <span className="ml-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{reported.length}</span>
+            )}
+          </button>
+        )}
+        {(adminRole === 'superadmin' || adminRole === 'admin') && (
           <button onClick={() => setTab('team')} className={tabCls('team')}>
             Team <span className="ml-1 text-xs text-zinc-400">{team.length}</span>
           </button>
@@ -236,7 +240,7 @@ export default function AdminPage() {
                 <p className="text-sm text-zinc-500">{l.seller_name} · {formatPhone(l.seller_phone)} · {l.seller_email}</p>
                 <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{l.description}</p>
                 <div className="flex gap-2 mt-3 flex-wrap">
-                  {l.status === 'pending' && <>
+                  {l.status === 'pending' && (adminRole === 'moderator' || adminRole === 'admin' || adminRole === 'superadmin') && <>
                     <button onClick={() => handleAction(l.id, 'approve')} disabled={!!working}
                       className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
                       {working === l.id + 'approve' ? 'Approving…' : 'Approve'}
@@ -246,10 +250,12 @@ export default function AdminPage() {
                       {working === l.id + 'reject' ? 'Rejecting…' : 'Reject'}
                     </button>
                   </>}
-                  <button onClick={() => openEdit(l)}
-                    className="px-4 py-1.5 border border-zinc-200 text-zinc-600 text-sm font-semibold rounded-lg hover:bg-zinc-50">
-                    Edit
-                  </button>
+                  {(adminRole === 'admin' || adminRole === 'superadmin') && (
+                    <button onClick={() => openEdit(l)}
+                      className="px-4 py-1.5 border border-zinc-200 text-zinc-600 text-sm font-semibold rounded-lg hover:bg-zinc-50">
+                      Edit
+                    </button>
+                  )}
                   {adminRole === 'superadmin' && (
                     <button onClick={() => setConfirmDelete(l)}
                       className="px-4 py-1.5 border border-red-200 text-red-600 text-sm font-semibold rounded-lg hover:bg-red-50">
@@ -314,8 +320,8 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Team tab — superadmin only */}
-      {tab === 'team' && adminRole === 'superadmin' && (
+      {/* Team tab — admin and superadmin */}
+      {tab === 'team' && (adminRole === 'superadmin' || adminRole === 'admin') && (
         <div className="space-y-6">
           {/* Current team */}
           <div className="space-y-3">
@@ -329,18 +335,20 @@ export default function AdminPage() {
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${m.role === 'superadmin' ? 'bg-red-100 text-red-700' : 'bg-zinc-100 text-zinc-600'}`}>
                     {m.role}
                   </span>
-                  <button
-                    onClick={() => removeTeamMember(m.user_id)}
-                    className="text-xs text-zinc-400 hover:text-red-600 font-semibold transition-colors">
-                    Remove
-                  </button>
+                  {adminRole === 'superadmin' && (
+                    <button
+                      onClick={() => removeTeamMember(m.user_id)}
+                      className="text-xs text-zinc-400 hover:text-red-600 font-semibold transition-colors">
+                      Remove
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Add new member */}
-          <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
+          {/* Add new member — superadmin only */}
+          {adminRole === 'superadmin' && <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
             <h2 className="font-bold text-zinc-900 mb-4">Add Team Member</h2>
             <div className="flex gap-3 flex-wrap">
               <input
@@ -354,7 +362,9 @@ export default function AdminPage() {
                 value={newRole}
                 onChange={e => setNewRole(e.target.value as 'moderator' | 'superadmin')}
                 className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                <option value="support">Support</option>
                 <option value="moderator">Moderator</option>
+                <option value="admin">Admin</option>
                 <option value="superadmin">Superadmin</option>
               </select>
               <button
@@ -366,7 +376,7 @@ export default function AdminPage() {
             </div>
             {teamError && <p className="text-sm text-red-600 mt-2">{teamError}</p>}
             <p className="text-xs text-zinc-400 mt-3">The person must already have a GarageCherries account.</p>
-          </div>
+          </div>}
         </div>
       )}
 

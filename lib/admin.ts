@@ -1,6 +1,12 @@
 import { createAdminClient } from '@/lib/supabase/server';
 
-export type AdminRole = 'superadmin' | 'moderator';
+export type AdminRole = 'superadmin' | 'admin' | 'moderator' | 'support';
+
+const ROLE_HIERARCHY: AdminRole[] = ['support', 'moderator', 'admin', 'superadmin'];
+
+export function hasRole(userRole: AdminRole, minRole: AdminRole): boolean {
+  return ROLE_HIERARCHY.indexOf(userRole) >= ROLE_HIERARCHY.indexOf(minRole);
+}
 
 export async function getAdminRole(userId: string): Promise<AdminRole | null> {
   const admin = createAdminClient();
