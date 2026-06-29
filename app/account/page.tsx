@@ -33,11 +33,13 @@ interface WatchItem {
 
 interface Conversation {
   id: string;
+  listing_id: string;
   listing_title: string;
   last_message_at: string;
   buyer_id: string;
   buyer_name: string | null;
   unread?: boolean;
+  listing_image?: string | null;
 }
 
 interface Alert {
@@ -172,7 +174,21 @@ function AccountPage() {
     setMessagesLoading(true);
     const res = await fetch('/api/conversations');
     const json = await res.json();
-    setConversations(json.conversations ?? []);
+    const convs: Conversation[] = json.conversations ?? [];
+
+    // Fetch first image for each listing
+    const listingIds = [...new Set(convs.map(c => c.listing_id).filter(Boolean))];
+    if (listingIds.length > 0) {
+      const supabase = createClient();
+      const { data: listings } = await supabase
+        .from('listings')
+        .select('id, images')
+        .in('id', listingIds);
+      const imageMap = Object.fromEntries((listings ?? []).map(l => [l.id, l.images?.[0] ?? null]));
+      convs.forEach(c => { c.listing_image = imageMap[c.listing_id] ?? null; });
+    }
+
+    setConversations(convs);
     setMessagesLoading(false);
   }, [conversations.length]);
 
@@ -360,8 +376,11 @@ function AccountPage() {
                     markConvRead(conv.id);
                   }}
                   className="w-full flex items-center gap-4 bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 hover:border-red-200 hover:shadow transition-all text-left">
-                  <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold text-sm shrink-0">
-                    🚗
+                  <div className="w-10 h-10 rounded-full bg-zinc-100 shrink-0 overflow-hidden relative">
+                    {conv.listing_image
+                      ? <Image src={conv.listing_image} alt={conv.listing_title} fill className="object-cover" sizes="40px" />
+                      : <div className="w-full h-full flex items-center justify-center text-zinc-400 text-lg">🚗</div>
+                    }
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-zinc-900 truncate">{conv.listing_title}</p>
