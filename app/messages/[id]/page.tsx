@@ -58,13 +58,14 @@ export default function ChatPage() {
       setMessages(json.messages ?? []);
       setLoading(false);
 
-      // Mark as read
+      // Mark as read — store timestamp so new messages after this point are detected as unread
       try {
-        const existing: string[] = JSON.parse(localStorage.getItem('gc_read_convs') ?? '[]');
-        if (!existing.includes(id)) {
-          localStorage.setItem('gc_read_convs', JSON.stringify([...existing, id]));
-          window.dispatchEvent(new CustomEvent('gc:conv-read', { detail: { convId: id } }));
-        }
+        const map: Record<string, string> = JSON.parse(localStorage.getItem('gc_conv_read_at') ?? '{}');
+        const now = new Date().toISOString();
+        const wasUnread = !map[id];
+        map[id] = now;
+        localStorage.setItem('gc_conv_read_at', JSON.stringify(map));
+        if (wasUnread) window.dispatchEvent(new CustomEvent('gc:conv-read', { detail: { convId: id } }));
       } catch {}
     });
   }, [id, router]);

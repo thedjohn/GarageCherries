@@ -21,11 +21,11 @@ function AccountTabBarInner() {
         fetch('/api/conversations'),
       ]);
       const convJson = await convRes.json();
-      const allConvIds: string[] = (convJson.conversations ?? []).map((c: { id: string }) => c.id);
-      let unreadCount = allConvIds.length;
+      const allConvs: { id: string; last_message_at: string }[] = convJson.conversations ?? [];
+      let unreadCount = allConvs.length;
       try {
-        const readIds: string[] = JSON.parse(localStorage.getItem('gc_read_convs') ?? '[]');
-        unreadCount = allConvIds.filter(id => !readIds.includes(id)).length;
+        const map: Record<string, string> = JSON.parse(localStorage.getItem('gc_conv_read_at') ?? '{}');
+        unreadCount = allConvs.filter(c => !map[c.id] || new Date(c.last_message_at) > new Date(map[c.id])).length;
       } catch {}
       setCounts({
         watchlist: watchRes.count ?? 0,

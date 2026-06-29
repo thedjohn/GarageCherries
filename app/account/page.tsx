@@ -65,13 +65,13 @@ interface Profile {
   phone: string;
 }
 
-function markConvRead(convId: string) {
+function markConvRead(convId: string, lastMessageAt: string) {
   try {
-    const existing: string[] = JSON.parse(localStorage.getItem('gc_read_convs') ?? '[]');
-    if (!existing.includes(convId)) {
-      localStorage.setItem('gc_read_convs', JSON.stringify([...existing, convId]));
-      window.dispatchEvent(new CustomEvent('gc:conv-read', { detail: { convId } }));
-    }
+    const map: Record<string, string> = JSON.parse(localStorage.getItem('gc_conv_read_at') ?? '{}');
+    const wasUnread = !map[convId] || new Date(lastMessageAt) > new Date(map[convId]);
+    map[convId] = lastMessageAt;
+    localStorage.setItem('gc_conv_read_at', JSON.stringify(map));
+    if (wasUnread) window.dispatchEvent(new CustomEvent('gc:conv-read', { detail: { convId } }));
   } catch {}
 }
 
@@ -201,10 +201,12 @@ function AccountPage() {
       convs.forEach(c => { c.listing_image = imageMap[c.listing_id] ?? null; });
     }
 
-    // Mark unread based on localStorage
+    // Mark unread: unread if never seen, or if last_message_at is newer than last seen
     try {
-      const readIds: string[] = JSON.parse(localStorage.getItem('gc_read_convs') ?? '[]');
-      convs.forEach(c => { c.unread = !readIds.includes(c.id); });
+      const map: Record<string, string> = JSON.parse(localStorage.getItem('gc_conv_read_at') ?? '{}');
+      convs.forEach(c => {
+        c.unread = !map[c.id] || new Date(c.last_message_at) > new Date(map[c.id]);
+      });
     } catch {}
 
     setConversations(convs);
@@ -484,7 +486,7 @@ function AccountPage() {
                 <button key={conv.id}
                   onClick={() => {
                     openChat(conv.id, conv.listing_title);
-                    markConvRead(conv.id);
+                    markConvRead(conv.id, conv.last_message_at);
                     setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, unread: false } : c));
                   }}
                   className={`w-full flex items-center gap-4 rounded-2xl border shadow-sm p-4 hover:border-red-200 hover:shadow transition-all text-left ${conv.unread ? 'bg-blue-50 border-blue-100' : 'bg-white border-zinc-100'}`}>
