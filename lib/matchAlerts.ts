@@ -8,7 +8,7 @@ const BASE_URL = 'https://www.garagecherries.com';
 function scoreMatch(car: Car, s: any): number {
   // Hard criteria — if set, must match exactly
   if (s.make && s.make !== 'All Makes' && car.make.toLowerCase() !== s.make.toLowerCase()) return 0;
-  if (s.model && car.model.toLowerCase() !== s.model.toLowerCase()) return 0;
+  if (s.model && !car.model.toLowerCase().includes(s.model.toLowerCase().trim())) return 0;
 
   let possible = 0;
   let matched = 0;
