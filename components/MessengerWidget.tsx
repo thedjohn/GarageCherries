@@ -15,6 +15,7 @@ interface Message {
 export default function MessengerWidget() {
   const { open, minimized, conversationId, listingTitle, closeChat, toggleMinimize } = useMessenger();
   const [messages, setMessages] = useState<Message[]>([]);
+  const [listingImage, setListingImage] = useState<string | null>(null);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -34,12 +35,30 @@ export default function MessengerWidget() {
     });
   }, []);
 
-  // Load messages when conversation opens
+  // Load messages + listing image when conversation opens
   useEffect(() => {
-    if (!conversationId) { setMessages([]); return; }
+    if (!conversationId) { setMessages([]); setListingImage(null); return; }
     fetch(`/api/conversations/${conversationId}/messages`)
       .then(r => r.json())
       .then(({ messages: msgs }) => setMessages(msgs ?? []));
+    // Fetch listing image via conversation → listing
+    const supabase = createClient();
+    supabase
+      .from('conversations')
+      .select('listing_id')
+      .eq('id', conversationId)
+      .single()
+      .then(({ data: conv }) => {
+        if (!conv?.listing_id) return;
+        supabase
+          .from('listings')
+          .select('images')
+          .eq('id', conv.listing_id)
+          .single()
+          .then(({ data: listing }) => {
+            setListingImage(listing?.images?.[0] ?? null);
+          });
+      });
     // Mark as read
     try {
       const existing: string[] = JSON.parse(localStorage.getItem('gc_read_convs') ?? '[]');
@@ -108,8 +127,10 @@ export default function MessengerWidget() {
       {/* Header */}
       <div className="bg-zinc-900 text-white px-4 py-3 flex items-center gap-2 cursor-pointer select-none"
         onClick={toggleMinimize}>
-        <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center shrink-0 text-sm">
-          🚗
+        <div className="w-8 h-8 rounded-full bg-red-600 shrink-0 overflow-hidden flex items-center justify-center text-sm">
+          {listingImage
+            ? <img src={listingImage} alt="" className="w-full h-full object-cover" />
+            : '🚗'}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold truncate">{listingTitle}</p>
