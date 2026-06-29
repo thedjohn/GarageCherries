@@ -26,7 +26,7 @@ export async function GET() {
   ] = await Promise.all([
     admin.auth.admin.listUsers({ perPage: 1000 }),
     admin.from('dealers').select('id, name, location, state, since, logo'),
-    admin.from('advertisers').select('id, company_name, website').catch(() => ({ data: [] })),
+    admin.from('advertisers').select('id, user_id, business_name, contact_name, phone, city, state'),
     admin.from('listings').select('seller_id, status'),
     admin.from('suspended_users').select('user_id, reason, suspended_at'),
     admin.from('watchlists').select('user_id'),
@@ -35,8 +35,8 @@ export async function GET() {
 
   const dealerIds = new Set((dealers ?? []).map((d: any) => d.id));
   const dealerMap = Object.fromEntries((dealers ?? []).map((d: any) => [d.id, d]));
-  const advertiserIds = new Set((advertisers ?? []).map((a: any) => a.id));
-  const advertiserMap = Object.fromEntries((advertisers ?? []).map((a: any) => [a.id, a]));
+  const advertiserIds = new Set((advertisers ?? []).map((a: any) => a.user_id));
+  const advertiserMap = Object.fromEntries((advertisers ?? []).map((a: any) => [a.user_id, a]));
   const suspendedMap = Object.fromEntries((suspended ?? []).map(s => [s.user_id, s]));
 
   // Listing counts per seller
@@ -94,7 +94,7 @@ export async function GET() {
       type,
       suspended: suspendedMap[u.id] ?? null,
       dealer: isDealer ? dealerMap[u.id] : null,
-      advertiser: isAdvertiser ? advertiserMap[u.id] : null,
+      advertiser: isAdvertiser ? { company_name: advertiserMap[u.id]?.business_name, ...advertiserMap[u.id] } : null,
       listings: listingCounts[u.id] ?? null,
       watchlist_count: watchlistCounts[u.id] ?? 0,
       conversation_count: convCounts[u.id] ?? 0,
