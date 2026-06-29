@@ -335,8 +335,19 @@ function AccountPage() {
     if (a.model) parts.push(a.model);
     if (a.year_min && a.year_max) parts.push(`${a.year_min}–${a.year_max}`);
     else if (a.year_min) parts.push(`${a.year_min}+`);
-    if (a.price_max) parts.push(`under $${a.price_max.toLocaleString()}`);
+    else if (a.year_max) parts.push(`up to ${a.year_max}`);
     return parts.join(' · ') || 'All listings';
+  };
+
+  const alertTags = (a: Alert) => {
+    const tags: string[] = [];
+    if (a.condition) tags.push(a.condition);
+    if (a.body_style) tags.push(a.body_style);
+    if (a.state) tags.push(a.state);
+    if (a.price_min && a.price_max) tags.push(`$${a.price_min.toLocaleString()}–$${a.price_max.toLocaleString()}`);
+    else if (a.price_min) tags.push(`$${a.price_min.toLocaleString()}+`);
+    else if (a.price_max) tags.push(`Under $${a.price_max.toLocaleString()}`);
+    return tags;
   };
 
   const TABS: { key: Tab; label: string; count?: number }[] = [
@@ -602,7 +613,14 @@ function AccountPage() {
                   <div className="text-2xl">🔔</div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-zinc-900">{a.name || describeAlert(a)}</p>
-                    {a.name && <p className="text-xs text-zinc-500">{describeAlert(a)}</p>}
+                    {a.name && <p className="text-xs text-zinc-500 mt-0.5">{describeAlert(a)}</p>}
+                    {alertTags(a).length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {alertTags(a).map(tag => (
+                          <span key={tag} className="text-xs bg-zinc-100 text-zinc-600 font-medium px-2 py-0.5 rounded-full">{tag}</span>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 mt-1">
                       {a.paused && <span className="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">Paused</span>}
                       {a.last_matched_at && (
