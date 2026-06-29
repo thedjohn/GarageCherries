@@ -21,17 +21,18 @@ interface ReportedMessage {
   conversations: { listing_title: string; buyer_name: string; buyer_email: string } | null;
 }
 interface SiteUser {
-  id: string; email: string; name: string; created_at: string;
-  type: 'buyer' | 'seller' | 'dealer';
+  id: string; email: string; name: string; created_at: string; last_sign_in_at: string | null;
+  type: string;
+  roles: string[];
   suspended: { reason: string | null; suspended_at: string } | null;
   dealer: { name: string; location: string; state: string; since: string | null } | null;
+  advertiser: { company_name: string; website: string | null } | null;
   listings: { approved: number; pending: number; rejected: number } | null;
   watchlist_count: number;
   conversation_count: number;
 }
 
 type Tab = 'listings' | 'messages' | 'reported' | 'team' | 'users';
-type UserSubTab = 'buyers' | 'sellers' | 'dealers';
 
 export default function AdminPage() {
   const [loading, setLoading] = useState(true);
@@ -65,7 +66,9 @@ export default function AdminPage() {
   // Users
   const [users, setUsers] = useState<SiteUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
-  const [userSubTab, setUserSubTab] = useState<UserSubTab>('buyers');
+  const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('all');
+  const [userStatusFilter, setUserStatusFilter] = useState('all');
   const [viewingSellerListings, setViewingSellerListings] = useState<SiteUser | null>(null);
   const [sellerListings, setSellerListings] = useState<Listing[]>([]);
   const [sellerListingsLoading, setSellerListingsLoading] = useState(false);
@@ -526,17 +529,37 @@ export default function AdminPage() {
       {/* Users tab */}
       {tab === 'users' && (
         <div>
-          {/* Sub-tabs */}
-          <div className="flex gap-1 mb-5 bg-zinc-100 rounded-xl p-1 w-fit">
-            {(['buyers','sellers','dealers'] as UserSubTab[]).map(s => (
-              <button key={s} onClick={() => setUserSubTab(s)}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-colors ${userSubTab === s ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}>
-                {s}
-              </button>
-            ))}
+          {/* Search + filters */}
+          <div className="flex gap-3 mb-5 flex-wrap items-center">
+            <div className="relative flex-1 min-w-48">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">🔍</span>
+              <input
+                type="text"
+                placeholder="Search by name or email…"
+                value={userSearch}
+                onChange={e => setUserSearch(e.target.value)}
+                className="w-full pl-8 pr-4 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+            <select value={userRoleFilter} onChange={e => setUserRoleFilter(e.target.value)}
+              className="border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
+              <option value="all">All Roles</option>
+              <option value="buyer">Buyer</option>
+              <option value="seller">Seller</option>
+              <option value="dealer">Dealer</option>
+              <option value="advertiser">Advertiser</option>
+              <option value="new">New</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <select value={userStatusFilter} onChange={e => setUserStatusFilter(e.target.value)}
+              className="border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+            </select>
             {adminRole === 'superadmin' && (
               <button onClick={() => setCreateDealer(true)}
-                className="ml-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors">
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl transition-colors whitespace-nowrap">
                 + New Dealer
               </button>
             )}
@@ -547,52 +570,74 @@ export default function AdminPage() {
           )}
 
           {!usersLoading && (() => {
-            const filtered = users.filter(u =>
-              userSubTab === 'buyers' ? u.type === 'buyer' :
-              userSubTab === 'sellers' ? u.type === 'seller' : u.type === 'dealer'
+            const roleBadgeStyle: Record<string, string> = {
+              dealer:     'bg-blue-100 text-blue-700',
+              advertiser: 'bg-purple-100 text-purple-700',
+              seller:     'bg-green-100 text-green-700',
+              buyer:      'bg-zinc-100 text-zinc-600',
+              new:        'bg-yellow-100 text-yellow-700',
+              inactive:   'bg-zinc-100 text-zinc-400',
+            };
+            const q = userSearch.toLowerCase();
+            const filtered = users.filter(u => {
+              if (q && !u.email.toLowerCase().includes(q) && !u.name.toLowerCase().includes(q)) return false;
+              if (userStatusFilter === 'active' && u.suspended) return false;
+              if (userStatusFilter === 'suspended' && !u.suspended) return false;
+              if (userRoleFilter !== 'all' && !u.roles.includes(userRoleFilter)) return false;
+              return true;
+            });
+            if (filtered.length === 0) return (
+              <div className="text-center py-20 text-zinc-400">
+                {userSearch || userRoleFilter !== 'all' || userStatusFilter !== 'all'
+                  ? 'No users match your search.' : 'No users yet.'}
+              </div>
             );
-            if (filtered.length === 0) return <div className="text-center py-20 text-zinc-400">No {userSubTab} yet.</div>;
             return (
               <div className="space-y-3">
+                <p className="text-xs text-zinc-400 mb-3">{filtered.length} user{filtered.length !== 1 ? 's' : ''}</p>
                 {filtered.map(u => (
                   <div key={u.id} className={`bg-white rounded-2xl border shadow-sm p-5 ${u.suspended ? 'border-red-200' : 'border-zinc-100'}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
                           <p className="font-bold text-zinc-900">{u.name || '(no name)'}</p>
+                          {u.roles.map(r => (
+                            <span key={r} className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${roleBadgeStyle[r] ?? 'bg-zinc-100 text-zinc-500'}`}>
+                              {r}
+                            </span>
+                          ))}
                           {u.suspended && (
-                            <span className="text-xs font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Suspended</span>
+                            <span className="text-[10px] font-bold bg-red-100 text-red-700 px-2 py-0.5 rounded-full uppercase tracking-wide">Suspended</span>
                           )}
                         </div>
                         <p className="text-sm text-zinc-500">{u.email}</p>
                         <p className="text-xs text-zinc-400 mt-1">
                           Joined {new Date(u.created_at).toLocaleDateString()}
-                          {u.type === 'buyer' && ` · ${u.watchlist_count} watchlist · ${u.conversation_count} messages`}
-                          {u.type === 'seller' && u.listings && ` · ${u.listings.approved} active · ${u.listings.pending} pending`}
-                          {u.type === 'dealer' && u.dealer && ` · ${u.dealer.name} · ${u.dealer.location}${u.dealer.state ? ', ' + u.dealer.state : ''}`}
+                          {u.last_sign_in_at && ` · Last seen ${new Date(u.last_sign_in_at).toLocaleDateString()}`}
+                          {u.listings && ` · ${u.listings.approved} active · ${u.listings.pending} pending`}
+                          {(u.watchlist_count > 0 || u.conversation_count > 0) && ` · ${u.watchlist_count} watchlist · ${u.conversation_count} messages`}
+                          {u.dealer && ` · ${u.dealer.name}${u.dealer.location ? ', ' + u.dealer.location : ''}`}
+                          {u.advertiser && ` · ${u.advertiser.company_name}`}
                         </p>
                         {u.suspended?.reason && (
                           <p className="text-xs text-red-500 mt-1">Reason: {u.suspended.reason}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-2 flex-wrap shrink-0">
-                        {/* View Listings — sellers only */}
-                        {u.type === 'seller' && (
+                        {u.roles.includes('seller') && (
                           <button onClick={() => openSellerListings(u)}
                             className="px-3 py-1.5 text-xs font-semibold border border-zinc-200 rounded-lg text-zinc-600 hover:bg-zinc-50">
                             View Listings
                           </button>
                         )}
-                        {/* Edit — admin+ */}
                         {(adminRole === 'admin' || adminRole === 'superadmin') && (
                           <button onClick={() => openEditUser(u)}
                             className="px-3 py-1.5 text-xs font-semibold border border-zinc-200 rounded-lg text-zinc-600 hover:bg-zinc-50">
                             Edit
                           </button>
                         )}
-                        {/* Suspend/Unsuspend */}
                         {!u.suspended && (adminRole === 'moderator' || adminRole === 'admin' || adminRole === 'superadmin') &&
-                          (u.type !== 'dealer' || adminRole === 'admin' || adminRole === 'superadmin') && (
+                          (!u.roles.includes('dealer') || adminRole === 'admin' || adminRole === 'superadmin') && (
                           <button onClick={() => setSuspendTarget(u)}
                             className="px-3 py-1.5 text-xs font-semibold border border-orange-200 rounded-lg text-orange-600 hover:bg-orange-50">
                             Suspend
@@ -604,14 +649,12 @@ export default function AdminPage() {
                             Unsuspend
                           </button>
                         )}
-                        {/* Promote seller → dealer */}
-                        {u.type === 'seller' && adminRole === 'superadmin' && (
+                        {u.roles.includes('seller') && !u.roles.includes('dealer') && adminRole === 'superadmin' && (
                           <button onClick={() => openPromote(u)}
                             className="px-3 py-1.5 text-xs font-semibold border border-blue-200 rounded-lg text-blue-600 hover:bg-blue-50">
                             Make Dealer
                           </button>
                         )}
-                        {/* Delete — superadmin only */}
                         {adminRole === 'superadmin' && (
                           <button onClick={() => setConfirmDeleteUser(u)}
                             className="px-3 py-1.5 text-xs font-semibold border border-red-200 rounded-lg text-red-600 hover:bg-red-50">

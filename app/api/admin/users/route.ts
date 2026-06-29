@@ -18,6 +18,7 @@ export async function GET() {
   const [
     { data: { users: authUsers } },
     { data: dealers },
+    { data: advertisers },
     { data: listings },
     { data: suspended },
     { data: watchlists },
@@ -25,14 +26,17 @@ export async function GET() {
   ] = await Promise.all([
     admin.auth.admin.listUsers({ perPage: 1000 }),
     admin.from('dealers').select('id, name, location, state, since, logo'),
+    admin.from('advertisers').select('id, company_name, website').catch(() => ({ data: [] })),
     admin.from('listings').select('seller_id, status'),
     admin.from('suspended_users').select('user_id, reason, suspended_at'),
     admin.from('watchlists').select('user_id'),
     admin.from('conversations').select('buyer_id, listing_id'),
   ]);
 
-  const dealerIds = new Set((dealers ?? []).map(d => d.id));
-  const dealerMap = Object.fromEntries((dealers ?? []).map(d => [d.id, d]));
+  const dealerIds = new Set((dealers ?? []).map((d: any) => d.id));
+  const dealerMap = Object.fromEntries((dealers ?? []).map((d: any) => [d.id, d]));
+  const advertiserIds = new Set((advertisers ?? []).map((a: any) => a.id));
+  const advertiserMap = Object.fromEntries((advertisers ?? []).map((a: any) => [a.id, a]));
   const suspendedMap = Object.fromEntries((suspended ?? []).map(s => [s.user_id, s]));
 
   // Listing counts per seller
@@ -45,7 +49,7 @@ export async function GET() {
     else if (l.status === 'rejected') listingCounts[l.seller_id].rejected++;
   }
 
-  // Watchlist counts per buyer
+  // Watchlist counts per user
   const watchlistCounts: Record<string, number> = {};
   for (const w of watchlists ?? []) {
     watchlistCounts[w.user_id] = (watchlistCounts[w.user_id] ?? 0) + 1;
@@ -57,20 +61,40 @@ export async function GET() {
     convCounts[c.buyer_id] = (convCounts[c.buyer_id] ?? 0) + 1;
   }
 
-  const sellerIds = new Set(Object.keys(listingCounts));
+  const ONE_YEAR_AGO = new Date();
+  ONE_YEAR_AGO.setFullYear(ONE_YEAR_AGO.getFullYear() - 1);
 
   const result = (authUsers ?? []).map(u => {
     const isDealer = dealerIds.has(u.id);
-    const isSeller = !isDealer && sellerIds.has(u.id);
-    const type = isDealer ? 'dealer' : isSeller ? 'seller' : 'buyer';
+    const isAdvertiser = advertiserIds.has(u.id);
+    const hasSold = !!listingCounts[u.id];
+    const hasBought = (watchlistCounts[u.id] ?? 0) > 0 || (convCounts[u.id] ?? 0) > 0;
+    const lastSeen = u.last_sign_in_at ? new Date(u.last_sign_in_at) : new Date(u.created_at);
+    const isInactive = lastSeen < ONE_YEAR_AGO && !hasSold && !hasBought && !isDealer && !isAdvertiser;
+    const isNew = !hasSold && !hasBought && !isDealer && !isAdvertiser && !isInactive;
+
+    const roles: string[] = [];
+    if (isDealer) roles.push('dealer');
+    if (isAdvertiser) roles.push('advertiser');
+    if (hasSold) roles.push('seller');
+    if (hasBought) roles.push('buyer');
+    if (isNew) roles.push('new');
+    if (isInactive) roles.push('inactive');
+
+    // Legacy single type for backwards compat
+    const type = isDealer ? 'dealer' : isAdvertiser ? 'advertiser' : hasSold ? 'seller' : 'buyer';
+
     return {
       id: u.id,
       email: u.email ?? '',
       name: u.user_metadata?.full_name ?? '',
       created_at: u.created_at,
+      last_sign_in_at: u.last_sign_in_at ?? null,
+      roles,
       type,
       suspended: suspendedMap[u.id] ?? null,
       dealer: isDealer ? dealerMap[u.id] : null,
+      advertiser: isAdvertiser ? advertiserMap[u.id] : null,
       listings: listingCounts[u.id] ?? null,
       watchlist_count: watchlistCounts[u.id] ?? 0,
       conversation_count: convCounts[u.id] ?? 0,
