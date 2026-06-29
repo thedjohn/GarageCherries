@@ -201,6 +201,12 @@ function AccountPage() {
       convs.forEach(c => { c.listing_image = imageMap[c.listing_id] ?? null; });
     }
 
+    // Mark unread based on localStorage
+    try {
+      const readIds: string[] = JSON.parse(localStorage.getItem('gc_read_convs') ?? '[]');
+      convs.forEach(c => { c.unread = !readIds.includes(c.id); });
+    } catch {}
+
     setConversations(convs);
     setMessagesLoading(false);
   }, [conversations.length]);
@@ -479,16 +485,22 @@ function AccountPage() {
                   onClick={() => {
                     openChat(conv.id, conv.listing_title);
                     markConvRead(conv.id);
+                    setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, unread: false } : c));
                   }}
-                  className="w-full flex items-center gap-4 bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 hover:border-red-200 hover:shadow transition-all text-left">
-                  <div className="w-10 h-10 rounded-full bg-zinc-100 shrink-0 overflow-hidden relative">
-                    {conv.listing_image
-                      ? <Image src={conv.listing_image} alt={conv.listing_title} fill className="object-cover" sizes="40px" />
-                      : <div className="w-full h-full flex items-center justify-center text-zinc-400 text-lg">🚗</div>
-                    }
+                  className={`w-full flex items-center gap-4 rounded-2xl border shadow-sm p-4 hover:border-red-200 hover:shadow transition-all text-left ${conv.unread ? 'bg-blue-50 border-blue-100' : 'bg-white border-zinc-100'}`}>
+                  <div className="relative shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-zinc-100 overflow-hidden relative">
+                      {conv.listing_image
+                        ? <Image src={conv.listing_image} alt={conv.listing_title} fill className="object-cover" sizes="40px" />
+                        : <div className="w-full h-full flex items-center justify-center text-zinc-400 text-lg">🚗</div>
+                      }
+                    </div>
+                    {conv.unread && (
+                      <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-blue-500 rounded-full border-2 border-white" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-zinc-900 truncate">{conv.listing_title}</p>
+                    <p className={`truncate ${conv.unread ? 'font-bold text-zinc-900' : 'font-semibold text-zinc-900'}`}>{conv.listing_title}</p>
                     <p className="text-xs text-zinc-400 mt-0.5">
                       {conv.buyer_id === userId ? 'You are the buyer' : `Buyer: ${conv.buyer_name || 'Unknown'}`}
                       {' · '}{new Date(conv.last_message_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
