@@ -66,6 +66,9 @@ export default function AdminPage() {
   const [users, setUsers] = useState<SiteUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [userSubTab, setUserSubTab] = useState<UserSubTab>('buyers');
+  const [viewingSellerListings, setViewingSellerListings] = useState<SiteUser | null>(null);
+  const [sellerListings, setSellerListings] = useState<Listing[]>([]);
+  const [sellerListingsLoading, setSellerListingsLoading] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState<SiteUser | null>(null);
   const [suspendReason, setSuspendReason] = useState('');
   const [suspendWorking, setSuspendWorking] = useState(false);
@@ -202,6 +205,18 @@ export default function AdminPage() {
     setCreateDealer(false);
     setNewDealer({ email: '', password: '', name: '', dealerName: '', location: '', state: '' });
     setUsers([]); // force refresh
+  }
+
+  async function openSellerListings(u: SiteUser) {
+    setViewingSellerListings(u);
+    setSellerListings([]);
+    setSellerListingsLoading(true);
+    const res = await fetch(`/api/admin/listings?seller_id=${u.id}`);
+    if (res.ok) {
+      const { listings: ls } = await res.json();
+      setSellerListings((ls ?? []) as Listing[]);
+    }
+    setSellerListingsLoading(false);
   }
 
   function openEditUser(u: SiteUser) {
@@ -561,6 +576,13 @@ export default function AdminPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2 flex-wrap shrink-0">
+                        {/* View Listings — sellers only */}
+                        {u.type === 'seller' && (
+                          <button onClick={() => openSellerListings(u)}
+                            className="px-3 py-1.5 text-xs font-semibold border border-zinc-200 rounded-lg text-zinc-600 hover:bg-zinc-50">
+                            View Listings
+                          </button>
+                        )}
                         {/* Edit — admin+ */}
                         {(adminRole === 'admin' || adminRole === 'superadmin') && (
                           <button onClick={() => openEditUser(u)}
@@ -740,6 +762,71 @@ export default function AdminPage() {
                 className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl">
                 {deletingUser ? 'Deleting…' : 'Yes, Delete'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Seller listings modal */}
+      {viewingSellerListings && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setViewingSellerListings(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-zinc-100">
+              <div>
+                <h2 className="font-bold text-lg text-zinc-900">Seller Listings</h2>
+                <p className="text-sm text-zinc-500 mt-0.5">{viewingSellerListings.name || viewingSellerListings.email}</p>
+              </div>
+              <button onClick={() => setViewingSellerListings(null)} className="text-zinc-400 hover:text-zinc-700 text-xl font-bold">✕</button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-6">
+              {sellerListingsLoading && (
+                <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-24 bg-zinc-100 rounded-xl animate-pulse" />)}</div>
+              )}
+              {!sellerListingsLoading && sellerListings.length === 0 && (
+                <div className="text-center py-12 text-zinc-400">No listings found.</div>
+              )}
+              {!sellerListingsLoading && sellerListings.map(l => (
+                <div key={l.id} className="flex gap-4 bg-white border border-zinc-100 rounded-xl p-4 mb-3 shadow-sm">
+                  {l.images?.[0] && <img src={l.images[0]} alt={l.title} className="w-24 h-18 object-cover rounded-lg shrink-0" style={{height:'72px'}} />}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-bold text-zinc-900 text-sm">{l.title}</p>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                        l.status === 'approved' ? 'bg-green-100 text-green-700' :
+                        l.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                      }`}>{l.status}</span>
+                    </div>
+                    <p className="text-xs text-zinc-500 mt-0.5">${l.price?.toLocaleString()} · {l.location}, {l.state}</p>
+                    <p className="text-xs text-zinc-400 mt-0.5">{new Date(l.created_at).toLocaleDateString()}</p>
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      {l.status === 'pending' && (adminRole === 'moderator' || adminRole === 'admin' || adminRole === 'superadmin') && <>
+                        <button onClick={async () => { await handleAction(l.id, 'approve'); setSellerListings(prev => prev.map(x => x.id === l.id ? {...x, status:'approved'} : x)); }}
+                          disabled={!!working}
+                          className="px-3 py-1 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-50">
+                          Approve
+                        </button>
+                        <button onClick={async () => { await handleAction(l.id, 'reject'); setSellerListings(prev => prev.map(x => x.id === l.id ? {...x, status:'rejected'} : x)); }}
+                          disabled={!!working}
+                          className="px-3 py-1 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50">
+                          Reject
+                        </button>
+                      </>}
+                      {(adminRole === 'admin' || adminRole === 'superadmin') && (
+                        <button onClick={() => { setViewingSellerListings(null); openEdit(l); }}
+                          className="px-3 py-1 text-xs font-semibold border border-zinc-200 text-zinc-600 rounded-lg hover:bg-zinc-50">
+                          Edit
+                        </button>
+                      )}
+                      {adminRole === 'superadmin' && (
+                        <button onClick={() => { setViewingSellerListings(null); setConfirmDelete(l); }}
+                          className="px-3 py-1 text-xs font-semibold border border-red-200 text-red-600 rounded-lg hover:bg-red-50">
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

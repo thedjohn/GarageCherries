@@ -2,16 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requireAdmin, hasRole } from '@/lib/admin';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const role = await requireAdmin(user?.id ?? null);
   if (!role) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const admin = createAdminClient();
-  const { data: listings, error } = await admin
+  const sellerId = req.nextUrl.searchParams.get('seller_id');
+  let query = admin
     .from('listings')
-    .select('id,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,location,state,seller_name,seller_phone,seller_email,images,description,featured,status,created_at')
+    .select('id,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,location,state,seller_name,seller_phone,seller_email,seller_id,images,description,featured,status,created_at')
     .order('created_at', { ascending: false });
+  if (sellerId) query = query.eq('seller_id', sellerId);
+  const { data: listings, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ listings: listings ?? [] });
 }
