@@ -12,7 +12,7 @@ interface Listing {
   seller_email: string; images: string[]; description: string;
   featured: boolean; status: string; created_at: string;
 }
-type EditFields = Omit<Listing, 'id' | 'images' | 'created_at' | 'title'>;
+type EditFields = Omit<Listing, 'id' | 'slug' | 'images' | 'created_at' | 'title'>;
 
 interface TeamMember { user_id: string; email: string; role: string; created_at: string; }
 interface ReportedMessage {
