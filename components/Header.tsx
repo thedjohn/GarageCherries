@@ -200,10 +200,15 @@ export default function Header() {
                           <span className="bg-zinc-100 text-zinc-600 text-xs font-bold rounded-full px-2 py-0.5">{counts.alerts}</span>
                         )}
                       </Link>
+                      <Link href="/account?tab=listings"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center px-5 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors">
+                        My Listings
+                      </Link>
                       <Link href="/account?tab=settings"
                         onClick={() => setDropdownOpen(false)}
                         className="flex items-center px-5 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors">
-                        Account Settings
+                        Settings
                       </Link>
                     </div>
 
