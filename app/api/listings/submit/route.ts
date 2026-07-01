@@ -27,22 +27,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const imageFiles = formData.getAll('images') as File[];
-  const imageUrls: string[] = [];
-
-  for (const file of imageFiles) {
-    if (!file.size) continue;
-    const bytes = await file.arrayBuffer();
-    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error: uploadError } = await admin.storage
-      .from('listing-images')
-      .upload(path, Buffer.from(bytes), { contentType: file.type });
-    if (!uploadError) {
-      const { data } = admin.storage.from('listing-images').getPublicUrl(path);
-      imageUrls.push(data.publicUrl);
-    }
-  }
+  // Images are now uploaded client-side; we receive their public URLs
+  const imageUrls: string[] = JSON.parse((formData.get('imageUrls') as string) ?? '[]');
 
   const year = Number(formData.get('year'));
   const make = String(formData.get('make'));
