@@ -55,12 +55,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const newPrice = price !== undefined ? Number(price) : null;
   const oldPrice = listing.price ?? 0;
   if (newPrice !== null && newPrice > 0 && newPrice < oldPrice) {
-    admin.from('price_history').insert({
+    void admin.from('price_history').insert({
       car_id: id,
       old_price: oldPrice,
       price: newPrice,
       changed_at: new Date().toISOString(),
-    }).then(() => {}).catch(() => {});
+    });
   }
 
   return NextResponse.json({ success: true });
