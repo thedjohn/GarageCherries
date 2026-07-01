@@ -131,10 +131,10 @@ export default function DealerLoginPage() {
 
           <div className="mt-6 pt-6 border-t border-zinc-100 text-center">
             <p className="text-sm text-zinc-500 mb-3">Don't have a dealer account yet?</p>
-            <Link href="/dealer/apply"
+            <a href="/dealer/apply"
               className="inline-block w-full border-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white font-bold py-2.5 rounded-xl text-sm transition-colors text-center">
               Apply for a Dealer Account
-            </Link>
+            </a>
           </div>
         </div>
       </div>
