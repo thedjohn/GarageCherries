@@ -173,34 +173,63 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
     const mapsLink = `https://maps.google.com/?q=${mapQuery}`;
 
     const canonicalUrl = `${BASE_URL}/listings/${makeSeg}/${modelSeg}/${car.id}/${car.slug}`;
-    const jsonLd = {
-      '@context': 'https://schema.org',
-      '@type': 'Vehicle',
-      name: car.title,
-      description: car.description ?? '',
-      url: canonicalUrl,
-      image: car.images ?? [],
-      vehicleModelDate: String(car.year),
-      brand: { '@type': 'Brand', name: car.make },
-      model: car.model,
-      mileageFromOdometer: car.mileage ? { '@type': 'QuantitativeValue', value: car.mileage, unitCode: 'SMI' } : undefined,
-      vehicleCondition: `https://schema.org/${car.condition === 'Excellent' || car.condition === 'Good' ? 'UsedCondition' : 'DamagedCondition'}`,
-      color: car.color,
-      driveWheelConfiguration: (car as any).driveType,
-      fuelType: (car as any).fuelType,
-      numberOfForwardGears: (car as any).numSpeeds,
-      offers: {
-        '@type': 'Offer',
-        price: car.price ?? 0,
-        priceCurrency: 'USD',
-        availability: 'https://schema.org/InStock',
-        seller: { '@type': 'AutoDealer', name: car.sellerName },
-      },
+
+    const conditionMap: Record<string, string> = {
+      'New':       'https://schema.org/NewCondition',
+      'Excellent': 'https://schema.org/UsedCondition',
+      'Good':      'https://schema.org/UsedCondition',
+      'Fair':      'https://schema.org/UsedCondition',
+      'Project':   'https://schema.org/DamagedCondition',
     };
+
+    const jsonLd = [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'Vehicle',
+        name: car.title,
+        description: car.description ?? '',
+        url: canonicalUrl,
+        image: car.images ?? [],
+        vehicleModelDate: String(car.year),
+        brand: { '@type': 'Brand', name: car.make },
+        model: car.model,
+        bodyType: car.bodyStyle,
+        color: car.color ?? undefined,
+        driveWheelConfiguration: (car as any).driveType ?? undefined,
+        fuelType: (car as any).fuelType ?? undefined,
+        numberOfForwardGears: (car as any).numSpeeds ?? undefined,
+        vehicleEngine: (car as any).engine ? { '@type': 'EngineSpecification', name: (car as any).engine } : undefined,
+        mileageFromOdometer: car.mileage ? { '@type': 'QuantitativeValue', value: car.mileage, unitCode: 'SMI' } : undefined,
+        vehicleCondition: conditionMap[car.condition] ?? 'https://schema.org/UsedCondition',
+        offers: {
+          '@type': 'Offer',
+          price: car.price > 0 ? car.price : undefined,
+          priceCurrency: 'USD',
+          availability: 'https://schema.org/InStock',
+          url: canonicalUrl,
+          seller: dealer
+            ? { '@type': 'AutoDealer', name: car.sellerName, url: `${BASE_URL}/dealers/${(dealer as any).slug}` }
+            : { '@type': 'Person', name: car.sellerName },
+        },
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Listings', item: `${BASE_URL}/listings` },
+          { '@type': 'ListItem', position: 3, name: car.make, item: `${BASE_URL}/listings/${makeSeg}` },
+          { '@type': 'ListItem', position: 4, name: car.model, item: `${BASE_URL}/listings/${makeSeg}/${modelSeg}` },
+          { '@type': 'ListItem', position: 5, name: car.title, item: canonicalUrl },
+        ],
+      },
+    ];
 
     return (
       <>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        {jsonLd.map((schema, i) => (
+          <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+        ))}
         {car.sellerId && <ViewTracker listingId={car.id} dealerId={car.sellerId} />}
       <div className="max-w-7xl mx-auto px-4 py-8">
         <nav className="text-sm text-zinc-500 mb-6 flex flex-wrap gap-2">
