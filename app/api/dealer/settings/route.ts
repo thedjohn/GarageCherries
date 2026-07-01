@@ -18,9 +18,10 @@ export async function POST(request: NextRequest) {
     .from('dealers')
     .select('id')
     .eq('id', dealerId)
+    .or(`id.eq.${user.id},email.eq.${user.email}`)
     .single();
 
-  if (!dealer) return NextResponse.json({ error: 'Dealer not found' }, { status: 404 });
+  if (!dealer) return NextResponse.json({ error: 'Dealer not found' }, { status: 403 });
 
   const { error } = await admin.from('dealers').update(fields).eq('id', dealer.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

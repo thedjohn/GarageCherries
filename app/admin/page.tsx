@@ -33,7 +33,15 @@ interface SiteUser {
   conversation_count: number;
 }
 
-type Tab = 'listings' | 'messages' | 'reported' | 'team' | 'users';
+type Tab = 'listings' | 'messages' | 'reported' | 'team' | 'users' | 'applications';
+
+interface DealerApplication {
+  id: string; name: string; email: string; phone: string;
+  dealer_name: string; address: string | null; location: string; state: string;
+  zip: string | null; website: string | null; specialties: string[];
+  description: string; status: 'pending' | 'approved' | 'rejected';
+  rejection_note: string | null; created_at: string; reviewed_at: string | null;
+}
 
 export default function AdminPage() {
   const [loading, setLoading] = useState(true);
@@ -65,6 +73,13 @@ export default function AdminPage() {
   const [newRole, setNewRole] = useState<'moderator' | 'superadmin'>('moderator');
   const [teamWorking, setTeamWorking] = useState(false);
   const [teamError, setTeamError] = useState('');
+
+  // Applications
+  const [applications, setApplications] = useState<DealerApplication[]>([]);
+  const [applicationsLoading, setApplicationsLoading] = useState(false);
+  const [appWorking, setAppWorking] = useState<string | null>(null);
+  const [rejectingApp, setRejectingApp] = useState<string | null>(null);
+  const [appRejectionNote, setAppRejectionNote] = useState('');
 
   // Users
   const [users, setUsers] = useState<SiteUser[]>([]);
@@ -135,6 +150,29 @@ export default function AdminPage() {
     const res = await fetch('/api/admin/users');
     if (res.ok) { const { users: u } = await res.json(); setUsers(u ?? []); }
     setUsersLoading(false);
+  }
+
+  async function loadApplications() {
+    setApplicationsLoading(true);
+    const res = await fetch('/api/admin/dealer-applications');
+    if (res.ok) { const { applications: a } = await res.json(); setApplications(a ?? []); }
+    setApplicationsLoading(false);
+  }
+
+  async function handleApplication(id: string, action: 'approve' | 'reject', note?: string) {
+    setAppWorking(id + action);
+    const res = await fetch('/api/admin/dealer-applications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, action, rejection_note: note ?? null }),
+    });
+    setAppWorking(null);
+    setRejectingApp(null);
+    setAppRejectionNote('');
+    if (res.ok) {
+      setApplications(prev => prev.map(a => a.id === id
+        ? { ...a, status: action === 'approve' ? 'approved' : 'rejected', reviewed_at: new Date().toISOString() } : a));
+    }
   }
 
   async function suspendUser() {
@@ -370,6 +408,16 @@ export default function AdminPage() {
           Users
         </button>
         {(adminRole === 'superadmin' || adminRole === 'admin') && (
+          <button onClick={() => { setTab('applications'); loadApplications(); }} className={tabCls('applications')}>
+            Applications
+            {applications.filter(a => a.status === 'pending').length > 0 && (
+              <span className="ml-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">
+                {applications.filter(a => a.status === 'pending').length}
+              </span>
+            )}
+          </button>
+        )}
+        {(adminRole === 'superadmin' || adminRole === 'admin') && (
           <button onClick={() => setTab('team')} className={tabCls('team')}>
             Team <span className="ml-1 text-xs text-zinc-400">{team.length}</span>
           </button>
@@ -544,6 +592,102 @@ export default function AdminPage() {
       )}
 
       {/* Team tab — admin and superadmin */}
+      {/* Applications tab */}
+      {tab === 'applications' && (adminRole === 'superadmin' || adminRole === 'admin') && (
+        <div>
+          <p className="text-zinc-400 text-sm mb-6">
+            {applications.filter(a => a.status === 'pending').length} pending ·{' '}
+            {applications.filter(a => a.status === 'approved').length} approved ·{' '}
+            {applications.filter(a => a.status === 'rejected').length} rejected
+          </p>
+          {applicationsLoading && <div className="text-center py-20 text-zinc-400 text-sm">Loading…</div>}
+          {!applicationsLoading && applications.length === 0 && (
+            <div className="text-center py-20 text-zinc-400 text-sm">No dealer applications yet.</div>
+          )}
+          <div className="space-y-4">
+            {applications.map(app => (
+              <div key={app.id} className={`bg-white rounded-2xl border shadow-sm p-5 ${app.status === 'pending' ? 'border-yellow-200' : 'border-zinc-100'}`}>
+                <div className="flex items-start justify-between gap-4 mb-3">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <h2 className="font-bold text-zinc-900">{app.dealer_name}</h2>
+                      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                        app.status === 'pending'  ? 'bg-yellow-100 text-yellow-700' :
+                        app.status === 'approved' ? 'bg-green-100 text-green-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>{app.status}</span>
+                    </div>
+                    <p className="text-sm text-zinc-500">{app.location}, {app.state}{app.zip ? ` ${app.zip}` : ''}</p>
+                  </div>
+                  <p className="text-xs text-zinc-400 shrink-0">{new Date(app.created_at).toLocaleDateString()}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm mb-3">
+                  <div><span className="text-zinc-400">Contact: </span><span className="text-zinc-700">{app.name}</span></div>
+                  <div><span className="text-zinc-400">Email: </span><span className="text-zinc-700">{app.email}</span></div>
+                  <div><span className="text-zinc-400">Phone: </span><span className="text-zinc-700">{app.phone}</span></div>
+                  {app.website && <div><span className="text-zinc-400">Website: </span><a href={app.website} target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">{app.website}</a></div>}
+                  {app.specialties?.length > 0 && (
+                    <div className="col-span-2"><span className="text-zinc-400">Specialties: </span><span className="text-zinc-700">{app.specialties.join(', ')}</span></div>
+                  )}
+                </div>
+
+                <p className="text-sm text-zinc-600 bg-zinc-50 rounded-xl p-3 mb-4">{app.description}</p>
+
+                {app.status === 'pending' && (
+                  <div>
+                    {rejectingApp === app.id ? (
+                      <div className="space-y-2">
+                        <textarea
+                          rows={2}
+                          value={appRejectionNote}
+                          onChange={e => setAppRejectionNote(e.target.value)}
+                          placeholder="Optional note to include in the rejection (not sent to applicant yet)"
+                          className="w-full border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleApplication(app.id, 'reject', appRejectionNote)}
+                            disabled={appWorking === app.id + 'reject'}
+                            className="px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors">
+                            {appWorking === app.id + 'reject' ? 'Rejecting…' : 'Confirm Reject'}
+                          </button>
+                          <button onClick={() => { setRejectingApp(null); setAppRejectionNote(''); }}
+                            className="px-4 py-1.5 border border-zinc-200 text-zinc-500 text-xs font-semibold rounded-lg hover:bg-zinc-50">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleApplication(app.id, 'approve')}
+                          disabled={!!appWorking}
+                          className="px-4 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors">
+                          {appWorking === app.id + 'approve' ? 'Approving…' : 'Approve'}
+                        </button>
+                        <button
+                          onClick={() => setRejectingApp(app.id)}
+                          className="px-4 py-1.5 border border-red-200 text-red-600 text-xs font-semibold rounded-lg hover:bg-red-50 transition-colors">
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {app.status === 'rejected' && app.rejection_note && (
+                  <p className="text-xs text-zinc-400 mt-2">Note: {app.rejection_note}</p>
+                )}
+                {app.status === 'approved' && (
+                  <p className="text-xs text-green-600 mt-2">Account created — dealer was sent a password setup email.</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {tab === 'team' && (adminRole === 'superadmin' || adminRole === 'admin') && (
         <div className="space-y-6">
           {/* Current team */}
