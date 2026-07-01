@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/dealer/', '/api/'],
+        disallow: ['/dealer/dashboard', '/dealer/login', '/admin', '/api/'],
       },
     ],
     sitemap: 'https://www.garagecherries.com/sitemap.xml',

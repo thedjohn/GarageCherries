@@ -1,6 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
+import Turnstile from '@/components/Turnstile';
 
 export default function DealerApplyPage() {
   const [fields, setFields] = useState({
@@ -8,6 +9,9 @@ export default function DealerApplyPage() {
     dealerName: '', address: '', location: '', state: '', zip: '',
     website: '', specialties: '', description: '',
   });
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const onCaptchaVerify = useCallback((token: string) => setCaptchaToken(token), []);
+  const onCaptchaExpire = useCallback(() => setCaptchaToken(null), []);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
@@ -22,7 +26,7 @@ export default function DealerApplyPage() {
     const res = await fetch('/api/dealer/apply', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(fields),
+      body: JSON.stringify({ ...fields, captchaToken }),
     });
     setSubmitting(false);
     const json = await res.json();
@@ -121,6 +125,8 @@ export default function DealerApplyPage() {
             </div>
           </div>
         </div>
+
+        <Turnstile onVerify={onCaptchaVerify} onExpire={onCaptchaExpire} />
 
         {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{error}</p>}
 

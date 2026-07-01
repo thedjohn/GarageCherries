@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
+import { rateLimit, getClientIP } from '@/lib/rateLimit';
+import { verifyTurnstile } from '@/lib/verifyTurnstile';
+import { notifyAdmin } from '@/lib/notifyAdmin';
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIP(req);
+  const { allowed, firstBlock } = rateLimit(`dealer-apply:${ip}`, 3, 60 * 60 * 1000);
+  if (!allowed) {
+    if (firstBlock) notifyAdmin('Rate limit hit: dealer apply', `IP <strong>${ip}</strong> exceeded the dealer application limit (3/hour).`);
+    return NextResponse.json({ error: 'Too many applications. Please try again later.' }, { status: 429 });
+  }
+
   const body = await req.json();
-  const { name, email, phone, dealerName, address, location, state, zip, website, specialties, description } = body;
+  const { name, email, phone, dealerName, address, location, state, zip, website, specialties, description, captchaToken } = body;
+
+  if (!await verifyTurnstile(captchaToken ?? null)) {
+    return NextResponse.json({ error: 'CAPTCHA verification failed. Please try again.' }, { status: 400 });
+  }
 
   if (!name || !email || !phone || !dealerName || !location || !state || !description) {
     return NextResponse.json({ error: 'Please fill in all required fields.' }, { status: 400 });

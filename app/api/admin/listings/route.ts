@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requireAdmin, hasRole } from '@/lib/admin';
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+function toSegment(s: string) {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
 
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
@@ -32,6 +39,7 @@ export async function PATCH(req: NextRequest) {
   const admin = createAdminClient();
 
   // Edit update — requires admin or above
+  // seller_id is intentionally never updated here; listing ownership cannot be reassigned
   if (!action) {
     if (!hasRole(role, 'admin')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { year, make, model, price, mileage, condition, body_style, transmission,
@@ -57,6 +65,14 @@ export async function PATCH(req: NextRequest) {
   if (!['approve', 'reject'].includes(action)) {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
+
+  // Fetch listing details needed for seller notification email
+  const { data: listing } = await admin
+    .from('listings')
+    .select('title, make, model, slug, seller_email, seller_name')
+    .eq('id', id)
+    .single();
+
   const update: Record<string, unknown> = {
     status: action === 'approve' ? 'approved' : 'rejected',
   };
@@ -76,6 +92,72 @@ export async function PATCH(req: NextRequest) {
     .eq('id', id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Send seller notification email — fire and forget
+  if (listing?.seller_email) {
+    const sellerName = listing.seller_name || 'there';
+
+    if (action === 'approve') {
+      const listingUrl = `https://www.garagecherries.com/listings/${toSegment(listing.make)}/${toSegment(listing.model)}/${id}/${listing.slug}`;
+      resend.emails.send({
+        from: 'GarageCherries <no-reply@garagecherries.com>',
+        to: listing.seller_email,
+        subject: `Your listing is live — ${listing.title}`,
+        html: `
+          <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+            <div style="background:#18181b;padding:24px;border-radius:12px 12px 0 0;">
+              <p style="color:#ef4444;font-size:22px;font-weight:900;margin:0;">🍒 GarageCherries</p>
+            </div>
+            <div style="background:white;border:1px solid #f4f4f5;border-top:none;padding:32px;border-radius:0 0 12px 12px;">
+              <h1 style="font-size:20px;font-weight:800;color:#18181b;margin:0 0 8px;">Your listing is live!</h1>
+              <p style="color:#71717a;font-size:14px;margin:0 0 24px;">Hi ${sellerName}, your listing for <strong style="color:#18181b;">${listing.title}</strong> has been approved and is now visible to buyers on GarageCherries.</p>
+              <a href="${listingUrl}" style="display:block;text-align:center;background:#ef4444;color:white;font-weight:700;padding:14px 24px;border-radius:10px;text-decoration:none;font-size:15px;margin-bottom:24px;">
+                View Your Listing →
+              </a>
+              <p style="color:#a1a1aa;font-size:12px;margin:0;">You'll receive an email whenever a buyer sends you an inquiry. You can manage your listing from your <a href="https://www.garagecherries.com/account" style="color:#71717a;">account page</a>.</p>
+            </div>
+          </div>
+        `,
+      }).catch(() => {});
+
+      // Trigger alert matching
+      const origin = req.nextUrl.origin;
+      fetch(`${origin}/api/alerts/match`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ carId: id }),
+      }).catch(() => {});
+
+    } else if (action === 'reject') {
+      const reason = body.rejection_reason?.trim();
+      resend.emails.send({
+        from: 'GarageCherries <no-reply@garagecherries.com>',
+        to: listing.seller_email,
+        subject: `Your listing needs attention — ${listing.title}`,
+        html: `
+          <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+            <div style="background:#18181b;padding:24px;border-radius:12px 12px 0 0;">
+              <p style="color:#ef4444;font-size:22px;font-weight:900;margin:0;">🍒 GarageCherries</p>
+            </div>
+            <div style="background:white;border:1px solid #f4f4f5;border-top:none;padding:32px;border-radius:0 0 12px 12px;">
+              <h1 style="font-size:20px;font-weight:800;color:#18181b;margin:0 0 8px;">Your listing wasn't approved</h1>
+              <p style="color:#71717a;font-size:14px;margin:0 0 24px;">Hi ${sellerName}, your listing for <strong style="color:#18181b;">${listing.title}</strong> needs a few changes before it can go live.</p>
+              ${reason ? `
+              <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:20px;margin-bottom:24px;">
+                <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#dc2626;margin:0 0 8px;">Reason</p>
+                <p style="font-size:14px;color:#7f1d1d;margin:0;">${reason}</p>
+              </div>` : ''}
+              <a href="https://www.garagecherries.com/account?tab=listings" style="display:block;text-align:center;background:#ef4444;color:white;font-weight:700;padding:14px 24px;border-radius:10px;text-decoration:none;font-size:15px;margin-bottom:24px;">
+                Fix &amp; Resubmit →
+              </a>
+              <p style="color:#a1a1aa;font-size:12px;margin:0;">Once you've made the changes, click "Fix &amp; Resubmit" on your listing and it will go back into the review queue.</p>
+            </div>
+          </div>
+        `,
+      }).catch(() => {});
+    }
+  }
+
   return NextResponse.json({ success: true });
 }
 

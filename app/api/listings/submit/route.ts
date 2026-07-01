@@ -1,8 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
+import { rateLimit, getClientIP } from '@/lib/rateLimit';
+import { verifyTurnstile } from '@/lib/verifyTurnstile';
+import { notifyAdmin } from '@/lib/notifyAdmin';
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIP(req);
+  const { allowed, firstBlock } = rateLimit(`submit:${ip}`, 5, 60 * 60 * 1000);
+  if (!allowed) {
+    if (firstBlock) notifyAdmin('Rate limit hit: listing submit', `IP <strong>${ip}</strong> exceeded the listing submission limit (5/hour).<br/>Consider increasing the limit if this is a legitimate user.`);
+    return NextResponse.json({ error: 'Too many submissions. Please try again later.' }, { status: 429 });
+  }
+
   const formData = await req.formData();
+
+  const captchaToken = formData.get('cf-turnstile-response') as string | null;
+  if (!await verifyTurnstile(captchaToken)) {
+    return NextResponse.json({ error: 'CAPTCHA verification failed. Please try again.' }, { status: 400 });
+  }
   const admin = createAdminClient();
 
   // Capture the logged-in user's ID as seller_id

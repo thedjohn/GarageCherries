@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { rateLimit, getClientIP } from '@/lib/rateLimit';
+import { notifyAdmin } from '@/lib/notifyAdmin';
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIP(req);
+  const { allowed, firstBlock } = rateLimit(`conversations:${ip}`, 20, 60 * 60 * 1000);
+  if (!allowed) {
+    if (firstBlock) notifyAdmin('Rate limit hit: conversations', `IP <strong>${ip}</strong> exceeded the conversation limit (20/hour).`);
+    return NextResponse.json({ error: 'Too many messages. Please slow down.' }, { status: 429 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not logged in' }, { status: 401 });

@@ -36,12 +36,13 @@ export async function POST(request: NextRequest) {
   const uniqueUserIds = [...new Set((subscribers ?? []).map((s: any) => s.user_id))];
 
   // Resolve emails for each user via auth.users (admin only)
+  // Filter out users who have opted out of digest emails
   const { data: { users } } = await admin.auth.admin.listUsers();
-  const subscriberEmails = (users ?? [])
-    .filter((u: any) => uniqueUserIds.includes(u.id) && u.email)
-    .map((u: any) => u.email as string);
+  const subscriberUsers = (users ?? [])
+    .filter((u: any) => uniqueUserIds.includes(u.id) && u.email && !u.user_metadata?.digest_opt_out)
+    .map((u: any) => ({ id: u.id as string, email: u.email as string }));
 
-  if (subscriberEmails.length === 0) {
+  if (subscriberUsers.length === 0) {
     return NextResponse.json({ ok: true, sent: 0, message: 'No subscribers found' });
   }
 
@@ -56,26 +57,29 @@ export async function POST(request: NextRequest) {
     </tr>
   `).join('');
 
-  const html = `
-    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
-      <h1 style="font-size:24px;font-weight:800;color:#18181b;">Fresh Listings This Week</h1>
-      <p style="color:#52525b;">Here are the ${cars.length} newest classic cars added to GarageCherries in the last 7 days.</p>
-      <table style="width:100%;border-collapse:collapse;margin-top:16px;">${listingsHtml}</table>
-      <p style="margin-top:24px;">
-        <a href="https://www.garagecherries.com/listings" style="background:#dc2626;color:#fff;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;">
-          Browse All Listings
-        </a>
-      </p>
-      <p style="color:#a1a1aa;font-size:12px;margin-top:24px;">
-        You're receiving this because you're watching listings on GarageCherries.
-      </p>
-    </div>
-  `;
-
+  const resend = new Resend(process.env.RESEND_API_KEY);
   let sent = 0;
-  for (const email of subscriberEmails) {
+  for (const { id: userId, email } of subscriberUsers) {
+    const unsubscribeUrl = `https://www.garagecherries.com/unsubscribe/digest?uid=${userId}`;
+    const html = `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+        <h1 style="font-size:24px;font-weight:800;color:#18181b;">Fresh Listings This Week</h1>
+        <p style="color:#52525b;">Here are the ${cars.length} newest classic cars added to GarageCherries in the last 7 days.</p>
+        <table style="width:100%;border-collapse:collapse;margin-top:16px;">${listingsHtml}</table>
+        <p style="margin-top:24px;">
+          <a href="https://www.garagecherries.com/listings" style="background:#dc2626;color:#fff;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;">
+            Browse All Listings
+          </a>
+        </p>
+        <p style="color:#a1a1aa;font-size:12px;margin-top:24px;">
+          You're receiving this because you're watching listings on GarageCherries.
+          <br/>
+          <a href="${unsubscribeUrl}" style="color:#a1a1aa;">Unsubscribe from weekly digest</a>
+        </p>
+      </div>
+    `;
     try {
-      await new Resend(process.env.RESEND_API_KEY).emails.send({
+      await resend.emails.send({
         from: 'GarageCherries <noreply@garagecherries.com>',
         to: email,
         subject: `🚗 ${cars.length} new classic cars this week — GarageCherries`,
@@ -87,5 +91,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, sent, total: subscriberEmails.length });
+  return NextResponse.json({ ok: true, sent, total: subscriberUsers.length });
 }

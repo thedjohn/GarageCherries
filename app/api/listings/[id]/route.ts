@@ -12,7 +12,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Verify ownership
   const { data: listing } = await admin
     .from('listings')
-    .select('seller_id, status, resubmission_count')
+    .select('seller_id, status, resubmission_count, price')
     .eq('id', id)
     .single();
 
@@ -50,5 +50,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { error } = await admin.from('listings').update(update).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // If price dropped, record it for the weekly price-drop digest
+  const newPrice = price !== undefined ? Number(price) : null;
+  const oldPrice = listing.price ?? 0;
+  if (newPrice !== null && newPrice > 0 && newPrice < oldPrice) {
+    admin.from('price_history').insert({
+      car_id: id,
+      old_price: oldPrice,
+      price: newPrice,
+      changed_at: new Date().toISOString(),
+    }).then(() => {}).catch(() => {});
+  }
+
   return NextResponse.json({ success: true });
 }

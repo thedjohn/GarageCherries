@@ -9,11 +9,12 @@ interface Listing {
   price: number; mileage: number | null; condition: string; body_style: string;
   transmission: string; engine: string | null; color: string | null;
   location: string; state: string; seller_name: string; seller_phone: string;
-  seller_email: string; images: string[]; description: string;
+  seller_email: string; seller_id: string; images: string[]; description: string;
   featured: boolean; status: string; created_at: string;
   rejection_reason: string | null; resubmission_note: string | null; resubmission_count: number;
 }
-type EditFields = Omit<Listing, 'id' | 'slug' | 'images' | 'created_at' | 'title' | 'rejection_reason' | 'resubmission_note' | 'resubmission_count'>;
+// seller_id is intentionally excluded from EditFields — ownership cannot be reassigned via the admin UI
+type EditFields = Omit<Listing, 'id' | 'slug' | 'seller_id' | 'images' | 'created_at' | 'title' | 'rejection_reason' | 'resubmission_note' | 'resubmission_count'>;
 
 interface TeamMember { user_id: string; email: string; role: string; created_at: string; }
 interface ReportedMessage {

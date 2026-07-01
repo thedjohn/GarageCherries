@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createAdminClient } from '@/lib/supabase/server';
 import { createHash } from 'crypto';
+import { rateLimit, getClientIP } from '@/lib/rateLimit';
+import { verifyTurnstile } from '@/lib/verifyTurnstile';
+import { notifyAdmin } from '@/lib/notifyAdmin';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FALLBACK_EMAIL = process.env.INQUIRY_FALLBACK_EMAIL;
@@ -10,7 +13,18 @@ if (!FALLBACK_EMAIL) {
 }
 
 export async function POST(request: NextRequest) {
-  const { carId, carTitle, buyerName, buyerEmail, buyerPhone, message } = await request.json();
+  const ip = getClientIP(request);
+  const { allowed, firstBlock } = rateLimit(`inquire:${ip}`, 10, 60 * 60 * 1000);
+  if (!allowed) {
+    if (firstBlock) notifyAdmin('Rate limit hit: inquire', `IP <strong>${ip}</strong> exceeded the inquiry limit (10/hour).`);
+    return NextResponse.json({ error: 'Too many inquiries. Please try again later.' }, { status: 429 });
+  }
+
+  const { carId, carTitle, buyerName, buyerEmail, buyerPhone, message, captchaToken } = await request.json();
+
+  if (!await verifyTurnstile(captchaToken ?? null)) {
+    return NextResponse.json({ error: 'CAPTCHA verification failed. Please try again.' }, { status: 400 });
+  }
 
   if (!buyerName || !buyerEmail || !message) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });

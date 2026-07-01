@@ -397,10 +397,10 @@ function AccountPage() {
   }
 
   async function markAsSold(id: string) {
-    await fetch(`/api/listings/${id}`, {
-      method: 'PATCH',
+    await fetch('/api/cars/sold', {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'sold' }),
+      body: JSON.stringify({ carId: id }),
     });
     setMyListings(prev => prev.map(l => l.id === id ? { ...l, status: 'removed' } : l));
   }

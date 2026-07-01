@@ -138,15 +138,40 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
     if (isEdit) {
       const { error } = await supabase.from('listings').update(payload).eq('id', car!.id);
       dbError = error;
+      // If price dropped on a live dealer listing, record it and notify watchers immediately
+      const oldPrice = car!.price ?? 0;
+      const newPrice = payload.price ?? 0;
+      if (!error && newPrice > 0 && newPrice < oldPrice) {
+        supabase.from('price_history').insert({
+          car_id: car!.id,
+          old_price: oldPrice,
+          price: newPrice,
+          changed_at: new Date().toISOString(),
+        }).then(() => {}).catch(() => {});
+        fetch('/api/notify-watchers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ carId: car!.id, oldPrice, newPrice }),
+        }).catch(() => {});
+      }
     } else {
       const uid = Date.now();
       const slug = `${toSlug(title)}-${uid}`;
+      const newId = `${dealerId}-${uid}`;
       const { error } = await supabase.from('listings').insert({
-        ...payload, id: `${dealerId}-${uid}`, slug,
+        ...payload, id: newId, slug,
         seller_id: dealerId, seller_name: dealerName,
-        featured: false, listed_at: new Date().toISOString().split('T')[0],
+        featured: false, status: 'approved', listed_at: new Date().toISOString().split('T')[0],
       });
       dbError = error;
+      // Trigger buyer alert matching after successful insert — fire and forget
+      if (!error) {
+        fetch('/api/alerts/match', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ carId: newId }),
+        }).catch(() => {});
+      }
     }
 
     setSaving(false);

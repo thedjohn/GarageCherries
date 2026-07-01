@@ -1,6 +1,8 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { MAKES, BODY_STYLES, CONDITIONS } from '@/lib/types';
+import { createClient } from '@/lib/supabase/client';
+import Turnstile from '@/components/Turnstile';
 
 export default function SellPage() {
   const [submitted, setSubmitted] = useState(false);
@@ -8,8 +10,11 @@ export default function SellPage() {
   const [error, setError] = useState<string | null>(null);
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
   const [dragOver, setDragOver] = useState<number | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragIndex = useRef<number | null>(null);
+  const onCaptchaVerify = useCallback((token: string) => setCaptchaToken(token), []);
+  const onCaptchaExpire = useCallback(() => setCaptchaToken(null), []);
 
   const handleImageAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -66,7 +71,21 @@ export default function SellPage() {
         setError(null);
         const form = e.currentTarget as HTMLFormElement;
         const fd = new FormData(form);
-        images.forEach(img => fd.append('images', img.file));
+
+        // Upload images to Supabase storage, collect public URLs
+        const supabase = createClient();
+        const imageUrls: string[] = [];
+        for (const img of images) {
+          const ext = img.file.name.split('.').pop();
+          const path = `cars/private/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const { error: uploadErr } = await supabase.storage.from('listing-images').upload(path, img.file);
+          if (uploadErr) { setError('Image upload failed: ' + uploadErr.message); setLoading(false); return; }
+          const { data: { publicUrl } } = supabase.storage.from('listing-images').getPublicUrl(path);
+          imageUrls.push(publicUrl);
+        }
+        fd.set('imageUrls', JSON.stringify(imageUrls));
+        if (captchaToken) fd.set('cf-turnstile-response', captchaToken);
+
         const res = await fetch('/api/listings/submit', { method: 'POST', body: fd });
         const json = await res.json();
         setLoading(false);
@@ -238,6 +257,8 @@ export default function SellPage() {
             </div>
           </div>
         </section>
+
+        <Turnstile onVerify={onCaptchaVerify} onExpire={onCaptchaExpire} />
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{error}</div>
