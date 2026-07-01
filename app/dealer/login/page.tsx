@@ -129,10 +129,13 @@ export default function DealerLoginPage() {
             </button>
           </form>
 
-          <p className="text-xs text-zinc-400 text-center mt-6">
-            Need a dealer account?{' '}
-            <Link href="/dealer/apply" className="text-red-600 hover:underline">Apply here</Link>
-          </p>
+          <div className="mt-6 pt-6 border-t border-zinc-100 text-center">
+            <p className="text-sm text-zinc-500 mb-3">Don't have a dealer account yet?</p>
+            <Link href="/dealer/apply"
+              className="inline-block w-full border-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white font-bold py-2.5 rounded-xl text-sm transition-colors text-center">
+              Apply for a Dealer Account
+            </Link>
+          </div>
         </div>
       </div>
     </div>
