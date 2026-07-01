@@ -24,7 +24,8 @@ export async function proxy(request: NextRequest) {
 
   // Protect dealer routes
   if (request.nextUrl.pathname.startsWith('/dealer/') &&
-      !request.nextUrl.pathname.startsWith('/dealer/login')) {
+      !request.nextUrl.pathname.startsWith('/dealer/login') &&
+      !request.nextUrl.pathname.startsWith('/dealer/apply')) {
     if (!user) {
       const url = request.nextUrl.clone();
       url.pathname = '/dealer/login';
