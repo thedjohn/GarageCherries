@@ -66,25 +66,9 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
   const [existingImages, setExistingImages] = useState<string[]>(car?.images ?? []);
   const [newImages, setNewImages] = useState<{ file: File; preview: string }[]>([]);
   const [saving, setSaving] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleGenerateDescription = async () => {
-    setGenerating(true);
-    try {
-      const res = await fetch('/api/ai/listing-writer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...fields }),
-      });
-      const { description } = await res.json();
-      if (description) set('description', description);
-    } finally {
-      setGenerating(false);
-    }
-  };
 
   const set = (k: string, v: string) => setFields(f => ({ ...f, [k]: v }));
   const totalImages = existingImages.length + newImages.length;
@@ -356,17 +340,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide">Description *</label>
-              <button type="button" onClick={handleGenerateDescription} disabled={generating || !fields.year || !fields.make || !fields.model}
-                className="flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 disabled:opacity-40 transition-colors">
-                {generating ? (
-                  <><span className="inline-block w-3 h-3 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />Generating…</>
-                ) : (
-                  <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>Generate with AI</>
-                )}
-              </button>
-            </div>
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Description *</label>
             <textarea required rows={4} placeholder="History, restoration work, matching numbers, options..."
               value={fields.description} onChange={e => set('description', e.target.value)}
               className="w-full border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" />
@@ -772,7 +746,7 @@ export default function DealerDashboard() {
 
         {/* INQUIRIES */}
         {tab === 'inquiries' && (
-          <InquiriesTab dealerName={dealer?.name ?? 'the dealer'} realInquiries={metrics?.recentInquiries} />
+          <InquiriesTab realInquiries={metrics?.recentInquiries} />
         )}
 
         {/* SETTINGS */}
@@ -793,37 +767,16 @@ const SAMPLE_INQUIRIES = [
   { name: 'Robert T.', vehicle: '1969 Dodge Charger R/T',  carYear: 1969, carMake: 'Dodge',    carModel: 'Charger',  type: 'Message', time: 'Yesterday',  msg: 'Can you tell me more about the documentation and restoration history?' },
 ];
 
-function InquiriesTab({ dealerName, realInquiries }: { dealerName: string; realInquiries?: any[] }) {
-  const [drafts, setDrafts] = useState<Record<number, string>>({});
-  const [loading, setLoading] = useState<Record<number, boolean>>({});
-  const [open, setOpen] = useState<Record<number, boolean>>({});
-
+function InquiriesTab({ realInquiries }: { realInquiries?: any[] }) {
   const displayInquiries = realInquiries && realInquiries.length > 0
     ? realInquiries.map(i => ({
         name: i.buyer_name,
         vehicle: i.carTitle,
-        carYear: 0,
-        carMake: '',
-        carModel: i.carTitle,
         type: 'Message',
         time: new Date(i.created_at).toLocaleDateString(),
         msg: i.message,
       }))
     : SAMPLE_INQUIRIES;
-
-  async function generateReply(i: number) {
-    const inq = displayInquiries[i];
-    setLoading(l => ({ ...l, [i]: true }));
-    setOpen(o => ({ ...o, [i]: true }));
-    const res = await fetch('/api/ai/inquiry-reply', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ buyerName: inq.name, buyerMessage: inq.msg, carYear: inq.carYear, carMake: inq.carMake, carModel: inq.carModel, dealerName }),
-    });
-    const { reply } = await res.json();
-    setDrafts(d => ({ ...d, [i]: reply }));
-    setLoading(l => ({ ...l, [i]: false }));
-  }
 
   return (
     <div className="bg-white rounded-xl border border-zinc-100 shadow-sm divide-y divide-zinc-50">
@@ -832,42 +785,19 @@ function InquiriesTab({ dealerName, realInquiries }: { dealerName: string; realI
       </div>
       {displayInquiries.map((inq, i) => (
         <div key={i} className="px-5 py-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center text-sm font-bold text-red-600 shrink-0">
-                {inq.name[0]}
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-zinc-800">{inq.name} <span className="font-normal text-zinc-400">on</span> {inq.vehicle}</p>
-                <p className="text-sm text-zinc-600 mt-0.5">{inq.msg}</p>
-                <p className="text-xs text-zinc-400 mt-1">{inq.time}</p>
-              </div>
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center text-sm font-bold text-red-600 shrink-0">
+              {inq.name[0]}
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">{inq.type}</span>
-              <button onClick={() => generateReply(i)} disabled={loading[i]}
-                className="text-xs font-semibold text-red-600 hover:text-red-700 border border-red-200 hover:border-red-400 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap">
-                {loading[i] ? 'Drafting…' : open[i] ? 'Regenerate' : 'AI Draft Reply'}
-              </button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <p className="text-sm font-semibold text-zinc-800">{inq.name} <span className="font-normal text-zinc-400">on</span> {inq.vehicle}</p>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 shrink-0">{inq.type}</span>
+              </div>
+              <p className="text-sm text-zinc-600">{inq.msg}</p>
+              <p className="text-xs text-zinc-400 mt-1">{inq.time}</p>
             </div>
           </div>
-          {open[i] && (
-            <div className="mt-3 ml-12">
-              {loading[i] ? (
-                <div className="flex items-center gap-2 text-sm text-zinc-400">
-                  <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                  Writing reply…
-                </div>
-              ) : drafts[i] ? (
-                <div>
-                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-1.5">AI Draft Reply</p>
-                  <textarea rows={6} value={drafts[i]} onChange={e => setDrafts(d => ({ ...d, [i]: e.target.value }))}
-                    className="w-full border border-zinc-200 rounded-xl px-3 py-2 text-sm text-zinc-700 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" />
-                  <p className="text-xs text-zinc-400 mt-1">Edit as needed, then send from your email client.</p>
-                </div>
-              ) : null}
-            </div>
-          )}
         </div>
       ))}
     </div>

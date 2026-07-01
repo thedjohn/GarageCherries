@@ -2,7 +2,6 @@ import { Suspense } from 'react';
 import { Metadata } from 'next';
 import CarCard from '@/components/CarCard';
 import SearchFilters from '@/components/SearchFilters';
-import SmartSearchBar from '@/components/SmartSearchBar';
 import { createClient } from '@/lib/supabase/server';
 import type { Car } from '@/lib/types';
 
@@ -65,8 +64,6 @@ export default async function ListingsPage({ searchParams }: Props) {
         </h1>
         <p className="text-zinc-500 mt-1">{cars.length} listing{cars.length !== 1 ? 's' : ''} found</p>
       </div>
-
-      <SmartSearchBar />
 
       <div className="flex flex-col lg:flex-row gap-8">
         <Suspense>

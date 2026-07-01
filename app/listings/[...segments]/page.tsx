@@ -3,8 +3,6 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import CarCard from '@/components/CarCard';
 import ImageGallery from '@/components/ImageGallery';
-import ValuationWidget from '@/components/ValuationWidget';
-import SimilarCarsSection from '@/components/SimilarCarsSection';
 import ContactSellerForm from '@/components/ContactSellerForm';
 import WatchlistButton from '@/components/WatchlistButton';
 import ViewTracker from '@/components/ViewTracker';
@@ -367,17 +365,6 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
               />
               {car.lotNumber && <p className="text-xs text-zinc-400 text-center mt-4">Lot # {car.lotNumber}</p>}
 
-              <ValuationWidget
-                year={car.year}
-                make={car.make}
-                model={car.model}
-                mileage={car.mileage}
-                condition={car.condition}
-                price={car.price}
-                bodyStyle={car.bodyStyle}
-                engine={car.engine}
-              />
-
               {mapAddressParts.length > 0 && (
                 <div className="mt-4 rounded-xl overflow-hidden border border-zinc-100">
                   <iframe
@@ -417,17 +404,6 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
           </div>
         </div>
 
-        <SimilarCarsSection
-          currentCarId={car.id}
-          year={car.year}
-          make={car.make}
-          model={car.model}
-          bodyStyle={car.bodyStyle}
-          engine={car.engine}
-          price={car.price}
-          condition={car.condition}
-          fallbackCars={similar}
-        />
       </div>
       </>
     );
