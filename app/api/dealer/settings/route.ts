@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   // Use admin client so RLS doesn't block the lookup
   const { data: dealer } = await admin
     .from('dealers')
-    .select('id')
+    .select('id, plan, beta_expires_at')
     .eq('id', dealerId)
     .or(`id.eq.${user.id},email.eq.${user.email}`)
     .single();
@@ -26,5 +26,5 @@ export async function POST(request: NextRequest) {
   const { error } = await admin.from('dealers').update(fields).eq('id', dealer.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, plan: dealer.plan, beta_expires_at: dealer.beta_expires_at });
 }

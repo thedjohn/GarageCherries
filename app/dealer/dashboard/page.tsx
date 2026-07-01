@@ -21,6 +21,7 @@ interface DbDealer {
   phone?: string; email?: string; location?: string; state?: string;
   address?: string; zip?: string;
   description?: string; website?: string; specialties?: string[];
+  plan?: string; beta_expires_at?: string;
 }
 
 function toSlug(s: string) {
@@ -457,7 +458,7 @@ export default function DealerDashboard() {
     if (!user) { router.replace('/dealer/login'); return; }
 
     const { data: dealerRow } = await supabase
-      .from('dealers').select('id, slug, name, phone, email, address, location, state, zip, description, website, specialties, since, logo')
+      .from('dealers').select('id, slug, name, phone, email, address, location, state, zip, description, website, specialties, since, logo, plan, beta_expires_at')
       .or(`id.eq.${user.id},email.eq.${user.email}`)
       .single();
 
@@ -537,6 +538,16 @@ export default function DealerDashboard() {
   const dealerName = dealer?.name ?? 'Your Dealership';
   const dealerSlug = dealer?.slug ?? '';
 
+  const betaBanner = (() => {
+    if (dealer?.plan !== 'beta' || !dealer?.beta_expires_at) return null;
+    const expires = new Date(dealer.beta_expires_at);
+    const daysLeft = Math.ceil((expires.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    if (daysLeft <= 0) return null;
+    const dateStr = expires.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const isWarning = daysLeft <= 30;
+    return { daysLeft, dateStr, isWarning };
+  })();
+
   return (
     <>
     {/* Vehicle modal */}
@@ -603,6 +614,24 @@ export default function DealerDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
+
+        {/* Beta banner */}
+        {betaBanner && (
+          <div className={`rounded-xl px-5 py-3 mb-6 flex items-center justify-between text-sm ${
+            betaBanner.isWarning ? 'bg-amber-50 border border-amber-200' : 'bg-blue-50 border border-blue-200'
+          }`}>
+            <div className="flex items-center gap-2">
+              <span>{betaBanner.isWarning ? '⚠️' : '🎉'}</span>
+              <span className={betaBanner.isWarning ? 'text-amber-800' : 'text-blue-800'}>
+                <strong>Beta access</strong> — your free beta period expires on <strong>{betaBanner.dateStr}</strong>
+                {' '}({betaBanner.daysLeft} day{betaBanner.daysLeft !== 1 ? 's' : ''} remaining)
+              </span>
+            </div>
+            {betaBanner.isWarning && (
+              <span className="text-xs font-semibold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full shrink-0">Expiring soon</span>
+            )}
+          </div>
+        )}
 
         <div className="bg-white border border-zinc-100 rounded-xl px-5 py-3 flex items-center justify-between mb-6 text-sm">
           <span className="text-zinc-500">Inventory: <span className="font-medium text-zinc-800">{listings.length} active vehicles</span></span>

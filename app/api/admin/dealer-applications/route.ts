@@ -62,7 +62,10 @@ export async function PATCH(req: NextRequest) {
 
   const userId = newUser.user.id;
 
-  // Insert dealer row
+  // Insert dealer row with 6-month beta plan
+  const betaExpiresAt = new Date();
+  betaExpiresAt.setMonth(betaExpiresAt.getMonth() + 6);
+
   const { error: dealerErr } = await admin.from('dealers').insert({
     id: userId,
     slug,
@@ -76,6 +79,8 @@ export async function PATCH(req: NextRequest) {
     website: app.website || null,
     specialties: app.specialties || [],
     description: app.description || null,
+    plan: 'beta',
+    beta_expires_at: betaExpiresAt.toISOString(),
   });
 
   if (dealerErr) {

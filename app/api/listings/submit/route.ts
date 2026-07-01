@@ -10,8 +10,9 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const sellerId = user?.id ?? null;
 
-  // Enforce 10-listing limit for private sellers (dealers are exempt)
-  if (sellerId) {
+  // Enforce listing limits for private sellers (dealers are exempt)
+  const betaMode = process.env.BETA_MODE === 'true';
+  if (sellerId && !betaMode) {
     const [{ data: dealer }, { count: activeCount }] = await Promise.all([
       admin.from('dealers').select('id').eq('id', sellerId).single(),
       admin.from('listings')

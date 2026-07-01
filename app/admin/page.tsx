@@ -680,7 +680,9 @@ export default function AdminPage() {
                   <p className="text-xs text-zinc-400 mt-2">Note: {app.rejection_note}</p>
                 )}
                 {app.status === 'approved' && (
-                  <p className="text-xs text-green-600 mt-2">Account created — dealer was sent a password setup email.</p>
+                  <p className="text-xs text-green-600 mt-2">
+                    Account created — dealer was sent a password setup email. Beta expires {new Date(new Date(app.reviewed_at!).setMonth(new Date(app.reviewed_at!).getMonth() + 6)).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
+                  </p>
                 )}
               </div>
             ))}
