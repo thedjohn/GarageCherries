@@ -4,7 +4,10 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { createHash } from 'crypto';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FALLBACK_EMAIL = process.env.INQUIRY_FALLBACK_EMAIL ?? 'derek_ljohnson@yahoo.com';
+const FALLBACK_EMAIL = process.env.INQUIRY_FALLBACK_EMAIL;
+if (!FALLBACK_EMAIL) {
+  console.error('INQUIRY_FALLBACK_EMAIL env var is not set');
+}
 
 export async function POST(request: NextRequest) {
   const { carId, carTitle, buyerName, buyerEmail, buyerPhone, message } = await request.json();
@@ -16,14 +19,14 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
 
   // Look up seller email and dealer_id server-side
-  let sellerEmail = FALLBACK_EMAIL;
+  let sellerEmail: string | null = null;
   let sellerName = 'the seller';
   let dealerId = '';
 
   try {
     const { data: car } = await supabase
       .from('listings')
-      .select('seller_id, seller_name')
+      .select('seller_id, seller_name, seller_email')
       .eq('id', carId)
       .single();
 
@@ -38,12 +41,21 @@ export async function POST(request: NextRequest) {
       if (dealer?.email) {
         sellerEmail = dealer.email;
         sellerName = dealer.name ?? sellerName;
-      } else if (car.seller_name) {
-        sellerName = car.seller_name;
+      } else if (car.seller_email) {
+        sellerEmail = car.seller_email;
+        sellerName = car.seller_name ?? sellerName;
       }
     }
   } catch {
     // Fall through to fallback
+  }
+
+  // Use fallback only if seller email couldn't be resolved
+  if (!sellerEmail) {
+    if (!FALLBACK_EMAIL) {
+      return NextResponse.json({ error: 'Unable to route inquiry — seller email not found and no fallback configured.' }, { status: 500 });
+    }
+    sellerEmail = FALLBACK_EMAIL;
   }
 
   // Store inquiry in DB
