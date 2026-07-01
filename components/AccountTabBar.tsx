@@ -89,6 +89,7 @@ function AccountTabBarInner() {
     { key: 'watchlist', label: 'Watchlist', href: '/account?tab=watchlist', count: counts.watchlist },
     { key: 'messages', label: 'Messages', href: '/account?tab=messages', count: counts.messages },
     { key: 'alerts', label: 'Alerts', href: '/account?tab=alerts', count: counts.alerts },
+    { key: 'listings', label: 'My Listings', href: '/account?tab=listings', count: 0 },
     { key: 'settings', label: 'Settings', href: '/account?tab=settings', count: 0 },
   ];
 

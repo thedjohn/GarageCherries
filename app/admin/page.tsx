@@ -11,8 +11,9 @@ interface Listing {
   location: string; state: string; seller_name: string; seller_phone: string;
   seller_email: string; images: string[]; description: string;
   featured: boolean; status: string; created_at: string;
+  rejection_reason: string | null; resubmission_note: string | null; resubmission_count: number;
 }
-type EditFields = Omit<Listing, 'id' | 'slug' | 'images' | 'created_at' | 'title'>;
+type EditFields = Omit<Listing, 'id' | 'slug' | 'images' | 'created_at' | 'title' | 'rejection_reason' | 'resubmission_note' | 'resubmission_count'>;
 
 interface TeamMember { user_id: string; email: string; role: string; created_at: string; }
 interface ReportedMessage {
@@ -44,6 +45,8 @@ export default function AdminPage() {
   const [working, setWorking] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Listing | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
   const [editing, setEditing] = useState<Listing | null>(null);
   const [editFields, setEditFields] = useState<EditFields | null>(null);
   const [saving, setSaving] = useState(false);
@@ -259,18 +262,25 @@ export default function AdminPage() {
     setEditing(null);
   }
 
-  async function handleAction(id: string, action: 'approve' | 'reject') {
+  async function handleAction(id: string, action: 'approve' | 'reject', reason?: string) {
     setWorking(id + action);
     const res = await fetch('/api/admin/listings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, action }),
+      body: JSON.stringify({ id, action, rejection_reason: reason ?? null }),
     });
     if (res.ok) {
       setListings(prev => prev.map(l => l.id === id
-        ? { ...l, status: action === 'approve' ? 'approved' : 'rejected' } : l));
+        ? { ...l, status: action === 'approve' ? 'approved' : 'rejected', rejection_reason: action === 'reject' ? (reason ?? null) : null } : l));
     }
+    setRejectingId(null);
+    setRejectionReason('');
     setWorking(null);
+  }
+
+  function startReject(id: string) {
+    setRejectingId(id);
+    setRejectionReason('');
   }
 
   async function deleteListing(id: string) {
@@ -372,11 +382,18 @@ export default function AdminPage() {
         {listings.length === 0 && <div className="text-center py-20 text-zinc-400">No listings submitted yet.</div>}
         <div className="space-y-4">
           {listings.map(l => (
-            <div key={l.id} className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5 flex gap-4">
+            <div key={l.id} className={`bg-white rounded-2xl border shadow-sm p-5 flex gap-4 ${l.resubmission_count > 0 && l.status === 'pending' ? 'border-blue-200' : 'border-zinc-100'}`}>
               {l.images?.[0] && <img src={l.images[0]} alt={l.title} className="w-32 h-24 object-cover rounded-xl shrink-0" />}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2 mb-1">
-                  <h2 className="font-bold text-zinc-900">{l.title}</h2>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="font-bold text-zinc-900">{l.title}</h2>
+                    {l.resubmission_count > 0 && l.status === 'pending' && (
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">
+                        Resubmission #{l.resubmission_count}
+                      </span>
+                    )}
+                  </div>
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${
                     l.status === 'approved' ? 'bg-green-100 text-green-700' :
                     l.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
@@ -385,16 +402,76 @@ export default function AdminPage() {
                 <p className="text-sm text-zinc-500">{l.condition} · {l.location}, {l.state} · ${l.price?.toLocaleString()}</p>
                 <p className="text-sm text-zinc-500">{l.seller_name} · {formatPhone(l.seller_phone)} · {l.seller_email}</p>
                 <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{l.description}</p>
+
+                {/* Resubmission details */}
+                {l.resubmission_count > 0 && l.status === 'pending' && (l.rejection_reason || l.resubmission_note) && (
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    {l.rejection_reason && (
+                      <div className="bg-red-50 border border-red-100 rounded-lg p-3">
+                        <p className="text-xs font-semibold text-red-600 mb-1">Previous rejection reason</p>
+                        <p className="text-xs text-red-700">{l.rejection_reason}</p>
+                      </div>
+                    )}
+                    {l.resubmission_note && (
+                      <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                        <p className="text-xs font-semibold text-blue-600 mb-1">What the seller fixed</p>
+                        <p className="text-xs text-blue-700">{l.resubmission_note}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Reject reason input */}
+                {rejectingId === l.id && (
+                  <div className="mt-3 bg-red-50 border border-red-100 rounded-xl p-4">
+                    <p className="text-sm font-semibold text-red-700 mb-2">Rejection reason</p>
+                    <select
+                      value={rejectionReason}
+                      onChange={e => setRejectionReason(e.target.value)}
+                      className="w-full border border-red-200 rounded-lg px-3 py-2 text-sm mb-2 bg-white focus:outline-none focus:ring-2 focus:ring-red-400">
+                      <option value="">Select a reason…</option>
+                      <option value="Poor photo quality — photos are too dark, blurry, or don't show the vehicle clearly.">Poor photo quality</option>
+                      <option value="Insufficient photos — please add more photos showing all sides of the vehicle.">Insufficient photos</option>
+                      <option value="Missing information — key details like mileage, condition, or description are incomplete.">Missing information</option>
+                      <option value="Duplicate listing — this vehicle is already listed on GarageCherries.">Duplicate listing</option>
+                      <option value="Suspected misrepresentation — the listing details don't match the photos or description.">Suspected misrepresentation</option>
+                      <option value="Policy violation — this listing violates GarageCherries listing policies.">Policy violation</option>
+                      <option value="other">Other (type below)</option>
+                    </select>
+                    {rejectionReason === 'other' && (
+                      <textarea
+                        placeholder="Describe the reason for rejection…"
+                        rows={2}
+                        onChange={e => setRejectionReason(e.target.value === 'other' ? '' : e.target.value)}
+                        className="w-full border border-red-200 rounded-lg px-3 py-2 text-sm mb-2 resize-none focus:outline-none focus:ring-2 focus:ring-red-400"
+                      />
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleAction(l.id, 'reject', rejectionReason === 'other' ? '' : rejectionReason)}
+                        disabled={!!working}
+                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
+                        {working === l.id + 'reject' ? 'Rejecting…' : 'Confirm Reject'}
+                      </button>
+                      <button onClick={() => setRejectingId(null)} className="px-4 py-1.5 border border-zinc-200 text-zinc-600 text-sm font-semibold rounded-lg hover:bg-zinc-50">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-2 mt-3 flex-wrap">
                   {l.status === 'pending' && (adminRole === 'moderator' || adminRole === 'admin' || adminRole === 'superadmin') && <>
                     <button onClick={() => handleAction(l.id, 'approve')} disabled={!!working}
                       className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
                       {working === l.id + 'approve' ? 'Approving…' : 'Approve'}
                     </button>
-                    <button onClick={() => handleAction(l.id, 'reject')} disabled={!!working}
-                      className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
-                      {working === l.id + 'reject' ? 'Rejecting…' : 'Reject'}
-                    </button>
+                    {rejectingId !== l.id && (
+                      <button onClick={() => startReject(l.id)} disabled={!!working}
+                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
+                        Reject
+                      </button>
+                    )}
                   </>}
                   {(adminRole === 'admin' || adminRole === 'superadmin') && (
                     <button onClick={() => openEdit(l)}

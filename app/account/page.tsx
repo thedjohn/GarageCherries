@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -9,7 +9,17 @@ import { MAKES, BODY_STYLES, CONDITIONS, STATES } from '@/lib/types';
 import AccountTabBar from '@/components/AccountTabBar';
 import { useMessenger } from '@/lib/messenger-context';
 
-type Tab = 'watchlist' | 'messages' | 'alerts' | 'settings';
+type Tab = 'watchlist' | 'messages' | 'alerts' | 'listings' | 'settings';
+
+interface MyListing {
+  id: string; slug: string; title: string; year: number; make: string; model: string;
+  price: number; mileage: number | null; condition: string; body_style: string;
+  transmission: string; engine: string | null; color: string | null;
+  location: string; state: string; images: string[]; description: string;
+  seller_name: string; seller_phone: string; seller_email: string;
+  status: string; rejection_reason: string | null; resubmission_note: string | null;
+  resubmission_count: number; created_at: string;
+}
 
 interface WatchItem {
   id: string;
@@ -136,6 +146,16 @@ function AccountPage() {
   const [alertSaving, setAlertSaving] = useState(false);
   const [alertError, setAlertError] = useState('');
 
+  // My Listings
+  const [myListings, setMyListings] = useState<MyListing[]>([]);
+  const [myListingsLoading, setMyListingsLoading] = useState(false);
+  const [editingListing, setEditingListing] = useState<MyListing | null>(null);
+  const [editForm, setEditForm] = useState({ price: '', mileage: '', description: '', seller_name: '', seller_phone: '', seller_email: '', resubmission_note: '' });
+  const [editImages, setEditImages] = useState<{ preview: string; publicUrl: string | null; uploadState: 'done' | 'uploading' | 'error'; file?: File; progress: number }[]>([]);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+  const editFileRef = useRef<HTMLInputElement>(null);
+
   // Settings
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -241,11 +261,21 @@ function AccountPage() {
     setAlertsLoading(false);
   }, [userId, alerts.length]);
 
+  const loadMyListings = useCallback(async () => {
+    if (myListings.length > 0) return;
+    setMyListingsLoading(true);
+    const res = await fetch('/api/listings/my');
+    const json = await res.json();
+    setMyListings(json.listings ?? []);
+    setMyListingsLoading(false);
+  }, [myListings.length]);
+
   useEffect(() => {
     if (tab === 'watchlist') loadWatchlist();
     if (tab === 'messages') loadMessages();
     if (tab === 'alerts') loadAlerts();
-  }, [tab, loadWatchlist, loadMessages, loadAlerts]);
+    if (tab === 'listings') loadMyListings();
+  }, [tab, loadWatchlist, loadMessages, loadAlerts, loadMyListings]);
 
   // Listen for new inbound messages and mark that conversation unread
   useEffect(() => {
@@ -278,6 +308,102 @@ function AccountPage() {
     };
     if (conversations.length > 0) tryOpen();
   }, [searchParams, conversations, tab, openChat]);
+
+  function openEditListing(l: MyListing) {
+    setEditingListing(l);
+    setEditForm({
+      price: String(l.price),
+      mileage: l.mileage != null ? String(l.mileage) : '',
+      description: l.description,
+      seller_name: l.seller_name,
+      seller_phone: l.seller_phone,
+      seller_email: l.seller_email,
+      resubmission_note: '',
+    });
+    setEditImages(l.images.map(url => ({ preview: url, publicUrl: url, uploadState: 'done' as const, progress: 100 })));
+    setEditError('');
+  }
+
+  async function uploadEditImage(file: File, index: number): Promise<string | null> {
+    const res = await fetch('/api/listings/upload-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileName: file.name, contentType: file.type }),
+    });
+    if (!res.ok) return null;
+    const { signedUrl, publicUrl } = await res.json();
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', signedUrl);
+      xhr.setRequestHeader('Content-Type', file.type);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          setEditImages(prev => prev.map((img, i) => i === index ? { ...img, progress: Math.round((e.loaded / e.total) * 100) } : img));
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          setEditImages(prev => prev.map((img, i) => i === index ? { ...img, uploadState: 'done', publicUrl, progress: 100 } : img));
+          resolve(publicUrl);
+        } else {
+          setEditImages(prev => prev.map((img, i) => i === index ? { ...img, uploadState: 'error' } : img));
+          resolve(null);
+        }
+      };
+      xhr.onerror = () => {
+        setEditImages(prev => prev.map((img, i) => i === index ? { ...img, uploadState: 'error' } : img));
+        resolve(null);
+      };
+      xhr.send(file);
+    });
+  }
+
+  function handleEditImageAdd(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (editFileRef.current) editFileRef.current.value = '';
+    const slots = 30 - editImages.length;
+    if (slots <= 0) return;
+    const toAdd = files.slice(0, slots);
+    const newEntries = toAdd.map(file => ({
+      file, preview: URL.createObjectURL(file),
+      uploadState: 'uploading' as const, publicUrl: null, progress: 0,
+    }));
+    setEditImages(prev => {
+      const updated = [...prev, ...newEntries];
+      newEntries.forEach((_, i) => uploadEditImage(toAdd[i], prev.length + i));
+      return updated;
+    });
+  }
+
+  async function saveEditListing() {
+    if (!editingListing) return;
+    const anyUploading = editImages.some(img => img.uploadState === 'uploading');
+    if (anyUploading) { setEditError('Please wait for all photos to finish uploading.'); return; }
+    setEditSaving(true);
+    setEditError('');
+    const images = editImages.map(img => img.publicUrl).filter(Boolean) as string[];
+    const res = await fetch(`/api/listings/${editingListing.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...editForm, price: Number(editForm.price), mileage: editForm.mileage || null, images }),
+    });
+    const json = await res.json();
+    setEditSaving(false);
+    if (!res.ok) { setEditError(json.error ?? 'Failed to save.'); return; }
+    setMyListings(prev => prev.map(l => l.id === editingListing.id
+      ? { ...l, ...editForm, price: Number(editForm.price), mileage: editForm.mileage ? Number(editForm.mileage) : null, images, status: l.status === 'rejected' || l.status === 'approved' ? 'pending' : l.status, resubmission_note: editForm.resubmission_note, rejection_reason: null }
+      : l));
+    setEditingListing(null);
+  }
+
+  async function markAsSold(id: string) {
+    await fetch(`/api/listings/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'sold' }),
+    });
+    setMyListings(prev => prev.map(l => l.id === id ? { ...l, status: 'removed' } : l));
+  }
 
   const removeFromWatchlist = async (watchId: string) => {
     const supabase = createClient();
@@ -780,6 +906,188 @@ function AccountPage() {
                 );
               })}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* My Listings tab */}
+      {tab === 'listings' && (
+        <div>
+          {myListingsLoading ? (
+            <div className="text-center py-20 text-zinc-400 text-sm">Loading your listings…</div>
+          ) : myListings.length === 0 ? (
+            <div className="text-center py-20">
+              <p className="text-zinc-400 text-sm mb-4">You haven&apos;t posted any listings yet.</p>
+              <Link href="/sell" className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">Post a Car</Link>
+            </div>
+          ) : (
+
+            /* Edit form */
+            editingListing ? (
+              <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6 max-w-2xl">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-bold text-zinc-900">Edit Listing — {editingListing.title}</h2>
+                  <button onClick={() => setEditingListing(null)} className="text-zinc-400 hover:text-zinc-600 text-sm">Cancel</button>
+                </div>
+
+                {(editingListing.status === 'rejected' || editingListing.status === 'approved') && (
+                  <div className={`rounded-xl p-4 mb-5 text-sm ${editingListing.status === 'rejected' ? 'bg-amber-50 border border-amber-200 text-amber-800' : 'bg-blue-50 border border-blue-200 text-blue-800'}`}>
+                    {editingListing.status === 'rejected'
+                      ? 'This listing was rejected. Fix the issues below and resubmit — it will go back to pending review.'
+                      : 'Editing an approved listing will send it back to pending review before going live again.'}
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Asking Price *</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
+                        <input type="number" value={editForm.price} onChange={e => setEditForm(f => ({ ...f, price: e.target.value }))}
+                          className="w-full border border-zinc-200 rounded-xl pl-7 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Mileage</label>
+                      <input type="number" value={editForm.mileage} onChange={e => setEditForm(f => ({ ...f, mileage: e.target.value }))}
+                        placeholder="Leave blank if unknown"
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Description *</label>
+                    <textarea rows={5} value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                      className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" />
+                  </div>
+
+                  {/* Photos */}
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Photos</label>
+                    <div className="grid grid-cols-4 gap-2 mb-2">
+                      {editImages.map((img, i) => (
+                        <div key={img.preview} className="relative aspect-square rounded-lg overflow-hidden border border-zinc-200">
+                          <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                          {img.uploadState === 'uploading' && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                              <span className="text-white text-xs">{img.progress}%</span>
+                            </div>
+                          )}
+                          <button type="button" onClick={() => setEditImages(prev => prev.filter((_, j) => j !== i))}
+                            className="absolute top-1 right-1 w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center">✕</button>
+                          {i === 0 && <span className="absolute bottom-1 left-1 text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded font-bold">Cover</span>}
+                        </div>
+                      ))}
+                      {editImages.length < 30 && (
+                        <label className="aspect-square rounded-lg border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center cursor-pointer hover:border-red-400 hover:bg-red-50 transition-colors">
+                          <span className="text-xl">📷</span>
+                          <span className="text-xs text-zinc-400 mt-1">Add</span>
+                          <input ref={editFileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleEditImageAdd} />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Your Name *</label>
+                      <input type="text" value={editForm.seller_name} onChange={e => setEditForm(f => ({ ...f, seller_name: e.target.value }))}
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Phone *</label>
+                      <input type="tel" value={editForm.seller_phone} onChange={e => setEditForm(f => ({ ...f, seller_phone: e.target.value }))}
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Email *</label>
+                      <input type="email" value={editForm.seller_email} onChange={e => setEditForm(f => ({ ...f, seller_email: e.target.value }))}
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                    </div>
+                  </div>
+
+                  {/* Resubmission note — required when resubmitting a rejected listing */}
+                  {editingListing.status === 'rejected' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">What did you fix? *</label>
+                      <textarea rows={3} value={editForm.resubmission_note}
+                        onChange={e => setEditForm(f => ({ ...f, resubmission_note: e.target.value }))}
+                        placeholder="Briefly describe what you changed (e.g. 'Replaced all photos with clearer daylight shots and added full mileage.')"
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" />
+                    </div>
+                  )}
+                </div>
+
+                {editError && <p className="text-sm text-red-600 mt-4">{editError}</p>}
+
+                <div className="flex gap-3 mt-6">
+                  <button onClick={saveEditListing} disabled={editSaving}
+                    className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
+                    {editSaving ? 'Saving…' : editingListing.status === 'rejected' ? 'Fix & Resubmit' : 'Save Changes'}
+                  </button>
+                  <button onClick={() => setEditingListing(null)} className="border border-zinc-200 text-zinc-600 font-semibold px-6 py-2.5 rounded-xl text-sm hover:bg-zinc-50 transition-colors">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {myListings.map(l => (
+                  <div key={l.id} className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 flex gap-4">
+                    {l.images?.[0] && (
+                      <img src={l.images[0]} alt={l.title} className="w-28 h-20 object-cover rounded-xl shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <h3 className="font-bold text-zinc-900 text-sm">{l.title}</h3>
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${
+                          l.status === 'approved' ? 'bg-green-100 text-green-700' :
+                          l.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                          l.status === 'removed' ? 'bg-zinc-100 text-zinc-500' :
+                          'bg-yellow-100 text-yellow-700'
+                        }`}>{l.status === 'approved' ? 'Live' : l.status === 'removed' ? 'Removed' : l.status}</span>
+                      </div>
+                      <p className="text-xs text-zinc-500">${l.price.toLocaleString()} · {l.location}, {l.state}</p>
+
+                      {/* Rejection reason */}
+                      {l.status === 'rejected' && l.rejection_reason && (
+                        <div className="mt-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                          <p className="text-xs font-semibold text-red-600 mb-0.5">Rejected</p>
+                          <p className="text-xs text-red-700">{l.rejection_reason}</p>
+                        </div>
+                      )}
+                      {l.status === 'rejected' && !l.rejection_reason && (
+                        <div className="mt-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                          <p className="text-xs text-red-700">This listing was rejected. Edit and resubmit to try again.</p>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 mt-3 flex-wrap">
+                        {l.status !== 'removed' && (
+                          <button onClick={() => openEditListing(l)}
+                            className="text-xs font-semibold px-3 py-1.5 border border-zinc-200 rounded-lg text-zinc-600 hover:bg-zinc-50 transition-colors">
+                            {l.status === 'rejected' ? 'Fix & Resubmit' : 'Edit'}
+                          </button>
+                        )}
+                        {l.status === 'approved' && (
+                          <button onClick={() => markAsSold(l.id)}
+                            className="text-xs font-semibold px-3 py-1.5 border border-green-200 rounded-lg text-green-700 hover:bg-green-50 transition-colors">
+                            Mark as Sold
+                          </button>
+                        )}
+                        {l.status === 'approved' && (
+                          <Link href={`/listings/${toSegment(l.make)}/${toSegment(l.model)}/${l.id}/${l.slug}`}
+                            className="text-xs font-semibold px-3 py-1.5 border border-zinc-200 rounded-lg text-zinc-600 hover:bg-zinc-50 transition-colors">
+                            View Listing
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
           )}
         </div>
       )}

@@ -298,6 +298,7 @@ export default function Header() {
                     <span>Alerts</span>
                     {counts.alerts > 0 && <span className="bg-zinc-700 text-white text-xs font-bold rounded-full px-2 py-0.5">{counts.alerts}</span>}
                   </Link>
+                  <Link href="/account?tab=listings" className="block py-2 font-semibold hover:text-red-400" onClick={() => setMenuOpen(false)}>My Listings</Link>
                   <Link href="/account?tab=settings" className="block py-2 text-zinc-400 hover:text-red-400" onClick={() => setMenuOpen(false)}>Account Settings</Link>
                   {isAdmin && (
                     <Link href="/admin" className="block py-2 text-red-500 font-semibold hover:text-red-400" onClick={() => setMenuOpen(false)}>Admin Panel</Link>

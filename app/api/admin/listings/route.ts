@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const sellerId = req.nextUrl.searchParams.get('seller_id');
   let query = admin
     .from('listings')
-    .select('id,slug,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,location,state,seller_name,seller_phone,seller_email,seller_id,images,description,featured,status,created_at')
+    .select('id,slug,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,location,state,seller_name,seller_phone,seller_email,seller_id,images,description,featured,status,rejection_reason,resubmission_note,resubmission_count,created_at')
     .order('created_at', { ascending: false });
   if (sellerId) query = query.eq('seller_id', sellerId);
   const { data: listings, error } = await query;
@@ -60,7 +60,15 @@ export async function PATCH(req: NextRequest) {
   const update: Record<string, unknown> = {
     status: action === 'approve' ? 'approved' : 'rejected',
   };
-  if (action === 'approve') update.listed_at = new Date().toISOString();
+  if (action === 'approve') {
+    update.listed_at = new Date().toISOString();
+    update.rejection_reason = null;
+    update.resubmission_note = null;
+  }
+  if (action === 'reject') {
+    const { rejection_reason } = body;
+    update.rejection_reason = rejection_reason?.trim() || null;
+  }
 
   const { error } = await admin
     .from('listings')
