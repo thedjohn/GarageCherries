@@ -142,12 +142,12 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
       const oldPrice = car!.price ?? 0;
       const newPrice = payload.price ?? 0;
       if (!error && newPrice > 0 && newPrice < oldPrice) {
-        supabase.from('price_history').insert({
+        void supabase.from('price_history').insert({
           car_id: car!.id,
           old_price: oldPrice,
           price: newPrice,
           changed_at: new Date().toISOString(),
-        }).then(() => {}).catch(() => {});
+        });
         fetch('/api/notify-watchers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
