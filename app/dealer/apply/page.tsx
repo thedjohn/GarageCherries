@@ -68,15 +68,15 @@ export default function DealerApplyPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 sm:col-span-1">
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Your Name *</label>
-              <input type="text" required value={fields.name} onChange={e => set('name', e.target.value)} placeholder="John Smith" className={inp} />
+              <input type="text" required value={fields.name} onChange={e => set('name', e.target.value)} placeholder="Full name" className={inp} />
             </div>
             <div className="col-span-2 sm:col-span-1">
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Email Address *</label>
-              <input type="email" required value={fields.email} onChange={e => set('email', e.target.value)} placeholder="john@yourdealership.com" className={inp} />
+              <input type="email" required value={fields.email} onChange={e => set('email', e.target.value)} placeholder="Email address" className={inp} />
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Phone *</label>
-              <input type="tel" required value={fields.phone} onChange={e => set('phone', e.target.value)} placeholder="(314) 555-0100" className={inp} />
+              <input type="tel" required value={fields.phone} onChange={e => set('phone', e.target.value)} placeholder="Phone number" className={inp} />
             </div>
           </div>
         </div>
@@ -87,31 +87,31 @@ export default function DealerApplyPage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Dealership Name *</label>
-              <input type="text" required value={fields.dealerName} onChange={e => set('dealerName', e.target.value)} placeholder="Fast Lane Classic Cars" className={inp} />
+              <input type="text" required value={fields.dealerName} onChange={e => set('dealerName', e.target.value)} placeholder="Dealership name" className={inp} />
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Street Address</label>
-              <input type="text" value={fields.address} onChange={e => set('address', e.target.value)} placeholder="123 Auto Row Dr" className={inp} />
+              <input type="text" value={fields.address} onChange={e => set('address', e.target.value)} placeholder="Street address" className={inp} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">City *</label>
-              <input type="text" required value={fields.location} onChange={e => set('location', e.target.value)} placeholder="St. Charles" className={inp} />
+              <input type="text" required value={fields.location} onChange={e => set('location', e.target.value)} placeholder="City" className={inp} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">State *</label>
-              <input type="text" required maxLength={2} value={fields.state} onChange={e => set('state', e.target.value.toUpperCase())} placeholder="MO" className={inp} />
+              <input type="text" required maxLength={2} value={fields.state} onChange={e => set('state', e.target.value.toUpperCase())} placeholder="State" className={inp} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">ZIP Code</label>
-              <input type="text" maxLength={10} value={fields.zip} onChange={e => set('zip', e.target.value)} placeholder="63301" className={inp} />
+              <input type="text" maxLength={10} value={fields.zip} onChange={e => set('zip', e.target.value)} placeholder="ZIP code" className={inp} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Website</label>
-              <input type="url" value={fields.website} onChange={e => set('website', e.target.value)} placeholder="https://yourdealership.com" className={inp} />
+              <input type="url" value={fields.website} onChange={e => set('website', e.target.value)} placeholder="https://" className={inp} />
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Specialties <span className="font-normal normal-case text-zinc-400">(comma separated)</span></label>
-              <input type="text" value={fields.specialties} onChange={e => set('specialties', e.target.value)} placeholder="Classic Cars, Muscle Cars, Trucks" className={inp} />
+              <input type="text" value={fields.specialties} onChange={e => set('specialties', e.target.value)} placeholder="e.g. Classic Cars, Muscle Cars, Trucks" className={inp} />
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">About Your Dealership *</label>
