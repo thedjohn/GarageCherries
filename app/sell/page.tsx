@@ -4,6 +4,19 @@ import { MAKES, BODY_STYLES, CONDITIONS } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
 import Turnstile from '@/components/Turnstile';
 
+type VinResult = {
+  vinValid: boolean;
+  verified?: boolean;
+  preStandard?: boolean;
+  message?: string;
+  nhtsaMake?: string | null;
+  nhtsaModel?: string | null;
+  nhtsaYear?: string | null;
+  makeMatch?: boolean | null;
+  modelMatch?: boolean | null;
+  yearMatch?: boolean | null;
+};
+
 export default function SellPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -11,10 +24,30 @@ export default function SellPage() {
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
   const [dragOver, setDragOver] = useState<number | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [vin, setVin] = useState('');
+  const [vinResult, setVinResult] = useState<VinResult | null>(null);
+  const [vinLoading, setVinLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragIndex = useRef<number | null>(null);
   const onCaptchaVerify = useCallback((token: string) => setCaptchaToken(token), []);
   const onCaptchaExpire = useCallback(() => setCaptchaToken(null), []);
+
+  const verifyVin = async (form: HTMLFormElement) => {
+    if (!vin.trim()) return;
+    setVinLoading(true);
+    setVinResult(null);
+    const make = (form.elements.namedItem('make') as HTMLSelectElement)?.value;
+    const model = (form.elements.namedItem('model') as HTMLInputElement)?.value;
+    const year = (form.elements.namedItem('year') as HTMLInputElement)?.value;
+    const res = await fetch('/api/cars/verify-vin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vin: vin.trim(), make, model, year }),
+    });
+    const data = await res.json();
+    setVinResult(data);
+    setVinLoading(false);
+  };
 
   const handleImageAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -85,6 +118,8 @@ export default function SellPage() {
         }
         fd.set('imageUrls', JSON.stringify(imageUrls));
         if (captchaToken) fd.set('cf-turnstile-response', captchaToken);
+        if (vin.trim()) fd.set('vin', vin.trim());
+        fd.set('vinVerified', vinResult?.verified ? 'true' : 'false');
 
         const res = await fetch('/api/listings/submit', { method: 'POST', body: fd });
         const json = await res.json();
@@ -162,6 +197,49 @@ export default function SellPage() {
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Description *</label>
             <textarea name="description" required rows={5} placeholder="Describe your car — history, restoration work, known issues, matching numbers, etc."
               className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none placeholder:text-zinc-300" />
+          </div>
+
+          <div className="mt-5">
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">VIN <span className="normal-case font-normal text-zinc-400">(optional — helps buyers verify the car)</span></label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={vin}
+                onChange={e => { setVin(e.target.value.toUpperCase()); setVinResult(null); }}
+                maxLength={17}
+                placeholder="1G1FP22P7S2100001"
+                className="flex-1 border border-zinc-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300 placeholder:font-sans"
+              />
+              <button
+                type="button"
+                disabled={!vin.trim() || vinLoading}
+                onClick={e => verifyVin((e.currentTarget.closest('form') as HTMLFormElement))}
+                className="text-sm font-semibold px-4 py-2.5 rounded-xl border border-zinc-200 hover:bg-zinc-50 disabled:opacity-40 transition-colors whitespace-nowrap"
+              >
+                {vinLoading ? 'Checking…' : 'Verify VIN'}
+              </button>
+            </div>
+            {vinResult && (
+              <div className={`mt-2 rounded-xl px-4 py-3 text-sm ${
+                vinResult.verified ? 'bg-green-50 border border-green-200 text-green-800' :
+                vinResult.preStandard ? 'bg-blue-50 border border-blue-200 text-blue-800' :
+                vinResult.vinValid === false ? 'bg-red-50 border border-red-200 text-red-800' :
+                'bg-yellow-50 border border-yellow-200 text-yellow-800'
+              }`}>
+                <p className="font-semibold mb-0.5">
+                  {vinResult.verified ? '✓ VIN Verified' :
+                   vinResult.preStandard ? 'ℹ Pre-1981 VIN' :
+                   vinResult.vinValid === false ? '✕ Invalid VIN' :
+                   '⚠ VIN Decoded — Partial Match'}
+                </p>
+                <p className="text-xs opacity-80">{vinResult.message}</p>
+                {vinResult.nhtsaMake && (
+                  <p className="text-xs mt-1 opacity-70">
+                    NHTSA: {[vinResult.nhtsaYear, vinResult.nhtsaMake, vinResult.nhtsaModel].filter(Boolean).join(' ')}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </section>
 

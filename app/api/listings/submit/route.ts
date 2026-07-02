@@ -104,6 +104,8 @@ export async function POST(req: NextRequest) {
     seller_name: formData.get('sellerName'),
     seller_phone: formData.get('sellerPhone'),
     seller_email: formData.get('sellerEmail'),
+    vin: formData.get('vin') || null,
+    vin_verified: formData.get('vinVerified') === 'true',
     featured: false,
     status: 'pending',
     seller_id: sellerId,

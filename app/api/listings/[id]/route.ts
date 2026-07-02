@@ -17,6 +17,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .maybeSingle();
   if (suspension) return NextResponse.json({ error: 'Your account has been suspended.' }, { status: 403 });
 
+  // Block dealers with expired beta
+  const betaMode = process.env.BETA_MODE === 'true';
+  if (!betaMode) {
+    const { data: dealer } = await admin
+      .from('dealers')
+      .select('beta_expires_at')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (dealer?.beta_expires_at && new Date(dealer.beta_expires_at) < new Date()) {
+      return NextResponse.json({ error: 'BETA_EXPIRED', message: 'Your beta period has ended. Please contact us to upgrade your dealer account.' }, { status: 403 });
+    }
+  }
+
   // Verify ownership
   const { data: listing } = await admin
     .from('listings')

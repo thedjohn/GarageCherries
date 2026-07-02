@@ -706,7 +706,14 @@ export default function DealerDashboard() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100">
               <h2 className="font-bold text-zinc-800">Inventory <span className="text-zinc-400 font-normal text-sm">({listings.length} vehicles)</span></h2>
               <div className="flex gap-2">
-                <button className="text-xs border border-zinc-200 px-3 py-1.5 rounded-lg hover:bg-zinc-50">Export</button>
+                <button
+                  onClick={() => window.open('/api/dealer/export?format=csv', '_blank')}
+                  className="text-xs border border-zinc-200 px-3 py-1.5 rounded-lg hover:bg-zinc-50"
+                >Export CSV</button>
+                <button
+                  onClick={() => window.open('/api/dealer/export?format=json', '_blank')}
+                  className="text-xs border border-zinc-200 px-3 py-1.5 rounded-lg hover:bg-zinc-50"
+                >Export JSON</button>
                 <button onClick={() => setModalCar('new')} className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700">+ Add vehicle</button>
               </div>
             </div>
