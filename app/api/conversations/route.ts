@@ -15,6 +15,15 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not logged in' }, { status: 401 });
 
+  // Block suspended users
+  const adminClient = createAdminClient();
+  const { data: suspension } = await adminClient
+    .from('suspended_users')
+    .select('user_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (suspension) return NextResponse.json({ error: 'Your account has been suspended.' }, { status: 403 });
+
   const { listingId, listingTitle, buyerName, message } = await req.json();
   if (!listingId || !message?.trim()) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
@@ -80,10 +89,14 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ conversationId });
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not logged in' }, { status: 401 });
+
+  const params = req.nextUrl.searchParams;
+  const page  = Math.max(1, parseInt(params.get('page')  ?? '1',  10));
+  const limit = Math.min(100, Math.max(1, parseInt(params.get('limit') ?? '20', 10)));
 
   // Buyer conversations
   const { data: buyerConvs } = await supabase
@@ -93,8 +106,8 @@ export async function GET() {
     .order('last_message_at', { ascending: false });
 
   // Seller conversations (listings where this user is the seller)
-  const admin = createAdminClient();
-  const { data: sellerListings } = await admin
+  const adminClient = createAdminClient();
+  const { data: sellerListings } = await adminClient
     .from('listings')
     .select('id')
     .eq('seller_id', user.id);
@@ -103,7 +116,7 @@ export async function GET() {
 
   let sellerConvs: any[] = [];
   if (sellerListingIds.length > 0) {
-    const { data } = await admin
+    const { data } = await adminClient
       .from('conversations')
       .select('id, listing_id, listing_title, seller_email, buyer_name, buyer_email, last_message_at, created_at')
       .in('listing_id', sellerListingIds)
@@ -111,11 +124,15 @@ export async function GET() {
     sellerConvs = data ?? [];
   }
 
-  // Merge, deduplicate by id
+  // Merge, deduplicate, sort
   const all = [...(buyerConvs ?? []), ...sellerConvs];
   const seen = new Set<string>();
-  const conversations = all.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; })
+  const sorted = all
+    .filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; })
     .sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime());
 
-  return NextResponse.json({ conversations, userId: user.id });
+  const total = sorted.length;
+  const conversations = sorted.slice((page - 1) * limit, page * limit);
+
+  return NextResponse.json({ conversations, userId: user.id, total, page, limit });
 }

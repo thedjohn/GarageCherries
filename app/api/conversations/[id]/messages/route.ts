@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 
+const admin = createAdminClient();
+
 async function verifyAccess(conversationId: string, userId: string): Promise<boolean> {
-  const admin = createAdminClient();
   // Is buyer?
   const { data: conv } = await admin
     .from('conversations')
@@ -29,7 +30,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const hasAccess = await verifyAccess(id, user.id);
   if (!hasAccess) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const admin = createAdminClient();
   const { data, error } = await admin
     .from('messages')
     .select('id, sender_id, sender_name, body, reported, created_at')
@@ -46,13 +46,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not logged in' }, { status: 401 });
 
+  // Block suspended users
+  const { data: suspension } = await admin
+    .from('suspended_users')
+    .select('user_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (suspension) return NextResponse.json({ error: 'Your account has been suspended.' }, { status: 403 });
+
   const hasAccess = await verifyAccess(id, user.id);
   if (!hasAccess) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const { body, senderName } = await req.json();
   if (!body?.trim()) return NextResponse.json({ error: 'Empty message' }, { status: 400 });
-
-  const admin = createAdminClient();
 
   // Fetch conversation details to find recipient and listing title
   const { data: conv } = await admin

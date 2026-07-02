@@ -9,9 +9,15 @@ async function auth() {
   return { user, role };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const { role } = await auth();
   if (!role) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Support tier cannot browse all users — they only work reported content
+  if (!hasRole(role, 'moderator')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const params = req.nextUrl.searchParams;
+  const page  = Math.max(1, parseInt(params.get('page')  ?? '1',  10));
+  const limit = Math.min(200, Math.max(1, parseInt(params.get('limit') ?? '100', 10)));
 
   const admin = createAdminClient();
 
@@ -101,7 +107,9 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json({ users: result });
+  const total = result.length;
+  const paginated = result.slice((page - 1) * limit, page * limit);
+  return NextResponse.json({ users: paginated, total, page, limit });
 }
 
 export async function PATCH(req: NextRequest) {

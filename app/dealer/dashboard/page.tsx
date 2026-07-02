@@ -465,7 +465,7 @@ export default function DealerDashboard() {
       setDealer(dealerRow);
       const { data: cars } = await supabase
         .from('listings')
-        .select('id, slug, title, year, make, model, price, mileage, condition, body_style, engine, horsepower, torque, cylinders, displacement, forced_induction, fuel_type, num_speeds, drive_type, transmission, color, interior_color, seat_material, seating_type, description, location, state, featured, listed_at, images, seller_id')
+        .select('id, slug, title, year, make, model, price, mileage, condition, body_style, engine, horsepower, torque, cylinders, displacement, forced_induction, fuel_type, num_speeds, drive_type, transmission, color, interior_color, seat_material, seating_type, description, location, state, featured, listed_at, images, seller_id, status, rejection_reason')
         .eq('seller_id', dealerRow.id)
         .order('created_at', { ascending: false });
       setListings(cars ?? []);
@@ -741,7 +741,20 @@ export default function DealerDashboard() {
                         }`}>{car.condition}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Active</span>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          car.status === 'approved' ? 'bg-green-100 text-green-700' :
+                          car.status === 'pending'  ? 'bg-yellow-100 text-yellow-700' :
+                          car.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                          'bg-zinc-100 text-zinc-500'
+                        }`}>
+                          {car.status === 'approved' ? 'Active' : car.status === 'pending' ? 'Under Review' : car.status === 'rejected' ? 'Rejected' : (car.status ?? 'Unknown')}
+                        </span>
+                        {car.status === 'rejected' && car.rejection_reason && (
+                          <p className="text-xs text-red-600 mt-1 max-w-[180px] leading-tight">{car.rejection_reason}</p>
+                        )}
+                        {car.status === 'rejected' && !car.rejection_reason && (
+                          <p className="text-xs text-red-500 mt-1">Edit listing to resubmit.</p>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-zinc-400 text-xs">{car.listed_at}</td>
                       <td className="px-4 py-3">

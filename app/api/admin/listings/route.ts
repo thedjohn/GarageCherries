@@ -14,16 +14,26 @@ export async function GET(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const role = await requireAdmin(user?.id ?? null);
   if (!role) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Support tier cannot browse all listings — they only work reported content
+  if (!hasRole(role, 'moderator')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
   const admin = createAdminClient();
-  const sellerId = req.nextUrl.searchParams.get('seller_id');
+  const params = req.nextUrl.searchParams;
+  const sellerId = params.get('seller_id');
+  const page  = Math.max(1, parseInt(params.get('page')  ?? '1',  10));
+  const limit = Math.min(100, Math.max(1, parseInt(params.get('limit') ?? '50', 10)));
+  const from = (page - 1) * limit;
+  const to   = from + limit - 1;
+
   let query = admin
     .from('listings')
-    .select('id,slug,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,location,state,seller_name,seller_phone,seller_email,seller_id,images,description,featured,status,rejection_reason,resubmission_note,resubmission_count,created_at')
-    .order('created_at', { ascending: false });
+    .select('id,slug,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,location,state,seller_name,seller_phone,seller_email,seller_id,images,description,featured,status,rejection_reason,resubmission_note,resubmission_count,created_at', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(from, to);
   if (sellerId) query = query.eq('seller_id', sellerId);
-  const { data: listings, error } = await query;
+  const { data: listings, error, count } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ listings: listings ?? [] });
+  return NextResponse.json({ listings: listings ?? [], total: count ?? 0, page, limit });
 }
 
 export async function PATCH(req: NextRequest) {
