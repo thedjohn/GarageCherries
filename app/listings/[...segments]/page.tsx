@@ -6,6 +6,9 @@ import ImageGallery from '@/components/ImageGallery';
 import ContactSellerForm from '@/components/ContactSellerForm';
 import WatchlistButton from '@/components/WatchlistButton';
 import ViewTracker from '@/components/ViewTracker';
+import AdSlot from '@/components/AdSlot';
+import MakeOfferButton from '@/components/MakeOfferButton';
+import FinancingCalculator from '@/components/FinancingCalculator';
 import {
   getCar, getDealerById, formatPrice, formatMileage, formatPhone,
   toSegment, makeFromSegment, modelFromSegment, CARS,
@@ -145,6 +148,11 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
         (car as any).sellerName  = dbDealer.name  ?? car.sellerName;
       }
     }
+
+    const { createClient: createAuthClient } = await import('@/lib/supabase/server');
+    const supabaseAuth = await createAuthClient();
+    const { data: { user: authUser } } = await supabaseAuth.auth.getUser();
+    const isLoggedIn = !!authUser;
 
     const { createClient: createForSimilar } = await import('@/lib/supabase/server');
     const supabaseForSimilar = await createForSimilar();
@@ -341,6 +349,8 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                 </div>
               )}
             </div>
+
+            {car.price > 0 && <FinancingCalculator price={car.price} />}
           </div>
 
           <div className="space-y-5">
@@ -381,11 +391,22 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
               )}
               {dealer && (
                 <Link href={`/dealers/${dealer.slug}`}
-                  className="block w-full border-2 border-red-600 text-red-600 hover:bg-red-50 font-bold py-3 rounded-xl transition-colors text-sm text-center">
+                  className="block w-full border-2 border-red-600 text-red-600 hover:bg-red-50 font-bold py-3 rounded-xl transition-colors text-sm text-center mb-3">
                   View All Dealer Listings
                 </Link>
               )}
               <WatchlistButton carId={car.id} price={car.price} />
+              {dealer && (
+                <div className="mb-3">
+                  <MakeOfferButton
+                    carId={car.id}
+                    carTitle={car.title}
+                    askingPrice={car.price}
+                    dealerId={car.sellerId}
+                    isLoggedIn={isLoggedIn}
+                  />
+                </div>
+              )}
               <ContactSellerForm
                 carId={car.id}
                 carTitle={car.title}
@@ -430,6 +451,8 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                 </Link>
               )}
             </div>
+
+            <AdSlot carState={car.state} pagePath={`/listings/${makeSeg}/${modelSeg}/${car.id}/${car.slug}`} />
           </div>
         </div>
 
