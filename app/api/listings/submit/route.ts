@@ -52,6 +52,16 @@ export async function POST(req: NextRequest) {
   // Images are now uploaded client-side; we receive their public URLs
   const imageUrls: string[] = JSON.parse((formData.get('imageUrls') as string) ?? '[]');
 
+  // Validate all image URLs come from our own storage bucket
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+  const validImageUrls = imageUrls.filter((url: string) => {
+    if (typeof url !== 'string') return false;
+    if (!url.startsWith('https://')) return false;
+    if (!url.includes(supabaseUrl.replace('https://', ''))) return false;
+    if (!url.includes('/listing-images/')) return false;
+    return true;
+  }).slice(0, 20); // cap at 20 images
+
   const year = Number(formData.get('year'));
   const make = String(formData.get('make'));
   const model = String(formData.get('model'));
@@ -73,7 +83,7 @@ export async function POST(req: NextRequest) {
     transmission: formData.get('transmission'),
     engine: formData.get('engine') || null,
     color: formData.get('color') || null,
-    images: imageUrls,
+    images: validImageUrls,
     description: formData.get('description'),
     seller_name: formData.get('sellerName'),
     seller_phone: formData.get('sellerPhone'),

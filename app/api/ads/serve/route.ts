@@ -8,17 +8,20 @@ export async function GET(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Find active advertisers that cover this state
+  // Find active advertisers that cover this state with valid trials
+  const now = new Date().toISOString();
   const { data: advertisers } = await admin
     .from('advertisers')
-    .select('id, state, tier')
+    .select('id, state, tier, trial_ends_at')
     .eq('active', true);
 
   if (!advertisers?.length) return NextResponse.json({ ad: null });
 
   // Match: statewide tier shows everywhere; others must match state
+  // Exclude advertisers whose trial has expired
   const eligible = advertisers.filter(a =>
-    a.tier === 'statewide' || !state || a.state === state
+    (a.tier === 'statewide' || !state || a.state === state) &&
+    (!a.trial_ends_at || a.trial_ends_at > now)
   );
 
   if (!eligible.length) return NextResponse.json({ ad: null });

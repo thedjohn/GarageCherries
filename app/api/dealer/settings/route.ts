@@ -12,16 +12,17 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Find the dealer row that belongs to this auth user (by id sent from client)
-  // Use admin client so RLS doesn't block the lookup
+  // Verify the authenticated user owns this dealer record
   const { data: dealer } = await admin
     .from('dealers')
     .select('id, plan, beta_expires_at')
-    .eq('id', dealerId)
-    .or(`id.eq.${user.id},email.eq.${user.email}`)
+    .eq('id', user.id)
     .single();
 
   if (!dealer) return NextResponse.json({ error: 'Dealer not found' }, { status: 403 });
+  if (dealerId && dealerId !== dealer.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const { error } = await admin.from('dealers').update(fields).eq('id', dealer.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -73,7 +73,9 @@ export async function POST(req: NextRequest) {
       ? parseInt(nhtsaYear) === parseInt(year)
       : null;
 
-    const verified = makeMatch !== false && modelMatch !== false && yearMatch !== false;
+    // null means "not provided" (can't check) — only fail on explicit false
+    const verified = makeMatch !== false && modelMatch !== false && yearMatch !== false
+      && (makeMatch === true || modelMatch === true || yearMatch === true);
 
     return NextResponse.json({
       vinValid: true,
