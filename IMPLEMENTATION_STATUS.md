@@ -260,9 +260,9 @@
 7. **Wire Stripe** — Featured listing upgrades are the fastest first product to charge for
 8. **Add Google Analytics or Plausible** — need visibility into what traffic you have
 9. **Build the "listing expiring soon" reminder email** — the 30-day expiry/renewal system (2026-07-02) has no proactive nudge yet; sellers only see the countdown if they happen to visit their account/dashboard. Reuses the existing Resend pipeline used for price-drop digests.
-9. **Build `/account/inquiries`** — completes the buyer account experience
-10. **Build public `/sold` archive page** — SEO value + buyer trust signal
-11. **Decide on dealer self-serve signup** — current apply-and-wait model may be intentional (vetting quality), but if faster growth is the goal, self-serve + Stripe removes the bottleneck
+10. **Build `/account/inquiries`** — completes the buyer account experience
+11. **Build public `/sold` archive page** — SEO value + buyer trust signal
+12. **Decide on dealer self-serve signup** — current apply-and-wait model may be intentional (vetting quality), but if faster growth is the goal, self-serve + Stripe removes the bottleneck
 
 ---
 
