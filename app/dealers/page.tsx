@@ -22,7 +22,8 @@ export default async function DealersPage() {
   const { data: listingCounts } = await supabase
     .from('listings')
     .select('seller_id')
-    .eq('status', 'approved');
+    .eq('status', 'approved')
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
 
   const countByDealer: Record<string, number> = {};
   for (const row of listingCounts ?? []) {

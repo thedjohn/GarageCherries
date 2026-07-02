@@ -18,7 +18,7 @@ interface MyListing {
   location: string; state: string; images: string[]; description: string;
   seller_name: string; seller_phone: string; seller_email: string;
   status: string; rejection_reason: string | null; resubmission_note: string | null;
-  resubmission_count: number; created_at: string;
+  resubmission_count: number; created_at: string; expires_at: string | null;
 }
 
 interface WatchItem {
@@ -403,6 +403,13 @@ function AccountPage() {
       body: JSON.stringify({ carId: id }),
     });
     setMyListings(prev => prev.map(l => l.id === id ? { ...l, status: 'removed' } : l));
+  }
+
+  async function renewListing(id: string) {
+    const res = await fetch(`/api/listings/${id}/renew`, { method: 'POST' });
+    const json = await res.json();
+    if (!res.ok) { alert(json.error ?? 'Failed to renew listing.'); return; }
+    setMyListings(prev => prev.map(l => l.id === id ? { ...l, expires_at: json.expiresAt } : l));
   }
 
   const removeFromWatchlist = async (watchId: string) => {
@@ -1050,6 +1057,18 @@ function AccountPage() {
                       </div>
                       <p className="text-xs text-zinc-500">${l.price.toLocaleString()} · {l.location}, {l.state}</p>
 
+                      {/* Expiry */}
+                      {l.status === 'approved' && l.expires_at && (() => {
+                        const daysLeft = Math.ceil((new Date(l.expires_at!).getTime() - Date.now()) / 86400000);
+                        return (
+                          <p className={`text-xs mt-1 ${daysLeft <= 7 ? 'text-amber-600 font-semibold' : 'text-zinc-400'}`}>
+                            {daysLeft > 0
+                              ? `Expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`
+                              : 'Expired — renew to relist'}
+                          </p>
+                        );
+                      })()}
+
                       {/* Rejection reason */}
                       {l.status === 'rejected' && l.rejection_reason && (
                         <div className="mt-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
@@ -1074,6 +1093,12 @@ function AccountPage() {
                           <button onClick={() => markAsSold(l.id)}
                             className="text-xs font-semibold px-3 py-1.5 border border-green-200 rounded-lg text-green-700 hover:bg-green-50 transition-colors">
                             Mark as Sold
+                          </button>
+                        )}
+                        {l.status === 'approved' && (
+                          <button onClick={() => renewListing(l.id)}
+                            className="text-xs font-semibold px-3 py-1.5 border border-blue-200 rounded-lg text-blue-700 hover:bg-blue-50 transition-colors">
+                            Renew listing
                           </button>
                         )}
                         {l.status === 'approved' && (

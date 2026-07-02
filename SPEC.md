@@ -246,10 +246,12 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `rejection_reason` | text \| null | |
 | `resubmission_note` | text \| null | Seller's note on what was fixed |
 | `resubmission_count` | integer | Default 0 |
-| `listed_at` | timestamptz \| null | Set on approval |
+| `listed_at` | **text** \| null | Set on approval; despite the name/prior docs this is actually stored as text, not timestamptz — confirmed 2026-07-02 when a migration's date-arithmetic UPDATE failed with `operator does not exist: text + interval` until an explicit `::timestamptz` cast was added |
 | `is_sold` | boolean | Default false |
 | `sold_at` | timestamptz \| null | |
 | `sold_price` | integer \| null | |
+| `expires_at` | timestamptz \| null | Added 2026-07-02. Set to `listed_at + 30 days` on approval; listings past this date are excluded from all public browse/search queries (still viewable at their direct URL). Seller can push it out another 30 days via `POST /api/listings/[id]/renew`. |
+| `is_feed_managed` | boolean | Added 2026-07-02, default false. Forward-compat flag for the not-yet-built dealer data-feed/bulk-import sync — nothing sets this true yet. Once that feature exists, feed-managed listings should have `expires_at` driven by the sync instead of manual renewal, and are meant to skip the renew UI entirely. |
 | `views` | integer | Used in dealer-report email (may be a denormalized column) |
 | `created_at` | timestamptz | Auto-managed by Supabase |
 
@@ -1000,6 +1002,15 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 
 ---
 
+### `POST /api/listings/[id]/renew`
+- **Added**: 2026-07-02, part of the 30-day listing expiry system (see `expires_at` in the `listings` schema above)
+- **Auth**: required; ownership verified (`seller_id === user.id`); rejects if `status !== 'approved'` or `is_feed_managed === true`
+- **Side effects**: sets `expires_at = now + 30 days`
+- **Returns**: `{ ok: true, expiresAt }`
+- **Not yet built**: no automated "expiring soon" reminder email — sellers currently have to notice the countdown themselves in the account page / dealer dashboard and click renew
+
+---
+
 ### `POST /api/cars/verify-vin`
 - **Auth**: none
 - **Rate limit**: 20 / IP / hour
@@ -1383,6 +1394,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | `POST /api/track-view` | None | ✓ (listingId + dealerId) | ✗ | N/A | N/A |
 | `POST /api/notify-watchers` | ✓ (must be listing owner) | ✓ (carId, prices checked) | ✓ 30/hr/IP | ✓ seller_id = user.id | N/A |
 | `POST /api/cars/sold` | ✓ | ✓ (carId required) | ✗ | ✓ seller_id = user.id | ✗ |
+| `POST /api/listings/[id]/renew` | ✓ | ✓ (status=approved, not feed-managed) | ✗ | ✓ seller_id = user.id | ✗ |
 | `POST /api/cars/verify-vin` | None | ✓ (VIN format) | ✓ 20/hr/IP | N/A | N/A |
 | `GET /api/makes` | None | N/A | ✗ | N/A | N/A |
 | `GET /api/account/profile` | ✓ | N/A | ✗ | ✓ (filters by user.id) | ✗ |

@@ -16,6 +16,7 @@ interface DbCar {
   location: string; state: string; featured: boolean;
   listed_at: string; images: string[]; seller_id: string;
   status?: string; rejection_reason?: string | null;
+  expires_at?: string | null; is_feed_managed?: boolean;
 }
 interface DbDealer {
   id: string; slug: string; name: string;
@@ -163,6 +164,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
         ...payload, id: newId, slug,
         seller_id: dealerId, seller_name: dealerName,
         featured: false, status: 'approved', listed_at: new Date().toISOString().split('T')[0],
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       });
       dbError = error;
       // Trigger buyer alert matching after successful insert — fire and forget
@@ -466,7 +468,7 @@ export default function DealerDashboard() {
       setDealer(dealerRow);
       const { data: cars } = await supabase
         .from('listings')
-        .select('id, slug, title, year, make, model, price, mileage, condition, body_style, engine, horsepower, torque, cylinders, displacement, forced_induction, fuel_type, num_speeds, drive_type, transmission, color, interior_color, seat_material, seating_type, description, location, state, featured, listed_at, images, seller_id, status, rejection_reason')
+        .select('id, slug, title, year, make, model, price, mileage, condition, body_style, engine, horsepower, torque, cylinders, displacement, forced_induction, fuel_type, num_speeds, drive_type, transmission, color, interior_color, seat_material, seating_type, description, location, state, featured, listed_at, images, seller_id, status, rejection_reason, expires_at, is_feed_managed')
         .eq('seller_id', dealerRow.id)
         .order('created_at', { ascending: false });
       setListings(cars ?? []);
@@ -486,6 +488,13 @@ export default function DealerDashboard() {
     await fetch(`/api/listings/${id}`, { method: 'DELETE' });
     setDeleteConfirm(null);
     loadData();
+  };
+
+  const renewCar = async (id: string) => {
+    const res = await fetch(`/api/listings/${id}/renew`, { method: 'POST' });
+    const json = await res.json();
+    if (!res.ok) { alert(json.error ?? 'Failed to renew listing.'); return; }
+    setListings(prev => prev.map(c => c.id === id ? { ...c, expires_at: json.expiresAt } : c));
   };
 
   const signOut = async () => {
@@ -763,6 +772,14 @@ export default function DealerDashboard() {
                         {car.status === 'rejected' && !car.rejection_reason && (
                           <p className="text-xs text-red-500 mt-1">Edit listing to resubmit.</p>
                         )}
+                        {car.status === 'approved' && !car.is_feed_managed && car.expires_at && (() => {
+                          const daysLeft = Math.ceil((new Date(car.expires_at!).getTime() - Date.now()) / 86400000);
+                          return (
+                            <p className={`text-xs mt-1 ${daysLeft <= 7 ? 'text-amber-600 font-semibold' : 'text-zinc-400'}`}>
+                              {daysLeft > 0 ? `Expires in ${daysLeft}d` : 'Expired'}
+                            </p>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-zinc-400 text-xs">{car.listed_at}</td>
                       <td className="px-4 py-3">
@@ -775,6 +792,12 @@ export default function DealerDashboard() {
                             target="_blank" className="text-xs text-red-600 hover:underline">
                             View ↗
                           </Link>
+                          {car.status === 'approved' && !car.is_feed_managed && (
+                            <button onClick={() => renewCar(car.id)}
+                              className="text-xs text-blue-600 hover:underline font-medium">
+                              Renew
+                            </button>
+                          )}
                           <button onClick={() => setDeleteConfirm(car.id)}
                             className="text-xs text-zinc-300 hover:text-red-500 transition-colors">
                             ✕

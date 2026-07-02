@@ -18,7 +18,6 @@ const DEALER_PLANS = [
       '5 active listings',
       'Dealer profile page',
       'Photo gallery (up to 30 photos/listing)',
-      'AI listing description writer',
       'Buyer inquiry management',
       'Email support',
     ],
@@ -36,8 +35,6 @@ const DEALER_PLANS = [
       '3 featured listing slots',
       'Dealer profile page',
       'Photo gallery (up to 30 photos/listing)',
-      'AI listing description writer',
-      'AI buyer inquiry assistant',
       'Priority search placement',
       'Priority email & phone support',
     ],
@@ -56,8 +53,6 @@ const DEALER_PLANS = [
       'Verified Dealer badge',
       'Dealer profile page',
       'Photo gallery (up to 30 photos/listing)',
-      'AI listing description writer',
-      'AI buyer inquiry assistant',
       'Top search placement',
       'Homepage spotlight eligibility',
       'Dedicated account manager',
@@ -99,10 +94,15 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Competitor comparison banner */}
+      {/* Competitor comparison banner. AutoTrader doesn't publish official rates —
+          range based on dealer-forum reports (DealerRefresh) and AutoTrader B2B
+          package tiers, verified 2026-07-02. Re-check periodically. */}
       <div className="bg-red-600 text-white text-center py-3 text-sm font-semibold">
         AutoTrader charges dealers $450–$2,000/month. GarageCherries starts at just $49/month.
       </div>
+      <p className="text-center text-xs text-zinc-400 py-1.5 bg-zinc-50">
+        *Estimated range based on publicly available dealer packages and industry reports, not an official AutoTrader rate card.
+      </p>
 
       {/* Dealer Plans */}
       <section className="max-w-6xl mx-auto px-4 py-16">

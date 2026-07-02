@@ -46,6 +46,14 @@
 - [x] Export inventory — "Export CSV" / "Export JSON" buttons wired to `GET /api/dealer/export?format=csv|json`
 - [x] Beta plan expiry banner (warning at ≤30 days remaining)
 
+### Listing Expiry & Renewal (new, 2026-07-02)
+- [x] Listings auto-expire 30 days after approval (`expires_at` set alongside `listed_at`, both on admin approval of private-seller/manual submissions and on dealer-dashboard direct-approve inserts)
+- [x] Expired listings excluded from all public browse/search surfaces (homepage, `/listings`, make/model pages, similar-cars, dealer directory counts, dealer profile inventory) — still viewable at their direct URL, just not discoverable via browse
+- [x] One-click "Renew listing" button — private-seller account page and dealer dashboard, both show a days-remaining countdown (amber warning at ≤7 days) and extend `expires_at` another 30 days via `POST /api/listings/[id]/renew`
+- [x] Rationale: there's no way to verify a private-seller car actually sold (self-reported only, see `is_sold`/`sold_at` — nothing stops a seller from leaving a sold listing up forever with zero cost to them). Auto-expire + renew flips the default from "stays live forever unless someone remembers to remove it" to "goes stale unless actively renewed," so content stays current without needing to detect a sale at all.
+- [x] `is_feed_managed` column added for forward-compatibility with the not-yet-built dealer data-feed/bulk-import sync (see "Import JSON"/"Sync Now" stubs below) — feed-managed listings are meant to have freshness driven by the sync itself, not manual renewal; nothing sets this true yet since that feature doesn't exist
+- ⚠️ **Not built**: no reminder email before expiry — sellers only see the countdown if they visit their account/dashboard. Also, `listed_at` turned out to be stored as `text` rather than `timestamptz` (SPEC.md's prior schema docs were wrong on this) — the backfill migration needed an explicit cast; worth keeping in mind for any future date math on that column.
+
 ### VIN Verification (new)
 - [x] VIN field + inline "Verify VIN" button on the `/sell` form — calls `POST /api/cars/verify-vin`
 - [x] NHTSA VIN decoder API integration (24h cache), fuzzy make/model/year matching against entered values
@@ -144,7 +152,7 @@
 
 | Feature | What Exists | What Is Missing |
 |---|---|---|
-| **AI Features** | Nothing — all 5 AI routes (Smart Search, Listing Writer, Price Assessment, Similar Cars, Inquiry Reply Assistant) and their UI components were **deliberately removed** on 2026-07-01 ("deferred to future release") | Everything; `app/api/ai/*` directories are now empty stubs. Marketing copy on `/pricing` still references "AI listing description writer" — copy not yet updated to match. |
+| **AI Features** | Nothing — all 5 AI routes (Smart Search, Listing Writer, Price Assessment, Similar Cars, Inquiry Reply Assistant) and their UI components were **deliberately removed** on 2026-07-01 ("deferred to future release") | Everything; `app/api/ai/*` directories are now empty stubs. Marketing copy on `/pricing` removed 2026-07-02 ("AI listing description writer" / "AI buyer inquiry assistant" bullets pulled from all 3 dealer plans since they're not currently offered) — re-add to plan feature lists once AI features actually ship. |
 | **Advertising — ad display on-site** | Full backend: signup, tiers, trial, ad CRUD, geographic targeting, impression/click RPCs, advertiser dashboard stats. `AdSlot` re-wired into the listing detail page 2026-07-02. | A "Detail 360" sponsor card and a "Phase 1 inspection affiliate" button were each built and briefly present on listing pages in late June, then both were removed (the affiliate button was lost in a merge-conflict resolution rather than a deliberate product decision) — neither exists in the current codebase. Note: `advertisers`/`ads`/`ad_events` are all empty in prod as of 2026-07-02, but that's expected — this site is pre-launch with no real advertisers signed up yet, not a sign of a broken funnel. |
 | **Dealer Watcher Messaging** | `GET /api/dealer/watcher-counts` and `POST /api/dealer/message-watchers` API routes work | No UI in the dealer dashboard calls them — dealers currently have no way to see watcher counts per listing or message watchers directly (price-drop notifications still fire automatically on price edit, independent of this feature) |
 | **Dealer Subscriptions** | Pricing page shows Starter/Pro/Unlimited plans | No Stripe — nothing actually charges |
@@ -251,6 +259,7 @@
 6. **Submit sitemap to Google Search Console** — starts SEO indexing clock
 7. **Wire Stripe** — Featured listing upgrades are the fastest first product to charge for
 8. **Add Google Analytics or Plausible** — need visibility into what traffic you have
+9. **Build the "listing expiring soon" reminder email** — the 30-day expiry/renewal system (2026-07-02) has no proactive nudge yet; sellers only see the countdown if they happen to visit their account/dashboard. Reuses the existing Resend pipeline used for price-drop digests.
 9. **Build `/account/inquiries`** — completes the buyer account experience
 10. **Build public `/sold` archive page** — SEO value + buyer trust signal
 11. **Decide on dealer self-serve signup** — current apply-and-wait model may be intentional (vetting quality), but if faster growth is the goal, self-serve + Stripe removes the bottleneck

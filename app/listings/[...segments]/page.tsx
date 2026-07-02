@@ -160,6 +160,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
       .from('listings')
       .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,images,featured,listed_at')
       .eq('status', 'approved')
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .eq('make', car.make)
       .neq('id', car.id)
       .limit(4);
@@ -472,6 +473,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
       .from('listings')
       .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,images,featured,listed_at,transmission,engine,color,description,seller_name,seller_phone')
       .eq('status', 'approved')
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .eq('make', make)
       .order('listed_at', { ascending: false });
     const cars = (makeRows ?? []).map((r: any) => ({
@@ -538,6 +540,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
       .from('listings')
       .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,images,featured,listed_at,transmission,engine,color,description,seller_name,seller_phone')
       .eq('status', 'approved')
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .eq('make', make)
       .eq('model', model)
       .order('listed_at', { ascending: false });

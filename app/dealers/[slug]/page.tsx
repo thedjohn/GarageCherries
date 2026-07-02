@@ -46,6 +46,7 @@ export default async function DealerPage({ params }: { params: Promise<{ slug: s
     .select('id, slug, title, year, make, model, price, mileage, condition, body_style, images, location, state, seller_id, seller_name, seller_phone, featured, listed_at, transmission, engine, color, description')
     .eq('seller_id', dealer.id)
     .eq('status', 'approved')
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
     .order('listed_at', { ascending: false });
 
   const allListings = (dbCars ?? []).map(c => ({

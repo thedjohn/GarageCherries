@@ -88,6 +88,7 @@ export async function PATCH(req: NextRequest) {
   };
   if (action === 'approve') {
     update.listed_at = new Date().toISOString();
+    update.expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     update.rejection_reason = null;
     update.resubmission_note = null;
   }
