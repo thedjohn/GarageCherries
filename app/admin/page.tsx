@@ -115,20 +115,35 @@ export default function AdminPage() {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) { setLoading(false); return; }
 
-      const res = await fetch('/api/admin/listings');
-      if (!res.ok) { setLoading(false); return; }
-
-      const { listings: listingData } = await res.json();
-      setListings((listingData ?? []) as Listing[]);
-
-      // Get role from admin_users via API response header or a separate call
+      // Resolve role first so all subsequent decisions are role-aware
       const roleRes = await fetch('/api/admin/team');
+      let resolvedRole: string | null = null;
       if (roleRes.ok) {
         const { team: teamData } = await roleRes.json();
         setTeam(teamData ?? []);
         const me = (teamData ?? []).find((m: TeamMember) => m.email === user.email);
-        setAdminRole(me?.role ?? 'moderator');
+        resolvedRole = me?.role ?? null;
+        setAdminRole(resolvedRole);
       }
+
+      // Support role: land on Reported tab, skip listings + conversations
+      const isSupport = resolvedRole === 'support';
+      if (isSupport) {
+        setTab('reported');
+        const reportedRes = await fetch('/api/admin/reported');
+        if (reportedRes.ok) {
+          const { reported: rep } = await reportedRes.json();
+          setReported(rep ?? []);
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Moderator+ : load listings and conversations
+      const res = await fetch('/api/admin/listings');
+      if (!res.ok) { setLoading(false); return; }
+      const { listings: listingData } = await res.json();
+      setListings((listingData ?? []) as Listing[]);
 
       const [convRes, reportedRes] = await Promise.all([
         supabase.from('conversations')
@@ -394,20 +409,22 @@ export default function AdminPage() {
             Listings <span className="ml-1 text-xs text-zinc-400">{pending.length} pending</span>
           </button>
         )}
-        <button onClick={() => setTab('messages')} className={tabCls('messages')}>
-          Messages <span className="ml-1 text-xs text-zinc-400">{conversations.length}</span>
-        </button>
         {adminRole !== 'support' && (
-          <button onClick={() => setTab('reported')} className={tabCls('reported')}>
-            Reported
-            {reported.length > 0 && (
-              <span className="ml-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{reported.length}</span>
-            )}
+          <button onClick={() => setTab('messages')} className={tabCls('messages')}>
+            Messages <span className="ml-1 text-xs text-zinc-400">{conversations.length}</span>
           </button>
         )}
-        <button onClick={() => { setTab('users'); loadUsers(); }} className={tabCls('users')}>
-          Users
+        <button onClick={() => setTab('reported')} className={tabCls('reported')}>
+          Reported
+          {reported.length > 0 && (
+            <span className="ml-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{reported.length}</span>
+          )}
         </button>
+        {adminRole !== 'support' && (
+          <button onClick={() => { setTab('users'); loadUsers(); }} className={tabCls('users')}>
+            Users
+          </button>
+        )}
         {(adminRole === 'superadmin' || adminRole === 'admin') && (
           <button onClick={() => { setTab('applications'); loadApplications(); }} className={tabCls('applications')}>
             Applications

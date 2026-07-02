@@ -151,12 +151,13 @@ support < moderator < admin < superadmin
 ### 2.5 Admin Moderating Content
 
 1. Admin navigates to `/admin` — access gated by `admin_users` row.
-2. **Listings tab** (moderator+): sees all listings with pending/approved/rejected counts. Can approve, reject (with reason from preset list or custom), edit (admin+), delete (superadmin only).
-3. **Messages tab** (all admin roles): views all conversations (buyer/seller/listing title/timestamp).
-4. **Reported tab** (moderator+): sees flagged messages. Can dismiss (clears `reported` flag) via `DELETE /api/messages/[id]/report`.
-5. **Users tab** (moderator+): search/filter by role or status. Can view seller listings, suspend (moderator+ for non-dealers), unsuspend (admin+), edit name/email (admin+), promote to dealer (superadmin), delete account (superadmin).
-6. **Applications tab** (admin+): review dealer applications, approve or reject with optional note.
-7. **Team tab** (admin+): view team members. Superadmin can add members (by email) with role selection, remove members.
+2. Role is resolved first; **support** role lands on the Reported tab automatically.
+3. **Listings tab** (moderator+): sees all listings with pending/approved/rejected counts. Can approve, reject (with reason from preset list or custom), edit (admin+), delete (superadmin only). Hidden from support.
+4. **Messages tab** (moderator+): views all conversations (buyer/seller/listing title/timestamp). Hidden from support — support cannot browse all private conversations.
+5. **Reported tab** (all admin roles including support): sees flagged messages. Can dismiss (clears `reported` flag) via `DELETE /api/messages/[id]/report`. This is the primary job of the support tier.
+6. **Users tab** (moderator+): search/filter by role or status. Can view seller listings, suspend (moderator+ for non-dealers), unsuspend (admin+), edit name/email (admin+), promote to dealer (superadmin), delete account (superadmin). Hidden from support.
+7. **Applications tab** (admin+): review dealer applications, approve or reject with optional note.
+8. **Team tab** (admin+): view team members. Superadmin can add members (by email) with role selection, remove members.
 
 ### 2.6 Buyer Messaging a Seller
 
