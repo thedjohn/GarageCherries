@@ -3,6 +3,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { rateLimit, getClientIP } from '@/lib/rateLimit';
 import { verifyTurnstile } from '@/lib/verifyTurnstile';
 import { notifyAdmin } from '@/lib/notifyAdmin';
+import { US_STATES } from '@/lib/constants';
 
 export async function POST(req: NextRequest) {
   const ip = getClientIP(req);
@@ -72,6 +73,11 @@ export async function POST(req: NextRequest) {
     return true;
   }).slice(0, 20); // cap at 20 images
 
+  const stateVal = String(formData.get('state') ?? '').toUpperCase().trim();
+  if (!US_STATES.has(stateVal)) {
+    return NextResponse.json({ error: 'Invalid state code.' }, { status: 400 });
+  }
+
   const year = Number(formData.get('year'));
   const make = String(formData.get('make'));
   const model = String(formData.get('model'));
@@ -87,7 +93,7 @@ export async function POST(req: NextRequest) {
     price: Number(formData.get('price')) || 0,
     mileage: formData.get('mileage') ? Number(formData.get('mileage')) : null,
     location: formData.get('city'),
-    state: formData.get('state'),
+    state: stateVal,
     condition: formData.get('condition'),
     body_style: formData.get('bodyStyle'),
     transmission: formData.get('transmission'),

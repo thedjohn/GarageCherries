@@ -42,6 +42,11 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { id, headline, bodyCopy, ctaLabel, ctaUrl, phone, logoUrl, photoUrl, rating, reviewCount } = body;
 
+  // Block javascript: and other non-HTTP schemes to prevent stored XSS
+  if (ctaUrl && !/^https?:\/\//i.test(ctaUrl)) {
+    return NextResponse.json({ error: 'Ad URL must start with http:// or https://' }, { status: 400 });
+  }
+
   const admin = createAdminClient();
 
   if (id) {

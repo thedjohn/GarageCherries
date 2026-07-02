@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { rateLimit, getClientIP } from '@/lib/rateLimit';
 
 const admin = createAdminClient();
 
@@ -41,6 +42,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const ip = getClientIP(req);
+  const { allowed } = rateLimit(`messages:${ip}`, 60, 60 * 60 * 1000);
+  if (!allowed) return NextResponse.json({ error: 'Too many messages. Please slow down.' }, { status: 429 });
+
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { rateLimit, getClientIP } from '@/lib/rateLimit';
 import { verifyTurnstile } from '@/lib/verifyTurnstile';
 import { notifyAdmin } from '@/lib/notifyAdmin';
+import { US_STATES } from '@/lib/constants';
 
 export async function POST(req: NextRequest) {
   const ip = getClientIP(req);
@@ -21,6 +22,11 @@ export async function POST(req: NextRequest) {
 
   if (!name || !email || !phone || !dealerName || !location || !state || !description) {
     return NextResponse.json({ error: 'Please fill in all required fields.' }, { status: 400 });
+  }
+
+  const stateVal = String(state).toUpperCase().trim();
+  if (!US_STATES.has(stateVal)) {
+    return NextResponse.json({ error: 'Invalid state code.' }, { status: 400 });
   }
 
   const admin = createAdminClient();
@@ -45,7 +51,7 @@ export async function POST(req: NextRequest) {
     dealer_name: dealerName.trim(),
     address: address?.trim() || null,
     location: location.trim(),
-    state: state.toUpperCase().slice(0, 2),
+    state: stateVal,
     zip: zip?.trim() || null,
     website: website?.trim() || null,
     specialties: specialties ? specialties.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
