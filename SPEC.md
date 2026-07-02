@@ -1,6 +1,6 @@
 # GarageCherries — Master Specification
 
-> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-02 (S1–S6 security fixes + support role scoping + M1–M10 medium priority fixes).
+> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-02 (S1–S6 + support role scoping + M1–M10 + P2/P5/P6/P1-export product gaps).
 > Stack: Next.js 16.2.9 · React 19 · Supabase (Auth + Postgres + Storage) · Resend (email) · Cloudflare Turnstile (CAPTCHA) · NHTSA VIN API · Tailwind CSS 4 · Vitest + Playwright
 
 ---
@@ -103,7 +103,8 @@ support < moderator < admin < superadmin
 2. If not logged in, `SellGate` component shown — redirects to `/account/signup?return=/sell` or `/account/login?return=/sell`.
 3. Authenticated user sees `SellForm`:
    a. Fills vehicle info: year (required, 1900–2030), make (dropdown), model (required), mileage (optional), body style, condition (required), engine, transmission, color, price (required), description (required).
-   b. Fills location: city (required), state (required, max 2 chars).
+   a2. Optionally enters VIN and clicks "Verify VIN" — calls `POST /api/cars/verify-vin` inline; result shown as color-coded badge (green=verified, yellow=partial, blue=pre-1981, red=invalid). VIN and verification status stored with listing on submit.
+   b. Fills location: city (required), state (required, validated against US state codes).
    c. Fills contact: seller name (required), phone (required, auto-formatted), email (required).
    d. Uploads photos (up to 30): clicks "Add photos" → `POST /api/listings/upload-image` returns signed URL → client PUT directly to Supabase Storage → receives `publicUrl`.
 4. On submit, form sends `POST /api/listings/submit` (multipart) with all fields + `imageUrls` JSON array.
@@ -132,6 +133,7 @@ support < moderator < admin < superadmin
 10. **Mark sold**: `POST /api/cars/sold` — sets `is_sold: true`, notifies watchlist users.
 11. **Message watchers**: dealer sends message to opted-in watchers via `POST /api/dealer/message-watchers` — one-time per watcher, email sent, `dealer_messaged_at` recorded.
 12. **Update profile**: `POST /api/dealer/settings` — updates `dealers` table fields (name, phone, address, location, state, zip, description, website, specialties).
+13. **Export inventory**: clicks "Export CSV" or "Export JSON" → `GET /api/dealer/export?format=csv|json` → triggers authenticated download of all dealer listings.
 13. **Metrics**: `GET /api/dealer/metrics` returns views (30d + delta), inquiries (30d + delta), avg days on market, recent inquiries.
 14. Beta expiry warning shown at ≤30 days remaining.
 
@@ -541,6 +543,8 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `sellerPhone` | yes | string | |
 | `sellerEmail` | yes | string | |
 | `imageUrls` | yes | JSON string | Array of Supabase URLs; capped at 20; must match our Supabase domain and `/listing-images/` path |
+| `vin` | no | string | Optional; stored as-is |
+| `vinVerified` | no | string | `'true'` if user verified via NHTSA; stored as `vin_verified` boolean |
 
 - **Business rules checked**:
   - If `BETA_MODE !== 'true'` and seller is a dealer with expired `beta_expires_at` → 403 `BETA_EXPIRED`
@@ -555,6 +559,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 - **Auth**: required (user session)
 - **Rate limit**: none
 - **Suspension check**: yes — suspended users blocked with 403 before ownership check
+- **Beta expiry check**: yes — dealers with expired `beta_expires_at` blocked with 403 `BETA_EXPIRED` (respects `BETA_MODE` bypass)
 - **Input** (JSON):
 
 | Field | Required | Type | Notes |
@@ -759,6 +764,16 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 - **Validation**: carId and non-empty message required; car must belong to dealer
 - **Side effects**: emails each eligible watcher (allow_dealer_contact=true, not yet messaged, not blocked); sets `dealer_messaged_at` after each send
 - **Returns**: `{ sent: number }`
+
+---
+
+### `GET /api/dealer/export`
+- **Auth**: required, must be a dealer
+- **Query**: `format=json|csv` (default: `json`)
+- **Returns**: downloadable file of all dealer's listings
+  - JSON: `{ dealer, exported_at, count, listings[] }` with `Content-Disposition: attachment`
+  - CSV: all listing fields as comma-separated rows with header
+- **Fields included**: id, title, year, make, model, price, mileage, condition, body_style, transmission, engine, color, interior_color, horsepower, torque, cylinders, displacement, forced_induction, fuel_type, num_speeds, drive_type, location, state, description, vin, vin_verified, status, is_sold, created_at, listed_at
 
 ---
 
@@ -1042,9 +1057,9 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 |---|---|---|
 | Private seller listing limit | `app/api/listings/submit/route.ts:44` | Max 10 active (pending + approved) listings per private seller; dealers exempt |
 | Beta mode bypass | `app/api/listings/submit/route.ts:29` | `BETA_MODE=true` env var bypasses the listing limit check entirely |
-| Dealer beta expiry | `app/api/listings/submit/route.ts:38` | If dealer's `beta_expires_at < now`, 403 BETA_EXPIRED (but only checked during listing submit, not dashboard access) |
+| Dealer beta expiry | `app/api/listings/submit/route.ts`, `app/api/listings/[id]/route.ts` | If dealer's `beta_expires_at < now`, 403 BETA_EXPIRED on listing submit and listing edit; dashboard access and metrics not blocked |
 | Dealer beta period duration | `app/api/admin/dealer-applications/route.ts:97` | `beta_expires_at = now + 6 months` on application approval |
-| Advertiser trial period | `app/api/advertiser/signup/route.ts:28` | `trial_ends_at = now + 14 days`; ad creation blocked if expired |
+| Advertiser trial period | `app/api/advertiser/signup/route.ts:28` | `trial_ends_at = now + 14 days`; ad creation AND editing blocked if expired |
 | Advertiser tier → radius | `app/api/advertiser/signup/route.ts:26` | starter=15mi, metro=30mi, regional=60mi, statewide=9999mi |
 | Ad serving radius filter | `app/api/ads/serve/route.ts` | statewide tier serves everywhere; other tiers use haversine distance between state centroids vs. `radius_miles`; falls back to exact state match if viewer state unknown |
 | Ad CTA URL scheme | `app/api/advertiser/ads/route.ts` | `cta_url` must start with `http://` or `https://`; `javascript:` and other schemes rejected with 400 |
@@ -1113,6 +1128,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `sellerName` | required text |
 | `sellerPhone` | required tel; formatted as (XXX) XXX-XXXX |
 | `sellerEmail` | required email type |
+| `vin` | optional; uppercased; max 17 chars; "Verify VIN" button triggers inline NHTSA check |
 
 ### Dealer Application (`POST /api/dealer/apply`)
 
@@ -1226,7 +1242,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Dealer dashboard | **Complete** | Inventory CRUD, rich vehicle fields, metrics, inquiries, settings |
 | Dealer inventory (bypass review) | **Complete** | Listings inserted as approved; alert matching triggered |
 | Dealer beta expiry UI | **Complete** | Banner with days remaining, warning at ≤30 days |
-| Beta expiry enforcement | **Partial** | Only enforced at listing submit, not at dashboard login or listing edit |
+| Beta expiry enforcement | **Partial** | Enforced at listing submit and listing edit; dashboard login, metrics, and settings not blocked |
 | Advertiser signup + ads | **Complete** | Tiers, trial, ad creation, serve, impression/click tracking |
 | Ad geographic targeting | **Complete** | Haversine distance between state centroids used to filter by `radius_miles`; statewide tier still serves everywhere |
 | Watchlist | **Complete** | Add/remove, price-at-add comparison, sold/removed indicators |
@@ -1235,7 +1251,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Message reporting | **Complete** | Report flag, admin Reported tab, dismiss |
 | Offer system | **Complete** | Submit → email dealer + buyer; stored in `offers` table |
 | Dealer reviews | **Complete** | Submit (1 per user per dealer), read (public) |
-| VIN verification | **Complete** | NHTSA API, pre-1981 handling, fuzzy make/model/year matching |
+| VIN verification | **Complete** | NHTSA API, pre-1981 handling, fuzzy make/model/year matching; wired to sell form with inline result badge |
 | Price history + drop notifications | **Complete** | Inserted on price drop; immediate + weekly batch emails |
 | Mark as sold | **Complete** | Watcher notification email |
 | Account profile + password change | **Complete** | `profiles` table; Supabase Auth for password |
@@ -1246,8 +1262,8 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Unsubscribe from digest | **Partial** | `/unsubscribe/digest` page exists; sets `digest_opt_out` in `user_metadata`; no preference management UI in account settings |
 | Unsubscribe from alerts | **Partial** | `/unsubscribe` page; pause link in alert emails; no general email preferences page |
 | Dealer watcher messaging | **Complete** | One-time opt-in contact; blocked flag; count display |
-| Import JSON / Sync Now buttons | **Missing** | UI buttons exist in dealer dashboard but click handlers are stubs with no implementation |
-| Export inventory button | **Missing** | UI button exists but no handler |
+| Import JSON / Sync Now buttons | **Missing** | UI buttons exist in dealer dashboard but click handlers are stubs — no API route or format defined |
+| Export inventory | **Complete** | GET /api/dealer/export?format=csv\|json; dashboard has "Export CSV" and "Export JSON" buttons |
 | Admin email tool (`/admin/email`) | **Missing** | Page exists but content unknown (not read) |
 | Payment / billing for dealer plans | **Missing** | No Stripe or payment routes; billing deferred to post-beta |
 | Seller/buyer ratings | **Missing** | No rating system for buyers/sellers (only dealer reviews) |
@@ -1272,9 +1288,9 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Page | Issue |
 |---|---|
 | `/admin/email` | Page file exists but was not read; purpose unclear — likely an admin broadcast email tool with no route |
-| `dealer/dashboard` — "Import JSON" button | No API route for bulk inventory import |
+| `dealer/dashboard` — "Import JSON" button | No API route for bulk inventory import; format not yet defined |
 | `dealer/dashboard` — "Sync now" button | No API route for inventory sync |
-| `dealer/dashboard` — "Export" button | No API route for inventory export |
+| ~~`dealer/dashboard` — "Export" button~~ | **Fixed (P1)** — `GET /api/dealer/export?format=csv\|json` implemented; buttons wired |
 | `/account/watchlist` | Separate page file exists; account page already handles this at `/account?tab=watchlist` — may be a redirect or duplicate |
 | `/reports` page | Page file exists; no corresponding API route found |
 
@@ -1282,8 +1298,8 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 
 | Rule | Gap |
 |---|---|
-| Dealer beta expiry | Only enforced on listing submit. Dealers with expired betas can still log in, view dashboard, edit existing listings, and mark items sold. No enforcement at `/api/dealer/settings`, `/api/dealer/metrics`, or inventory edit routes. |
-| Advertiser trial expiry | Only enforced on ad CREATE. Editing ads (`POST /api/advertiser/ads` with `id`) does not re-check trial. |
+| Dealer beta expiry | ~~Only enforced on listing submit~~ **Fixed (P5)** — now enforced on listing submit AND listing edit (`PATCH /api/listings/[id]`). Dashboard login, metrics, and settings still not blocked. |
+| Advertiser trial expiry | ~~Only enforced on ad CREATE~~ **Fixed (P6)** — trial check now applies to both create and edit in `POST /api/advertiser/ads`. |
 | One review per user per dealer | Enforced with DB read but no unique constraint visible in code — relies on code-level check only |
 | Max 10 alerts | Enforced via `count` query; race condition possible (two simultaneous creates could both pass the check) |
 | Max 10 listings (private seller) | Enforced via parallel query; same race condition possible |
@@ -1337,6 +1353,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | `POST /api/dealer/apply` | None | ✓ (CAPTCHA + required fields) | ✓ 3/hr | N/A | N/A |
 | `POST /api/dealer/settings` | ✓ | ✓ | ✗ | ✓ dealer.id = user.id | ✗ |
 | `GET /api/dealer/metrics` | ✓ | N/A | ✗ | ✓ dealer lookup by user.id | ✗ |
+| `GET /api/dealer/export` | ✓ + dealer check | ✓ (format param) | ✗ | ✓ dealer.id = user.id | ✗ |
 | `GET /api/dealer/watcher-counts` | ✓ | ✓ (carIds split) | ✗ | ✓ (carIds filtered to seller_id = user.id) | ✗ |
 | `POST /api/dealer/message-watchers` | ✓ | ✓ (carId + message) | ✗ | ✓ car.seller_id = dealer.id | ✗ |
 | `POST /api/advertiser/signup` | None | ✓ | ✗ | N/A | N/A |
@@ -1392,6 +1409,12 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 8. **`POST /api/ads/track`** — any caller can still log clicks for any `adId`; no ad ownership verified. Low risk (no data leak, only inflates counts), but could skew analytics.
 9. **`POST /api/admin/team` role allowlist** — API validates only `superadmin | moderator` but UI offers 4 roles. Support and admin roles cannot be assigned via the API as written; UI dropdown shows them but POST rejects them silently. Needs fixing if those roles should be assignable.
 10. **No CAPTCHA on `POST /api/offers`** — anonymous offer submission is intentional (lowers friction for buyers) but enables spam. Rate limit (10/hr/IP) added in S6 as mitigation; CAPTCHA would be a stronger guard.
+
+**Fixed in P2/P5/P6/P1 (2026-07-02):**
+- ~~VIN verification not wired to sell form~~ → **Fixed (P2)** — VIN input + inline verify button on `/sell`; result badge shown; `vin`/`vin_verified` stored on submit
+- ~~Dealer beta expiry not checked on listing edit~~ → **Fixed (P5)** — `PATCH /api/listings/[id]` now checks `beta_expires_at`
+- ~~Advertiser trial not checked on ad edit~~ → **Fixed (P6)** — trial check now runs for both create and update in `POST /api/advertiser/ads`
+- ~~Export inventory button was a stub~~ → **Fixed (P1-partial)** — `GET /api/dealer/export?format=csv|json` implemented and wired to dashboard
 
 **Fixed in M1–M10 (2026-07-02):**
 - ~~`POST /api/watchlist` had no rate limit~~ → **Fixed (M1)** — 60/hr/IP
