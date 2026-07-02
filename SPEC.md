@@ -71,7 +71,7 @@ support < moderator < admin < superadmin
 | View dealer applications | — | — | — | — | ✓ | ✓ | ✓ | ✓ |
 | Approve/reject dealer applications | — | — | — | — | — | — | ✓ | ✓ |
 | Dismiss reported messages | — | — | — | — | ✓ | ✓ | ✓ | ✓ |
-| View admin team | — | — | — | — | — | — | ✓ | ✓ |
+| View admin team | — | — | — | — | — | — | — | ✓ |
 | Add/remove team members | — | — | — | — | — | — | — | ✓ |
 | Clean up orphaned storage images | — | — | — | — | — | — | — | ✓ |
 | Trigger email digest/price-drop jobs | — | — | — | — | — | — | — | (API secret) |
@@ -160,7 +160,7 @@ support < moderator < admin < superadmin
 6. **Reported tab** (all admin roles including support): sees flagged messages. Can dismiss (clears `reported` flag) via `DELETE /api/messages/[id]/report`. This is the primary job of the support tier.
 7. **Users tab** (moderator+): search/filter by role or status. Can view seller listings, suspend (moderator+ for non-dealers), unsuspend (admin+), edit name/email (admin+), promote to dealer (superadmin), delete account (superadmin). Hidden from support.
 8. **Applications tab** (admin+): review dealer applications, approve or reject with optional note.
-9. **Team tab** (admin+): view team members. Superadmin can add members (by email) with role selection, remove members.
+9. **Team tab** (superadmin only): view team members, add members by email with role selection, remove members.
 
 ### 2.6 Buyer Messaging a Seller
 
@@ -684,7 +684,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 ---
 
 ### `GET /api/admin/team`
-- **Auth**: required, any admin role (all can view)
+- **Auth**: required, superadmin only
 - **Returns**: `{ team: [{ user_id, email, role, created_at }] }`
 
 ---
@@ -1346,7 +1346,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | `GET /api/admin/dealer-applications` | ✓ any admin | N/A | ✗ | N/A | N/A |
 | `PATCH /api/admin/dealer-applications` | ✓ min admin | ✓ | ✗ | N/A | N/A |
 | `GET /api/admin/reported` | ✓ any admin | N/A | ✗ | N/A | N/A |
-| `GET /api/admin/team` | ✓ any admin | N/A | ✗ | N/A | N/A |
+| `GET /api/admin/team` | ✓ superadmin only | N/A | ✗ | N/A | N/A |
 | `POST /api/admin/team` | ✓ superadmin | ✓ (role allowlist) | ✗ | N/A | N/A |
 | `DELETE /api/admin/team` | ✓ superadmin | ✓ (not self) | ✗ | N/A | N/A |
 | `POST /api/admin/cleanup-images` | ✓ superadmin | N/A | ✗ | N/A | N/A |
