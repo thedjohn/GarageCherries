@@ -1,6 +1,6 @@
 # GarageCherries — Master Specification
 
-> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-02 (S1–S6 + support role scoping + M1–M10 + P2/P5/P6/P1-export product gaps).
+> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-02 (S1–S6 + support role scoping + M1–M10 + P2/P5/P6/P1-export product gaps + dealer_reviews unique constraint + reviews rate limit).
 > Stack: Next.js 16.2.9 · React 19 · Supabase (Auth + Postgres + Storage) · Resend (email) · Cloudflare Turnstile (CAPTCHA) · NHTSA VIN API · Tailwind CSS 4 · Vitest + Playwright
 
 ---
@@ -1165,7 +1165,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 |---|---|
 | `dealerId` | required |
 | `rating` | required, integer, 1–5 |
-| One review per user per dealer | enforced in DB query |
+| One review per user per dealer | enforced in DB query + `UNIQUE(dealer_id, reviewer_id)` DB constraint (added 2026-07-02) |
 
 ### Conversations (`POST /api/conversations`)
 
@@ -1300,7 +1300,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 |---|---|
 | Dealer beta expiry | ~~Only enforced on listing submit~~ **Fixed (P5)** — now enforced on listing submit AND listing edit (`PATCH /api/listings/[id]`). Dashboard login, metrics, and settings still not blocked. |
 | Advertiser trial expiry | ~~Only enforced on ad CREATE~~ **Fixed (P6)** — trial check now applies to both create and edit in `POST /api/advertiser/ads`. |
-| One review per user per dealer | Enforced with DB read but no unique constraint visible in code — relies on code-level check only |
+| ~~One review per user per dealer~~ | **Fixed (2026-07-02)** — `UNIQUE(dealer_id, reviewer_id)` constraint added to `dealer_reviews`; app-level check-then-insert now backed by a DB constraint, with the resulting `23505` unique-violation mapped to the same friendly 409 response |
 | Max 10 alerts | Enforced via `count` query; race condition possible (two simultaneous creates could both pass the check) |
 | Max 10 listings (private seller) | Enforced via parallel query; same race condition possible |
 | Image URL host validation | Simple string contains check — does not verify URL is a Supabase Storage URL for this project's bucket by subdomain |
@@ -1323,7 +1323,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | ~~No rate limit on `POST /api/offers`~~ | Offers API | **Fixed (S6)** — 10/hr/IP |
 | ~~No rate limit on `POST /api/watchlist`~~ | Watchlist API | **Fixed (M1)** — 60/hr/IP |
 | ~~No rate limit on `POST /api/conversations/[id]/messages`~~ | Messages API | **Fixed (M2)** — 60/hr/IP |
-| No rate limit on `POST /api/reviews` | Reviews API | One-per-user check is the only guard |
+| ~~No rate limit on `POST /api/reviews`~~ | Reviews API | **Fixed (2026-07-02)** — 10/hr/IP |
 
 ---
 
@@ -1379,7 +1379,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | `POST /api/inquire` | None | ✓ (CAPTCHA + fields) | ✓ 10/hr | N/A | ✗ |
 | `POST /api/offers` | Optional | ✓ (required fields, amount > 0) | ✓ 10/hr/IP | N/A | ✗ |
 | `GET /api/reviews` | None | ✓ (dealerId required) | ✗ | N/A | N/A |
-| `POST /api/reviews` | ✓ | ✓ (rating 1–5, 1/user/dealer) | ✗ | N/A | ✗ |
+| `POST /api/reviews` | ✓ | ✓ (rating 1–5, 1/user/dealer) | ✓ 10/hr/IP | N/A | ✗ |
 | `POST /api/track-view` | None | ✓ (listingId + dealerId) | ✗ | N/A | N/A |
 | `POST /api/notify-watchers` | ✓ (must be listing owner) | ✓ (carId, prices checked) | ✓ 30/hr/IP | ✓ seller_id = user.id | N/A |
 | `POST /api/cars/sold` | ✓ | ✓ (carId required) | ✗ | ✓ seller_id = user.id | ✗ |
@@ -1423,3 +1423,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 - ~~`state` field accepted any 2-char string~~ → **Fixed (M8)** — validated against `US_STATES` in `lib/constants.ts`
 - ~~Ad serving ignored `radius_miles`~~ → **Fixed (M4)** — haversine distance against state centroids
 - ~~`price_history` table had no RLS~~ → **Fixed (M10)** — RLS enabled; sellers read own only
+
+**Fixed post-audit (2026-07-02):**
+- ~~`dealer_reviews` had no unique constraint~~ → **Fixed** — `UNIQUE(dealer_id, reviewer_id)` added via `supabase/migrations/20260702_dealer_reviews_unique.sql`; closes the check-then-insert race in `POST /api/reviews`
+- ~~`POST /api/reviews` had no rate limit~~ → **Fixed** — 10/hr/IP via `lib/rateLimit.ts`

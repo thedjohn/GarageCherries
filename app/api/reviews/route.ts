@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { createClient } from '@/lib/supabase/server';
+import { rateLimit, getClientIP } from '@/lib/rateLimit';
 
 // GET /api/reviews?dealerId=xxx
 export async function GET(request: NextRequest) {
@@ -21,6 +22,10 @@ export async function GET(request: NextRequest) {
 
 // POST /api/reviews — submit a review
 export async function POST(request: NextRequest) {
+  const ip = getClientIP(request);
+  const { allowed } = rateLimit(`reviews:${ip}`, 10, 60 * 60 * 1000);
+  if (!allowed) return NextResponse.json({ error: 'Too many reviews. Please try again later.' }, { status: 429 });
+
   const { dealerId, rating, review, reviewerName } = await request.json();
 
   if (!dealerId || !rating) {
@@ -56,6 +61,11 @@ export async function POST(request: NextRequest) {
     review: review ?? null,
   });
 
-  if (error) return NextResponse.json({ error: 'Failed to save review' }, { status: 500 });
+  if (error) {
+    if (error.code === '23505') {
+      return NextResponse.json({ error: 'You have already reviewed this dealer' }, { status: 409 });
+    }
+    return NextResponse.json({ error: 'Failed to save review' }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }
