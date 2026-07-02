@@ -1,6 +1,6 @@
 # GarageCherries — Master Specification
 
-> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-02 (S1–S6 security fixes + support role scoping).
+> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-02 (S1–S6 security fixes + support role scoping + M1–M10 medium priority fixes).
 > Stack: Next.js 16.2.9 · React 19 · Supabase (Auth + Postgres + Storage) · Resend (email) · Cloudflare Turnstile (CAPTCHA) · NHTSA VIN API · Tailwind CSS 4 · Vitest + Playwright
 
 ---
@@ -518,6 +518,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 - **Auth**: optional (sellerId = null if anonymous, but listing still accepted)
 - **Rate limit**: 5 requests / IP / hour
 - **Suspension check**: yes — authenticated suspended users blocked with 403 before any DB writes
+- **State validation**: `state` must be a valid US state/territory code from `lib/constants.ts US_STATES` — returns 400 if invalid
 - **Input** (multipart/form-data):
 
 | Field | Required | Type | Validation |
@@ -707,6 +708,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 ### `POST /api/dealer/apply`
 - **Auth**: none required
 - **Rate limit**: 3 / IP / hour
+- **State validation**: `state` must be a valid US state/territory code — returns 400 if invalid
 - **Input** (JSON):
 
 | Field | Required | Validation |
@@ -778,7 +780,8 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 ### `POST /api/advertiser/ads`
 - **Auth**: required, must be advertiser
 - **Input**: `{ id?, headline, bodyCopy, ctaLabel, ctaUrl, phone, logoUrl, photoUrl, rating, reviewCount }`
-- **Business rule**: trial must not be expired
+- **Business rule**: trial must not be expired (checked for both create and update)
+- **URL validation**: `ctaUrl` must start with `http://` or `https://` — `javascript:` and other schemes rejected with 400
 - **With id**: updates existing ad (ownership verified via `advertiser_id`)
 - **Without id**: creates new ad
 - **Returns**: `{ ok: true }` on update; `{ ad: {...} }` on create
@@ -795,7 +798,11 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 ### `GET /api/ads/serve`
 - **Auth**: none
 - **Query**: `state?`, `path?`
-- **Logic**: finds active advertisers with valid trial; filters by state/tier; picks random; returns ad with fewest impressions
+- **Logic**: finds active advertisers with valid trial; filters by radius using haversine distance between state centroids:
+  - `statewide` tier: always eligible regardless of viewer state
+  - All other tiers: advertiser's state centroid must be within `radius_miles` of the viewer's state centroid
+  - Falls back to exact state match if viewer state is unknown
+  - Picks random eligible advertiser; returns their ad with fewest impressions
 - **Side effects**: logs impression to `ad_events`; increments `ads.impressions` via RPC `inc_ad_impressions`
 - **Returns**: `{ ad: {...} | null }`
 
@@ -880,6 +887,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 
 ### `POST /api/conversations/[id]/messages`
 - **Auth**: required; must be participant; suspension check
+- **Rate limit**: 60 / IP / hour
 - **Input**: `{ body, senderName? }`
 - **Validation**: non-empty body
 - **Side effects**: inserts message; updates `last_message_at`; broadcasts Realtime to recipient
@@ -901,6 +909,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 
 ### `POST /api/watchlist`
 - **Auth**: required
+- **Rate limit**: 60 / IP / hour
 - **Input**: `{ carId, currentPrice?, allowDealerContact? }`
 - **Logic**: if exists → delete (unwatch); if not → insert (watch)
 - **Returns**: `{ watching: boolean }`
@@ -1037,7 +1046,9 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | Dealer beta period duration | `app/api/admin/dealer-applications/route.ts:97` | `beta_expires_at = now + 6 months` on application approval |
 | Advertiser trial period | `app/api/advertiser/signup/route.ts:28` | `trial_ends_at = now + 14 days`; ad creation blocked if expired |
 | Advertiser tier → radius | `app/api/advertiser/signup/route.ts:26` | starter=15mi, metro=30mi, regional=60mi, statewide=9999mi |
-| Ad serving state filter | `app/api/ads/serve/route.ts:22` | statewide tier ignores state filter; others must match geo_state |
+| Ad serving radius filter | `app/api/ads/serve/route.ts` | statewide tier serves everywhere; other tiers use haversine distance between state centroids vs. `radius_miles`; falls back to exact state match if viewer state unknown |
+| Ad CTA URL scheme | `app/api/advertiser/ads/route.ts` | `cta_url` must start with `http://` or `https://`; `javascript:` and other schemes rejected with 400 |
+| State code validation | `app/api/listings/submit/route.ts`, `app/api/dealer/apply/route.ts` | `state` field validated against `US_STATES` set in `lib/constants.ts` (50 states + DC + territories); invalid codes return 400 |
 | Max alerts per user | `app/api/alerts/route.ts:31` | Max 10 saved searches per user |
 | Alert minimum criteria | `app/api/alerts/route.ts:39` | At least 2 criteria required to create an alert |
 | Alert match threshold | `lib/matchAlerts.ts:45` | Score must be ≥ 0.7 to trigger notification |
@@ -1217,7 +1228,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Dealer beta expiry UI | **Complete** | Banner with days remaining, warning at ≤30 days |
 | Beta expiry enforcement | **Partial** | Only enforced at listing submit, not at dashboard login or listing edit |
 | Advertiser signup + ads | **Complete** | Tiers, trial, ad creation, serve, impression/click tracking |
-| Ad geographic targeting | **Partial** | State filter works for statewide vs. non-statewide; radius_miles stored but not used in serve logic |
+| Ad geographic targeting | **Complete** | Haversine distance between state centroids used to filter by `radius_miles`; statewide tier still serves everywhere |
 | Watchlist | **Complete** | Add/remove, price-at-add comparison, sold/removed indicators |
 | Saved search alerts | **Complete** | Create/edit/delete/pause, score-based matching, email notifications, 24h cooldown |
 | Buyer-seller messaging | **Complete** | In-page chat widget, Realtime push, unread state via localStorage |
@@ -1282,7 +1293,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 
 | Missing Validation | Location | Risk |
 |---|---|---|
-| `state` field not validated against STATES enum in API | `POST /api/listings/submit`, `POST /api/dealer/apply` | Accepts any 2-char string |
+| ~~`state` field not validated against STATES enum in API~~ | `POST /api/listings/submit`, `POST /api/dealer/apply` | **Fixed (M8)** — validated against `US_STATES` in `lib/constants.ts` |
 | `condition` field not validated against CONDITIONS enum | `POST /api/listings/submit` | Could store arbitrary values |
 | `email` format not validated server-side | `POST /api/inquire`, `POST /api/offers` | Any string accepted |
 | `price` clamped to ≥ 0 only on client | `POST /api/listings/submit` | `Number() \|\| 0` means price=0 accepted silently if non-numeric passed |
@@ -1294,6 +1305,8 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | `phone` format not server-validated | Listings, dealer apply, offers | Any string accepted |
 | ~~No rate limit on `POST /api/cars/verify-vin`~~ | VIN API | **Fixed (S6)** — 20/hr/IP |
 | ~~No rate limit on `POST /api/offers`~~ | Offers API | **Fixed (S6)** — 10/hr/IP |
+| ~~No rate limit on `POST /api/watchlist`~~ | Watchlist API | **Fixed (M1)** — 60/hr/IP |
+| ~~No rate limit on `POST /api/conversations/[id]/messages`~~ | Messages API | **Fixed (M2)** — 60/hr/IP |
 | No rate limit on `POST /api/reviews` | Reviews API | One-per-user check is the only guard |
 
 ---
@@ -1341,10 +1354,10 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | `POST /api/conversations` | ✓ | ✓ | ✓ 20/hr | N/A | ✓ |
 | `GET /api/conversations` | ✓ | ✓ (page/limit) | ✗ | ✓ (buyer_id or seller via listings) | ✗ |
 | `GET /api/conversations/[id]/messages` | ✓ | ✓ (id in path) | ✗ | ✓ (buyer or seller check) | ✗ |
-| `POST /api/conversations/[id]/messages` | ✓ | ✓ (body non-empty) | ✗ | ✓ (buyer or seller check) | ✓ |
+| `POST /api/conversations/[id]/messages` | ✓ | ✓ (body non-empty) | ✓ 60/hr/IP | ✓ (buyer or seller check) | ✓ |
 | `PATCH /api/messages/[id]/report` | ✓ | ✓ (id in path) | ✗ | ✓ (participant check) | ✗ |
 | `DELETE /api/messages/[id]/report` | ✓ any admin | ✓ | ✗ | N/A | N/A |
-| `POST /api/watchlist` | ✓ | ✓ (carId required) | ✗ | N/A | ✗ |
+| `POST /api/watchlist` | ✓ | ✓ (carId required) | ✓ 60/hr/IP | N/A | ✗ |
 | `DELETE /api/watchlist` | ✓ | ✓ (carId required) | ✗ | ✓ (filters by user.id) | ✗ |
 | `POST /api/inquire` | None | ✓ (CAPTCHA + fields) | ✓ 10/hr | N/A | ✗ |
 | `POST /api/offers` | Optional | ✓ (required fields, amount > 0) | ✓ 10/hr/IP | N/A | ✗ |
@@ -1360,6 +1373,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | `POST /api/email/price-drops` | Bearer secret | N/A | ✗ | N/A | N/A |
 | `POST /api/email/digest` | Bearer secret | N/A | ✗ | N/A | N/A |
 | `POST /api/email/dealer-report` | Bearer secret | N/A | ✗ | N/A | N/A |
+| `price_history` table (Supabase) | RLS enabled | N/A | N/A | ✓ seller read own only | N/A |
 
 ### Notable Security Concerns
 
@@ -1378,3 +1392,11 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 8. **`POST /api/ads/track`** — any caller can still log clicks for any `adId`; no ad ownership verified. Low risk (no data leak, only inflates counts), but could skew analytics.
 9. **`POST /api/admin/team` role allowlist** — API validates only `superadmin | moderator` but UI offers 4 roles. Support and admin roles cannot be assigned via the API as written; UI dropdown shows them but POST rejects them silently. Needs fixing if those roles should be assignable.
 10. **No CAPTCHA on `POST /api/offers`** — anonymous offer submission is intentional (lowers friction for buyers) but enables spam. Rate limit (10/hr/IP) added in S6 as mitigation; CAPTCHA would be a stronger guard.
+
+**Fixed in M1–M10 (2026-07-02):**
+- ~~`POST /api/watchlist` had no rate limit~~ → **Fixed (M1)** — 60/hr/IP
+- ~~`POST /api/conversations/[id]/messages` had no rate limit~~ → **Fixed (M2)** — 60/hr/IP
+- ~~Ad `cta_url` accepted any scheme including `javascript:`~~ → **Fixed (M5)** — must be `http(s)://`
+- ~~`state` field accepted any 2-char string~~ → **Fixed (M8)** — validated against `US_STATES` in `lib/constants.ts`
+- ~~Ad serving ignored `radius_miles`~~ → **Fixed (M4)** — haversine distance against state centroids
+- ~~`price_history` table had no RLS~~ → **Fixed (M10)** — RLS enabled; sellers read own only
