@@ -1301,8 +1301,8 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Dealer beta expiry | ~~Only enforced on listing submit~~ **Fixed (P5)** — now enforced on listing submit AND listing edit (`PATCH /api/listings/[id]`). Dashboard login, metrics, and settings still not blocked. |
 | Advertiser trial expiry | ~~Only enforced on ad CREATE~~ **Fixed (P6)** — trial check now applies to both create and edit in `POST /api/advertiser/ads`. |
 | ~~One review per user per dealer~~ | **Fixed (2026-07-02)** — `UNIQUE(dealer_id, reviewer_id)` constraint added to `dealer_reviews`; app-level check-then-insert now backed by a DB constraint, with the resulting `23505` unique-violation mapped to the same friendly 409 response |
-| Max 10 alerts | Enforced via `count` query; race condition possible (two simultaneous creates could both pass the check) |
-| Max 10 listings (private seller) | Enforced via parallel query; same race condition possible |
+| ~~Max 10 alerts~~ | **Fixed (2026-07-02)** — `count` query kept for a fast friendly error, but the cap is now also enforced atomically by a `BEFORE INSERT` trigger on `saved_searches` using `pg_advisory_xact_lock`, closing the race (`supabase/migrations/20260702_race_condition_fixes.sql`) |
+| ~~Max 10 listings (private seller)~~ | **Fixed (2026-07-02)** — insert now goes through `insert_listing_with_limit()` RPC, which atomically re-checks the count (advisory-lock-guarded) and inserts in one DB call; app still resolves the dealer/BETA_MODE exemption before calling it |
 | Image URL host validation | Simple string contains check — does not verify URL is a Supabase Storage URL for this project's bucket by subdomain |
 
 ### Validations that are missing but should exist
@@ -1427,3 +1427,5 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 **Fixed post-audit (2026-07-02):**
 - ~~`dealer_reviews` had no unique constraint~~ → **Fixed** — `UNIQUE(dealer_id, reviewer_id)` added via `supabase/migrations/20260702_dealer_reviews_unique.sql`; closes the check-then-insert race in `POST /api/reviews`
 - ~~`POST /api/reviews` had no rate limit~~ → **Fixed** — 10/hr/IP via `lib/rateLimit.ts`
+- ~~Max 10 alerts race condition~~ → **Fixed** — `BEFORE INSERT` trigger on `saved_searches` (advisory-lock-guarded) via `supabase/migrations/20260702_race_condition_fixes.sql`
+- ~~Max 10 listings race condition~~ → **Fixed** — `POST /api/listings/submit` now inserts via `insert_listing_with_limit()` RPC, which atomically re-checks the count under an advisory lock before inserting

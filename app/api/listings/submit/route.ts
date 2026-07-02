@@ -36,28 +36,25 @@ export async function POST(req: NextRequest) {
     if (suspension) return NextResponse.json({ error: 'Your account has been suspended.' }, { status: 403 });
   }
 
-  // Enforce listing limits for private sellers (dealers are exempt)
+  // Dealers are exempt from the listing cap; BETA_MODE bypasses it entirely.
+  // The cap itself is enforced atomically in insert_listing_with_limit() below
+  // (see supabase/migrations/20260702_race_condition_fixes.sql) to close a
+  // check-then-insert race — this block only resolves whether it applies.
   const betaMode = process.env.BETA_MODE === 'true';
+  let enforceListingLimit = false;
   if (sellerId && !betaMode) {
-    const [{ data: dealer }, { count: activeCount }] = await Promise.all([
-      admin.from('dealers').select('id, beta_expires_at').eq('id', sellerId).single(),
-      admin.from('listings')
-        .select('id', { count: 'exact', head: true })
-        .eq('seller_id', sellerId)
-        .in('status', ['pending', 'approved']),
-    ]);
+    const { data: dealer } = await admin
+      .from('dealers')
+      .select('id, beta_expires_at')
+      .eq('id', sellerId)
+      .single();
     if (dealer?.beta_expires_at && new Date(dealer.beta_expires_at) < new Date()) {
       return NextResponse.json({
         error: 'BETA_EXPIRED',
         message: 'Your beta period has ended. Please contact us to upgrade your dealer account.',
       }, { status: 403 });
     }
-    if (!dealer && (activeCount ?? 0) >= 10) {
-      return NextResponse.json({
-        error: 'LISTING_LIMIT',
-        message: 'You have reached the 10 active listing limit for private sellers. Please contact us to upgrade to a Dealer account.',
-      }, { status: 403 });
-    }
+    enforceListingLimit = !dealer;
   }
 
   // Images are now uploaded client-side; we receive their public URLs
@@ -83,34 +80,43 @@ export async function POST(req: NextRequest) {
   const model = String(formData.get('model'));
   const slug = `${year}-${make.toLowerCase().replace(/\s+/g, '-')}-${model.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
 
-  const { error } = await admin.from('listings').insert({
-    id: crypto.randomUUID(),
-    slug,
-    title: `${year} ${make} ${model}`,
-    year,
-    make,
-    model,
-    price: Number(formData.get('price')) || 0,
-    mileage: formData.get('mileage') ? Number(formData.get('mileage')) : null,
-    location: formData.get('city'),
-    state: stateVal,
-    condition: formData.get('condition'),
-    body_style: formData.get('bodyStyle'),
-    transmission: formData.get('transmission'),
-    engine: formData.get('engine') || null,
-    color: formData.get('color') || null,
-    images: validImageUrls,
-    description: formData.get('description'),
-    seller_name: formData.get('sellerName'),
-    seller_phone: formData.get('sellerPhone'),
-    seller_email: formData.get('sellerEmail'),
-    vin: formData.get('vin') || null,
-    vin_verified: formData.get('vinVerified') === 'true',
-    featured: false,
-    status: 'pending',
-    seller_id: sellerId,
+  const { error } = await admin.rpc('insert_listing_with_limit', {
+    p_id: crypto.randomUUID(),
+    p_slug: slug,
+    p_title: `${year} ${make} ${model}`,
+    p_year: year,
+    p_make: make,
+    p_model: model,
+    p_price: Number(formData.get('price')) || 0,
+    p_mileage: formData.get('mileage') ? Number(formData.get('mileage')) : null,
+    p_location: formData.get('city'),
+    p_state: stateVal,
+    p_condition: formData.get('condition'),
+    p_body_style: formData.get('bodyStyle'),
+    p_transmission: formData.get('transmission'),
+    p_engine: formData.get('engine') || null,
+    p_color: formData.get('color') || null,
+    p_images: validImageUrls,
+    p_description: formData.get('description'),
+    p_seller_name: formData.get('sellerName'),
+    p_seller_phone: formData.get('sellerPhone'),
+    p_seller_email: formData.get('sellerEmail'),
+    p_vin: formData.get('vin') || null,
+    p_vin_verified: formData.get('vinVerified') === 'true',
+    p_featured: false,
+    p_status: 'pending',
+    p_seller_id: sellerId,
+    p_enforce_limit: enforceListingLimit,
   });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    if (error.code === 'P0001') {
+      return NextResponse.json({
+        error: 'LISTING_LIMIT',
+        message: 'You have reached the 10 active listing limit for private sellers. Please contact us to upgrade to a Dealer account.',
+      }, { status: 403 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json({ success: true });
 }

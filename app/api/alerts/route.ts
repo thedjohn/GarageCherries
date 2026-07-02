@@ -56,7 +56,12 @@ export async function POST(request: NextRequest) {
     state:        state || null,
   }).select().single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    if (error.code === 'P0001') {
+      return NextResponse.json({ error: 'Maximum 10 alerts per account' }, { status: 400 });
+    }
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json({ search: data });
 }
 
