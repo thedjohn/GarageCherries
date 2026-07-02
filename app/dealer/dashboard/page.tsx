@@ -15,6 +15,7 @@ interface DbCar {
   transmission: string; color: string; interior_color?: string; seat_material?: string; seating_type?: string; description: string;
   location: string; state: string; featured: boolean;
   listed_at: string; images: string[]; seller_id: string;
+  status?: string; rejection_reason?: string | null;
 }
 interface DbDealer {
   id: string; slug: string; name: string;
