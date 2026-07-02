@@ -1,6 +1,6 @@
 # GarageCherries — Master Specification
 
-> Generated 2026-07-02 from a full read of every route, page, and library file.
+> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-02 (S1–S6 security fixes + support role scoping).
 > Stack: Next.js 16.2.9 · React 19 · Supabase (Auth + Postgres + Storage) · Resend (email) · Cloudflare Turnstile (CAPTCHA) · NHTSA VIN API · Tailwind CSS 4 · Vitest + Playwright
 
 ---
@@ -151,13 +151,14 @@ support < moderator < admin < superadmin
 ### 2.5 Admin Moderating Content
 
 1. Admin navigates to `/admin` — access gated by `admin_users` row.
-2. Role is resolved first; **support** role lands on the Reported tab automatically.
-3. **Listings tab** (moderator+): sees all listings with pending/approved/rejected counts. Can approve, reject (with reason from preset list or custom), edit (admin+), delete (superadmin only). Hidden from support.
-4. **Messages tab** (moderator+): views all conversations (buyer/seller/listing title/timestamp). Hidden from support — support cannot browse all private conversations.
-5. **Reported tab** (all admin roles including support): sees flagged messages. Can dismiss (clears `reported` flag) via `DELETE /api/messages/[id]/report`. This is the primary job of the support tier.
-6. **Users tab** (moderator+): search/filter by role or status. Can view seller listings, suspend (moderator+ for non-dealers), unsuspend (admin+), edit name/email (admin+), promote to dealer (superadmin), delete account (superadmin). Hidden from support.
-7. **Applications tab** (admin+): review dealer applications, approve or reject with optional note.
-8. **Team tab** (admin+): view team members. Superadmin can add members (by email) with role selection, remove members.
+2. **Role resolved first** — before any data loads, the page calls `GET /api/admin/team` to read the acting user's role.
+3. **Support role scoping** (fixed 2026-07-02): support users are redirected to the Reported tab automatically; only reported content is loaded. They see only the Reported tab; Listings, Messages, and Users tabs are hidden from the nav. Attempting to access those tabs directly would still require moderator+ at the API layer.
+4. **Listings tab** (moderator+): sees all listings with pending/approved/rejected counts. Can approve, reject (with reason from preset list or custom), edit (admin+), delete (superadmin only). Hidden from support.
+5. **Messages tab** (moderator+): views all conversations (buyer/seller/listing title/timestamp). Hidden from support — support cannot browse all private conversations.
+6. **Reported tab** (all admin roles including support): sees flagged messages. Can dismiss (clears `reported` flag) via `DELETE /api/messages/[id]/report`. This is the primary job of the support tier.
+7. **Users tab** (moderator+): search/filter by role or status. Can view seller listings, suspend (moderator+ for non-dealers), unsuspend (admin+), edit name/email (admin+), promote to dealer (superadmin), delete account (superadmin). Hidden from support.
+8. **Applications tab** (admin+): review dealer applications, approve or reject with optional note.
+9. **Team tab** (admin+): view team members. Superadmin can add members (by email) with role selection, remove members.
 
 ### 2.6 Buyer Messaging a Seller
 
@@ -516,6 +517,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 ### `POST /api/listings/submit`
 - **Auth**: optional (sellerId = null if anonymous, but listing still accepted)
 - **Rate limit**: 5 requests / IP / hour
+- **Suspension check**: yes — authenticated suspended users blocked with 403 before any DB writes
 - **Input** (multipart/form-data):
 
 | Field | Required | Type | Validation |
@@ -551,6 +553,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 ### `PATCH /api/listings/[id]`
 - **Auth**: required (user session)
 - **Rate limit**: none
+- **Suspension check**: yes — suspended users blocked with 403 before ownership check
 - **Input** (JSON):
 
 | Field | Required | Type | Notes |
@@ -742,6 +745,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 
 ### `GET /api/dealer/watcher-counts`
 - **Auth**: required
+- **Ownership**: carIds filtered to only those owned by the authenticated user (`seller_id = user.id`) before querying watchlists; unowned IDs silently dropped
 - **Query**: `carIds=id1,id2,...`
 - **Returns**: `{ counts: { [carId]: number }, messaged: { [carId]: boolean } }` — counts of opted-in watchers not yet messaged; whether dealer already messaged each car
 
@@ -799,6 +803,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 
 ### `POST /api/ads/track`
 - **Auth**: none
+- **Rate limit**: 60 / IP / hour (prevents click stuffing)
 - **Input**: `{ adId, type?, path?, state? }`
 - **Validation**: adId required
 - **Side effects**: logs to `ad_events`; increments `ads.clicks` via RPC `inc_ad_clicks`
@@ -834,7 +839,8 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 ---
 
 ### `POST /api/alerts/match`
-- **Auth**: none (internal use only — called by admin listing approval flow)
+- **Auth**: Bearer `INTERNAL_API_SECRET` header required — returns 401 if missing or mismatched
+- **Caller**: only `PATCH /api/admin/listings` (approve action) passes the secret header; no public access
 - **Input**: `{ carId }`
 - **Side effects**: fetches listing, calls `matchAndNotifyAlerts(car)` — emails matching alert subscribers
 
@@ -920,6 +926,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 
 ### `POST /api/offers`
 - **Auth**: optional
+- **Rate limit**: 10 / IP / hour
 - **Input**: `{ carId, carTitle, dealerId, amount, buyerName?, buyerEmail, message? }`
 - **Validation**: carId, amount, buyerEmail required; amount > 0
 - **Side effects**: inserts `offers` row; emails dealer (if email found); sends confirmation to buyer
@@ -951,7 +958,9 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 ---
 
 ### `POST /api/notify-watchers`
-- **Auth**: none (called internally by price-drop detection)
+- **Auth**: required — must be authenticated seller who owns the listing
+- **Rate limit**: 30 / IP / hour
+- **Ownership**: verifies `listing.seller_id === user.id` — returns 403 if not owner
 - **Input**: `{ carId, oldPrice, newPrice }`
 - **Validation**: only notifies if newPrice < oldPrice
 - **Side effects**: emails all watchlist users for that car
@@ -969,6 +978,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 
 ### `POST /api/cars/verify-vin`
 - **Auth**: none
+- **Rate limit**: 20 / IP / hour
 - **Input**: `{ vin, make?, model?, year? }`
 - **Validation**: VIN required; 17-char VINs validated against `/^[A-HJ-NPR-Z0-9]{17}$/`; pre-1981 VINs (< 17 chars) accepted with note
 - **Side effects**: calls NHTSA VIN decoder API (cached 24h)
@@ -1282,8 +1292,8 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | No CAPTCHA on `POST /api/offers` | Offers API | Anonymous offer spam possible |
 | No auth required on `POST /api/offers` | Offers API | Allows anonymous offers; intentional but enables spam |
 | `phone` format not server-validated | Listings, dealer apply, offers | Any string accepted |
-| No rate limit on `POST /api/cars/verify-vin` | VIN API | Could be used to enumerate NHTSA lookups |
-| No rate limit on `POST /api/offers` | Offers API | Could be used for offer spam to dealers |
+| ~~No rate limit on `POST /api/cars/verify-vin`~~ | VIN API | **Fixed (S6)** — 20/hr/IP |
+| ~~No rate limit on `POST /api/offers`~~ | Offers API | **Fixed (S6)** — 10/hr/IP |
 | No rate limit on `POST /api/reviews` | Reviews API | One-per-user check is the only guard |
 
 ---
@@ -1292,8 +1302,8 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 
 | Route | Auth Check | Input Validated | Rate Limited | Ownership Verified | Suspension Checked |
 |---|:---:|:---:|:---:|:---:|:---:|
-| `POST /api/listings/submit` | Optional (anon allowed) | ✓ (CAPTCHA + fields) | ✓ 5/hr | N/A | ✗ |
-| `PATCH /api/listings/[id]` | ✓ | ✓ | ✗ | ✓ seller_id | ✗ |
+| `POST /api/listings/submit` | Optional (anon allowed) | ✓ (CAPTCHA + fields) | ✓ 5/hr | N/A | ✓ |
+| `PATCH /api/listings/[id]` | ✓ | ✓ | ✗ | ✓ seller_id | ✓ |
 | `DELETE /api/listings/[id]` | ✓ | ✓ (id in path) | ✗ | ✓ seller_id | ✗ |
 | `GET /api/listings/my` | ✓ | N/A | ✗ | ✓ (filters by user.id) | ✗ |
 | `POST /api/listings/upload-image` | ✓ | ✓ (fileName, contentType) | ✗ | N/A | ✗ |
@@ -1314,19 +1324,19 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | `POST /api/dealer/apply` | None | ✓ (CAPTCHA + required fields) | ✓ 3/hr | N/A | N/A |
 | `POST /api/dealer/settings` | ✓ | ✓ | ✗ | ✓ dealer.id = user.id | ✗ |
 | `GET /api/dealer/metrics` | ✓ | N/A | ✗ | ✓ dealer lookup by user.id | ✗ |
-| `GET /api/dealer/watcher-counts` | ✓ | ✓ (carIds split) | ✗ | ✗ (any auth user can query any carIds) | ✗ |
+| `GET /api/dealer/watcher-counts` | ✓ | ✓ (carIds split) | ✗ | ✓ (carIds filtered to seller_id = user.id) | ✗ |
 | `POST /api/dealer/message-watchers` | ✓ | ✓ (carId + message) | ✗ | ✓ car.seller_id = dealer.id | ✗ |
 | `POST /api/advertiser/signup` | None | ✓ | ✗ | N/A | N/A |
 | `GET /api/advertiser/ads` | ✓ + advertiser check | N/A | ✗ | ✓ advertiser.user_id = user.id | ✗ |
 | `POST /api/advertiser/ads` | ✓ + advertiser check + trial check | ✓ | ✗ | ✓ eq advertiser_id on update | ✗ |
 | `DELETE /api/advertiser/ads` | ✓ + advertiser check | ✓ (id required) | ✗ | ✓ eq advertiser_id | ✗ |
 | `GET /api/ads/serve` | None | ✓ | ✗ | N/A | N/A |
-| `POST /api/ads/track` | None | ✓ (adId required) | ✗ | ✗ (any caller can log clicks for any adId) | N/A |
+| `POST /api/ads/track` | None | ✓ (adId required) | ✓ 60/hr/IP | ✗ (any caller can log clicks for any adId) | N/A |
 | `GET /api/alerts` | ✓ | N/A | ✗ | ✓ (filters by user.id) | ✗ |
 | `POST /api/alerts` | ✓ | ✓ (count, criteria min) | ✗ | N/A | ✗ |
 | `PATCH /api/alerts` | ✓ | ✓ | ✗ | ✓ eq user_id | ✗ |
 | `DELETE /api/alerts` | ✓ | ✓ (id required) | ✗ | ✓ eq user_id | ✗ |
-| `POST /api/alerts/match` | None | ✓ (carId required) | ✗ | ✗ (internal-only but no auth) | N/A |
+| `POST /api/alerts/match` | ✓ Bearer INTERNAL_API_SECRET | ✓ (carId required) | ✗ | N/A (internal only) | N/A |
 | `GET /api/alerts/matches` | ✓ | ✓ (alertId required) | ✗ | ✓ verifies alert ownership | ✗ |
 | `POST /api/conversations` | ✓ | ✓ | ✓ 20/hr | N/A | ✓ |
 | `GET /api/conversations` | ✓ | ✓ (page/limit) | ✗ | ✓ (buyer_id or seller via listings) | ✗ |
@@ -1337,13 +1347,13 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | `POST /api/watchlist` | ✓ | ✓ (carId required) | ✗ | N/A | ✗ |
 | `DELETE /api/watchlist` | ✓ | ✓ (carId required) | ✗ | ✓ (filters by user.id) | ✗ |
 | `POST /api/inquire` | None | ✓ (CAPTCHA + fields) | ✓ 10/hr | N/A | ✗ |
-| `POST /api/offers` | Optional | ✓ (required fields, amount > 0) | ✗ | N/A | ✗ |
+| `POST /api/offers` | Optional | ✓ (required fields, amount > 0) | ✓ 10/hr/IP | N/A | ✗ |
 | `GET /api/reviews` | None | ✓ (dealerId required) | ✗ | N/A | N/A |
 | `POST /api/reviews` | ✓ | ✓ (rating 1–5, 1/user/dealer) | ✗ | N/A | ✗ |
 | `POST /api/track-view` | None | ✓ (listingId + dealerId) | ✗ | N/A | N/A |
-| `POST /api/notify-watchers` | None | ✓ (carId, prices checked) | ✗ | ✗ (no auth — internal use) | N/A |
+| `POST /api/notify-watchers` | ✓ (must be listing owner) | ✓ (carId, prices checked) | ✓ 30/hr/IP | ✓ seller_id = user.id | N/A |
 | `POST /api/cars/sold` | ✓ | ✓ (carId required) | ✗ | ✓ seller_id = user.id | ✗ |
-| `POST /api/cars/verify-vin` | None | ✓ (VIN format) | ✗ | N/A | N/A |
+| `POST /api/cars/verify-vin` | None | ✓ (VIN format) | ✓ 20/hr/IP | N/A | N/A |
 | `GET /api/makes` | None | N/A | ✗ | N/A | N/A |
 | `GET /api/account/profile` | ✓ | N/A | ✗ | ✓ (filters by user.id) | ✗ |
 | `POST /api/account/profile` | ✓ | ✓ | ✗ | ✓ (upsert by user.id) | ✗ |
@@ -1353,10 +1363,18 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 
 ### Notable Security Concerns
 
-1. **`POST /api/alerts/match`** has no auth — anyone can trigger alert matching for any car ID. Should be restricted to internal/admin calls only.
-2. **`POST /api/notify-watchers`** has no auth — anyone can trigger price-drop emails for any car. Should be restricted.
-3. **`POST /api/ads/track`** has no auth — any caller can increment click counts on any ad with any `adId`.
-4. **`GET /api/dealer/watcher-counts`** — any authenticated user can query watcher counts for any car IDs, not just their own listings.
-5. **`POST /api/offers`** has no rate limit or CAPTCHA — potential for offer spam to dealers.
-6. **`POST /api/cars/verify-vin`** has no rate limit — free NHTSA API calls can be abused.
-7. **Admin role check in `/api/admin/team` (POST)** — API validates only `superadmin | moderator` but UI offers 4 roles (support, moderator, admin, superadmin). Admin and support roles cannot be assigned via the UI POST endpoint as written.
+**Fixed (2026-07-02 — S1–S6):**
+
+1. ~~`POST /api/alerts/match` had no auth~~ → **Fixed (S1)**: now requires `Bearer INTERNAL_API_SECRET`; only `PATCH /api/admin/listings` (approve action) passes the secret.
+2. ~~`POST /api/notify-watchers` had no auth~~ → **Fixed (S2)**: now requires auth + seller ownership + 30/hr/IP rate limit.
+3. ~~`POST /api/ads/track` had no rate limit~~ → **Fixed (S3)**: now rate limited to 60 clicks/hr/IP.
+4. ~~Suspended users could still submit and edit listings~~ → **Fixed (S4)**: `POST /api/listings/submit` and `PATCH /api/listings/[id]` both check `suspended_users` table and return 403.
+5. ~~`GET /api/dealer/watcher-counts` allowed any auth user to query watcher counts for any carIds~~ → **Fixed (S5)**: carIds now filtered to `seller_id = user.id` before querying watchlists.
+6. ~~`POST /api/offers` and `POST /api/cars/verify-vin` had no rate limits~~ → **Fixed (S6)**: offers limited to 10/hr/IP; VIN lookups limited to 20/hr/IP.
+
+**Remaining concerns:**
+
+7. **Admin role scoping (support) in UI** — Fixed in `app/admin/page.tsx`: support role now lands on Reported tab, Listings/Messages/Users tabs are hidden. API-layer role checks (moderator+) were already correct. ✓ Resolved.
+8. **`POST /api/ads/track`** — any caller can still log clicks for any `adId`; no ad ownership verified. Low risk (no data leak, only inflates counts), but could skew analytics.
+9. **`POST /api/admin/team` role allowlist** — API validates only `superadmin | moderator` but UI offers 4 roles. Support and admin roles cannot be assigned via the API as written; UI dropdown shows them but POST rejects them silently. Needs fixing if those roles should be assignable.
+10. **No CAPTCHA on `POST /api/offers`** — anonymous offer submission is intentional (lowers friction for buyers) but enables spam. Rate limit (10/hr/IP) added in S6 as mitigation; CAPTCHA would be a stronger guard.
