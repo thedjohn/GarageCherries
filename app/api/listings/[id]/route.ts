@@ -9,6 +9,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const admin = createAdminClient();
 
+  // Block suspended users
+  const { data: suspension } = await admin
+    .from('suspended_users')
+    .select('user_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (suspension) return NextResponse.json({ error: 'Your account has been suspended.' }, { status: 403 });
+
   // Verify ownership
   const { data: listing } = await admin
     .from('listings')

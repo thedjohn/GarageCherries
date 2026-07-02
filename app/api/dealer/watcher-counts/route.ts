@@ -11,15 +11,25 @@ export async function GET(request: NextRequest) {
 
   const admin = createAdminClient();
 
+  // Verify all requested carIds belong to this user (ownership check)
+  const { data: ownedListings } = await admin
+    .from('listings')
+    .select('id')
+    .eq('seller_id', user.id)
+    .in('id', carIds);
+  const ownedIds = new Set((ownedListings ?? []).map((r: { id: string }) => r.id));
+  const safeCarIds = carIds.filter(id => ownedIds.has(id));
+  if (!safeCarIds.length) return NextResponse.json({ counts: {}, messaged: {} });
+
   const { data: rows } = await admin
     .from('watchlists')
     .select('car_id, dealer_messaged_at, allow_dealer_contact, dealer_contact_blocked')
-    .in('car_id', carIds);
+    .in('car_id', safeCarIds);
 
   const counts: Record<string, number>  = {};
   const messaged: Record<string, boolean> = {};
 
-  carIds.forEach(id => { counts[id] = 0; messaged[id] = false; });
+  safeCarIds.forEach(id => { counts[id] = 0; messaged[id] = false; });
 
   (rows ?? []).forEach((r: any) => {
     if (r.allow_dealer_contact && !r.dealer_contact_blocked && !r.dealer_messaged_at) {

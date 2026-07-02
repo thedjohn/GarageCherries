@@ -130,11 +130,14 @@ export async function PATCH(req: NextRequest) {
         `,
       }).catch(() => {});
 
-      // Trigger alert matching
+      // Trigger alert matching (internal — requires secret)
       const origin = req.nextUrl.origin;
       fetch(`${origin}/api/alerts/match`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.INTERNAL_API_SECRET ?? ''}`,
+        },
         body: JSON.stringify({ carId: id }),
       }).catch(() => {});
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
+import { rateLimit, getClientIP } from '@/lib/rateLimit';
 
 function toSegment(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -11,6 +12,16 @@ function fmt(n: number) {
 }
 
 export async function POST(request: NextRequest) {
+  // Rate limit — prevent spamming price-drop emails
+  const ip = getClientIP(request);
+  const { allowed } = rateLimit(`notify-watchers:${ip}`, 30, 60 * 60 * 1000);
+  if (!allowed) return NextResponse.json({ sent: 0 }, { status: 429 });
+
+  // Require authenticated user who owns the listing
+  const userClient = await createClient();
+  const { data: { user } } = await userClient.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { carId, oldPrice, newPrice } = await request.json();
 
   // Only notify on price drops
@@ -19,6 +30,16 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createAdminClient();
+
+  // Verify the requesting user owns this listing
+  const { data: listing } = await supabase
+    .from('listings')
+    .select('seller_id')
+    .eq('id', carId)
+    .single();
+  if (!listing || listing.seller_id !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   // Get car details for the email
   const { data: car } = await supabase

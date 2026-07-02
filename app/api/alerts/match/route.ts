@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { matchAndNotifyAlerts } from '@/lib/matchAlerts';
 
-// POST /api/alerts/match — called after a new car is listed
-// Body: { carId: string }
+// POST /api/alerts/match — internal only, called after a listing is approved
+// Requires Bearer INTERNAL_API_SECRET header
 export async function POST(request: NextRequest) {
+  const auth = request.headers.get('authorization');
+  if (!process.env.INTERNAL_API_SECRET || auth !== `Bearer ${process.env.INTERNAL_API_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { carId } = await request.json();
   if (!carId) return NextResponse.json({ error: 'carId required' }, { status: 400 });
 

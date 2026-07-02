@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit, getClientIP } from '@/lib/rateLimit';
 
 function nhtsaField(results: any[], name: string): string | null {
   return results.find((r: any) => r.Variable === name)?.Value || null;
 }
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIP(req);
+  const { allowed } = rateLimit(`verify-vin:${ip}`, 20, 60 * 60 * 1000);
+  if (!allowed) return NextResponse.json({ error: 'Too many VIN lookups. Please try again later.' }, { status: 429 });
+
   const { vin, make, model, year } = await req.json();
 
   if (!vin) return NextResponse.json({ error: 'VIN is required' }, { status: 400 });

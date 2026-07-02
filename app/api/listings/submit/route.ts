@@ -25,6 +25,16 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const sellerId = user?.id ?? null;
 
+  // Block suspended users
+  if (sellerId) {
+    const { data: suspension } = await admin
+      .from('suspended_users')
+      .select('user_id')
+      .eq('user_id', sellerId)
+      .maybeSingle();
+    if (suspension) return NextResponse.json({ error: 'Your account has been suspended.' }, { status: 403 });
+  }
+
   // Enforce listing limits for private sellers (dealers are exempt)
   const betaMode = process.env.BETA_MODE === 'true';
   if (sellerId && !betaMode) {

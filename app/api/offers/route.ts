@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { createClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
+import { rateLimit, getClientIP } from '@/lib/rateLimit';
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIP(request);
+  const { allowed } = rateLimit(`offers:${ip}`, 10, 60 * 60 * 1000);
+  if (!allowed) return NextResponse.json({ error: 'Too many offers. Please try again later.' }, { status: 429 });
+
   const { carId, carTitle, dealerId, amount, buyerName, buyerEmail, message } = await request.json();
 
   if (!carId || !amount || !buyerEmail) {
