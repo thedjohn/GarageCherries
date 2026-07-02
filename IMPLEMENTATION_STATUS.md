@@ -23,7 +23,7 @@
 - [x] Message Seller contact form — emails seller/dealer, buyer address never exposed
 - [x] Watch / Save listing button
 - [x] Make an Offer button (`MakeOfferButton`) — re-wired 2026-07-02, dealer listings only (private-seller listings have no dealer email to notify, so the button is gated behind `dealer` truthy, same pattern as Call Dealer); requires login, submits to `POST /api/offers` which saves the offer and emails both dealer and buyer
-- [x] Financing calculator (`FinancingCalculator`) — re-wired 2026-07-02 below the Specs card; collapsible, pure client-side amortization math (down payment / APR / term sliders), no backend dependency. Verified interactively — sliders recalculate monthly payment live.
+- [x] Financing calculator (`FinancingCalculator`) — re-wired 2026-07-02 below the Specs card; collapsible, pure client-side amortization math (down payment / APR / term sliders), no backend dependency. Verified interactively — sliders recalculate monthly payment live. Links out to J.J. Best Banc and Woodside Credit with no affiliate tracking — untapped referral-revenue opportunity, see Financing Integration in the Long-Term wishlist below.
 - [x] SEO — per-page title, description, Open Graph tags, JSON-LD Vehicle + BreadcrumbList schema, canonical URL
 - [x] View tracking — deduplicated by hashed IP per day, records dealer_id when a dealer listing
 
@@ -192,7 +192,7 @@
 | Feature | Description |
 |---|---|
 | **GarageCherries Auctions** | Full auction platform competing with Bring a Trailer — live virtual events, white-glove listing service |
-| **Financing Integration** | J.J. Best Banc / Woodside Credit partner widgets, "get pre-qualified" button, referral revenue |
+| **Financing Integration** | `FinancingCalculator` already links out to J.J. Best Banc and Woodside Credit (plain `<a href>`, no affiliate ID, no click tracking, no lead capture) — currently free referral traffic for them with zero revenue captured. Quick win once a partner agreement exists: swap in affiliate-tagged URLs and add click tracking (same pattern as `AdSlot`'s impression/click RPCs). The real blocker is business, not code — need an actual referral agreement with a classic-car lender before there's anything to track. |
 | **Insurance Integration** | Hagerty / Grundy / American Collectors quote widget, referral revenue |
 | **Shipping & Transport** | Montway / uShip quote integration on listing pages, referral revenue |
 | **Market Intelligence Tool** | Comparable sold listings, price trend graphs, "what's hot" alerts for dealers |
