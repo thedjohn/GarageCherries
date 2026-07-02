@@ -482,8 +482,7 @@ export default function DealerDashboard() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const deleteCar = async (id: string) => {
-    const supabase = createClient();
-    await supabase.from('listings').delete().eq('id', id);
+    await fetch(`/api/listings/${id}`, { method: 'DELETE' });
     setDeleteConfirm(null);
     loadData();
   };
