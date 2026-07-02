@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     // Get inquiries this month
     const { count: inquiryCount } = await admin
-      .from('messages')
+      .from('inquiries')
       .select('id', { count: 'exact', head: true })
       .eq('dealer_id', dealer.id)
       .gte('created_at', thirtyDaysAgo);
