@@ -35,6 +35,10 @@ export async function POST(request: NextRequest) {
   const advertiser = await getAdvertiser(supabase, user.id);
   if (!advertiser) return NextResponse.json({ error: 'Not an advertiser' }, { status: 403 });
 
+  if (advertiser.trial_ends_at && new Date(advertiser.trial_ends_at) < new Date()) {
+    return NextResponse.json({ error: 'TRIAL_EXPIRED', message: 'Your trial has ended. Please upgrade to continue creating ads.' }, { status: 403 });
+  }
+
   const body = await request.json();
   const { id, headline, bodyCopy, ctaLabel, ctaUrl, phone, logoUrl, photoUrl, rating, reviewCount } = body;
 

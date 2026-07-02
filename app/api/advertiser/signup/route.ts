@@ -25,6 +25,8 @@ export async function POST(request: NextRequest) {
   // Resolve tier → radius
   const radiusMap: Record<string, number> = { starter: 15, metro: 30, regional: 60, statewide: 9999 };
 
+  const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
   // Insert advertiser record
   const { data, error } = await admin.from('advertisers').insert({
     user_id:       userId,
@@ -39,6 +41,7 @@ export async function POST(request: NextRequest) {
     tier:          tier || 'starter',
     radius_miles:  radiusMap[tier ?? 'starter'] ?? 15,
     active:        true,
+    trial_ends_at: trialEndsAt,
   }).select().single();
 
   if (error) {

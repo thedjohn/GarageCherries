@@ -185,6 +185,7 @@ export async function DELETE(req: NextRequest) {
     admin.from('watchlists').delete().eq('user_id', id),
     admin.from('saved_searches').delete().eq('user_id', id),
     admin.from('conversations').delete().eq('buyer_id', id),
+    admin.from('inquiries').delete().eq('user_id', id),
   ]);
 
   // Delete their listings + images

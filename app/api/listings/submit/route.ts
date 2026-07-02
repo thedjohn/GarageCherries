@@ -29,12 +29,18 @@ export async function POST(req: NextRequest) {
   const betaMode = process.env.BETA_MODE === 'true';
   if (sellerId && !betaMode) {
     const [{ data: dealer }, { count: activeCount }] = await Promise.all([
-      admin.from('dealers').select('id').eq('id', sellerId).single(),
+      admin.from('dealers').select('id, beta_expires_at').eq('id', sellerId).single(),
       admin.from('listings')
         .select('id', { count: 'exact', head: true })
         .eq('seller_id', sellerId)
         .in('status', ['pending', 'approved']),
     ]);
+    if (dealer?.beta_expires_at && new Date(dealer.beta_expires_at) < new Date()) {
+      return NextResponse.json({
+        error: 'BETA_EXPIRED',
+        message: 'Your beta period has ended. Please contact us to upgrade your dealer account.',
+      }, { status: 403 });
+    }
     if (!dealer && (activeCount ?? 0) >= 10) {
       return NextResponse.json({
         error: 'LISTING_LIMIT',
