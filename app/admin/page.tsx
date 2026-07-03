@@ -713,7 +713,7 @@ export default function AdminPage() {
       )}
 
       {tab === 'team' && (adminRole === 'superadmin' || adminRole === 'admin') && (
-        <div className="space-y-6">
+        <><div className="space-y-6">
           {/* Current team */}
           <div className="space-y-3">
             {team.map(m => (
@@ -826,7 +826,7 @@ export default function AdminPage() {
           </div>
         )}
       </div>
-    )}
+    </>)}
 
       {/* Users tab */}
       {tab === 'users' && (
