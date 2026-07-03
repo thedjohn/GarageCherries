@@ -23,6 +23,13 @@ const CAMPAIGNS = [
     description: 'Sends each dealer a summary of their views, inquiries, and inventory for the past 30 days.',
     icon: '📊',
   },
+  {
+    id: 'expiring-listings',
+    endpoint: '/api/email/expiring-listings',
+    title: 'Listing Renewal Reminders',
+    description: 'Sends renewal reminder emails to sellers whose listings expire within 3 days. Safe to run daily — will not re-send to the same listing.',
+    icon: '⏰',
+  },
 ] as const;
 
 interface Result { ok: boolean; sent?: number; total?: number; message?: string; error?: string }
