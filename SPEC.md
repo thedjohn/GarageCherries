@@ -1276,7 +1276,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Dealer watcher messaging | **Complete** | One-time opt-in contact; blocked flag; count display |
 | Import JSON / Sync Now buttons | **Missing** | UI buttons exist in dealer dashboard but click handlers are stubs — no API route or format defined |
 | Export inventory | **Complete** | GET /api/dealer/export?format=csv\|json; dashboard has "Export CSV" and "Export JSON" buttons |
-| Admin email tool (`/admin/email`) | **Missing** | Page exists but content unknown (not read) |
+| Admin email tool (`/admin/email`) | **Complete** | Manual trigger panel for digest, price-drop, and dealer-report batch emails; requires `ADMIN_API_SECRET`; not linked from `/admin` nav |
 | Payment / billing for dealer plans | **Missing** | No Stripe or payment routes; billing deferred to post-beta |
 | Seller/buyer ratings | **Missing** | No rating system for buyers/sellers (only dealer reviews) |
 | Search full-text | **Partial** | `lib/data.ts` client-side search includes title+description text match; DB-level search in `lib/db.ts:fetchCars` uses only structured filters |
@@ -1299,7 +1299,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 
 | Page | Issue |
 |---|---|
-| `/admin/email` | Page file exists but was not read; purpose unclear — likely an admin broadcast email tool with no route |
+| `/admin/email` | **Complete** — manual trigger panel for the three batch email jobs (Weekly Digest, Price Drops, Monthly Dealer Report). Requires `ADMIN_API_SECRET` entered on the page. Not linked from `/admin` — must know the URL. No admin session check on the page itself (secret still required to trigger anything). |
 | `dealer/dashboard` — "Import JSON" button | No API route for bulk inventory import; format not yet defined |
 | `dealer/dashboard` — "Sync now" button | No API route for inventory sync |
 | ~~`dealer/dashboard` — "Export" button~~ | **Fixed (P1)** — `GET /api/dealer/export?format=csv\|json` implemented; buttons wired |

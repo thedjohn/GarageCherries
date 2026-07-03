@@ -765,7 +765,26 @@ export default function AdminPage() {
             <p className="text-xs text-zinc-400 mt-3">The person must already have a GarageCherries account.</p>
           </div>}
         </div>
-      )}
+
+        {/* Email campaigns shortcut — superadmin only */}
+        {adminRole === 'superadmin' && (
+          <div className="mt-6 bg-white border border-zinc-100 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-zinc-900">Email Campaigns</h3>
+                <p className="text-sm text-zinc-500 mt-0.5">Manually trigger digest, price drop, and dealer report emails.</p>
+              </div>
+              <a
+                href="/admin/email"
+                className="flex-shrink-0 bg-zinc-900 hover:bg-zinc-700 text-white font-bold text-sm px-5 py-2 rounded-xl transition-colors"
+              >
+                Open →
+              </a>
+            </div>
+          </div>
+        )}
+      </div>
+    )}
 
       {/* Users tab */}
       {tab === 'users' && (
