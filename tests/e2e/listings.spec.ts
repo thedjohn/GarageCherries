@@ -42,7 +42,8 @@ test.describe('Listings page', () => {
   });
 
   test('applying make filter updates URL', async ({ page }) => {
-    await page.selectOption('select', { label: /chevrolet/i });
+    // Make is the first <select> in the filter sidebar
+    await page.locator('select').first().selectOption('Chevrolet');
     await page.getByRole('button', { name: /apply filters/i }).click();
     await expect(page).toHaveURL(/make=Chevrolet/i);
   });

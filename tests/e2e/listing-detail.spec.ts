@@ -49,13 +49,13 @@ test.describe('Listing detail page', () => {
 test.describe('Dealer apply page', () => {
   test('renders the application form', async ({ page }) => {
     await page.goto('/dealer/apply');
-    await expect(page.getByRole('heading', { name: /apply|dealer/i }).first()).toBeVisible();
-    await expect(page.getByLabel(/dealership name/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /dealer account application/i })).toBeVisible();
+    await expect(page.getByPlaceholder('Dealership name')).toBeVisible();
   });
 
   test('form has required fields', async ({ page }) => {
     await page.goto('/dealer/apply');
-    await expect(page.getByLabel(/name/i).first()).toBeVisible();
-    await expect(page.getByLabel(/email/i).first()).toBeVisible();
+    await expect(page.getByPlaceholder('Full name')).toBeVisible();
+    await expect(page.getByPlaceholder('Email address')).toBeVisible();
   });
 });
