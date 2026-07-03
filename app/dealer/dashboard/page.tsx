@@ -465,6 +465,10 @@ export default function DealerDashboard() {
       .single();
 
     if (dealerRow) {
+      if (dealerRow.beta_expires_at && new Date(dealerRow.beta_expires_at) < new Date()) {
+        router.replace('/dealer/expired');
+        return;
+      }
       setDealer(dealerRow);
       const { data: cars } = await supabase
         .from('listings')

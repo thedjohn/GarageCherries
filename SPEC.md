@@ -1266,7 +1266,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Dealer dashboard | **Complete** | Inventory CRUD, rich vehicle fields, metrics, inquiries, settings |
 | Dealer inventory (bypass review) | **Complete** | Listings inserted as approved; alert matching triggered |
 | Dealer beta expiry UI | **Complete** | Banner with days remaining, warning at ≤30 days |
-| Beta expiry enforcement | **Partial** | Enforced at listing submit and listing edit; dashboard login, metrics, and settings not blocked |
+| Beta expiry enforcement | **Complete** | Enforced at listing submit and listing edit; expired dealers redirected to `/dealer/expired` on dashboard load |
 | Advertiser signup + ads | **Complete** | Tiers, trial, ad creation, serve, impression/click tracking |
 | Ad geographic targeting | **Complete** | Haversine distance between state centroids used to filter by `radius_miles`; statewide tier still serves everywhere |
 | Watchlist | **Complete** | Add/remove, price-at-add comparison, sold/removed indicators |
@@ -1284,7 +1284,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Weekly email digest | **Complete** | Bearer-auth endpoint; uses watchlist users as subscriber list |
 | Listing renewal reminder email | **Complete** | `POST /api/email/expiring-listings`; sends 3 days before `expires_at`; idempotent via `renewal_reminder_sent_at`; triggerable from `/admin/email` |
 | Monthly dealer report | **Complete** | Bearer-auth endpoint; views/inquiries/top listings |
-| Unsubscribe from digest | **Complete** | `/unsubscribe/digest` page; sets `digest_opt_out` in `user_metadata`; unsubscribe link in digest emails |
+| Unsubscribe from digest | **Complete** | `/unsubscribe/digest` page; sets `digest_opt_out` in `user_metadata`; unsubscribe link in digest emails; UUID guard added (2026-07-03) |
 | Unsubscribe from price drop notifications | **Complete** | `/unsubscribe/price-drops` page; sets `price_drop_opt_out` in `user_metadata`; unsubscribe link in price drop emails; opted-out users skipped in `POST /api/notify-watchers` (fixed 2026-07-03) |
 | Unsubscribe from dealer monthly report | **Complete** | `/unsubscribe/dealer-report` page; sets `report_opt_out` on `dealers` row; unsubscribe link in dealer report emails; opted-out dealers skipped in `POST /api/email/dealer-report` (fixed 2026-07-03) |
 | Unsubscribe from alerts | **Partial** | `/unsubscribe` page; pause link in alert emails; no global alert opt-out |

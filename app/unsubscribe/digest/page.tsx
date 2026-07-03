@@ -12,7 +12,9 @@ export default async function UnsubscribeDigestPage({
   let alreadyDone = false;
   let invalid = false;
 
-  if (uid) {
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  if (uid && UUID_RE.test(uid)) {
     const admin = createAdminClient();
     const { data: { user }, error } = await admin.auth.admin.getUserById(uid);
 
