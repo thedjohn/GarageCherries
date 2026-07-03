@@ -94,11 +94,13 @@ test.describe('/sell page (unauthenticated)', () => {
 
   test('gate has a create account CTA', async ({ page }) => {
     await page.goto('/sell');
-    if (page.url().includes('/sell')) {
+    // Check pathname only — query params like ?return=/sell would fool includes('/sell')
+    const pathname = new URL(page.url()).pathname;
+    if (pathname === '/sell') {
       await expect(page.getByRole('link', { name: /create a free account/i })).toBeVisible();
     } else {
-      // Redirected to login — login page itself has a create account link
-      await expect(page.getByRole('link', { name: /create free account/i })).toBeVisible();
+      // Redirected to login — link says "Create Account" or similar
+      await expect(page.getByRole('link', { name: /create.*account/i }).first()).toBeVisible();
     }
   });
 });

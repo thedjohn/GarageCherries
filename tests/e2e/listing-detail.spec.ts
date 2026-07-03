@@ -25,14 +25,14 @@ test.describe('Listing detail page', () => {
     if (count === 0) { test.skip(); return; }
 
     await cards.first().click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Price or "Call for price"
     await expect(page.getByText(/\$[\d,]+|Call for price/i).first()).toBeVisible();
 
-    // Contact / message button
+    // Contact / message button — text is "Message Seller" or "Sign In to Message"
     await expect(
-      page.getByRole('button', { name: /message|contact|inquire/i }).first()
+      page.getByRole('button', { name: /message seller|sign in to message/i }).first()
     ).toBeVisible();
   });
 
