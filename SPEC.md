@@ -1287,7 +1287,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Unsubscribe from digest | **Complete** | `/unsubscribe/digest` page; sets `digest_opt_out` in `user_metadata`; unsubscribe link in digest emails; UUID guard added (2026-07-03) |
 | Unsubscribe from price drop notifications | **Complete** | `/unsubscribe/price-drops` page; sets `price_drop_opt_out` in `user_metadata`; unsubscribe link in price drop emails; opted-out users skipped in `POST /api/notify-watchers` (fixed 2026-07-03) |
 | Unsubscribe from dealer monthly report | **Complete** | `/unsubscribe/dealer-report` page; sets `report_opt_out` on `dealers` row; unsubscribe link in dealer report emails; opted-out dealers skipped in `POST /api/email/dealer-report` (fixed 2026-07-03) |
-| Unsubscribe from alerts | **Partial** | `/unsubscribe` page; pause link in alert emails; no global alert opt-out |
+| Unsubscribe from alerts | **Complete** | `/unsubscribe/alerts` page; sets `alerts_opt_out` in `user_metadata`; opted-out users skipped in `matchAndNotifyAlerts`; "Unsubscribe from all alerts" link added to alert email footer alongside existing pause/manage links |
 | Dealer watcher messaging | **Complete** | One-time opt-in contact; blocked flag; count display |
 | Market report (`/reports`) | **Complete** | Public page; live data from listings table; avg price by make, condition breakdown, most-viewed, sold count; not linked from main nav |
 | Dedicated watchlist page (`/account/watchlist`) | **Complete** | Standalone URL for watchlist; price-change indicators; mirrors `/account?tab=watchlist` |

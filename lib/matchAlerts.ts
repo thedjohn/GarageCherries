@@ -64,9 +64,10 @@ function matchBadges(car: Car, s: any): string {
   return checks.join(' &nbsp;&nbsp; ');
 }
 
-function buildEmail(car: Car, s: any, listingUrl: string, alertId: string): string {
+function buildEmail(car: Car, s: any, listingUrl: string, alertId: string, userId: string): string {
   const image = car.images?.[0] ?? '';
   const pauseUrl = `${BASE_URL}/account/alerts?pause=${alertId}`;
+  const unsubscribeUrl = `${BASE_URL}/unsubscribe/alerts?uid=${userId}`;
   const name = alertName(s);
   const badges = matchBadges(car, s);
 
@@ -93,7 +94,8 @@ function buildEmail(car: Car, s: any, listingUrl: string, alertId: string): stri
     <p style="font-size:12px;color:#a1a1aa;margin:0">
       You set up a car alert for "${name}".<br>
       <a href="${pauseUrl}" style="color:#71717a">Pause this alert</a> &nbsp;·&nbsp;
-      <a href="${BASE_URL}/account/alerts" style="color:#71717a">Manage all alerts</a>
+      <a href="${BASE_URL}/account/alerts" style="color:#71717a">Manage all alerts</a> &nbsp;·&nbsp;
+      <a href="${unsubscribeUrl}" style="color:#71717a">Unsubscribe from all alerts</a>
     </p>
   </div>
 </div>`;
@@ -135,6 +137,7 @@ export async function matchAndNotifyAlerts(car: Car) {
       const { data: userData } = await admin.auth.admin.getUserById(s.user_id);
       const email = userData?.user?.email;
       if (!email) continue;
+      if (userData?.user?.user_metadata?.alerts_opt_out) continue;
 
       const listingUrl = `${BASE_URL}/listings/${toSegment(car.make)}/${toSegment(car.model)}/${car.id}/${car.slug}`;
 
@@ -154,7 +157,7 @@ export async function matchAndNotifyAlerts(car: Car) {
         from: 'GarageCherries <notifications@garagecherries.com>',
         to: email,
         subject: `New match for your "${alertName(s)}" — ${formatPrice(car.price)}`,
-        html: buildEmail(car, s, listingUrl, s.id),
+        html: buildEmail(car, s, listingUrl, s.id, s.user_id),
       });
     } catch {
       // skip and continue
