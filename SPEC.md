@@ -1277,7 +1277,9 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Unsubscribe from dealer monthly report | **Complete** | `/unsubscribe/dealer-report` page; sets `report_opt_out` on `dealers` row; unsubscribe link in dealer report emails; opted-out dealers skipped in `POST /api/email/dealer-report` (fixed 2026-07-03) |
 | Unsubscribe from alerts | **Partial** | `/unsubscribe` page; pause link in alert emails; no global alert opt-out |
 | Dealer watcher messaging | **Complete** | One-time opt-in contact; blocked flag; count display |
-| Import JSON / Sync Now buttons | **Missing** | UI buttons exist in dealer dashboard but click handlers are stubs — no API route or format defined |
+| Market report (`/reports`) | **Complete** | Public page; live data from listings table; avg price by make, condition breakdown, most-viewed, sold count; not linked from main nav |
+| Dedicated watchlist page (`/account/watchlist`) | **Complete** | Standalone URL for watchlist; price-change indicators; mirrors `/account?tab=watchlist` |
+| Import JSON / Sync Now buttons | **Missing** | UI buttons exist in dealer dashboard but click handlers are stubs — no API route or format defined; sample format saved at `docs/dealer-import-sample.json` |
 | Export inventory | **Complete** | GET /api/dealer/export?format=csv\|json; dashboard has "Export CSV" and "Export JSON" buttons |
 | Admin email tool (`/admin/email`) | **Complete** | Manual trigger panel for digest, price-drop, and dealer-report batch emails; requires `ADMIN_API_SECRET`; not linked from `/admin` nav |
 | Payment / billing for dealer plans | **Missing** | No Stripe or payment routes; billing deferred to post-beta |
@@ -1306,8 +1308,8 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | `dealer/dashboard` — "Import JSON" button | No API route for bulk inventory import; format not yet defined |
 | `dealer/dashboard` — "Sync now" button | No API route for inventory sync |
 | ~~`dealer/dashboard` — "Export" button~~ | **Fixed (P1)** — `GET /api/dealer/export?format=csv\|json` implemented; buttons wired |
-| `/account/watchlist` | Separate page file exists; account page already handles this at `/account?tab=watchlist` — may be a redirect or duplicate |
-| `/reports` page | Page file exists; no corresponding API route found |
+| `/account/watchlist` | **Complete** — dedicated watchlist page; shows saved listings with price-change indicators (green = dropped, orange = increased since saved); redirects to login if unauthenticated; duplicates the Watchlist tab at `/account?tab=watchlist` but at a cleaner standalone URL |
+| `/reports` | **Complete** — public market report page; pulls live data from listings table; shows active count, median/average price, sold this month, average price by make (bar chart), inventory by condition breakdown, most-viewed listings, static market commentary; good SEO content page; not linked from main nav |
 
 ### Business rules with no enforcement or test coverage
 
