@@ -10,20 +10,20 @@ test.describe('Buyer login page', () => {
   });
 
   test('shows email and password inputs', async ({ page }) => {
-    await expect(page.getByLabel(/email/i)).toBeVisible();
-    await expect(page.getByLabel(/password/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/you@example\.com/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/••••/)).toBeVisible();
   });
 
-  test('shows a sign in / login button', async ({ page }) => {
-    await expect(
-      page.getByRole('button', { name: /sign in|log in/i })
-    ).toBeVisible();
+  test('shows a sign in button', async ({ page }) => {
+    await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
   });
 
-  test('has a link to sign up', async ({ page }) => {
-    await expect(
-      page.getByRole('link', { name: /sign up|create account/i })
-    ).toBeVisible();
+  test('has a link to create a free account', async ({ page }) => {
+    await expect(page.getByRole('link', { name: /create free account/i })).toBeVisible();
+  });
+
+  test('has a forgot password link', async ({ page }) => {
+    await expect(page.getByRole('link', { name: /forgot password/i })).toBeVisible();
   });
 });
 
@@ -37,19 +37,19 @@ test.describe('Buyer signup page', () => {
   });
 
   test('shows email and password inputs', async ({ page }) => {
-    await expect(page.getByLabel(/email/i)).toBeVisible();
-    await expect(page.getByLabel(/password/i).first()).toBeVisible();
+    await expect(page.getByPlaceholder(/you@example\.com/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/••••/).first()).toBeVisible();
   });
 
-  test('shows a create account / sign up button', async ({ page }) => {
+  test('shows a create account button', async ({ page }) => {
     await expect(
-      page.getByRole('button', { name: /create account|sign up/i })
+      page.getByRole('button', { name: /create account/i })
     ).toBeVisible();
   });
 
-  test('has a link back to login', async ({ page }) => {
+  test('has a link back to sign in', async ({ page }) => {
     await expect(
-      page.getByRole('link', { name: /sign in|log in|already have/i })
+      page.getByRole('link', { name: /sign in/i })
     ).toBeVisible();
   });
 });
@@ -64,19 +64,17 @@ test.describe('Dealer login page', () => {
   });
 
   test('shows email and password inputs', async ({ page }) => {
-    await expect(page.getByLabel(/email/i)).toBeVisible();
-    await expect(page.getByLabel(/password/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/you@example\.com|email/i).first()).toBeVisible();
+    await expect(page.getByPlaceholder(/••••/)).toBeVisible();
   });
 
   test('shows a sign in button', async ({ page }) => {
-    await expect(
-      page.getByRole('button', { name: /sign in|log in/i })
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
   });
 
   test('has a link to dealer apply', async ({ page }) => {
     await expect(
-      page.getByRole('link', { name: /apply|become a dealer/i })
+      page.getByRole('link', { name: /apply/i })
     ).toBeVisible();
   });
 });
@@ -84,20 +82,18 @@ test.describe('Dealer login page', () => {
 test.describe('Forgot password page', () => {
   test('renders the reset form', async ({ page }) => {
     await page.goto('/account/forgot-password');
-    await expect(page.getByLabel(/email/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/you@example\.com|email/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /send|reset/i })).toBeVisible();
   });
 });
 
 test.describe('/sell page (unauthenticated)', () => {
-  test('shows gate / login prompt for unauthenticated users', async ({ page }) => {
+  test('shows gate or redirects to login for unauthenticated users', async ({ page }) => {
     await page.goto('/sell');
-    // Should either redirect to login or show SellGate with a sign-in CTA
     const isLoginPage = page.url().includes('/account/login') || page.url().includes('/sell');
     expect(isLoginPage).toBe(true);
-    // Either on login page or sell gate is shown
-    const gateOrLogin = await page.getByRole('link', { name: /sign in|log in|create.*account/i }).count();
-    const loginPage = await page.getByLabel(/email/i).count();
-    expect(gateOrLogin + loginPage).toBeGreaterThan(0);
+    const gateLinks = await page.getByRole('link', { name: /sign in|log in|create.*account/i }).count();
+    const loginInputs = await page.getByPlaceholder(/you@example\.com/i).count();
+    expect(gateLinks + loginInputs).toBeGreaterThan(0);
   });
 });
