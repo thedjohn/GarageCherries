@@ -275,6 +275,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `logo` | text \| null | URL |
 | `plan` | text \| null | e.g. 'beta' |
 | `beta_expires_at` | timestamptz \| null | Set to +6 months on approval |
+| `report_opt_out` | boolean | Default false; set true via `/unsubscribe/dealer-report`; skipped by monthly report job |
 | `created_at` | timestamptz | |
 
 ### `dealer_applications`
@@ -1228,7 +1229,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | 3 | Dealer application rejected | `no-reply@` | `app.email` | "Your GarageCherries Dealer Application" | `app/api/admin/dealer-applications/route.ts:54` |
 | 4 | Dealer application approved | `no-reply@` | `app.email` | "Your GarageCherries Dealer Account is Approved 🍒" | `app/api/admin/dealer-applications/route.ts:129` |
 | 5 | Alert match found (new listing) | `notifications@` | Alert owner's email | "New match for your "{alertName}" — {price}" | `lib/matchAlerts.ts:152` |
-| 6 | Price drop on watchlisted car (immediate) | `noreply@` | Watcher email | "Price Drop: {title} is now {newPrice}" | `app/api/notify-watchers/route.ts:50` |
+| 6 | Price drop on watchlisted car (immediate) | `noreply@` | Watcher email (skipped if `price_drop_opt_out` in user_metadata) | "Price Drop: {title} is now {newPrice}" | `app/api/notify-watchers/route.ts:50` |
 | 7 | Car sold (watcher notification) | `noreply@` | All watcher emails | "{title} has sold" | `app/api/cars/sold/route.ts:47` |
 | 8 | New buyer inquiry | `noreply@` | Seller email | "New inquiry: {carTitle}" | `app/api/inquire/route.ts:90` |
 | 9 | New offer placed — dealer notification | `offers@` | `dealer.email` | "New offer on {carTitle}: {amount}" | `app/api/offers/route.ts:47` |
@@ -1236,7 +1237,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | 11 | Dealer message to watcher | `notifications@` | Watcher email | "Message from the seller — {car.title}" | `app/api/dealer/message-watchers/route.ts:45` |
 | 12 | Weekly price-drop digest | `noreply@` | Per-watcher email | "Price drop on N cars you're watching" | `app/api/email/price-drops/route.ts:94` |
 | 13 | Weekly new listings digest | `noreply@` | Watchlist users | "🚗 N new classic cars this week — GarageCherries" | `app/api/email/digest/route.ts:82` |
-| 14 | Monthly dealer performance report | `noreply@` | Each dealer email | "Your GarageCherries monthly report — {month year}" | `app/api/email/dealer-report/route.ts:104` |
+| 14 | Monthly dealer performance report | `noreply@` | Each dealer email (skipped if `report_opt_out = true` on dealers row) | "Your GarageCherries monthly report — {month year}" | `app/api/email/dealer-report/route.ts:104` |
 | 15 | Admin rate-limit alert | `no-reply@ (Alerts)` | `ADMIN_EMAIL` env | "[GarageCherries Alert] Rate limit hit: {route}" | `lib/notifyAdmin.ts:12` (called from various routes) |
 
 ---
@@ -1271,8 +1272,10 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Image cleanup (orphan removal) | **Complete** | Superadmin-triggered, 24h grace period |
 | Weekly email digest | **Complete** | Bearer-auth endpoint; uses watchlist users as subscriber list |
 | Monthly dealer report | **Complete** | Bearer-auth endpoint; views/inquiries/top listings |
-| Unsubscribe from digest | **Partial** | `/unsubscribe/digest` page exists; sets `digest_opt_out` in `user_metadata`; no preference management UI in account settings |
-| Unsubscribe from alerts | **Partial** | `/unsubscribe` page; pause link in alert emails; no general email preferences page |
+| Unsubscribe from digest | **Complete** | `/unsubscribe/digest` page; sets `digest_opt_out` in `user_metadata`; unsubscribe link in digest emails |
+| Unsubscribe from price drop notifications | **Complete** | `/unsubscribe/price-drops` page; sets `price_drop_opt_out` in `user_metadata`; unsubscribe link in price drop emails; opted-out users skipped in `POST /api/notify-watchers` (fixed 2026-07-03) |
+| Unsubscribe from dealer monthly report | **Complete** | `/unsubscribe/dealer-report` page; sets `report_opt_out` on `dealers` row; unsubscribe link in dealer report emails; opted-out dealers skipped in `POST /api/email/dealer-report` (fixed 2026-07-03) |
+| Unsubscribe from alerts | **Partial** | `/unsubscribe` page; pause link in alert emails; no global alert opt-out |
 | Dealer watcher messaging | **Complete** | One-time opt-in contact; blocked flag; count display |
 | Import JSON / Sync Now buttons | **Missing** | UI buttons exist in dealer dashboard but click handlers are stubs — no API route or format defined |
 | Export inventory | **Complete** | GET /api/dealer/export?format=csv\|json; dashboard has "Export CSV" and "Export JSON" buttons |
