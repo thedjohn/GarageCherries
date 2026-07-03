@@ -68,6 +68,10 @@ export default function AdminPage() {
   const [reported, setReported] = useState<ReportedMessage[]>([]);
   const [dismissing, setDismissing] = useState<string | null>(null);
 
+  // Cleanup images
+  const [cleanupWorking, setCleanupWorking] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<{ deleted: number; message?: string } | { error: string } | null>(null);
+
   // Team
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [newEmail, setNewEmail] = useState('');
@@ -780,6 +784,44 @@ export default function AdminPage() {
               >
                 Open →
               </a>
+            </div>
+          </div>
+        )}
+
+        {/* Cleanup orphan images — superadmin only */}
+        {adminRole === 'superadmin' && (
+          <div className="mt-4 bg-white border border-zinc-100 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="font-bold text-zinc-900">Cleanup Orphan Images</h3>
+                <p className="text-sm text-zinc-500 mt-0.5">Deletes uploaded images not attached to any listing and older than 24 hours.</p>
+                {cleanupResult && (
+                  <p className={`text-sm mt-2 font-medium ${'error' in cleanupResult ? 'text-red-600' : 'text-green-700'}`}>
+                    {'error' in cleanupResult
+                      ? `Error: ${cleanupResult.error}`
+                      : cleanupResult.message ?? `Deleted ${cleanupResult.deleted} orphaned image${cleanupResult.deleted !== 1 ? 's' : ''}.`}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={async () => {
+                  setCleanupWorking(true);
+                  setCleanupResult(null);
+                  try {
+                    const res = await fetch('/api/admin/cleanup-images', { method: 'POST' });
+                    const data = await res.json();
+                    setCleanupResult(data);
+                  } catch (e) {
+                    setCleanupResult({ error: String(e) });
+                  } finally {
+                    setCleanupWorking(false);
+                  }
+                }}
+                disabled={cleanupWorking}
+                className="flex-shrink-0 bg-zinc-900 hover:bg-zinc-700 disabled:opacity-40 text-white font-bold text-sm px-5 py-2 rounded-xl transition-colors"
+              >
+                {cleanupWorking ? 'Running…' : 'Run Now'}
+              </button>
             </div>
           </div>
         )}

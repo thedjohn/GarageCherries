@@ -1309,7 +1309,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | `POST /api/email/price-drops` | Intended as a cron job; no UI trigger |
 | `POST /api/email/digest` | Intended as a cron job; no UI trigger |
 | `POST /api/email/dealer-report` | Intended as a cron job; no UI trigger |
-| `POST /api/admin/cleanup-images` | Superadmin UI missing a button for this (only exists in code) |
+| `POST /api/admin/cleanup-images` | Triggered from "Cleanup Orphan Images" card in the Team tab (superadmin only); shows deleted count inline |
 | `GET /api/makes` | Used in server components / sitemap; no explicit UI call visible — appears used by `sitemap.ts` |
 
 ### UI pages with no complete API backing
