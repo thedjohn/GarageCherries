@@ -252,6 +252,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `sold_price` | integer \| null | |
 | `expires_at` | timestamptz \| null | Added 2026-07-02. Set to `listed_at + 30 days` on approval; listings past this date are excluded from all public browse/search queries (still viewable at their direct URL). Seller can push it out another 30 days via `POST /api/listings/[id]/renew`. |
 | `is_feed_managed` | boolean | Added 2026-07-02, default false. Forward-compat flag for the not-yet-built dealer data-feed/bulk-import sync — nothing sets this true yet. Once that feature exists, feed-managed listings should have `expires_at` driven by the sync instead of manual renewal, and are meant to skip the renew UI entirely. |
+| `renewal_reminder_sent_at` | timestamptz \| null | Added 2026-07-03. Set when a renewal reminder email is sent; prevents duplicate reminder sends. |
 | `views` | integer | Used in dealer-report email (may be a denormalized column) |
 | `created_at` | timestamptz | Auto-managed by Supabase |
 
@@ -1009,7 +1010,16 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 - **Auth**: required; ownership verified (`seller_id === user.id`); rejects if `status !== 'approved'` or `is_feed_managed === true`
 - **Side effects**: sets `expires_at = now + 30 days`
 - **Returns**: `{ ok: true, expiresAt }`
-- **Not yet built**: no automated "expiring soon" reminder email — sellers currently have to notice the countdown themselves in the account page / dealer dashboard and click renew
+- **Renewal reminder**: `POST /api/email/expiring-listings` sends reminder emails 3 days before expiry (added 2026-07-03)
+
+---
+
+### `POST /api/email/expiring-listings`
+- **Added**: 2026-07-03
+- **Auth**: Bearer `ADMIN_API_SECRET` header
+- **Side effects**: finds approved, unsold, non-feed-managed listings where `expires_at` is within 3 days and `renewal_reminder_sent_at IS NULL`; emails each seller a renewal reminder; sets `renewal_reminder_sent_at` to prevent duplicate sends
+- **Returns**: `{ ok: true, sent, total }`
+- **Note**: safe to run daily — idempotent via `renewal_reminder_sent_at` guard; triggerable from `/admin/email` page
 
 ---
 
@@ -1238,6 +1248,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | 12 | Weekly price-drop digest | `noreply@` | Per-watcher email | "Price drop on N cars you're watching" | `app/api/email/price-drops/route.ts:94` |
 | 13 | Weekly new listings digest | `noreply@` | Watchlist users | "🚗 N new classic cars this week — GarageCherries" | `app/api/email/digest/route.ts:82` |
 | 14 | Monthly dealer performance report | `noreply@` | Each dealer email (skipped if `report_opt_out = true` on dealers row) | "Your GarageCherries monthly report — {month year}" | `app/api/email/dealer-report/route.ts:104` |
+| 15 | Listing expiry renewal reminder | `no-reply@` | Seller email | "Your listing "{title}" expires in N day(s) — renew now" | `app/api/email/expiring-listings/route.ts` |
 | 15 | Admin rate-limit alert | `no-reply@ (Alerts)` | `ADMIN_EMAIL` env | "[GarageCherries Alert] Rate limit hit: {route}" | `lib/notifyAdmin.ts:12` (called from various routes) |
 
 ---
@@ -1271,6 +1282,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Admin panel | **Complete** | Full CRUD on listings, users, team, applications, reported messages |
 | Image cleanup (orphan removal) | **Complete** | Superadmin-triggered, 24h grace period |
 | Weekly email digest | **Complete** | Bearer-auth endpoint; uses watchlist users as subscriber list |
+| Listing renewal reminder email | **Complete** | `POST /api/email/expiring-listings`; sends 3 days before `expires_at`; idempotent via `renewal_reminder_sent_at`; triggerable from `/admin/email` |
 | Monthly dealer report | **Complete** | Bearer-auth endpoint; views/inquiries/top listings |
 | Unsubscribe from digest | **Complete** | `/unsubscribe/digest` page; sets `digest_opt_out` in `user_metadata`; unsubscribe link in digest emails |
 | Unsubscribe from price drop notifications | **Complete** | `/unsubscribe/price-drops` page; sets `price_drop_opt_out` in `user_metadata`; unsubscribe link in price drop emails; opted-out users skipped in `POST /api/notify-watchers` (fixed 2026-07-03) |
@@ -1401,6 +1413,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | `POST /api/notify-watchers` | ✓ (must be listing owner) | ✓ (carId, prices checked) | ✓ 30/hr/IP | ✓ seller_id = user.id | N/A |
 | `POST /api/cars/sold` | ✓ | ✓ (carId required) | ✗ | ✓ seller_id = user.id | ✗ |
 | `POST /api/listings/[id]/renew` | ✓ | ✓ (status=approved, not feed-managed) | ✗ | ✓ seller_id = user.id | ✗ |
+| `POST /api/email/expiring-listings` | Bearer secret | N/A | ✗ | N/A | N/A |
 | `POST /api/cars/verify-vin` | None | ✓ (VIN format) | ✓ 20/hr/IP | N/A | N/A |
 | `GET /api/makes` | None | N/A | ✗ | N/A | N/A |
 | `GET /api/account/profile` | ✓ | N/A | ✗ | ✓ (filters by user.id) | ✗ |
