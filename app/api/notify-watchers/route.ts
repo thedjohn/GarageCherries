@@ -68,6 +68,11 @@ export async function POST(request: NextRequest) {
       const email = userData?.user?.email;
       if (!email) continue;
 
+      // Skip users who have opted out of price drop notifications
+      if (userData?.user?.user_metadata?.price_drop_opt_out) continue;
+
+      const unsubscribeUrl = `https://www.garagecherries.com/unsubscribe/price-drops?uid=${watcher.user_id}`;
+
       await new Resend(process.env.RESEND_API_KEY).emails.send({
         from: 'GarageCherries Alerts <noreply@garagecherries.com>',
         to: email,
@@ -98,7 +103,7 @@ export async function POST(request: NextRequest) {
               </a>
               <p style="margin: 24px 0 0; font-size: 12px; color: #a1a1aa; text-align: center;">
                 You're watching this listing on GarageCherries.<br/>
-                <a href="https://www.garagecherries.com/account/watchlist" style="color: #71717a;">Manage your watchlist</a>
+                <a href="${unsubscribeUrl}" style="color: #71717a;">Unsubscribe from price drop notifications</a>
               </p>
             </div>
           </div>

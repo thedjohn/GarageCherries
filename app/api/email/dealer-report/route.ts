@@ -16,7 +16,8 @@ export async function POST(request: NextRequest) {
   const { data: dealers } = await admin
     .from('dealers')
     .select('id, name, email')
-    .not('email', 'is', null);
+    .not('email', 'is', null)
+    .eq('report_opt_out', false);
 
   if (!dealers || dealers.length === 0) {
     return NextResponse.json({ ok: true, sent: 0, message: 'No dealers found' });
@@ -95,7 +96,8 @@ export async function POST(request: NextRequest) {
         </p>
 
         <p style="color:#a1a1aa;font-size:12px;margin-top:24px;">
-          GarageCherries · Monthly Dealer Performance Report
+          GarageCherries · Monthly Dealer Performance Report<br/>
+          <a href="https://www.garagecherries.com/unsubscribe/dealer-report?uid=${dealer.id}" style="color:#a1a1aa;">Unsubscribe from monthly reports</a>
         </p>
       </div>
     `;
