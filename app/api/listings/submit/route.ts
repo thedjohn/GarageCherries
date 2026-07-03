@@ -4,6 +4,7 @@ import { rateLimit, getClientIP } from '@/lib/rateLimit';
 import { verifyTurnstile } from '@/lib/verifyTurnstile';
 import { notifyAdmin } from '@/lib/notifyAdmin';
 import { US_STATES } from '@/lib/constants';
+import { CONDITIONS } from '@/lib/types';
 
 export async function POST(req: NextRequest) {
   const ip = getClientIP(req);
@@ -73,6 +74,12 @@ export async function POST(req: NextRequest) {
   const stateVal = String(formData.get('state') ?? '').toUpperCase().trim();
   if (!US_STATES.has(stateVal)) {
     return NextResponse.json({ error: 'Invalid state code.' }, { status: 400 });
+  }
+
+  const conditionVal = String(formData.get('condition') ?? '').trim();
+  const validConditions = CONDITIONS.filter(c => c !== 'All');
+  if (!validConditions.includes(conditionVal)) {
+    return NextResponse.json({ error: 'Invalid condition value.' }, { status: 400 });
   }
 
   const year = Number(formData.get('year'));

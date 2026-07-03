@@ -29,6 +29,9 @@ export async function POST(request: NextRequest) {
   if (!buyerName || !buyerEmail || !message) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)) {
+    return NextResponse.json({ error: 'Invalid email address.' }, { status: 400 });
+  }
 
   const supabase = createAdminClient();
 

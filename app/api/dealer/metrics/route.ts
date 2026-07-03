@@ -53,16 +53,19 @@ export async function GET(request: NextRequest) {
     .gte('created_at', sixtyDaysAgo)
     .lt('created_at', thirtyDaysAgo);
 
-  // Active listings + avg days on market
+  // Active approved unsold listings + avg days on market
   const { data: cars } = await admin
     .from('listings')
     .select('listed_at')
-    .eq('seller_id', dealerId);
+    .eq('seller_id', dealerId)
+    .eq('status', 'approved')
+    .eq('is_sold', false);
 
   const avgDaysOnMarket = cars && cars.length > 0
     ? Math.round(
         cars.reduce((sum, c) => {
-          const days = (Date.now() - new Date(c.listed_at).getTime()) / (1000 * 60 * 60 * 24);
+          const ms = Date.now() - new Date(c.listed_at).getTime();
+          const days = isNaN(ms) ? 0 : ms / (1000 * 60 * 60 * 24);
           return sum + days;
         }, 0) / cars.length
       )

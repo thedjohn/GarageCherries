@@ -106,8 +106,8 @@ support < moderator < admin < superadmin
    a2. Optionally enters VIN and clicks "Verify VIN" — calls `POST /api/cars/verify-vin` inline; result shown as color-coded badge (green=verified, yellow=partial, blue=pre-1981, red=invalid). VIN and verification status stored with listing on submit.
    b. Fills location: city (required), state (required, validated against US state codes).
    c. Fills contact: seller name (required), phone (required, auto-formatted), email (required).
-   d. Uploads photos (up to 30): clicks "Add photos" → `POST /api/listings/upload-image` returns signed URL → client PUT directly to Supabase Storage → receives `publicUrl`.
-4. On submit, form sends `POST /api/listings/submit` (multipart) with all fields + `imageUrls` JSON array.
+   d. Uploads photos (up to 30): clicks "Add photos" → files stored as `File` objects in component state with local `URL.createObjectURL()` previews — nothing uploaded yet. Upload happens on submit (see step 4).
+4. On submit, images are uploaded first — directly from the browser to Supabase Storage (`listing-images` bucket, `cars/private/` path) using the Supabase JS client. Public URLs are collected, then `POST /api/listings/submit` (multipart) is sent with all fields + `imageUrls` JSON array. The `POST /api/listings/upload-image` signed-URL route exists but is not used by this form.
 5. API checks: rate limit (5/hour/IP), Turnstile CAPTCHA, listing limit (10 active if not dealer, unless `BETA_MODE=true`), beta expiry for dealers.
 6. Listing inserted with `status: 'pending'`, `featured: false`.
 7. Seller sees "Listing Submitted" confirmation screen.
@@ -749,6 +749,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 ### `GET /api/dealer/metrics`
 - **Auth**: required, must be a dealer
 - **Returns**: `{ views30d, viewsDelta, inquiries30d, inquiriesDelta, avgDaysOnMarket, recentInquiries[] }`
+- **`avgDaysOnMarket`**: calculated from approved, non-sold listings only; guards against NaN if `listed_at` text value is unparseable (fixed 2026-07-03)
 
 ---
 
@@ -1090,7 +1091,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | Watcher contact one-time | `app/api/dealer/message-watchers/route.ts:82` | `dealer_messaged_at` set after send; prevents future sends to same watcher for that car |
 | Watchlist contact opt-in | `app/api/dealer/watcher-counts/route.ts:25` | Only counts watchers where `allow_dealer_contact=true AND dealer_contact_blocked=false AND dealer_messaged_at IS NULL` |
 | View deduplication | `app/api/track-view/route.ts:23` | One view counted per hashed IP per listing per day |
-| Orphan image age | `app/api/admin/cleanup-images/route.ts:8` | Only deletes orphans older than 24 hours |
+| Orphan image age | `app/api/admin/cleanup-images/route.ts:8` | Only deletes orphans older than 24 hours; orphans can only occur if images upload successfully on submit but the subsequent listing insert fails (narrow window) |
 | Dealer promotion source | `app/api/admin/users/route.ts:163` | Only superadmin can promote a seller to dealer; only sellers (not already dealers) can be promoted |
 | Cannot remove yourself from admin | `app/api/admin/team/route.ts:59` | Superadmin cannot remove their own team record |
 | Ownership cannot be reassigned | `app/api/admin/listings/route.ts:52` | `seller_id` is never updated via admin PATCH |
@@ -1321,8 +1322,8 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Missing Validation | Location | Risk |
 |---|---|---|
 | ~~`state` field not validated against STATES enum in API~~ | `POST /api/listings/submit`, `POST /api/dealer/apply` | **Fixed (M8)** — validated against `US_STATES` in `lib/constants.ts` |
-| `condition` field not validated against CONDITIONS enum | `POST /api/listings/submit` | Could store arbitrary values |
-| `email` format not validated server-side | `POST /api/inquire`, `POST /api/offers` | Any string accepted |
+| ~~`condition` field not validated against CONDITIONS enum~~ | `POST /api/listings/submit` | **Fixed (2026-07-03)** — validated against `CONDITIONS` from `lib/types` (excluding 'All'); invalid values return 400 |
+| ~~`email` format not validated server-side~~ | `POST /api/inquire`, `POST /api/offers` | **Fixed (2026-07-03)** — regex check `/^[^\s@]+@[^\s@]+\.[^\s@]+$/` applied before any DB writes; invalid addresses return 400 |
 | `price` clamped to ≥ 0 only on client | `POST /api/listings/submit` | `Number() \|\| 0` means price=0 accepted silently if non-numeric passed |
 | `rating` validated 1–5 only in `POST /api/reviews` | Reviews API | Correct; only this route does it |
 | `amount > 0` in `POST /api/offers` | Offers API | Validated; correct |
@@ -1419,7 +1420,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 
 7. **Admin role scoping (support) in UI** — Fixed in `app/admin/page.tsx`: support role now lands on Reported tab, Listings/Messages/Users tabs are hidden. API-layer role checks (moderator+) were already correct. ✓ Resolved.
 8. **`POST /api/ads/track`** — any caller can still log clicks for any `adId`; no ad ownership verified. Low risk (no data leak, only inflates counts), but could skew analytics.
-9. **`POST /api/admin/team` role allowlist** — API validates only `superadmin | moderator` but UI offers 4 roles. Support and admin roles cannot be assigned via the API as written; UI dropdown shows them but POST rejects them silently. Needs fixing if those roles should be assignable.
+9. ~~**`POST /api/admin/team` role allowlist**~~ — **Fixed (2026-07-03)**: API now accepts all 4 roles (`support`, `moderator`, `admin`, `superadmin`).
 10. **No CAPTCHA on `POST /api/offers`** — anonymous offer submission is intentional (lowers friction for buyers) but enables spam. Rate limit (10/hr/IP) added in S6 as mitigation; CAPTCHA would be a stronger guard.
 
 **Fixed in P2/P5/P6/P1 (2026-07-02):**

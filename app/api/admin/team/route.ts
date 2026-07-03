@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { email, role } = await req.json();
-  if (!email || !['superadmin', 'moderator'].includes(role)) {
+  if (!email || !['superadmin', 'admin', 'moderator', 'support'].includes(role)) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
   }
 

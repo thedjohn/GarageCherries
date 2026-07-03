@@ -14,6 +14,9 @@ export async function POST(request: NextRequest) {
   if (!carId || !amount || !buyerEmail) {
     return NextResponse.json({ error: 'carId, amount, and buyerEmail are required' }, { status: 400 });
   }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)) {
+    return NextResponse.json({ error: 'Invalid email address.' }, { status: 400 });
+  }
   if (amount <= 0) {
     return NextResponse.json({ error: 'Offer amount must be greater than 0' }, { status: 400 });
   }
