@@ -11,6 +11,7 @@ export default function SearchFilters({ initialMakes }: { initialMakes?: string[
 
 
   const [filters, setFilters] = useState({
+    q:            params.get('q')           || '',
     make:         params.get('make')        || '',
     yearMin:      params.get('yearMin')     || '',
     yearMax:      params.get('yearMax')     || '',
@@ -29,7 +30,7 @@ export default function SearchFilters({ initialMakes }: { initialMakes?: string[
   }, [filters, router]);
 
   const clear = () => {
-    setFilters({ make:'', yearMin:'', yearMax:'', priceMin:'', priceMax:'', condition:'', bodyStyle:'', transmission:'', state:'' });
+    setFilters({ q:'', make:'', yearMin:'', yearMax:'', priceMin:'', priceMax:'', condition:'', bodyStyle:'', transmission:'', state:'' });
     router.push('/listings');
   };
 
@@ -44,6 +45,19 @@ export default function SearchFilters({ initialMakes }: { initialMakes?: string[
         </div>
 
         <div className="space-y-4">
+          {/* Keyword search */}
+          <div>
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Search</label>
+            <input
+              type="text"
+              placeholder="e.g. Mustang, barn find, numbers matching"
+              value={filters.q}
+              onChange={e => set('q', e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') apply(); }}
+              className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+          </div>
+
           {/* Make */}
           <div>
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Make</label>

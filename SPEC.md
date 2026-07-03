@@ -1296,7 +1296,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Admin email tool (`/admin/email`) | **Complete** | Manual trigger panel for digest, price-drop, and dealer-report batch emails; requires `ADMIN_API_SECRET`; not linked from `/admin` nav |
 | Payment / billing for dealer plans | **Missing** | No Stripe or payment routes; billing deferred to post-beta |
 | Seller/buyer ratings | **Missing** | No rating system for buyers/sellers (only dealer reviews) |
-| Search full-text | **Partial** | `lib/data.ts` client-side search includes title+description text match; DB-level search in `lib/db.ts:fetchCars` uses only structured filters |
+| Search full-text | **Complete** | Basic keyword search via `q` param: `SearchFilters.tsx` adds a Search input at the top of the filter panel; `app/listings/page.tsx` applies `ilike` on `title` and `description` columns server-side. Enter key or Apply Filters submits. AI/tsvector full-text search deferred. |
 
 ---
 
