@@ -81,26 +81,14 @@ test.describe('Forgot password page', () => {
   });
 });
 
-test.describe('/sell page (unauthenticated)', () => {
-  test('shows sell gate with sign in and create account links', async ({ page }) => {
+test.describe('/sell page', () => {
+  test('renders without error', async ({ page }) => {
     await page.goto('/sell');
-    // SellGate renders when user is not authenticated
     await expect(page.getByText(/Application error/i)).not.toBeVisible();
-    // Either the gate is shown or we were redirected to login
-    const onSellPage = page.url().includes('/sell');
-    const onLoginPage = page.url().includes('/account/login');
-    expect(onSellPage || onLoginPage).toBe(true);
   });
 
-  test('gate has a create account CTA', async ({ page }) => {
+  test('shows the post a listing form', async ({ page }) => {
     await page.goto('/sell');
-    // Check pathname only — query params like ?return=/sell would fool includes('/sell')
-    const pathname = new URL(page.url()).pathname;
-    if (pathname === '/sell') {
-      await expect(page.getByRole('link', { name: /create a free account/i })).toBeVisible();
-    } else {
-      // Redirected to login — link says "Create Account" or similar
-      await expect(page.getByRole('link', { name: /create.*account/i }).first()).toBeVisible();
-    }
+    await expect(page.getByRole('heading', { name: /post your car/i })).toBeVisible();
   });
 });
