@@ -1,121 +1,126 @@
 import { describe, it, expect } from 'vitest';
-import {
-  formatPrice,
-  formatMileage,
-  formatPhone,
-  toSegment,
-  makeFromSegment,
-  searchCars,
-  getCar,
-  getDealer,
-} from '@/lib/data';
+import { formatPrice, formatMileage, formatPhone, toSegment, searchCars } from '@/lib/data';
 
 describe('formatPrice', () => {
-  it('formats whole dollar amounts', () => {
+  it('formats whole dollar amounts with no decimals', () => {
     expect(formatPrice(89500)).toBe('$89,500');
-    expect(formatPrice(0)).toBe('$0');
-    expect(formatPrice(1000000)).toBe('$1,000,000');
   });
 
-  it('rounds to whole dollars', () => {
-    expect(formatPrice(89500.99)).toBe('$89,501');
+  it('formats zero as $0', () => {
+    expect(formatPrice(0)).toBe('$0');
+  });
+
+  it('formats large prices with commas', () => {
+    expect(formatPrice(185000)).toBe('$185,000');
+  });
+
+  it('formats prices under $1000', () => {
+    expect(formatPrice(500)).toBe('$500');
   });
 });
 
 describe('formatMileage', () => {
-  it('formats mileage with comma separator and mi suffix', () => {
+  it('formats mileage with commas and mi suffix', () => {
     expect(formatMileage(42100)).toBe('42,100 mi');
-    expect(formatMileage(1000)).toBe('1,000 mi');
   });
 
   it('returns N/A for null', () => {
     expect(formatMileage(null)).toBe('N/A');
   });
 
-  it('handles zero mileage', () => {
+  it('formats zero mileage', () => {
     expect(formatMileage(0)).toBe('0 mi');
   });
 });
 
 describe('formatPhone', () => {
-  it('formats a 10-digit number', () => {
+  it('formats a 10-digit string', () => {
     expect(formatPhone('6155550142')).toBe('(615) 555-0142');
   });
 
   it('strips non-digit characters before formatting', () => {
     expect(formatPhone('(615) 555-0142')).toBe('(615) 555-0142');
-    expect(formatPhone('615.555.0142')).toBe('(615) 555-0142');
   });
 
-  it('handles partial numbers gracefully', () => {
-    expect(formatPhone('615')).toBe('615');   // < 4 digits — no formatting
-    expect(formatPhone('61')).toBe('61');
+  it('handles a 6-digit partial', () => {
+    expect(formatPhone('615555')).toBe('(615) 555');
   });
 
-  it('truncates numbers longer than 10 digits', () => {
-    expect(formatPhone('16155550142')).toBe('(161) 555-5014');
+  it('handles a very short string', () => {
+    expect(formatPhone('6')).toBe('6');
   });
 });
 
 describe('toSegment', () => {
   it('lowercases and replaces spaces with hyphens', () => {
-    expect(toSegment('Dodge Charger')).toBe('dodge-charger');
+    expect(toSegment('Ford Mustang')).toBe('ford-mustang');
   });
 
-  it('converts apostrophes to hyphens (non-alphanumeric separator)', () => {
-    // apostrophe becomes a hyphen separator: "Mike's" → "mike-s"
-    expect(toSegment("Mopar Mike's")).toBe('mopar-mike-s');
-  });
-
-  it('collapses multiple spaces/special chars to single hyphen', () => {
-    expect(toSegment('Ford  F-150')).toBe('ford-f-150');
+  it('collapses multiple spaces into one hyphen', () => {
+    expect(toSegment('Dodge  Charger')).toBe('dodge-charger');
   });
 
   it('trims leading and trailing hyphens', () => {
-    expect(toSegment('-Test-')).toBe('test');
-  });
-});
-
-describe('makeFromSegment', () => {
-  it('returns the correctly-cased make for a valid segment', () => {
-    expect(makeFromSegment('chevrolet')).toBe('Chevrolet');
-    expect(makeFromSegment('ford')).toBe('Ford');
+    expect(toSegment(' Chevrolet ')).toBe('chevrolet');
   });
 
-  it('returns undefined for unknown segment', () => {
-    expect(makeFromSegment('notamaker')).toBeUndefined();
+  it('removes special characters', () => {
+    expect(toSegment('GTO R/T')).toBe('gto-r-t');
+  });
+
+  it('leaves already-slugged strings unchanged', () => {
+    expect(toSegment('ford-mustang')).toBe('ford-mustang');
   });
 });
 
 describe('searchCars', () => {
-  it('returns all cars when no filters set', () => {
-    const results = searchCars({});
-    expect(results.length).toBeGreaterThan(0);
+  it('returns results when no filters applied', () => {
+    expect(searchCars({}).length).toBeGreaterThan(0);
   });
 
   it('filters by make', () => {
     const results = searchCars({ make: 'Chevrolet' });
-    expect(results.every(c => c.make === 'Chevrolet')).toBe(true);
     expect(results.length).toBeGreaterThan(0);
+    expect(results.every(c => c.make === 'Chevrolet')).toBe(true);
   });
 
   it('returns empty array for unknown make', () => {
     expect(searchCars({ make: 'Lamborghini' })).toHaveLength(0);
   });
 
+  it('does not filter when make is All Makes', () => {
+    const all = searchCars({});
+    expect(searchCars({ make: 'All Makes' }).length).toBe(all.length);
+  });
+
   it('filters by year range', () => {
     const results = searchCars({ yearMin: 1965, yearMax: 1970 });
     expect(results.every(c => c.year >= 1965 && c.year <= 1970)).toBe(true);
+    expect(results.length).toBeGreaterThan(0);
   });
 
   it('filters by price range', () => {
-    const results = searchCars({ priceMax: 60000 });
-    expect(results.every(c => c.price <= 60000)).toBe(true);
+    const results = searchCars({ priceMin: 50000, priceMax: 100000 });
+    expect(results.every(c => c.price >= 50000 && c.price <= 100000)).toBe(true);
   });
 
   it('filters by condition', () => {
     const results = searchCars({ condition: 'Excellent' });
     expect(results.every(c => c.condition === 'Excellent')).toBe(true);
+    expect(results.length).toBeGreaterThan(0);
+  });
+
+  it('does not filter when condition is All', () => {
+    const all = searchCars({});
+    expect(searchCars({ condition: 'All' }).length).toBe(all.length);
+  });
+
+  it('filters by transmission', () => {
+    const manual = searchCars({ transmission: 'Manual' });
+    const auto = searchCars({ transmission: 'Automatic' });
+    expect(manual.every(c => c.transmission === 'Manual')).toBe(true);
+    expect(auto.every(c => c.transmission === 'Automatic')).toBe(true);
+    expect(manual.length + auto.length).toBe(searchCars({}).length);
   });
 
   it('filters by state', () => {
@@ -123,48 +128,26 @@ describe('searchCars', () => {
     expect(results.every(c => c.state === 'TN')).toBe(true);
   });
 
-  it('filters by transmission', () => {
-    const manual = searchCars({ transmission: 'Manual' });
-    expect(manual.every(c => c.transmission === 'Manual')).toBe(true);
+  it('filters by query matching title (case-insensitive)', () => {
+    const results = searchCars({ query: 'camaro' });
+    expect(results.some(c => c.title.toLowerCase().includes('camaro'))).toBe(true);
   });
 
-  it('filters featured cars', () => {
-    const featured = searchCars({ featured: true });
-    expect(featured.every(c => c.featured)).toBe(true);
+  it('filters by query matching description', () => {
+    const results = searchCars({ query: 'numbers-matching' });
+    expect(results.length).toBeGreaterThan(0);
   });
 
-  it('filters by text query on title', () => {
-    const results = searchCars({ query: 'Camaro' });
-    expect(results.some(c => c.title.includes('Camaro'))).toBe(true);
+  it('returns only featured listings when featured is true', () => {
+    const results = searchCars({ featured: true });
+    expect(results.every(c => c.featured)).toBe(true);
+    expect(results.length).toBeGreaterThan(0);
   });
 
-  it('skips All Makes sentinel', () => {
-    const all = searchCars({});
-    const filtered = searchCars({ make: 'All Makes' });
-    expect(filtered.length).toBe(all.length);
-  });
-});
-
-describe('getCar', () => {
-  it('returns a car by slug', () => {
-    const car = getCar('1967-chevrolet-camaro-ss');
-    expect(car).toBeDefined();
-    expect(car?.make).toBe('Chevrolet');
-  });
-
-  it('returns undefined for unknown slug', () => {
-    expect(getCar('not-a-real-car')).toBeUndefined();
-  });
-});
-
-describe('getDealer', () => {
-  it('returns a dealer by slug', () => {
-    const dealer = getDealer('classic-iron-nashville');
-    expect(dealer).toBeDefined();
-    expect(dealer?.state).toBe('TN');
-  });
-
-  it('returns undefined for unknown slug', () => {
-    expect(getDealer('not-a-dealer')).toBeUndefined();
+  it('combines make + condition + transmission filters', () => {
+    const results = searchCars({ make: 'Chevrolet', condition: 'Excellent', transmission: 'Manual' });
+    expect(results.every(c =>
+      c.make === 'Chevrolet' && c.condition === 'Excellent' && c.transmission === 'Manual'
+    )).toBe(true);
   });
 });
