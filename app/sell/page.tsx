@@ -24,6 +24,7 @@ export default function SellPage() {
   const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
   const [dragOver, setDragOver] = useState<number | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
   const [vin, setVin] = useState('');
   const [vinResult, setVinResult] = useState<VinResult | null>(null);
   const [vinLoading, setVinLoading] = useState(false);
@@ -100,6 +101,10 @@ export default function SellPage() {
 
       <form onSubmit={async e => {
         e.preventDefault();
+        if (!captchaToken) {
+          setError('Please complete the CAPTCHA verification before submitting.');
+          return;
+        }
         setLoading(true);
         setError(null);
         const form = e.currentTarget as HTMLFormElement;
@@ -124,7 +129,12 @@ export default function SellPage() {
         const res = await fetch('/api/listings/submit', { method: 'POST', body: fd });
         const json = await res.json();
         setLoading(false);
-        if (!res.ok) { setError(json.error ?? 'Submission failed. Please try again.'); return; }
+        if (!res.ok) {
+          setError(json.error ?? 'Submission failed. Please try again.');
+          setCaptchaToken(null);
+          setCaptchaKey(k => k + 1);
+          return;
+        }
         setSubmitted(true);
       }} className="space-y-8">
         {/* Vehicle info */}
@@ -336,7 +346,7 @@ export default function SellPage() {
           </div>
         </section>
 
-        <Turnstile onVerify={onCaptchaVerify} onExpire={onCaptchaExpire} />
+        <Turnstile key={captchaKey} onVerify={onCaptchaVerify} onExpire={onCaptchaExpire} />
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">{error}</div>
