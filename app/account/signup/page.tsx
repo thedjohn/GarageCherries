@@ -1,13 +1,9 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 export default function AccountSignupPage() {
-  const searchParams = useSearchParams();
-  const promo = searchParams.get('promo') ?? '';
-
   const [fullName, setFullName] = useState('');
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
@@ -24,6 +20,7 @@ export default function AccountSignupPage() {
     setLoading(true);
 
     const supabase = createClient();
+    const promo = new URLSearchParams(window.location.search).get('promo') ?? '';
     const { data, error: authError } = await supabase.auth.signUp({
       email,
       password,
