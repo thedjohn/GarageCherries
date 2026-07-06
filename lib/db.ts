@@ -90,12 +90,12 @@ export async function fetchCars(filters: FetchCarsFilters = {}): Promise<Car[]> 
   if (filters.model)
     query = query.eq('model', filters.model);
   if (filters.yearMin)
-    query = query.gte('year', filters.yearMin);
+    query = query.gte('year', Math.max(1900, Math.min(2030, filters.yearMin)));
   if (filters.yearMax)
-    query = query.lte('year', filters.yearMax);
-  if (filters.priceMin)
+    query = query.lte('year', Math.max(1900, Math.min(2030, filters.yearMax)));
+  if (filters.priceMin != null && filters.priceMin >= 0)
     query = query.gte('price', filters.priceMin);
-  if (filters.priceMax)
+  if (filters.priceMax != null && filters.priceMax >= 0)
     query = query.lte('price', filters.priceMax);
   if (filters.condition && filters.condition !== 'All')
     query = query.eq('condition', filters.condition);

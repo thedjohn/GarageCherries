@@ -1,6 +1,11 @@
 import { MetadataRoute } from 'next';
 import { createAdminClient } from '@/lib/supabase/server';
 import { toSegment } from '@/lib/data';
+import { ENCYCLOPEDIA, getMakeSlugs } from '@/lib/encyclopedia';
+
+function encyclopediaSlug(s: string) {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
 
 export const revalidate = 3600;
 
@@ -9,16 +14,24 @@ const BASE_URL = 'https://www.garagecherries.com';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createAdminClient();
 
-  const [{ data: cars }, { data: dealers }] = await Promise.all([
+  const [{ data: cars }, { data: dealers }, { data: advertisers }] = await Promise.all([
     supabase.from('listings').select('id, slug, make, model, featured, listed_at, created_at'),
     supabase.from('dealers').select('slug, created_at'),
+    supabase.from('advertisers').select('slug, created_at').eq('active', true).gt('trial_ends_at', new Date().toISOString()),
   ]);
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: BASE_URL, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
     { url: `${BASE_URL}/listings`, lastModified: new Date(), changeFrequency: 'hourly', priority: 0.9 },
     { url: `${BASE_URL}/dealers`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.7 },
-    { url: `${BASE_URL}/sell`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${BASE_URL}/sell`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE_URL}/pricing`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${BASE_URL}/advertise`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${BASE_URL}/guides`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${BASE_URL}/reports`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.5 },
+    { url: `${BASE_URL}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.4 },
+    { url: `${BASE_URL}/contact`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.4 },
+    { url: `${BASE_URL}/advertisers`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.6 },
   ];
 
   const listingPages: MetadataRoute.Sitemap = (cars ?? []).map(car => ({
@@ -43,10 +56,42 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
+  // Classic Car Encyclopedia — /cars index + make pages + model pages
+  const encyclopediaIndex: MetadataRoute.Sitemap = [
+    { url: `${BASE_URL}/cars`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
+  ];
+
+  const encyclopediaMakePages: MetadataRoute.Sitemap = getMakeSlugs().map(makeSlug => ({
+    url: `${BASE_URL}/cars/${makeSlug}`,
+    lastModified: new Date(),
+    changeFrequency: 'monthly' as const,
+    priority: 0.6,
+  }));
+
+  const encyclopediaModelPages: MetadataRoute.Sitemap = ENCYCLOPEDIA.map(entry => ({
+    url: `${BASE_URL}/cars/${encyclopediaSlug(entry.make)}/${encyclopediaSlug(entry.model)}`,
+    lastModified: new Date(),
+    changeFrequency: 'monthly' as const,
+    priority: 0.5,
+  }));
+
+  const advertiserPages: MetadataRoute.Sitemap = (advertisers ?? [])
+    .filter(a => a.slug)
+    .map(a => ({
+      url: `${BASE_URL}/advertisers/${a.slug}`,
+      lastModified: new Date(a.created_at ?? new Date()),
+      changeFrequency: 'monthly' as const,
+      priority: 0.5,
+    }));
+
   return [
     ...staticPages,
     ...listingPages,
     ...makePages,
     ...dealerPages,
+    ...encyclopediaIndex,
+    ...encyclopediaMakePages,
+    ...encyclopediaModelPages,
+    ...advertiserPages,
   ];
 }
