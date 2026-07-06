@@ -82,7 +82,7 @@ export default function PromoModal() {
             </button>
           </div>
           <p className="text-xs text-zinc-400 mt-3 text-center">
-            No credit card required. Offer valid through July 4, 2026.
+            No credit card required. Offer valid through July 31, 2026.
           </p>
         </div>
       </div>
