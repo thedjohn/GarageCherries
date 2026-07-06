@@ -21,10 +21,9 @@ export default function Turnstile({ onVerify, onExpire }: Props) {
   const widgetId = useRef<string | null>(null);
 
   useEffect(() => {
-    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAAAADw4uAwuf5OKxNgy';
 
-    // Skip rendering if no site key configured (dev without keys)
-    if (!siteKey || !containerRef.current) return;
+    if (!containerRef.current) return;
 
     const render = () => {
       if (!containerRef.current || !window.turnstile) return;
@@ -55,7 +54,7 @@ export default function Turnstile({ onVerify, onExpire }: Props) {
   }, [onVerify, onExpire]);
 
   // If no site key, render nothing (dev mode — form submits without CAPTCHA)
-  if (!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) return null;
+  // Always render — fallback key ensures widget shows even if env var is missing
 
   return <div ref={containerRef} className="mt-2" />;
 }
