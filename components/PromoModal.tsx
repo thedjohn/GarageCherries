@@ -36,7 +36,7 @@ export default function PromoModal() {
     >
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
         {/* Image */}
-        <div className="relative w-full h-56 sm:h-64">
+        <div className="relative w-full h-72 sm:h-80">
           <Image
             src={PROMO_IMG}
             alt="Free 3-month listing — America's 250th Birthday"
