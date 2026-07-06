@@ -7,8 +7,22 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://www.garagecherries.com/contact' },
 };
 
+const contactJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'GarageCherries',
+  url: 'https://www.garagecherries.com',
+  contactPoint: [
+    { '@type': 'ContactPoint', email: 'hello@garagecherries.com', contactType: 'customer support', areaServed: 'US' },
+    { '@type': 'ContactPoint', email: 'dealers@garagecherries.com', contactType: 'sales', areaServed: 'US' },
+    { '@type': 'ContactPoint', email: 'ads@garagecherries.com', contactType: 'sales', areaServed: 'US' },
+  ],
+};
+
 export default function ContactPage() {
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(contactJsonLd) }} />
     <div className="max-w-4xl mx-auto px-4 py-14">
       {/* Header */}
       <div className="text-center mb-12">
@@ -125,5 +139,6 @@ export default function ContactPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

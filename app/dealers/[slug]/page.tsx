@@ -67,6 +67,16 @@ export default async function DealerPage({ params }: { params: Promise<{ slug: s
   const mapQuery = encodeURIComponent(addressParts.length > 0 ? addressParts.join(', ') : `${dealer.name}`);
   const mapSrc = `https://maps.google.com/maps?q=${mapQuery}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
 
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.garagecherries.com' },
+      { '@type': 'ListItem', position: 2, name: 'Dealers', item: 'https://www.garagecherries.com/dealers' },
+      { '@type': 'ListItem', position: 3, name: dealer.name, item: `https://www.garagecherries.com/dealers/${dealer.slug}` },
+    ],
+  };
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'AutoDealer',
@@ -89,6 +99,7 @@ export default async function DealerPage({ params }: { params: Promise<{ slug: s
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
     <div className="max-w-7xl mx-auto px-4 py-8">
       <nav className="text-sm text-zinc-500 mb-6 flex gap-2">
         <Link href="/" className="hover:text-red-600">Home</Link>

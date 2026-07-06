@@ -7,8 +7,26 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://www.garagecherries.com/about' },
 };
 
+const orgJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'GarageCherries',
+  url: 'https://www.garagecherries.com',
+  description: 'GarageCherries is the premier online marketplace for classic, muscle, and collector cars — connecting serious buyers with trusted dealers across the United States.',
+  foundingDate: '2026',
+  contactPoint: {
+    '@type': 'ContactPoint',
+    email: 'hello@garagecherries.com',
+    contactType: 'customer support',
+    areaServed: 'US',
+    availableLanguage: 'English',
+  },
+};
+
 export default function AboutPage() {
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
     <div className="max-w-4xl mx-auto px-4 py-14">
       {/* Hero */}
       <div className="text-center mb-14">
@@ -106,5 +124,6 @@ export default function AboutPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

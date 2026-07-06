@@ -61,7 +61,37 @@ export default async function AdvertiserProfilePage({ params }: { params: Promis
   const category = CATEGORY_LABELS[advertiser.category] ?? 'Classic Car Service';
   const location = [advertiser.city, advertiser.state].filter(Boolean).join(', ');
 
+  const localBusinessJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: advertiser.business_name,
+    description: advertiser.description ?? `${advertiser.business_name} — ${category} serving classic car enthusiasts.`,
+    url: advertiser.website ?? `https://www.garagecherries.com/advertisers/${advertiser.slug}`,
+    ...(advertiser.phone ? { telephone: advertiser.phone } : {}),
+    address: {
+      '@type': 'PostalAddress',
+      ...(advertiser.address ? { streetAddress: advertiser.address } : {}),
+      ...(advertiser.city ? { addressLocality: advertiser.city } : {}),
+      ...(advertiser.state ? { addressRegion: advertiser.state } : {}),
+      ...(advertiser.zip ? { postalCode: advertiser.zip } : {}),
+      addressCountry: 'US',
+    },
+  };
+
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.garagecherries.com' },
+      { '@type': 'ListItem', position: 2, name: 'Advertisers', item: 'https://www.garagecherries.com/advertisers' },
+      { '@type': 'ListItem', position: 3, name: advertiser.business_name, item: `https://www.garagecherries.com/advertisers/${advertiser.slug}` },
+    ],
+  };
+
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
     <div className="max-w-4xl mx-auto px-4 py-12">
       {/* Breadcrumb */}
       <nav className="text-sm text-zinc-400 mb-6">
@@ -141,5 +171,6 @@ export default async function AdvertiserProfilePage({ params }: { params: Promis
         ← Back to all advertisers
       </Link>
     </div>
+    </>
   );
 }

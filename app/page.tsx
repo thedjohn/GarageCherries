@@ -44,8 +44,26 @@ export default async function HomePage() {
   const featured = allCars.filter(c => c.featured);
   const recent = allCars.slice(0, 8);
 
+  const orgJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'GarageCherries',
+    url: 'https://www.garagecherries.com',
+    logo: 'https://www.garagecherries.com/logo.png',
+    description: 'Buy and sell classic cars, muscle cars, sports cars, and collector vehicles. Browse listings from trusted dealers across the United States.',
+    contactPoint: {
+      '@type': 'ContactPoint',
+      email: 'hello@garagecherries.com',
+      contactType: 'customer support',
+      areaServed: 'US',
+      availableLanguage: 'English',
+    },
+    sameAs: ['https://www.garagecherries.com'],
+  };
+
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
       <PromoModal />
       {/* Hero */}
       <section className="relative bg-zinc-900 text-white overflow-hidden">

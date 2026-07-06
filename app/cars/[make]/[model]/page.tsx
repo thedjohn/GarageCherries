@@ -43,7 +43,34 @@ export default async function ModelPage({ params }: Props) {
 
   const listings = await fetchCars({ make: entry.make, model: entry.model, limit: 6 });
 
+  const articleJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: `${entry.make} ${entry.model} (${entry.years}) — Specs, History & Buyer's Guide`,
+    description: entry.overview,
+    url: `https://www.garagecherries.com/cars/${makeSlug}/${modelSlug}`,
+    publisher: {
+      '@type': 'Organization',
+      name: 'GarageCherries',
+      url: 'https://www.garagecherries.com',
+    },
+  };
+
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.garagecherries.com' },
+      { '@type': 'ListItem', position: 2, name: 'Encyclopedia', item: 'https://www.garagecherries.com/cars' },
+      { '@type': 'ListItem', position: 3, name: `${entry.make} Classic Cars`, item: `https://www.garagecherries.com/cars/${makeSlug}` },
+      { '@type': 'ListItem', position: 4, name: `${entry.make} ${entry.model}`, item: `https://www.garagecherries.com/cars/${makeSlug}/${modelSlug}` },
+    ],
+  };
+
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
     <div className="max-w-6xl mx-auto px-4 py-10">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-zinc-400 mb-8 flex-wrap">
@@ -221,5 +248,6 @@ export default async function ModelPage({ params }: Props) {
         )}
       </section>
     </div>
+    </>
   );
 }

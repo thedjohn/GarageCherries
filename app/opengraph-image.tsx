@@ -1,10 +1,11 @@
 import { ImageResponse } from 'next/og';
 
-export const alt = 'GarageCherries — Classic & Collector Cars For Sale';
+export const runtime = 'edge';
+export const alt = 'GarageCherries — Classic, Muscle, Sport & Collector Cars';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
-export default function OGImage() {
+export default function OgImage() {
   return new ImageResponse(
     (
       <div
@@ -16,66 +17,42 @@ export default function OGImage() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
+          padding: '60px',
           fontFamily: 'sans-serif',
-          position: 'relative',
         }}
       >
-        {/* Red accent bar at top */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 8, background: '#dc2626' }} />
-
-        {/* Logo mark */}
-        <div
-          style={{
-            width: 96,
-            height: 96,
-            borderRadius: '50%',
-            background: '#dc2626',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 32,
-          }}
-        >
-          <div style={{ color: 'white', fontSize: 48, fontWeight: 900, lineHeight: 1 }}>GC</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginBottom: '28px' }}>
+          <div style={{
+            width: '72px', height: '72px', background: '#dc2626',
+            borderRadius: '18px', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', fontSize: '38px',
+          }}>
+            🍒
+          </div>
+          <span style={{ fontSize: '56px', fontWeight: 800, color: '#ffffff', letterSpacing: '-2px' }}>
+            GarageCherries
+          </span>
         </div>
-
-        {/* Wordmark */}
-        <div
-          style={{
-            fontSize: 68,
-            fontWeight: 900,
-            color: 'white',
-            letterSpacing: '-2px',
-            lineHeight: 1,
-            marginBottom: 20,
-          }}
-        >
-          GarageCherries
+        <p style={{
+          fontSize: '26px', color: '#a1a1aa', textAlign: 'center',
+          margin: '0 0 44px', maxWidth: '680px', lineHeight: 1.4,
+        }}>
+          Classic, Muscle, Sport & Collector Cars For Sale
+        </p>
+        <div style={{ display: 'flex', gap: '14px' }}>
+          {['Classic Cars', 'Muscle Cars', 'Sports Cars', 'Collector Cars'].map(tag => (
+            <div key={tag} style={{
+              background: '#dc2626', color: '#ffffff',
+              padding: '10px 22px', borderRadius: '100px',
+              fontSize: '17px', fontWeight: 700,
+            }}>
+              {tag}
+            </div>
+          ))}
         </div>
-
-        {/* Tagline */}
-        <div style={{ fontSize: 28, color: '#fca5a5', fontWeight: 400, letterSpacing: '0.5px' }}>
-          Classic &amp; Collector Cars For Sale
-        </div>
-
-        {/* Domain pill */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 40,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            background: 'rgba(255,255,255,0.08)',
-            borderRadius: 999,
-            padding: '10px 24px',
-            color: '#a1a1aa',
-            fontSize: 22,
-          }}
-        >
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#dc2626' }} />
+        <p style={{ fontSize: '18px', color: '#52525b', marginTop: '48px', letterSpacing: '1px' }}>
           garagecherries.com
-        </div>
+        </p>
       </div>
     ),
     { ...size },

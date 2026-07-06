@@ -33,7 +33,19 @@ export default async function MakePage({ params }: Props) {
 
   const makeLabel = entries[0].make;
 
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.garagecherries.com' },
+      { '@type': 'ListItem', position: 2, name: 'Encyclopedia', item: 'https://www.garagecherries.com/cars' },
+      { '@type': 'ListItem', position: 3, name: `${makeLabel} Classic Cars`, item: `https://www.garagecherries.com/cars/${makeSlug}` },
+    ],
+  };
+
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
     <div className="max-w-5xl mx-auto px-4 py-12">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-zinc-400 mb-8">
@@ -92,5 +104,6 @@ export default async function MakePage({ params }: Props) {
         </Link>
       </div>
     </div>
+    </>
   );
 }
