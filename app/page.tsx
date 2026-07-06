@@ -82,9 +82,9 @@ export default async function HomePage() {
           </div>
 
           <div className="flex flex-wrap justify-center gap-6 mt-8 text-sm text-zinc-400">
-            <span>12,400+ listings</span>
+            <span>Growing daily</span>
             <span>·</span>
-            <span>All 50 states</span>
+            <span>Nationwide</span>
             <span>·</span>
             <span>Classic, Muscle, Sport &amp; Supercar</span>
           </div>
