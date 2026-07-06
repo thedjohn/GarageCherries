@@ -11,7 +11,8 @@ export default function PromoModal() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!localStorage.getItem(STORAGE_KEY)) {
+    const promoExpired = new Date() > new Date('2026-07-31T23:59:59');
+    if (!promoExpired && !localStorage.getItem(STORAGE_KEY)) {
       setOpen(true);
     }
   }, []);
@@ -36,12 +37,12 @@ export default function PromoModal() {
     >
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
         {/* Image */}
-        <div className="relative w-full h-72 sm:h-80">
+        <div className="relative w-full bg-zinc-900" style={{aspectRatio: '16/9'}}>
           <Image
             src={PROMO_IMG}
             alt="Free 3-month listing — America's 250th Birthday"
             fill
-            className="object-cover"
+            className="object-contain"
             priority
           />
         </div>

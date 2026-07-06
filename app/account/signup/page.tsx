@@ -31,10 +31,12 @@ export default function AccountSignupPage() {
     });
 
     if (!authError && data.user) {
+      const promoExpiresAt = promo ? '2026-10-31T23:59:59Z' : null;
       await supabase.from('profiles').upsert({
         id: data.user.id,
         full_name: fullName,
         updated_at: new Date().toISOString(),
+        ...(promoExpiresAt && { promo_expires_at: promoExpiresAt }),
       });
     }
 

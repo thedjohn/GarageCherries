@@ -1,6 +1,6 @@
 # GarageCherries — Master Specification
 
-> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-02 (S1–S6 + support role scoping + M1–M10 + P2/P5/P6/P1-export product gaps + dealer_reviews unique constraint + reviews rate limit).
+> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-06 (promo campaign, homepage hero copy, E2E test fixes, GA4, Vercel redeploy, custom domain, promo expiry enforcement, pricing page advertiser section).
 > Stack: Next.js 16.2.9 · React 19 · Supabase (Auth + Postgres + Storage) · Resend (email) · Cloudflare Turnstile (CAPTCHA) · NHTSA VIN API · Tailwind CSS 4 · Vitest + Playwright
 
 ---
@@ -123,7 +123,7 @@ support < moderator < admin < superadmin
 3. Admin reviews at `/admin` (Applications tab) — only admin/superadmin can approve/reject.
 4. On approval:
    - Auth user created (email confirmed, no password).
-   - Dealer row inserted with `plan: 'beta'`, `beta_expires_at: now + 6 months`.
+   - Dealer row inserted with `plan: 'beta'`; `beta_expires_at` = `2026-10-31` for applications submitted before Aug 1 2026 (250th promo period), otherwise `now + 6 months`.
    - Password reset link generated and emailed to dealer.
 5. Dealer sets password via link, logs into `/dealer/dashboard`.
 6. Dashboard tabs: Overview (stats), Inventory, Inquiries, Settings.
@@ -515,6 +515,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `full_name` | text | |
 | `phone` | text | |
 | `updated_at` | timestamptz | |
+| `promo_expires_at` | timestamptz \| null | Set to `2026-10-31T23:59:59Z` when user signs up with `promo=250th`. Used to gate free access when paid plans launch. |
 
 ---
 
@@ -676,7 +677,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 ### `PATCH /api/admin/dealer-applications`
 - **Auth**: required, min role: admin
 - **Input**: `{ id, action: 'approve'|'reject', rejection_note? }`
-- **On approve**: creates auth user, inserts dealer row (plan='beta', beta_expires_at=+6mo), sends welcome email with password-reset link
+- **On approve**: creates auth user, inserts dealer row (plan='beta'); `beta_expires_at = 2026-10-31` if application submitted before Aug 1 2026, else `now + 6 months`; sends welcome email with password-reset link
 - **On reject**: updates status, sends rejection email with optional note
 
 ---
@@ -1081,7 +1082,9 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | Private seller listing limit | `app/api/listings/submit/route.ts:44` | Max 10 active (pending + approved) listings per private seller; dealers exempt |
 | Beta mode bypass | `app/api/listings/submit/route.ts:29` | `BETA_MODE=true` env var bypasses the listing limit check entirely |
 | Dealer beta expiry | `app/api/listings/submit/route.ts`, `app/api/listings/[id]/route.ts` | If dealer's `beta_expires_at < now`, 403 BETA_EXPIRED on listing submit and listing edit; dashboard access and metrics not blocked |
-| Dealer beta period duration | `app/api/admin/dealer-applications/route.ts:97` | `beta_expires_at = now + 6 months` on application approval |
+| Dealer beta period duration | `app/api/admin/dealer-applications/route.ts:97` | Applications submitted before `2026-08-01` (250th promo period) → `beta_expires_at = 2026-10-31T23:59:59Z`; all others → `now + 6 months` |
+| Individual promo expiry | `app/account/signup/page.tsx` | Signup with `promo=250th` stores `promo_expires_at = 2026-10-31T23:59:59Z` on `profiles` row; enforced when paid plans launch |
+| Promo modal date gate | `components/PromoModal.tsx` | Modal stops displaying after `2026-07-31T23:59:59`; date check runs client-side on mount |
 | Advertiser trial period | `app/api/advertiser/signup/route.ts:28` | `trial_ends_at = now + 14 days`; ad creation AND editing blocked if expired |
 | Advertiser tier → radius | `app/api/advertiser/signup/route.ts:26` | starter=15mi, metro=30mi, regional=60mi, statewide=9999mi |
 | Ad serving radius filter | `app/api/ads/serve/route.ts` | statewide tier serves everywhere; other tiers use haversine distance between state centroids vs. `radius_miles`; falls back to exact state match if viewer state unknown |
@@ -1290,6 +1293,10 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Unsubscribe from alerts | **Complete** | `/unsubscribe/alerts` page; sets `alerts_opt_out` in `user_metadata`; opted-out users skipped in `matchAndNotifyAlerts`; "Unsubscribe from all alerts" link added to alert email footer alongside existing pause/manage links |
 | Dealer watcher messaging | **Complete** | One-time opt-in contact; blocked flag; count display |
 | Market report (`/reports`) | **Complete** | Public page; live data from listings table; avg price by make, condition breakdown, most-viewed, sold count; not linked from main nav |
+| 250th birthday promo campaign | **Complete** | `components/PromoModal.tsx` — homepage-only modal, shown once via `localStorage` key `gc_promo_250_seen`; date-gated (auto-hides after July 31 2026); CTA → `/account/signup?promo=250th`. `components/PromoBanner.tsx` — slim all-pages banner, dismissible per session via `sessionStorage` key `gc_promo_250_banner_dismissed`. Promo tracked via `raw_user_meta_data->>'promo' = '250th'` on `auth.users`. Signup with promo stores `promo_expires_at = 2026-10-31` on `profiles`. Dealer applications submitted before Aug 1 2026 get `beta_expires_at = 2026-10-31` instead of +6 months. Advertisers: same Oct 31 cutoff noted on pricing/advertiser pages. Promo image hosted at Supabase Storage `listing-images/promo/gc eagle.png`. |
+| Google Analytics 4 | **Complete** | GA4 Measurement ID `G-B36QB0J7TX` added to `app/layout.tsx` via Next.js `Script` component (`strategy="afterInteractive"`). |
+| Pricing page — advertiser tier | **Complete** | `/pricing` now includes advertiser section (banner ads, sponsored listings, newsletter sponsorships) with 250th promo callout and Stripe coming-soon note. |
+| Homepage hero stats | **Updated 2026-07-06** | Replaced placeholder stats ("12,400+ listings · All 50 states") with honest copy: "Growing daily · Nationwide · Classic, Muscle, Sport & Supercar". |
 | Dedicated watchlist page (`/account/watchlist`) | **Complete** | Standalone URL for watchlist; price-change indicators; mirrors `/account?tab=watchlist` |
 | Import JSON / Sync Now buttons | **Missing** | UI buttons exist in dealer dashboard but click handlers are stubs — no API route or format defined; sample format saved at `docs/dealer-import-sample.json` |
 | Export inventory | **Complete** | GET /api/dealer/export?format=csv\|json; dashboard has "Export CSV" and "Export JSON" buttons |

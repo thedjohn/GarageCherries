@@ -92,9 +92,10 @@ export async function PATCH(req: NextRequest) {
 
   const userId = newUser.user.id;
 
-  // Insert dealer row with 6-month beta plan
-  const betaExpiresAt = new Date();
-  betaExpiresAt.setMonth(betaExpiresAt.getMonth() + 6);
+  // Applications submitted during the 250th promo (before Aug 1 2026) expire Oct 31; otherwise 6 months
+  const promoCutoff = new Date('2026-08-01T00:00:00Z');
+  const isPromo = new Date(app.created_at) < promoCutoff;
+  const betaExpiresAt = isPromo ? new Date('2026-10-31T23:59:59Z') : (() => { const d = new Date(); d.setMonth(d.getMonth() + 6); return d; })();
 
   const { error: dealerErr } = await admin.from('dealers').insert({
     id: userId,
@@ -136,7 +137,7 @@ export async function PATCH(req: NextRequest) {
         <h1 style="font-size:22px;font-weight:800;color:#18181b;margin:0 0 16px">Welcome to GarageCherries, ${app.name}!</h1>
         <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 16px">
           Your dealer account for <strong>${app.dealer_name}</strong> has been approved.
-          You're on our 6-month beta plan — no charges during that period.
+          You're on our ${isPromo ? 'free promo plan through October 31, 2026' : '6-month beta plan'} — no charges during that period.
         </p>
         <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 24px">
           Click below to set your password and access your dealer dashboard.

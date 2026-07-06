@@ -94,6 +94,12 @@ export default function PricingPage() {
         </div>
       </section>
 
+      {/* 250th Birthday Promo banner */}
+      <div className="bg-zinc-800 text-white text-center py-3 text-sm font-semibold">
+        🇺🇸 250th Birthday Promo — Dealers, private sellers &amp; advertisers get free access through October 31, 2026. Sign up before July 31, 2026.{' '}
+        <Link href="/account/signup?promo=250th" className="underline text-red-400 hover:text-red-300">Claim now →</Link>
+      </div>
+
       {/* Competitor comparison banner. AutoTrader doesn't publish official rates —
           range based on dealer-forum reports (DealerRefresh) and AutoTrader B2B
           package tiers, verified 2026-07-02. Re-check periodically. */}
@@ -244,6 +250,39 @@ export default function PricingPage() {
           </div>
         </div>
       </section>
+
+      {/* Advertiser */}
+      <section className="bg-white border-y border-zinc-100 py-16">
+        <div className="max-w-3xl mx-auto px-4 text-center">
+          <h2 className="text-2xl font-extrabold text-zinc-900 mb-2">Advertise on GarageCherries</h2>
+          <p className="text-zinc-500 text-sm mb-2">Reach a passionate audience of classic, muscle, and collector car enthusiasts across the USA.</p>
+          <p className="text-red-600 text-sm font-semibold mb-8">🇺🇸 250th Birthday Promo: Contact us before July 31, 2026 for free access through October 31, 2026.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-left mb-8">
+            {[
+              { name: 'Banner Ads', desc: 'Prominent placements on search results, listing pages, and the homepage.' },
+              { name: 'Sponsored Listings', desc: 'Pin your listings to the top of search results with a Sponsored label.' },
+              { name: 'Newsletter Sponsorships', desc: 'Reach our subscriber list of classic car buyers and enthusiasts.' },
+            ].map(a => (
+              <div key={a.name} className="bg-zinc-50 rounded-2xl border border-zinc-100 p-6">
+                <p className="font-bold text-zinc-900 mb-2">{a.name}</p>
+                <p className="text-zinc-500 text-sm">{a.desc}</p>
+              </div>
+            ))}
+          </div>
+          <a href="mailto:contact-us@garagecherries.com"
+            className="inline-block bg-zinc-900 hover:bg-zinc-800 text-white font-bold px-8 py-3 rounded-xl transition-colors">
+            Contact Us for Rates
+          </a>
+        </div>
+      </section>
+
+      {/* Stripe coming soon */}
+      <div className="max-w-3xl mx-auto px-4 py-8 text-center">
+        <p className="text-zinc-400 text-sm">
+          💳 Online payments via Stripe coming soon. To get started today, contact us at{' '}
+          <a href="mailto:contact-us@garagecherries.com" className="text-red-600 hover:underline">contact-us@garagecherries.com</a>.
+        </p>
+      </div>
 
       {/* No commission callout */}
       <section className="bg-zinc-900 text-white py-12 text-center">

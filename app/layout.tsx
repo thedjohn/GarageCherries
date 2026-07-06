@@ -55,6 +55,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <MessengerWidget />
         </MessengerProvider>
         <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-B36QB0J7TX"
+          strategy="afterInteractive"
+        />
+        <Script id="ga-init" strategy="afterInteractive">{`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-B36QB0J7TX');
+        `}</Script>
+        <Script
           src="https://app.enzuzo.com/scripts/cookiebar/f896c694-7593-11f1-be29-f74875305e25"
           strategy="afterInteractive"
         />

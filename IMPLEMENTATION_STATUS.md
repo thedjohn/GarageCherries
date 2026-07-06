@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-03 — current as of commit ff16ad4*
+*Last updated: 2026-07-06 — current as of commit ff16ad4 + session changes (GA4, Vercel redeploy to GarageCherries team account, custom domain live, promo expiry enforcement, pricing advertiser section)*
 
 **Note on data:** this site is pre-launch. As of 2026-07-03 the production database has 2 manually-added test listings and otherwise no real users, dealers, or advertisers. Empty tables (`dealers`, `advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -73,7 +73,7 @@
 ### Dealer Application & Onboarding
 - [x] Public application form (`/dealer/apply`) — name, contact, dealer name, address, specialties, description, CAPTCHA
 - [x] Rate limited 3/hr/IP; duplicate application/dealer detection
-- [x] Admin review at `/admin` — approve creates an auth user + `dealers` row (`plan: 'beta'`, 6-month beta expiry) and emails a password-reset link; reject sends a note
+- [x] Admin review at `/admin` — approve creates an auth user + `dealers` row (`plan: 'beta'`); `beta_expires_at = 2026-10-31` for 250th promo applications (submitted before Aug 1 2026), otherwise `now + 6 months`; emails a password-reset link; reject sends a note
 
 ### Advertising System
 - [x] Public marketing page (`/advertise`) and advertiser signup (`/advertiser/signup`) — 14-day trial, tier selection
@@ -88,7 +88,7 @@
 - [x] Classic Car Encyclopedia (`/cars`) — 54 models across 12 makes
 - [x] Buyer's Guides index (`/guides`) — 6 articles
 - [x] Market Report (`/reports`) — live avg price by make, most-viewed listings, market commentary
-- [x] Pricing page (`/pricing`) — dealer plan tiers and private-seller messaging
+- [x] Pricing page (`/pricing`) — dealer plan tiers, private-seller pricing, advertiser section (banner ads, sponsored listings, newsletter), 250th promo banner, Stripe coming-soon note
 - [x] About (`/about`), Contact (`/contact`), Privacy Policy (`/privacy`), Terms of Service (`/terms`)
 - [x] Cookie consent banner and Turnstile CAPTCHA on public forms
 - [x] XML Sitemap (`/sitemap.xml`) and Robots.txt (`/robots.txt`)
@@ -149,7 +149,8 @@
 - [x] Server components + client components correctly separated
 - [x] `createClient()` (async, RLS-enforced) and `createAdminClient()` (sync, service role) pattern
 - [x] Cloudflare Turnstile CAPTCHA on public-facing submission forms
-- [x] Deployed to Vercel with GitHub auto-deploy on push to `main`
+- [x] Deployed to Vercel (project `garage-cherries`, GarageCherries team account, Hobby plan); custom domain `garagecherries.com` and `www.garagecherries.com` live with SSL
+- [x] **Google Analytics 4** — Measurement ID `G-B36QB0J7TX`; added to `app/layout.tsx` via Next.js `Script` (afterInteractive)
 - [x] `SPEC.md` — detailed master specification; treat as the primary technical reference
 
 ---
@@ -181,7 +182,6 @@
 | **Buyer Inquiry History** | `/account/inquiries` — past contact forms sent | Not built |
 | **Geographic Analytics** | IP geolocation on views, buyer location map in dealer dashboard | No geolocation service wired up |
 | **Verified History Badge** | Full vehicle history report (accidents, title, prior owners) | Requires Carfax/AutoCheck API + commercial agreement |
-| **Google Analytics / Plausible** | Traffic analytics | Not installed |
 | **Google Search Console** | SEO indexing, sitemap submission | Not submitted |
 | **Email Newsletter Signup** | Buyer opt-in form for digest | No signup form on site |
 
@@ -239,13 +239,13 @@
 | **GitHub** | Source control | ✅ Live | github.com/thedjohn/GarageCherries |
 | **Supabase** | Database, Auth, Storage | ✅ Live | supabase.com |
 | **Resend** | Transactional email | ✅ Live | resend.com |
-| **Cloudflare Turnstile** | CAPTCHA on public forms | ✅ Live | dash.cloudflare.com |
+| **Cloudflare Turnstile** | CAPTCHA on public forms | ✅ Live (new widget created 2026-07-06; site key `0x4AAAAAADwrrVwgKfPSKflI`) | dash.cloudflare.com |
 | **NHTSA VIN Decoder API** | VIN format/decode verification | ✅ Live (free, no key required) | vpic.nhtsa.dot.gov |
 | **Enzuzo** | Hosted Privacy Policy / Terms of Service content | ✅ Live | app.enzuzo.com |
 | **Anthropic** | AI features (Claude) | ❌ Removed 2026-07-01 — deferred to future release | console.anthropic.com |
 | **Stripe** | Payments | ❌ Not connected | stripe.com |
 | **Google Search Console** | SEO indexing | ❌ Not submitted | search.google.com/search-console |
-| **Google Analytics / Plausible** | Traffic analytics | ❌ Not installed | — |
+| **Google Analytics** | Traffic analytics | ✅ Live — GA4 `G-B36QB0J7TX` installed 2026-07-06 | analytics.google.com |
 | **Carfax / AutoCheck** | Full vehicle history verification | ❌ Not connected | — |
 | **Lemon Squad (or similar)** | Pre-purchase inspection affiliate | ❌ Built once, lost in a merge; agreement not finalized | — |
 | **Mediavine / AdThrive** | Premium programmatic ads | ❌ Pending traffic threshold | — |
@@ -255,8 +255,7 @@
 ## Recommended Next Steps (Priority Order)
 
 1. **Submit sitemap to Google Search Console** — starts SEO indexing clock
-2. **Add Google Analytics or Plausible** — need visibility into traffic before launch
-3. **Wire Stripe** — featured listing upgrades are the fastest first product to charge for
+2. **Wire Stripe** — featured listing upgrades are the fastest first product to charge for; pricing page already shows plan tiers
 4. **Add email preferences tab to `/account`** — lets users manage all opt-outs without waiting for an email
 5. **Decide on dealer self-serve signup** — current apply-and-wait model may be intentional (vetting quality), but if faster growth is the goal, self-serve + Stripe removes the bottleneck
 6. **Build `/account/inquiries`** — completes the buyer account experience
