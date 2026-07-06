@@ -21,7 +21,7 @@ export default function Turnstile({ onVerify, onExpire }: Props) {
   const widgetId = useRef<string | null>(null);
 
   useEffect(() => {
-    const siteKey = '1x00000000000000000000AA'; // Cloudflare test key — always renders, always passes
+    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAADw4uAwuf5OKxNgy';
 
     if (!containerRef.current) return;
 
