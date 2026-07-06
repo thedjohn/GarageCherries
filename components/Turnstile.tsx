@@ -21,7 +21,7 @@ export default function Turnstile({ onVerify, onExpire }: Props) {
   const widgetId = useRef<string | null>(null);
 
   useEffect(() => {
-    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAADw4uAwuf5OKxNgy';
+    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAAADw4uAwuf5OKxNgy';
 
     if (!containerRef.current) return;
 
