@@ -30,6 +30,13 @@ const CAMPAIGNS = [
     description: 'Sends renewal reminder emails to sellers whose listings expire within 3 days. Safe to run daily — will not re-send to the same listing.',
     icon: '⏰',
   },
+  {
+    id: 'promo-expiry',
+    endpoint: '/api/email/promo-expiry',
+    title: '250th Promo Expiry Notice',
+    description: 'Warns all promo users (individual sellers, dealers, advertisers) that their free period ends October 31, 2026. Safe to run once — will not re-send to anyone already notified.',
+    icon: '🇺🇸',
+  },
 ] as const;
 
 interface Result { ok: boolean; sent?: number; total?: number; message?: string; error?: string }
