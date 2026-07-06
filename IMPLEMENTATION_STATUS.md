@@ -192,6 +192,7 @@
 | **Geographic Analytics** | IP geolocation on views, buyer location map in dealer dashboard | No geolocation service wired up |
 | **Verified History Badge** | Full vehicle history report (accidents, title, prior owners) | Requires Carfax/AutoCheck API + commercial agreement |
 | **Email Newsletter Signup** | Buyer opt-in form for digest | No signup form on site |
+| **Sales Pipeline / CRM** | Track dealers & advertisers through free → paying conversion. Options: (A) Sales tab in `/admin` showing active/expiring/expired/converted with one-click email; (B) Export contacts CSV from admin → load into HubSpot free tier for email sequences and deal tracking; (C) automated drip emails at 30 days / 14 days / day-of expiry. Recommended order: B first (quick export), then C (drip emails), then A. | Stripe must be live first for "converted" status to mean anything |
 
 ### Mid-Term
 
