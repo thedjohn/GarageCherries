@@ -1,6 +1,6 @@
 # GarageCherries — Master Specification
 
-> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-06 (promo campaign, homepage hero copy, E2E test fixes, GA4, Vercel redeploy, custom domain, promo expiry enforcement, pricing page advertiser section).
+> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-06 (promo campaign, homepage hero copy, E2E test fixes, GA4, Vercel redeploy, custom domain, promo expiry enforcement, pricing page advertiser section, advertiser public pages, sitemap expansion, SEO structured data, GSC + Bing verified).
 > Stack: Next.js 16.2.9 · React 19 · Supabase (Auth + Postgres + Storage) · Resend (email) · Cloudflare Turnstile (CAPTCHA) · NHTSA VIN API · Tailwind CSS 4 · Vitest + Playwright
 
 ---
@@ -473,6 +473,9 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `radius_miles` | integer | starter=15, metro=30, regional=60, statewide=9999 |
 | `active` | boolean | Default true |
 | `trial_ends_at` | timestamptz | 14 days from signup |
+| `slug` | text \| null | URL-safe unique identifier, auto-generated from `business_name` on signup (added 2026-07-06) |
+| `description` | text \| null | Public-facing business description (added 2026-07-06) |
+| `website` | text \| null | Business website URL (added 2026-07-06) |
 | `created_at` | timestamptz | |
 
 ### `ads`
@@ -1296,6 +1299,14 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | 250th birthday promo campaign | **Complete** | `components/PromoModal.tsx` — homepage-only modal, shown once via `localStorage` key `gc_promo_250_seen`; date-gated (auto-hides after July 31 2026); CTA → `/account/signup?promo=250th`. `components/PromoBanner.tsx` — slim all-pages banner, dismissible per session via `sessionStorage` key `gc_promo_250_banner_dismissed`. Promo tracked via `raw_user_meta_data->>'promo' = '250th'` on `auth.users`. Signup with promo stores `promo_expires_at = 2026-10-31` on `profiles`. Dealer applications submitted before Aug 1 2026 get `beta_expires_at = 2026-10-31` instead of +6 months. Advertisers: same Oct 31 cutoff noted on pricing/advertiser pages. Promo image hosted at Supabase Storage `listing-images/promo/gc eagle.png`. |
 | Google Analytics 4 | **Complete** | GA4 Measurement ID `G-B36QB0J7TX` added to `app/layout.tsx` via Next.js `Script` component (`strategy="afterInteractive"`). |
 | Pricing page — advertiser tier | **Complete** | `/pricing` now includes advertiser section (banner ads, sponsored listings, newsletter sponsorships) with 250th promo callout and Stripe coming-soon note. |
+| Advertiser public pages | **Complete (2026-07-06)** | `/advertisers` — directory grouped by category; `/advertisers/[slug]` — profile page with business info, description, phone/website, active ads. `slug`, `description`, `website` columns added via `supabase/migrations/20260706_advertiser_public_profile.sql`. Slug auto-generated from `business_name` on signup. |
+| Sitemap expansion | **Complete (2026-07-06)** | `app/sitemap.ts` now covers: all static pages, listings, dealer pages, encyclopedia index + make + model pages (54 models), advertiser directory + individual profile pages. Revalidates every hour. 81 pages confirmed by Google Search Console. |
+| SEO — structured data (JSON-LD) | **Complete (2026-07-06)** | Organization (homepage, about, contact), AutoDealer + BreadcrumbList (dealer pages), Vehicle + BreadcrumbList (listing detail, pre-existing), Article + BreadcrumbList (encyclopedia model pages), LocalBusiness + BreadcrumbList (advertiser detail pages). |
+| SEO — OG image | **Complete (2026-07-06)** | `app/opengraph-image.tsx` — dynamic Next.js ImageResponse (1200×630, edge runtime); dark/red brand card with logo, tagline, category pills, domain. Served at `/opengraph-image`; referenced in `og:image` and Twitter card. |
+| SEO — sell page metadata | **Complete (2026-07-06)** | `app/sell/layout.tsx` wraps the `use client` page to export title, description, canonical. |
+| Search filter clamping | **Complete (2026-07-06)** | Year inputs `min=1900 max=2030`, price inputs `min=0` (client-side HTML). `lib/db.ts` `fetchCars()` clamps year to [1900–2030] and rejects negative price server-side. |
+| Google Search Console | **Complete (2026-07-06)** | Property `https://www.garagecherries.com` verified via DNS (auto-detected from GoDaddy TXT records). Sitemap submitted; 81 pages discovered, status: Success. |
+| Bing Webmaster Tools | **Complete (2026-07-06)** | Imported from Google Search Console. Sitemap `https://www.garagecherries.com/sitemap.xml` submitted; status: Processing. |
 | Homepage hero stats | **Updated 2026-07-06** | Replaced placeholder stats ("12,400+ listings · All 50 states") with honest copy: "Growing daily · Nationwide · Classic, Muscle, Sport & Supercar". |
 | Dedicated watchlist page (`/account/watchlist`) | **Complete** | Standalone URL for watchlist; price-change indicators; mirrors `/account?tab=watchlist` |
 | Import JSON / Sync Now buttons | **Missing** | UI buttons exist in dealer dashboard but click handlers are stubs — no API route or format defined; sample format saved at `docs/dealer-import-sample.json` |

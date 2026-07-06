@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-06 — current as of commit ff16ad4 + session changes (GA4, Vercel redeploy to GarageCherries team account, custom domain live, promo expiry enforcement, pricing advertiser section)*
+*Last updated: 2026-07-06 — current as of commit bb31525 (SEO deep dive, advertiser public pages, sitemap expansion, filter clamping, GSC + Bing verified)*
 
 **Note on data:** this site is pre-launch. As of 2026-07-03 the production database has 2 manually-added test listings and otherwise no real users, dealers, or advertisers. Empty tables (`dealers`, `advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -91,7 +91,10 @@
 - [x] Pricing page (`/pricing`) — dealer plan tiers, private-seller pricing, advertiser section (banner ads, sponsored listings, newsletter), 250th promo banner, Stripe coming-soon note
 - [x] About (`/about`), Contact (`/contact`), Privacy Policy (`/privacy`), Terms of Service (`/terms`)
 - [x] Cookie consent banner and Turnstile CAPTCHA on public forms
-- [x] XML Sitemap (`/sitemap.xml`) and Robots.txt (`/robots.txt`)
+- [x] XML Sitemap (`/sitemap.xml`) — dynamic, covers homepage, listings, dealers, encyclopedia (54 models), advertisers, and all static pages; revalidates every hour; 81 pages discovered by Google
+- [x] Robots.txt (`/robots.txt`) — allows all crawlers, blocks `/admin`, `/api/`, `/dealer/dashboard`
+- [x] **Advertiser public directory** (`/advertisers`) — grouped by category (detail, insurance, finance, transport, storage, restoration, inspection); active + valid trial only
+- [x] **Advertiser public profile pages** (`/advertisers/[slug]`) — business info, description, phone/website CTAs, active ads as "Current Offers"; `slug`, `description`, `website` columns added via migration
 
 ### Buyer Accounts
 - [x] Signup, Login, forgot/reset password flow
@@ -151,6 +154,12 @@
 - [x] Cloudflare Turnstile CAPTCHA on public-facing submission forms
 - [x] Deployed to Vercel (project `garage-cherries`, GarageCherries team account, Hobby plan); custom domain `garagecherries.com` and `www.garagecherries.com` live with SSL
 - [x] **Google Analytics 4** — Measurement ID `G-B36QB0J7TX`; added to `app/layout.tsx` via Next.js `Script` (afterInteractive)
+- [x] **SEO — JSON-LD structured data** — Organization (homepage, about, contact), AutoDealer + BreadcrumbList (dealer pages), Vehicle + BreadcrumbList (listing detail), Article + BreadcrumbList (encyclopedia model pages), LocalBusiness + BreadcrumbList (advertiser detail pages)
+- [x] **SEO — OG image** — dynamic `app/opengraph-image.tsx` using Next.js ImageResponse (1200×630); replaces missing static file
+- [x] **SEO — sell page metadata** — `app/sell/layout.tsx` adds title, description, canonical (page is `use client` so layout wrapper required)
+- [x] **SEO — filter clamping** — year inputs `min=1900 max=2030`, price inputs `min=0` (client); `lib/db.ts` clamps year to [1900–2030] and rejects negative price server-side
+- [x] **Google Search Console** — property `https://www.garagecherries.com` verified (DNS method, auto-detected); sitemap submitted; 81 pages discovered
+- [x] **Bing Webmaster Tools** — imported from GSC; sitemap submitted; processing
 - [x] `SPEC.md` — detailed master specification; treat as the primary technical reference
 
 ---
@@ -182,7 +191,6 @@
 | **Buyer Inquiry History** | `/account/inquiries` — past contact forms sent | Not built |
 | **Geographic Analytics** | IP geolocation on views, buyer location map in dealer dashboard | No geolocation service wired up |
 | **Verified History Badge** | Full vehicle history report (accidents, title, prior owners) | Requires Carfax/AutoCheck API + commercial agreement |
-| **Google Search Console** | SEO indexing, sitemap submission | Not submitted |
 | **Email Newsletter Signup** | Buyer opt-in form for digest | No signup form on site |
 
 ### Mid-Term
@@ -254,8 +262,8 @@
 
 ## Recommended Next Steps (Priority Order)
 
-1. **Submit sitemap to Google Search Console** — starts SEO indexing clock
-2. **Wire Stripe** — featured listing upgrades are the fastest first product to charge for; pricing page already shows plan tiers
+1. **Promo expiry notification email** — automated email to all users (dealers, individuals, advertisers) warning that free period ends October 31, 2026; send ~2 weeks before cutoff
+2. **Wire Stripe** — featured listing upgrades are the fastest first product to charge for; pricing page already shows plan tiers; `promo_expires_at` column already tracking who needs to pay post-promo
 4. **Add email preferences tab to `/account`** — lets users manage all opt-outs without waiting for an email
 5. **Decide on dealer self-serve signup** — current apply-and-wait model may be intentional (vetting quality), but if faster growth is the goal, self-serve + Stripe removes the bottleneck
 6. **Build `/account/inquiries`** — completes the buyer account experience
