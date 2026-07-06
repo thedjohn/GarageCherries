@@ -31,7 +31,7 @@ export default function Footer() {
               <li><Link href="/sell" className="hover:text-white transition-colors">Post a Listing</Link></li>
               <li><Link href="/pricing" className="hover:text-white transition-colors">Pricing Guide</Link></li>
               <li><Link href="/sell" className="hover:text-white transition-colors">Seller Tips</Link></li>
-              <li><Link href="/dealers" className="hover:text-white transition-colors">Dealer Accounts</Link></li>
+              <li><Link href="/dealer/login" className="hover:text-white transition-colors">Dealer Accounts</Link></li>
             </ul>
           </div>
 
