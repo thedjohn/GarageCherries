@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { MessengerProvider } from '@/lib/messenger-context';
 import MessengerWidget from '@/components/MessengerWidget';
+import PromoBanner from '@/components/PromoBanner';
 
 const geist = Geist({ subsets: ['latin'] });
 
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${geist.className} bg-zinc-50 text-zinc-900 min-h-screen flex flex-col`}>
         <MessengerProvider>
           <Header />
+          <PromoBanner />
           <main className="flex-1">{children}</main>
           <Footer />
           <MessengerWidget />

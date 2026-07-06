@@ -3,6 +3,7 @@ import CarCard from '@/components/CarCard';
 import { createClient } from '@/lib/supabase/server';
 import { MAKES, BODY_STYLES } from '@/lib/types';
 import type { Car } from '@/lib/types';
+import PromoModal from '@/components/PromoModal';
 
 const BODY_STYLE_ICONS: Record<string, string> = {
   'Coupe': '🏎️',
@@ -45,6 +46,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <PromoModal />
       {/* Hero */}
       <section className="relative bg-zinc-900 text-white overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 via-zinc-800 to-red-950 opacity-90" />
