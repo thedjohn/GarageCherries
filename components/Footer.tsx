@@ -29,9 +29,9 @@ export default function Footer() {
             <h3 className="text-white font-semibold mb-3 text-sm uppercase tracking-wider">Sell</h3>
             <ul className="space-y-2 text-sm">
               <li><Link href="/sell" className="hover:text-white transition-colors">Post a Listing</Link></li>
-              <li><Link href="/sell" className="hover:text-white transition-colors">Pricing Guide</Link></li>
+              <li><Link href="/pricing" className="hover:text-white transition-colors">Pricing Guide</Link></li>
               <li><Link href="/sell" className="hover:text-white transition-colors">Seller Tips</Link></li>
-              <li><Link href="/sell" className="hover:text-white transition-colors">Dealer Accounts</Link></li>
+              <li><Link href="/dealers" className="hover:text-white transition-colors">Dealer Accounts</Link></li>
             </ul>
           </div>
 
