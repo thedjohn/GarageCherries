@@ -37,6 +37,7 @@ export default async function HomePage() {
     .from('listings')
     .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at')
     .eq('status', 'approved')
+    .eq('is_sold', false)
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
     .order('listed_at', { ascending: false });
 
