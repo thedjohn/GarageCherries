@@ -117,12 +117,12 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
       year:         parseInt(fields.year),
       make:         fields.make,
       model:        fields.model,
-      mileage:      parseInt(fields.mileage) || 0,
+      mileage:      parseInt(fields.mileage.replace(/,/g, '')) || 0,
       condition:    fields.condition,
       body_style:   fields.bodyStyle,
       engine:           fields.engine,
-      horsepower:       fields.horsepower    ? parseInt(fields.horsepower)    : null,
-      torque:           fields.torque        ? parseInt(fields.torque)        : null,
+      horsepower:       fields.horsepower    ? parseInt(fields.horsepower.replace(/,/g, ''))    : null,
+      torque:           fields.torque        ? parseInt(fields.torque.replace(/,/g, ''))        : null,
       cylinders:        fields.cylinders     ? parseInt(fields.cylinders)     : null,
       displacement:     fields.displacement  || null,
       forced_induction: fields.forcedInduction || null,
@@ -231,8 +231,11 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Mileage *</label>
-              <input type="number" required min="0" placeholder="Mileage (0 = Unknown)" value={fields.mileage}
-                onChange={e => set('mileage', e.target.value)} className={inp} />
+              <input type="text" inputMode="numeric" required placeholder="Mileage (0 = Unknown)" value={fields.mileage}
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^0-9]/g, '');
+                  set('mileage', raw ? Number(raw).toLocaleString() : '');
+                }} className={inp} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Condition *</label>
@@ -249,15 +252,28 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
               </select>
             </div>
             <div>
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Fuel Type</label>
+              <select value={fields.fuelType} onChange={e => set('fuelType', e.target.value)} className={inp}>
+                <option value="">Select...</option>
+                <option>Gasoline</option>
+                <option>Diesel</option>
+                <option>Electric</option>
+                <option>Hybrid</option>
+                <option>Flex Fuel</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Engine Description</label>
               <input type="text" placeholder="Engine Description" value={fields.engine}
                 onChange={e => set('engine', e.target.value)} className={inp} />
             </div>
+            {fields.fuelType !== 'Electric' && (
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Displacement</label>
               <input type="text" placeholder="Displacement" value={fields.displacement}
                 onChange={e => set('displacement', e.target.value)} className={inp} />
             </div>
+            )}
             {fields.fuelType !== 'Electric' && (
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Cylinders</label>
@@ -269,14 +285,21 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
             )}
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Horsepower</label>
-              <input type="number" min="0" placeholder="Horsepower" value={fields.horsepower}
-                onChange={e => set('horsepower', e.target.value)} className={inp} />
+              <input type="text" inputMode="numeric" placeholder="Horsepower" value={fields.horsepower}
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^0-9]/g, '');
+                  set('horsepower', raw ? Number(raw).toLocaleString() : '');
+                }} className={inp} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Torque (lb-ft)</label>
-              <input type="number" min="0" placeholder="Torque" value={fields.torque}
-                onChange={e => set('torque', e.target.value)} className={inp} />
+              <input type="text" inputMode="numeric" placeholder="Torque" value={fields.torque}
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^0-9]/g, '');
+                  set('torque', raw ? Number(raw).toLocaleString() : '');
+                }} className={inp} />
             </div>
+            {fields.fuelType !== 'Electric' && (
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Forced Induction</label>
               <select value={fields.forcedInduction} onChange={e => set('forcedInduction', e.target.value)} className={inp}>
@@ -288,17 +311,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
                 <option>Supercharged + Turbocharged</option>
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Fuel Type</label>
-              <select value={fields.fuelType} onChange={e => set('fuelType', e.target.value)} className={inp}>
-                <option value="">Select...</option>
-                <option>Gasoline</option>
-                <option>Diesel</option>
-                <option>Electric</option>
-                <option>Hybrid</option>
-                <option>Flex Fuel</option>
-              </select>
-            </div>
+            )}
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Transmission</label>
               <select value={fields.transmission} onChange={e => set('transmission', e.target.value)} className={inp}>
@@ -1131,7 +1144,13 @@ function DealerSettings({ dealer, onSaved }: { dealer: DbDealer & { phone?: stri
           </div>
           <div>
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Phone</label>
-            <input type="tel" value={fields.phone} onChange={e => set('phone', e.target.value)} placeholder="(314) 555-0100" className={inp} />
+            <input type="tel" value={fields.phone} onChange={e => {
+              const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+              let formatted = digits;
+              if (digits.length >= 7) formatted = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+              else if (digits.length >= 4) formatted = `(${digits.slice(0,3)}) ${digits.slice(3)}`;
+              set('phone', formatted);
+            }} placeholder="(314) 555-0100" className={inp} />
           </div>
           <div>
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Email <span className="font-normal normal-case text-zinc-400">(login email — not editable)</span></label>

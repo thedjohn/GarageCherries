@@ -142,6 +142,11 @@ export default function SellForm() {
     setError('');
 
     const formData = new FormData(e.currentTarget);
+    // Strip commas from formatted numeric fields before submission
+    ['mileage', 'price'].forEach(field => {
+      const val = formData.get(field) as string;
+      if (val) formData.set(field, val.replace(/,/g, ''));
+    });
     const imageUrls = images.map(img => img.publicUrl).filter(Boolean) as string[];
     formData.set('imageUrls', JSON.stringify(imageUrls));
 
@@ -230,7 +235,11 @@ export default function SellForm() {
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Mileage</label>
-              <input name="mileage" type="number" min="0" placeholder="Leave blank if unknown" className={inputCls} />
+              <input name="mileage" type="text" inputMode="numeric" placeholder="Leave blank if unknown" className={inputCls}
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^0-9]/g, '');
+                  e.target.value = raw ? Number(raw).toLocaleString() : '';
+                }} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Body Style</label>
@@ -246,10 +255,6 @@ export default function SellForm() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Engine</label>
-              <input name="engine" type="text" placeholder="396 V8" className={inputCls} />
-            </div>
-            <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Fuel Type</label>
               <select name="fuelType" value={fuelType} onChange={e => setFuelType(e.target.value)} className={inputCls}>
                 <option value="">Select...</option>
@@ -259,6 +264,10 @@ export default function SellForm() {
                 <option>Hybrid</option>
                 <option>Flex Fuel</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Engine</label>
+              <input name="engine" type="text" placeholder="396 V8" className={inputCls} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Transmission</label>
@@ -278,7 +287,11 @@ export default function SellForm() {
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Asking Price *</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
-                <input name="price" type="number" required min="0" placeholder="89500"
+                <input name="price" type="text" inputMode="numeric" required placeholder="89,500"
+                  onChange={e => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                    e.target.value = raw ? Number(raw).toLocaleString() : '';
+                  }}
                   className="w-full border border-zinc-200 rounded-xl pl-7 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
               </div>
             </div>
