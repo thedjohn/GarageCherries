@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('api/email/dealer-report');
 
 // POST /api/email/dealer-report — send monthly performance report to all dealers
 export async function POST(request: NextRequest) {
@@ -111,9 +114,10 @@ export async function POST(request: NextRequest) {
       });
       sent++;
     } catch (err) {
-      console.error(`Failed to send dealer report to ${dealer.email}:`, err);
+      log.error('Failed to send dealer report', { dealerId: dealer.id, email: dealer.email, error: String(err) });
     }
   }
 
+  log.info('Monthly dealer reports sent', { sent, total: dealers.length });
   return NextResponse.json({ ok: true, sent, total: dealers.length });
 }

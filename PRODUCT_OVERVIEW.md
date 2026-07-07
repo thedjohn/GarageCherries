@@ -1,5 +1,5 @@
 # GarageCherries — Product Overview & Roadmap
-*Last updated: June 2026*
+*Last updated: July 2026*
 
 ---
 
@@ -18,7 +18,7 @@ GarageCherries is a classic and collector car marketplace connecting buyers with
 
 ### 🔍 Browse & Search
 - Full listings page with filter sidebar (make, year, price, condition, body style, transmission, state)
-- **AI Smart Search** — natural language search bar that translates plain English queries into filters (e.g. "red Ford convertible in Texas under $40k")
+- ~~**AI Smart Search**~~ — removed 2026-07-01; deferred to future release
 - Make pages (`/listings/ford`) and model pages (`/listings/ford/mustang`) for SEO-friendly browsing
 - Featured listings highlighted with badges and homepage placement
 - Collector Cars and Convertibles quick-filter nav links
@@ -27,9 +27,9 @@ GarageCherries is a classic and collector car marketplace connecting buyers with
 - Full photo gallery with thumbnail navigation
 - Complete spec sheet (engine, drivetrain, interior, options)
 - Dealer info with map embed and click-to-call
-- **AI Price Assessment** — "Is this a fair price?" widget powered by Claude AI
+- ~~**AI Price Assessment**~~ — removed 2026-07-01; deferred to future release
 - **Message Seller** — contact form that emails the seller directly (buyer email never exposed publicly)
-- **You May Also Like** — AI-powered similar car recommendations
+- ~~**You May Also Like**~~ — removed 2026-07-01; deferred to future release
 - SEO optimized with per-page titles, descriptions, Open Graph tags, and JSON-LD Vehicle schema
 
 ### 🏢 Dealer Pages
@@ -41,17 +41,11 @@ GarageCherries is a classic and collector car marketplace connecting buyers with
 ### 💼 Dealer Dashboard
 - **Overview tab** — real-time metrics: active listings, views (30d), inquiries (30d), avg. days on market
 - **Inventory tab** — full CRUD for vehicle listings (add, edit, delete)
-- **Inquiries tab** — buyer messages with AI draft reply assistant
+- **Inquiries tab** — buyer messages (~~AI draft reply assistant removed 2026-07-01~~)
 - **Settings tab** — dealer profile management (name, phone, address, description, specialties)
 
-### 🤖 AI Features (Powered by Claude)
-| Feature | Description |
-|---|---|
-| Smart Search | Translates natural language into search filters |
-| AI Listing Writer | Generates compelling listing descriptions from specs |
-| Price Assessment | Tells buyers if a listing price is fair for the market |
-| Inquiry Reply Assistant | Drafts personalized dealer replies to buyer messages |
-| Similar Cars | Recommends related listings based on current car |
+### 🤖 AI Features
+> **Removed 2026-07-01** — all 5 AI routes (Smart Search, Listing Writer, Price Assessment, Inquiry Reply Assistant, Similar Cars) were removed and deferred to a future release. This section describes the planned implementation, not the current live product.
 
 ### 📧 Buyer Inquiries
 - Contact form on every listing
@@ -92,10 +86,12 @@ GarageCherries is a classic and collector car marketplace connecting buyers with
 - **Framework:** Next.js 16 (App Router) with TypeScript
 - **Database:** Supabase (PostgreSQL) with Row Level Security
 - **Auth:** Supabase Auth (dealer login)
-- **AI:** Anthropic Claude (claude-opus-4-8)
+- **AI:** Anthropic Claude — deferred; not currently active
 - **Email:** Resend
 - **Storage:** Supabase Storage (car photos)
-- **Hosting:** (TBD — Vercel recommended)
+- **Error tracking:** Sentry (`@sentry/nextjs`)
+- **Structured logging:** Axiom (`next-axiom`)
+- **Hosting:** Vercel — live at `garagecherries.com`
 - **SEO:** Dynamic metadata, Open Graph, JSON-LD schema, XML sitemap, robots.txt
 
 ---
@@ -230,7 +226,7 @@ GarageCherries is a classic and collector car marketplace connecting buyers with
 | Hemmings | $135/yr + per listing | None | None |
 | ClassicCars.com | $130–$350/listing | None | None |
 | Bring a Trailer | $99/listing | 5% buyer fee | None |
-| **GarageCherries** | **$49–$199/mo** | **None** | **5 AI features** |
+| **GarageCherries** | **$49–$199/mo** | **None** | **Planned** |
 
 **Our edge:** Lower cost than every major competitor, built-in AI tools no one else has, modern tech stack, mobile-first design.
 

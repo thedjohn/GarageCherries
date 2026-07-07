@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { rateLimit, getClientIP } from '@/lib/rateLimit';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('api/notify-watchers');
 
 function toSegment(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -111,9 +114,10 @@ export async function POST(request: NextRequest) {
       });
       sent++;
     } catch (e) {
-      console.error(`Failed to notify watcher ${watcher.user_id}:`, e);
+      log.error('Failed to send price-drop email', { carId, watcherUserId: watcher.user_id, error: String(e) });
     }
   }
 
+  log.info('Price-drop notifications sent', { carId, sent, total: watchers.length, oldPrice, newPrice });
   return NextResponse.json({ sent });
 }

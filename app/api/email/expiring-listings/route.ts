@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('api/email/expiring-listings');
 
 // POST /api/email/expiring-listings — send renewal reminders for listings expiring within 3 days
 // Intended to run daily via cron or manually from /admin/email
@@ -89,11 +92,13 @@ export async function POST(request: NextRequest) {
         .update({ renewal_reminder_sent_at: now.toISOString() })
         .eq('id', listing.id);
 
+      log.info('Renewal reminder sent', { listingId: listing.id, title: listing.title, sellerEmail, daysLeft });
       sent++;
     } catch (err) {
-      console.error(`Failed to send renewal reminder for listing ${listing.id}:`, err);
+      log.error('Failed to send renewal reminder', { listingId: listing.id, sellerEmail, error: String(err) });
     }
   }
 
+  log.info('Expiring listing reminders complete', { sent, total: listings.length });
   return NextResponse.json({ ok: true, sent, total: listings.length });
 }

@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { createAdminClient } from '@/lib/supabase/server';
+import SubmitEventForm from './SubmitEventForm';
 
 export const revalidate = 3600;
 
@@ -13,7 +14,7 @@ interface CarShowEvent {
   id: string; name: string; date: string; end_date?: string | null;
   location: string; state: string;
   type: 'show' | 'swap-meet' | 'cruise' | 'auction';
-  featured: boolean; description: string; url?: string | null;
+  featured: boolean; description: string; url?: string | null; status: string;
 }
 
 const TYPE_LABELS: Record<CarShowEvent['type'], string> = {
@@ -37,6 +38,7 @@ export default async function EventsPage() {
   const { data } = await admin
     .from('events')
     .select('*')
+    .eq('status', 'approved')
     .order('date', { ascending: true });
 
   const events: CarShowEvent[] = data ?? [];
@@ -96,16 +98,7 @@ export default async function EventsPage() {
         </div>
       )}
 
-      <div className="mt-12 bg-zinc-50 border border-zinc-200 rounded-2xl p-8 text-center">
-        <h2 className="text-lg font-bold text-zinc-900 mb-2">Know of an event we missed?</h2>
-        <p className="text-sm text-zinc-500 mb-4">Help us keep the calendar complete for the classic car community.</p>
-        <a
-          href="mailto:events@garagecherries.com?subject=Event submission"
-          className="inline-block bg-red-600 hover:bg-red-700 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
-        >
-          Submit an Event
-        </a>
-      </div>
+      <SubmitEventForm />
 
       <p className="mt-8 text-xs text-zinc-400 text-center">
         Dates are subject to change. Verify with organizers before making travel arrangements.

@@ -40,6 +40,7 @@ interface CarEvent {
   id: string; name: string; date: string; end_date: string | null;
   location: string; state: string; type: string; description: string;
   url: string | null; featured: boolean; created_at: string;
+  status: string; submitted_by: string | null; submitter_email: string | null; submitter_name: string | null;
 }
 const BLANK_EVENT = { name: '', date: '', end_date: '', location: '', state: '', type: 'show', description: '', url: '', featured: false };
 const EVENT_TYPES = ['show', 'swap-meet', 'cruise', 'auction'] as const;
@@ -89,12 +90,14 @@ export default function AdminPage() {
 
   // Events
   const [events, setEvents] = useState<CarEvent[]>([]);
+  const [pendingEvents, setPendingEvents] = useState<CarEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventForm, setEventForm] = useState<typeof BLANK_EVENT>(BLANK_EVENT);
   const [editingEvent, setEditingEvent] = useState<CarEvent | null>(null);
   const [eventWorking, setEventWorking] = useState(false);
   const [eventError, setEventError] = useState('');
   const [confirmDeleteEvent, setConfirmDeleteEvent] = useState<CarEvent | null>(null);
+  const [eventActionWorking, setEventActionWorking] = useState<string | null>(null);
 
   // Applications
   const [applications, setApplications] = useState<DealerApplication[]>([]);
@@ -204,10 +207,28 @@ export default function AdminPage() {
 
   async function loadEvents() {
     setEventsLoading(true);
-    const supabase = createClient();
-    const { data } = await supabase.from('events').select('*').order('date', { ascending: true });
-    setEvents(data ?? []);
+    const res = await fetch('/api/admin/events');
+    if (res.ok) {
+      const { events: all } = await res.json();
+      setPendingEvents((all ?? []).filter((e: CarEvent) => e.status === 'pending'));
+      setEvents((all ?? []).filter((e: CarEvent) => e.status !== 'pending'));
+    }
     setEventsLoading(false);
+  }
+
+  async function handleEventAction(id: string, action: 'approve' | 'reject') {
+    setEventActionWorking(id + action);
+    const res = await fetch('/api/admin/events', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, action }),
+    });
+    setEventActionWorking(null);
+    if (!res.ok) return;
+    const approved = action === 'approve';
+    const event = pendingEvents.find(e => e.id === id);
+    setPendingEvents(prev => prev.filter(e => e.id !== id));
+    if (approved && event) setEvents(prev => [...prev, { ...event, status: 'approved' }].sort((a, b) => a.date.localeCompare(b.date)));
   }
 
   async function saveEvent() {
@@ -898,6 +919,49 @@ export default function AdminPage() {
       {/* Events tab */}
       {tab === 'events' && (adminRole === 'superadmin' || adminRole === 'admin') && (
         <div>
+          {/* Pending submissions queue */}
+          {pendingEvents.length > 0 && (
+            <div className="mb-6">
+              <h2 className="font-bold text-zinc-900 mb-3 flex items-center gap-2">
+                Pending Submissions
+                <span className="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full">{pendingEvents.length}</span>
+              </h2>
+              <div className="space-y-3">
+                {pendingEvents.map(e => (
+                  <div key={e.id} className="bg-white border border-amber-200 rounded-xl p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600">{e.type}</span>
+                          <span className="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Pending</span>
+                        </div>
+                        <p className="font-semibold text-zinc-900 text-sm">{e.name}</p>
+                        <p className="text-xs text-zinc-500">{e.date}{e.end_date ? ` – ${e.end_date}` : ''} · {e.location}, {e.state}</p>
+                        {e.description && <p className="text-xs text-zinc-400 mt-0.5">{e.description}</p>}
+                        {e.url && <p className="text-xs text-blue-500 mt-0.5 truncate"><a href={e.url} target="_blank" rel="noopener noreferrer">{e.url}</a></p>}
+                        <p className="text-xs text-zinc-400 mt-1">Submitted by: {e.submitter_name ?? 'Unknown'} ({e.submitter_email ?? '—'})</p>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          onClick={() => handleEventAction(e.id, 'approve')}
+                          disabled={eventActionWorking !== null}
+                          className="text-xs font-bold px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg transition-colors">
+                          {eventActionWorking === e.id + 'approve' ? '…' : 'Approve'}
+                        </button>
+                        <button
+                          onClick={() => handleEventAction(e.id, 'reject')}
+                          disabled={eventActionWorking !== null}
+                          className="text-xs font-bold px-3 py-1.5 bg-zinc-100 hover:bg-red-100 hover:text-red-700 disabled:opacity-50 text-zinc-600 rounded-lg transition-colors">
+                          {eventActionWorking === e.id + 'reject' ? '…' : 'Reject'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Add / Edit form */}
           <div className="bg-white border border-zinc-100 rounded-2xl p-6 shadow-sm mb-6">
             <h2 className="font-bold text-zinc-900 mb-4">{editingEvent ? 'Edit Event' : 'Add Event'}</h2>

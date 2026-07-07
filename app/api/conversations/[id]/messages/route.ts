@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { rateLimit, getClientIP } from '@/lib/rateLimit';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('api/conversations/messages');
 
 const admin = createAdminClient();
 
@@ -78,7 +81,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     sender_name: senderName || user.email,
     body: body.trim(),
   });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    log.error('Failed to insert message', { conversationId: id, userId: user.id, error: error.message });
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   const now = new Date().toISOString();
   await admin.from('conversations').update({ last_message_at: now }).eq('id', id);
@@ -108,5 +114,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
+  log.info('Message sent', { conversationId: id, userId: user.id });
   return NextResponse.json({ success: true });
 }

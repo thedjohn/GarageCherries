@@ -20,6 +20,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     supabase.from('advertisers').select('slug, created_at').eq('active', true).gt('trial_ends_at', new Date().toISOString()),
   ]);
 
+  const GUIDE_SLUGS = [
+    'how-to-buy-a-classic-car-online',
+    'pre-purchase-inspection-checklist',
+    'questions-to-ask-a-classic-car-dealer',
+    'classic-car-red-flags',
+    'how-to-negotiate-classic-car-price',
+    'classic-car-shipping-guide',
+  ];
+
   const staticPages: MetadataRoute.Sitemap = [
     { url: BASE_URL, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
     { url: `${BASE_URL}/listings`, lastModified: new Date(), changeFrequency: 'hourly', priority: 0.9 },
@@ -32,6 +41,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.4 },
     { url: `${BASE_URL}/contact`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.4 },
     { url: `${BASE_URL}/advertisers`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.6 },
+    { url: `${BASE_URL}/events`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.6 },
+    { url: `${BASE_URL}/dealer/apply`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${BASE_URL}/advertiser/signup`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${BASE_URL}/privacy`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${BASE_URL}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
   ];
 
   const listingPages: MetadataRoute.Sitemap = (cars ?? []).map(car => ({
@@ -84,14 +98,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.5,
     }));
 
+  const guidePages: MetadataRoute.Sitemap = GUIDE_SLUGS.map(slug => ({
+    url: `${BASE_URL}/guides/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'monthly' as const,
+    priority: 0.6,
+  }));
+
+  // Make + model combo pages derived from live listings (e.g. /listings/ford/mustang)
+  const makeModelCombos = [...new Set((cars ?? []).map(c => `${toSegment(c.make)}/${toSegment(c.model)}`))];
+  const makeModelPages: MetadataRoute.Sitemap = makeModelCombos.map(combo => ({
+    url: `${BASE_URL}/listings/${combo}`,
+    lastModified: new Date(),
+    changeFrequency: 'daily' as const,
+    priority: 0.7,
+  }));
+
   return [
     ...staticPages,
     ...listingPages,
     ...makePages,
+    ...makeModelPages,
     ...dealerPages,
     ...encyclopediaIndex,
     ...encyclopediaMakePages,
     ...encyclopediaModelPages,
     ...advertiserPages,
+    ...guidePages,
   ];
 }

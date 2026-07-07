@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-06 — current as of commit bec8160 (Sentry error tracking, Axiom structured logging, sell form contact section removed)*
+*Last updated: 2026-07-07 — current as of item 6 complete (Axiom logging expanded to all high-value API routes)*
 
 **Note on data:** this site is pre-launch. As of 2026-07-06 the production database has 1 demo dealer (Demo Motors / contact-us+dealer1@garagecherries.com) with 1 test listing, plus a FastLane dealer account. No real buyers or advertisers yet. Empty tables (`dealers`, `advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -159,7 +159,7 @@
 - [x] `createClient()` (async, RLS-enforced) and `createAdminClient()` (sync, service role) pattern
 - [x] Cloudflare Turnstile CAPTCHA on public-facing submission forms
 - [x] **Sentry error tracking** — `@sentry/nextjs`; client + server + edge configs; `instrumentation.ts` hook; `app/error.tsx` captures unhandled errors; env vars in Vercel (added 2026-07-06)
-- [x] **Axiom structured logging** — `next-axiom`; `lib/logger.ts` unified logger with Axiom + Sentry integration; used in listing submit and admin listing routes; env vars in Vercel (added 2026-07-06)
+- [x] **Axiom structured logging** — `next-axiom`; `lib/logger.ts` unified logger with Axiom + Sentry integration; `createLogger(source)` wired across all high-value API routes: `api/inquire`, `api/dealer/apply`, `api/alerts/match`, `api/notify-watchers`, `api/conversations`, `api/conversations/[id]/messages`, `api/email/digest`, `api/email/dealer-report`, `api/email/expiring-listings`, `api/admin/listings`, `api/admin/events`, `api/listings/submit`; env vars in Vercel (added 2026-07-06, expanded 2026-07-07)
 - [x] Deployed to Vercel (project `garage-cherries`, GarageCherries team account, Hobby plan); custom domain `garagecherries.com` and `www.garagecherries.com` live with SSL
 - [x] **Events calendar** (`/events`) — DB-backed; `events` table with type, date, location, featured flag; public page shows upcoming/featured/past sections; admin Events tab (admin+) has full add/edit/delete CRUD with confirmation modal (added 2026-07-07)
 - [x] **Google Analytics 4** — Measurement ID `G-B36QB0J7TX`; added to `app/layout.tsx` via Next.js `Script` (afterInteractive)

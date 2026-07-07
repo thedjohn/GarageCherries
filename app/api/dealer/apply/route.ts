@@ -4,6 +4,9 @@ import { rateLimit, getClientIP } from '@/lib/rateLimit';
 import { verifyTurnstile } from '@/lib/verifyTurnstile';
 import { notifyAdmin } from '@/lib/notifyAdmin';
 import { US_STATES } from '@/lib/constants';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('api/dealer/apply');
 
 export async function POST(req: NextRequest) {
   const ip = getClientIP(req);
@@ -59,7 +62,11 @@ export async function POST(req: NextRequest) {
     status: 'pending',
   });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    log.error('Failed to insert dealer application', { email, dealerName, error: error.message });
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
+  log.info('Dealer application submitted', { email, dealerName, state: stateVal });
   return NextResponse.json({ success: true });
 }

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { matchAndNotifyAlerts } from '@/lib/matchAlerts';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('api/alerts/match');
 
 // POST /api/alerts/match — internal only, called after a listing is approved
 // Requires Bearer INTERNAL_API_SECRET header
@@ -32,7 +35,10 @@ export async function POST(request: NextRequest) {
   };
 
   // Fire-and-forget — don't block the response
-  matchAndNotifyAlerts(adapted as any).catch(() => {});
+  matchAndNotifyAlerts(adapted as any).catch((e) => {
+    log.error('matchAndNotifyAlerts failed', { carId, error: String(e) });
+  });
 
+  log.info('Alert matching triggered', { carId, title: car.title });
   return NextResponse.json({ ok: true });
 }

@@ -5,6 +5,21 @@ import { createLogger } from '@/lib/logger';
 
 const VALID_TYPES = ['show', 'swap-meet', 'cruise', 'auction'] as const;
 
+export async function GET(req: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const role = await requireAdmin(user?.id ?? null);
+  if (!hasRole(role, 'admin')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const status = req.nextUrl.searchParams.get('status');
+  const admin = createAdminClient();
+  let query = admin.from('events').select('*').order('date', { ascending: true });
+  if (status) query = query.eq('status', status);
+  const { data, error } = await query;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ events: data ?? [] });
+}
+
 export async function POST(req: NextRequest) {
   const log = createLogger('admin/events');
   const supabase = await createClient();
@@ -30,6 +45,7 @@ export async function POST(req: NextRequest) {
     description: description?.trim() ?? '',
     url: url?.trim() || null,
     featured: !!featured,
+    status: 'approved',
   }).select().single();
 
   if (error) {
@@ -50,10 +66,25 @@ export async function PATCH(req: NextRequest) {
   if (!hasRole(role, 'admin')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
-  const { id, name, date, end_date, location, state, type, description, url, featured } = body;
+  const { id, action, name, date, end_date, location, state, type, description, url, featured } = body;
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
   const admin = createAdminClient();
+
+  // approve / reject actions
+  if (action === 'approve' || action === 'reject') {
+    const { error } = await admin.from('events').update({ status: action === 'approve' ? 'approved' : 'rejected' }).eq('id', id);
+    if (error) {
+      log.error(`Event ${action} failed`, new Error(error.message), { eventId: id, adminEmail: user?.email });
+      await log.flush();
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    log.info(`Event ${action}d`, { eventId: id, adminEmail: user?.email });
+    await log.flush();
+    return NextResponse.json({ success: true });
+  }
+
+  // full edit
   const { error } = await admin.from('events').update({
     name: name?.trim(),
     date,

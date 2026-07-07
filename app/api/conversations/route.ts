@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { rateLimit, getClientIP } from '@/lib/rateLimit';
 import { notifyAdmin } from '@/lib/notifyAdmin';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('api/conversations');
 
 export async function POST(req: NextRequest) {
   const ip = getClientIP(req);
@@ -82,10 +85,14 @@ export async function POST(req: NextRequest) {
     sender_name: buyerName || user.email,
     body: message.trim(),
   });
-  if (msgErr) return NextResponse.json({ error: msgErr.message }, { status: 500 });
+  if (msgErr) {
+    log.error('Failed to insert message', { listingId, userId: user.id, error: msgErr.message });
+    return NextResponse.json({ error: msgErr.message }, { status: 500 });
+  }
 
   await admin.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId);
 
+  log.info('Conversation message sent', { conversationId, listingId, userId: user.id, isNew: !existing?.id });
   return NextResponse.json({ conversationId });
 }
 

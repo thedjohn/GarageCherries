@@ -5,6 +5,9 @@ import { createHash } from 'crypto';
 import { rateLimit, getClientIP } from '@/lib/rateLimit';
 import { verifyTurnstile } from '@/lib/verifyTurnstile';
 import { notifyAdmin } from '@/lib/notifyAdmin';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('api/inquire');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FALLBACK_EMAIL = process.env.INQUIRY_FALLBACK_EMAIL;
@@ -86,7 +89,7 @@ export async function POST(request: NextRequest) {
       message,
     });
   } catch (e) {
-    console.error('Failed to store inquiry:', e);
+    log.error('Failed to store inquiry in DB', { carId, error: String(e) });
   }
 
   // Send email
@@ -127,9 +130,10 @@ export async function POST(request: NextRequest) {
       `,
     });
 
+    log.info('Inquiry sent', { carId, carTitle, sellerEmail, usedFallback: sellerEmail === FALLBACK_EMAIL });
     return NextResponse.json({ success: true });
   } catch (e: any) {
-    console.error('Resend error:', e);
+    log.error('Failed to send inquiry email', { carId, carTitle, error: e.message });
     return NextResponse.json({ error: e.message ?? 'Failed to send email' }, { status: 500 });
   }
 }

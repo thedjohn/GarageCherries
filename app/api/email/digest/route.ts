@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('api/email/digest');
 
 // POST /api/email/digest — manually trigger fresh listings digest
 // Sends a summary of new listings in the past 7 days to subscribed users
@@ -87,9 +90,10 @@ export async function POST(request: NextRequest) {
       });
       sent++;
     } catch (err) {
-      console.error(`Failed to send digest to ${email}:`, err);
+      log.error('Failed to send digest email', { userId, email, error: String(err) });
     }
   }
 
+  log.info('Weekly digest sent', { sent, total: subscriberUsers.length, listingCount: cars.length });
   return NextResponse.json({ ok: true, sent, total: subscriberUsers.length });
 }
