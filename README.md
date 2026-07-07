@@ -118,6 +118,9 @@ Open [http://localhost:3000](http://localhost:3000).
 | `/dealer/expired` | Beta expiry landing page |
 | `/advertiser/signup` | Advertiser signup |
 | `/advertiser/dashboard` | Advertiser dashboard |
+| `/events` | Car show calendar — upcoming/past events, community submit form |
+| `/events/[slug]` | Individual event detail page with JSON-LD Event schema |
+| `/sold` | Recently sold vehicles archive (asking price shown as "Listed at $X") |
 | `/admin` | Admin panel (role-gated) |
 | `/admin/email` | Email campaign trigger panel (superadmin) |
 | `/pricing` | Plan pricing page |
@@ -168,6 +171,7 @@ All tables have Row Level Security enabled. Public data is readable by anyone; w
 | `admin_team` | Admin role assignments |
 | `dealer_applications` | Pending/approved/rejected dealer applications |
 | `advertisers` / `ads` / `ad_events` | Advertising system |
+| `events` | Car show calendar (`status`, `slug`, `start_time`, `end_time`, `submitted_by`) |
 
 ---
 
@@ -248,6 +252,12 @@ app/
     page.tsx                       # Admin panel
     email/page.tsx                 # Email campaign triggers
   advertiser/                      # Advertiser pages
+  events/
+    page.tsx                       # Car show calendar (public + submit form)
+    [slug]/page.tsx                # Individual event detail page
+    SubmitEventForm.tsx            # Community event submission (auth required)
+  sold/
+    page.tsx                       # Recently sold vehicles archive
   unsubscribe/                     # Email opt-out pages
   api/
     listings/                      # Submit, edit, renew, delete
