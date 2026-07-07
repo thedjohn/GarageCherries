@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-07 — current as of commit 9921535 (individual event detail pages with JSON-LD Event schema; sitemap includes event URLs; Google Search Console sitemap submitted)*
+*Last updated: 2026-07-07 — current as of commit 3d9a51c (/sold archive page; individual event detail pages with JSON-LD Event schema; sitemap updated; Google Search Console sitemap submitted)*
 
 **Note on data:** this site is pre-launch. As of 2026-07-06 the production database has 1 demo dealer (Demo Motors / contact-us+dealer1@garagecherries.com) with 1 test listing, plus a FastLane dealer account. No real buyers or advertisers yet. Empty tables (`dealers`, `advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -97,10 +97,11 @@
 - [x] Pricing page (`/pricing`) — dealer plan tiers, private-seller pricing, advertiser section (banner ads, sponsored listings, newsletter), 250th promo banner, Stripe coming-soon note
 - [x] About (`/about`), Contact (`/contact`), Privacy Policy (`/privacy`), Terms of Service (`/terms`)
 - [x] Cookie consent banner and Turnstile CAPTCHA on public forms
-- [x] XML Sitemap (`/sitemap.xml`) — dynamic, covers homepage, listings (individual + make + make/model), dealers, encyclopedia (54 models), advertisers, guides (6 articles), `/events`, individual event detail pages (`/events/[slug]`), `/dealer/apply`, `/advertiser/signup`, `/privacy`, `/terms`; revalidates every hour
+- [x] XML Sitemap (`/sitemap.xml`) — dynamic, covers homepage, listings (individual + make + make/model), dealers, encyclopedia (54 models), advertisers, guides (6 articles), `/events`, individual event detail pages (`/events/[slug]`), `/sold`, `/dealer/apply`, `/advertiser/signup`, `/privacy`, `/terms`; revalidates every hour
 - [x] Robots.txt (`/robots.txt`) — allows all crawlers, blocks `/admin`, `/api/`, `/dealer/dashboard`
 - [x] **Advertiser public directory** (`/advertisers`) — grouped by category (detail, insurance, finance, transport, storage, restoration, inspection); active + valid trial only
 - [x] **Advertiser public profile pages** (`/advertisers/[slug]`) — business info, description, phone/website CTAs, active ads as "Current Offers"; `slug`, `description`, `website` columns added via migration
+- [x] **Sold archive** (`/sold`) — gallery of recently sold vehicles (up to 120, ordered by `sold_at` desc); shows asking price labeled "Listed at $X" (not sale price); sold date ribbon + light grayscale tint on photos; CTA to browse active listings; in sitemap at priority 0.7/daily. *Future enhancement: add optional actual sale price field to Mark as Sold flow (Option 2 — deferred)*
 
 ### Buyer Accounts
 - [x] Signup, Login, forgot/reset password flow
@@ -215,6 +216,7 @@
 | **Verified History Badge** | Full vehicle history report (accidents, title, prior owners) | Requires Carfax/AutoCheck API + commercial agreement |
 | **Email Newsletter Signup** | Buyer opt-in form for digest | No signup form on site |
 | **Sales Pipeline / CRM** | Track dealers & advertisers through free → paying conversion. Options: (A) Sales tab in `/admin` showing active/expiring/expired/converted with one-click email; (B) Export contacts CSV from admin → load into HubSpot free tier for email sequences and deal tracking; (C) automated drip emails at 30 days / 14 days / day-of expiry. Recommended order: B first (quick export), then C (drip emails), then A. | Stripe must be live first for "converted" status to mean anything |
+| **Sold archive — actual sale price** | Add optional "Sold for $X" field to Mark as Sold flow; show real transaction price on `/sold` instead of asking price | Deferred (Option 2) — `/sold` page is live with asking price for now |
 
 ### Mid-Term
 
@@ -287,13 +289,13 @@
 ## Recommended Next Steps (Priority Order)
 
 1. **Promo expiry notification email** — automated email to all users (dealers, individuals, advertisers) warning that free period ends October 31, 2026; send ~2 weeks before cutoff
-2. **Wire Stripe** — featured listing upgrades are the fastest first product to charge for; pricing page already shows plan tiers; `promo_expires_at` column already tracking who needs to pay post-promo
-4. **Add email preferences tab to `/account`** — lets users manage all opt-outs without waiting for an email
+2. **Wire Stripe** — featured listing upgrades are the fastest first product to charge for; pricing page already shows plan tiers; `promo_expires_at` column already tracking who needs to pay post-promo *(on hold)*
+3. **Build `/account/inquiries`** — completes the buyer account experience
+4. **Add email preferences tab to `/account`** — lets users manage all opt-outs in one place (unsubscribe links in emails already work; this is a convenience UI)
 5. **Decide on dealer self-serve signup** — current apply-and-wait model may be intentional (vetting quality), but if faster growth is the goal, self-serve + Stripe removes the bottleneck
-6. **Build `/account/inquiries`** — completes the buyer account experience
-7. **Build public `/sold` archive page** — SEO value + buyer trust signal
-8. **Restore inspection-affiliate button** — once Lemon Squad agreement is confirmed
-9. **Submit event pages to Google** — use URL Inspection in Search Console to request indexing for individual `/events/[slug]` pages; rich Event results will appear once Google crawls the JSON-LD
+6. **Restore inspection-affiliate button** — once Lemon Squad agreement is confirmed
+7. **Submit event pages to Google** — use URL Inspection in Search Console to request indexing for individual `/events/[slug]` pages; rich Event results will appear once Google crawls the JSON-LD
+8. **Add actual sale price to `/sold`** — optional "Sold for $X" field on Mark as Sold flow; deferred until enough sold listings accumulate to make it worthwhile
 
 ---
 
