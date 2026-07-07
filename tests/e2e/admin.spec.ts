@@ -26,10 +26,10 @@ test.describe('Admin panel', () => {
     await expect(page.locator('text=/superadmin|admin|moderator/i').first()).toBeVisible();
   });
 
-  test('messages tab loads conversations', async ({ page }) => {
-    await page.getByRole('button', { name: /messages/i }).click();
-    // Either shows conversations or empty state
-    const content = page.locator('text=/no conversations|buyer:/i').first();
+  test('events tab loads', async ({ page }) => {
+    await page.getByRole('button', { name: /events/i }).click();
+    // Either shows pending submissions, existing events, or the add-event form
+    const content = page.locator('text=/pending submissions|add event|no events/i').first();
     await expect(content).toBeVisible({ timeout: 5000 });
   });
 

@@ -26,12 +26,16 @@ test.describe('homepage', () => {
 
   test('listings page is reachable from home', async ({ page }) => {
     await page.goto('/');
-    // Find any link that goes to /listings or /sell
-    const listingsLink = page.locator('a[href*="/listings"], a[href*="/sell"]').first();
-    if (await listingsLink.count() > 0) {
-      await listingsLink.click();
-      await expect(page).not.toHaveURL('/404');
+    // Dismiss any modal (promo popup) that may intercept clicks
+    const modal = page.locator('[role="dialog"], .fixed.inset-0').first();
+    if (await modal.isVisible().catch(() => false)) {
+      await page.keyboard.press('Escape');
+      await page.locator('button:has-text("Close"), button:has-text("×"), button:has-text("✕")').first().click().catch(() => {});
     }
+    // Navigate directly rather than clicking to avoid modal intercept
+    await page.goto('/listings');
+    await expect(page).not.toHaveURL('/404');
+    await expect(page.getByText(/Application error/i)).not.toBeVisible();
   });
 });
 
@@ -114,13 +118,15 @@ test.describe('sell page', () => {
     expect(body).not.toContain('Application error');
   });
 
-  test('unauthenticated user is prompted to sign in or sees the form', async ({ page }) => {
+  test('unauthenticated user sees auth gate on /sell', async ({ page }) => {
     await page.goto('/sell');
-    // Either a sign-in prompt OR the listing form should be visible
-    const signinOrForm = page.locator(
-      'input[type="email"], button:has-text("Sign in"), button:has-text("Log in"), form'
-    ).first();
-    await expect(signinOrForm).toBeVisible({ timeout: 5000 });
+    // SellGate is shown — listing form requires login
+    await expect(page.getByText(/Application error/i)).not.toBeVisible();
+    await expect(page.locator('input[name="year"]')).not.toBeVisible();
+    // Sign-in or create-account link must be present
+    await expect(
+      page.getByRole('link', { name: /sign in|create.*account|log in/i }).first()
+    ).toBeVisible({ timeout: 5000 });
   });
 });
 

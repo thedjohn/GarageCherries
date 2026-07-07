@@ -87,8 +87,13 @@ test.describe('/sell page', () => {
     await expect(page.getByText(/Application error/i)).not.toBeVisible();
   });
 
-  test('shows the post a listing form', async ({ page }) => {
+  test('logged-out visitor sees auth gate, not the listing form', async ({ page }) => {
     await page.goto('/sell');
-    await expect(page.getByRole('heading', { name: /post your car/i })).toBeVisible();
+    // SellGate is shown — the form requires login
+    await expect(page.locator('input[name="year"]')).not.toBeVisible();
+    // A sign-in or create-account CTA must be present
+    await expect(
+      page.getByRole('link', { name: /sign in|create.*account|log in/i }).first()
+    ).toBeVisible();
   });
 });
