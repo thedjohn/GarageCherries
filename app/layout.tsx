@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import { MessengerProvider } from '@/lib/messenger-context';
 import MessengerWidget from '@/components/MessengerWidget';
 import PromoBanner from '@/components/PromoBanner';
+import SessionGuard from '@/components/SessionGuard';
 
 const geist = Geist({ subsets: ['latin'] });
 
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${geist.className} bg-zinc-50 text-zinc-900 min-h-screen flex flex-col`}>
         <MessengerProvider>
+          <SessionGuard />
           <Header />
           <PromoBanner />
           <main className="flex-1">{children}</main>

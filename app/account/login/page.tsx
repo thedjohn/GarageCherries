@@ -8,6 +8,7 @@ function LoginForm() {
   const router   = useRouter();
   const params   = useSearchParams();
   const returnTo = params.get('return') ?? '/account/watchlist';
+  const sessionEnded = params.get('reason') === 'session_ended';
 
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
@@ -44,6 +45,12 @@ function LoginForm() {
 
         <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-8">
           <h1 className="text-xl font-bold text-zinc-900 mb-6">Welcome back</h1>
+
+          {sessionEnded && (
+            <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+              Your session has ended. Please sign in again.
+            </p>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
