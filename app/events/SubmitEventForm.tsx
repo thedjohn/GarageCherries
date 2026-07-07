@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 const EVENT_TYPES = ['show', 'swap-meet', 'cruise', 'auction'] as const;
@@ -18,9 +18,10 @@ export default function SubmitEventForm() {
   const [success, setSuccess] = useState(false);
 
   // Lazy-load auth state on first render
-  useState(() => {
-    createClient().auth.getUser().then(({ data }) => setUser(data.user ?? null));
-  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data }) => setUser(data.user ?? null as any));
+  }, []);
 
   // Not yet loaded
   if (user === undefined) return null;
