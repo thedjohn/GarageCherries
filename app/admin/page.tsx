@@ -34,7 +34,15 @@ interface SiteUser {
   conversation_count: number;
 }
 
-type Tab = 'listings' | 'messages' | 'reported' | 'team' | 'users' | 'applications';
+type Tab = 'listings' | 'messages' | 'reported' | 'team' | 'users' | 'applications' | 'events';
+
+interface CarEvent {
+  id: string; name: string; date: string; end_date: string | null;
+  location: string; state: string; type: string; description: string;
+  url: string | null; featured: boolean; created_at: string;
+}
+const BLANK_EVENT = { name: '', date: '', end_date: '', location: '', state: '', type: 'show', description: '', url: '', featured: false };
+const EVENT_TYPES = ['show', 'swap-meet', 'cruise', 'auction'] as const;
 
 interface DealerApplication {
   id: string; name: string; email: string; phone: string;
@@ -78,6 +86,15 @@ export default function AdminPage() {
   const [newRole, setNewRole] = useState<'moderator' | 'superadmin'>('moderator');
   const [teamWorking, setTeamWorking] = useState(false);
   const [teamError, setTeamError] = useState('');
+
+  // Events
+  const [events, setEvents] = useState<CarEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [eventForm, setEventForm] = useState<typeof BLANK_EVENT>(BLANK_EVENT);
+  const [editingEvent, setEditingEvent] = useState<CarEvent | null>(null);
+  const [eventWorking, setEventWorking] = useState(false);
+  const [eventError, setEventError] = useState('');
+  const [confirmDeleteEvent, setConfirmDeleteEvent] = useState<CarEvent | null>(null);
 
   // Applications
   const [applications, setApplications] = useState<DealerApplication[]>([]);
@@ -183,6 +200,46 @@ export default function AdminPage() {
     const res = await fetch('/api/admin/dealer-applications');
     if (res.ok) { const { applications: a } = await res.json(); setApplications(a ?? []); }
     setApplicationsLoading(false);
+  }
+
+  async function loadEvents() {
+    setEventsLoading(true);
+    const supabase = createClient();
+    const { data } = await supabase.from('events').select('*').order('date', { ascending: true });
+    setEvents(data ?? []);
+    setEventsLoading(false);
+  }
+
+  async function saveEvent() {
+    setEventWorking(true); setEventError('');
+    const method = editingEvent ? 'PATCH' : 'POST';
+    const body = editingEvent ? { id: editingEvent.id, ...eventForm } : eventForm;
+    const res = await fetch('/api/admin/events', {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    setEventWorking(false);
+    if (!res.ok) { setEventError(json.error ?? 'Failed'); return; }
+    if (editingEvent) {
+      setEvents(prev => prev.map(e => e.id === editingEvent.id ? { ...e, ...eventForm } : e));
+    } else {
+      setEvents(prev => [...prev, json.event]);
+    }
+    setEditingEvent(null);
+    setEventForm(BLANK_EVENT);
+  }
+
+  async function deleteEvent() {
+    if (!confirmDeleteEvent) return;
+    const res = await fetch('/api/admin/events', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: confirmDeleteEvent.id }),
+    });
+    if (res.ok) setEvents(prev => prev.filter(e => e.id !== confirmDeleteEvent.id));
+    setConfirmDeleteEvent(null);
   }
 
   async function handleApplication(id: string, action: 'approve' | 'reject', note?: string) {
@@ -443,6 +500,11 @@ export default function AdminPage() {
                 {applications.filter(a => a.status === 'pending').length}
               </span>
             )}
+          </button>
+        )}
+        {(adminRole === 'superadmin' || adminRole === 'admin') && (
+          <button onClick={() => { setTab('events'); if (events.length === 0) loadEvents(); }} className={tabCls('events')}>
+            Events
           </button>
         )}
         {(adminRole === 'superadmin' || adminRole === 'admin') && (
@@ -832,6 +894,110 @@ export default function AdminPage() {
           </div>
         )}
     </>)}
+
+      {/* Events tab */}
+      {tab === 'events' && (adminRole === 'superadmin' || adminRole === 'admin') && (
+        <div>
+          {/* Add / Edit form */}
+          <div className="bg-white border border-zinc-100 rounded-2xl p-6 shadow-sm mb-6">
+            <h2 className="font-bold text-zinc-900 mb-4">{editingEvent ? 'Edit Event' : 'Add Event'}</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+              <div className="md:col-span-2">
+                <label className={labelCls}>Event Name *</label>
+                <input className={inputCls} value={eventForm.name} onChange={e => setEventForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Muscle Car & Corvette Nationals" />
+              </div>
+              <div>
+                <label className={labelCls}>Start Date *</label>
+                <input type="date" className={inputCls} value={eventForm.date} onChange={e => setEventForm(f => ({ ...f, date: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>End Date (optional)</label>
+                <input type="date" className={inputCls} value={eventForm.end_date} onChange={e => setEventForm(f => ({ ...f, end_date: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>City *</label>
+                <input className={inputCls} value={eventForm.location} onChange={e => setEventForm(f => ({ ...f, location: e.target.value }))} placeholder="Springfield" />
+              </div>
+              <div>
+                <label className={labelCls}>State *</label>
+                <input className={inputCls} value={eventForm.state} maxLength={2} onChange={e => setEventForm(f => ({ ...f, state: e.target.value.toUpperCase() }))} placeholder="IL" />
+              </div>
+              <div>
+                <label className={labelCls}>Type *</label>
+                <select className={inputCls} value={eventForm.type} onChange={e => setEventForm(f => ({ ...f, type: e.target.value }))}>
+                  {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Website URL</label>
+                <input className={inputCls} value={eventForm.url} onChange={e => setEventForm(f => ({ ...f, url: e.target.value }))} placeholder="https://..." />
+              </div>
+              <div className="md:col-span-2">
+                <label className={labelCls}>Description</label>
+                <textarea className={inputCls} rows={2} value={eventForm.description} onChange={e => setEventForm(f => ({ ...f, description: e.target.value }))} placeholder="Brief event description…" />
+              </div>
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="evt-featured" checked={eventForm.featured} onChange={e => setEventForm(f => ({ ...f, featured: e.target.checked }))} className="accent-red-600" />
+                <label htmlFor="evt-featured" className="text-sm font-medium text-zinc-700">Featured event</label>
+              </div>
+            </div>
+            {eventError && <p className="text-sm text-red-600 mb-2">{eventError}</p>}
+            <div className="flex gap-3">
+              <button onClick={saveEvent} disabled={eventWorking || !eventForm.name || !eventForm.date || !eventForm.location || !eventForm.state}
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold text-sm rounded-lg transition-colors">
+                {eventWorking ? 'Saving…' : editingEvent ? 'Save Changes' : 'Add Event'}
+              </button>
+              {editingEvent && (
+                <button onClick={() => { setEditingEvent(null); setEventForm(BLANK_EVENT); setEventError(''); }}
+                  className="px-5 py-2 border border-zinc-200 text-zinc-600 font-semibold text-sm rounded-lg hover:bg-zinc-50 transition-colors">
+                  Cancel
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Event list */}
+          {eventsLoading && <div className="text-center py-10 text-zinc-400">Loading…</div>}
+          {!eventsLoading && events.length === 0 && (
+            <div className="text-center py-10 text-zinc-400">No events yet. Add one above.</div>
+          )}
+          <div className="space-y-3">
+            {events.map(e => (
+              <div key={e.id} className="bg-white border border-zinc-100 rounded-xl p-4 flex items-start justify-between gap-4 shadow-sm">
+                <div>
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600">{e.type}</span>
+                    {e.featured && <span className="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-600">Featured</span>}
+                  </div>
+                  <p className="font-semibold text-zinc-900 text-sm">{e.name}</p>
+                  <p className="text-xs text-zinc-500">{e.date}{e.end_date ? ` – ${e.end_date}` : ''} · {e.location}, {e.state}</p>
+                  {e.description && <p className="text-xs text-zinc-400 mt-0.5 line-clamp-1">{e.description}</p>}
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={() => { setEditingEvent(e); setEventForm({ name: e.name, date: e.date, end_date: e.end_date ?? '', location: e.location, state: e.state, type: e.type, description: e.description, url: e.url ?? '', featured: e.featured }); }}
+                    className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition-colors">Edit</button>
+                  <button onClick={() => setConfirmDeleteEvent(e)}
+                    className="text-xs font-semibold text-zinc-400 hover:text-red-600 transition-colors">Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Delete confirm modal */}
+          {confirmDeleteEvent && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+              <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+                <h3 className="font-bold text-zinc-900 mb-2">Delete event?</h3>
+                <p className="text-sm text-zinc-500 mb-4">&ldquo;{confirmDeleteEvent.name}&rdquo; will be permanently removed from the calendar.</p>
+                <div className="flex gap-3">
+                  <button onClick={deleteEvent} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold text-sm py-2 rounded-xl transition-colors">Delete</button>
+                  <button onClick={() => setConfirmDeleteEvent(null)} className="flex-1 border border-zinc-200 text-zinc-600 font-semibold text-sm py-2 rounded-xl hover:bg-zinc-50 transition-colors">Cancel</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Users tab */}
       {tab === 'users' && (
