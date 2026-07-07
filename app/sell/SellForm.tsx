@@ -19,6 +19,7 @@ export default function SellForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [limitReached, setLimitReached] = useState(false);
+  const [fuelType, setFuelType] = useState('');
   const [images, setImages] = useState<ImageEntry[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -249,9 +250,24 @@ export default function SellForm() {
               <input name="engine" type="text" placeholder="396 V8" className={inputCls} />
             </div>
             <div>
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Fuel Type</label>
+              <select name="fuelType" value={fuelType} onChange={e => setFuelType(e.target.value)} className={inputCls}>
+                <option value="">Select...</option>
+                <option>Gasoline</option>
+                <option>Diesel</option>
+                <option>Electric</option>
+                <option>Hybrid</option>
+                <option>Flex Fuel</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Transmission</label>
               <select name="transmission" className={inputCls}>
-                {TRANSMISSIONS.map(t => <option key={t}>{t}</option>)}
+                <option value="">Select...</option>
+                {fuelType === 'Electric'
+                  ? <option>1-Speed</option>
+                  : TRANSMISSIONS.map(t => <option key={t}>{t}</option>)
+                }
               </select>
             </div>
             <div>

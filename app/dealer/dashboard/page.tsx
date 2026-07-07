@@ -258,6 +258,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
               <input type="text" placeholder="Displacement" value={fields.displacement}
                 onChange={e => set('displacement', e.target.value)} className={inp} />
             </div>
+            {fields.fuelType !== 'Electric' && (
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Cylinders</label>
               <select value={fields.cylinders} onChange={e => set('cylinders', e.target.value)} className={inp}>
@@ -265,6 +266,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
                 {[4,5,6,8,10,12,16].map(n => <option key={n} value={n}>{n}-cylinder</option>)}
               </select>
             </div>
+            )}
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Horsepower</label>
               <input type="number" min="0" placeholder="Horsepower" value={fields.horsepower}
@@ -301,14 +303,20 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Transmission</label>
               <select value={fields.transmission} onChange={e => set('transmission', e.target.value)} className={inp}>
                 <option value="">Select...</option>
-                {TRANSMISSIONS.map(t => <option key={t}>{t}</option>)}
+                {fields.fuelType === 'Electric'
+                  ? <option>1-Speed</option>
+                  : TRANSMISSIONS.map(t => <option key={t}>{t}</option>)
+                }
               </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5"># of Speeds</label>
               <select value={fields.numSpeeds} onChange={e => set('numSpeeds', e.target.value)} className={inp}>
                 <option value="">Select...</option>
-                {[3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}-speed</option>)}
+                {fields.fuelType === 'Electric'
+                  ? <option value={1}>1-speed</option>
+                  : [3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}-speed</option>)
+                }
               </select>
             </div>
             <div>
