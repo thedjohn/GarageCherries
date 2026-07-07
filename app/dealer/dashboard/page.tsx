@@ -877,7 +877,7 @@ function InquiriesTab({ realInquiries }: { realInquiries?: any[] }) {
 }
 
 // ─── Dealer Settings ──────────────────────────────────────────────────────────
-function DealerSettings({ dealer, onSaved }: { dealer: DbDealer & { phone?: string; email?: string; location?: string; state?: string; description?: string; website?: string; specialties?: string[] }; onSaved: () => void }) {
+function DealerSettings({ dealer, onSaved }: { dealer: DbDealer & { phone?: string; email?: string; location?: string; state?: string; description?: string; website?: string; specialties?: string[]; logo?: string }; onSaved: () => void }) {
   const [fields, setFields] = useState({
     name:        dealer.name        ?? '',
     phone:       dealer.phone       ?? '',
@@ -890,10 +890,38 @@ function DealerSettings({ dealer, onSaved }: { dealer: DbDealer & { phone?: stri
     website:     dealer.website     ?? '',
     specialties: (dealer.specialties ?? []).join(', '),
   });
+  const [logoUrl, setLogoUrl] = useState<string>(dealer.logo ?? '');
+  const [logoUploading, setLogoUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const set = (k: string, v: string) => { setFields(f => ({ ...f, [k]: v })); setSaved(false); };
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { setError('Logo must be under 2 MB'); return; }
+    setLogoUploading(true);
+    setError('');
+    const supabase = createClient();
+    const ext = file.name.split('.').pop();
+    const path = `${dealer.id}/logo.${ext}`;
+    const { error: uploadError } = await supabase.storage.from('dealer-logos').upload(path, file, { upsert: true });
+    if (uploadError) { setError('Logo upload failed: ' + uploadError.message); setLogoUploading(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from('dealer-logos').getPublicUrl(path);
+    // Bust cache so the browser picks up the new image
+    const bustedUrl = `${publicUrl}?t=${Date.now()}`;
+    setLogoUrl(bustedUrl);
+    // Save logo URL immediately
+    await fetch('/api/dealer/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dealerId: dealer.id, logo: publicUrl }),
+    });
+    setLogoUploading(false);
+    onSaved();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -927,6 +955,29 @@ function DealerSettings({ dealer, onSaved }: { dealer: DbDealer & { phone?: stri
   return (
     <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-6 max-w-2xl">
       <h2 className="font-bold text-zinc-800 text-lg mb-6">Dealer Profile</h2>
+
+      {/* Logo upload */}
+      <div className="mb-6 pb-6 border-b border-zinc-100">
+        <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">Dealership Logo</label>
+        <div className="flex items-center gap-4">
+          <div className="w-20 h-20 rounded-xl border-2 border-zinc-200 bg-zinc-50 flex items-center justify-center overflow-hidden shrink-0">
+            {logoUrl
+              ? <img src={logoUrl} alt="Dealer logo" className="w-full h-full object-contain p-1" />
+              : <span className="text-2xl text-zinc-300">🏢</span>
+            }
+          </div>
+          <div>
+            <button type="button" onClick={() => logoInputRef.current?.click()}
+              disabled={logoUploading}
+              className="text-sm border border-zinc-200 px-4 py-2 rounded-xl hover:bg-zinc-50 font-medium disabled:opacity-60 transition-colors">
+              {logoUploading ? 'Uploading…' : logoUrl ? 'Change Logo' : 'Upload Logo'}
+            </button>
+            <p className="text-xs text-zinc-400 mt-1.5">JPG, PNG or WebP · max 2 MB</p>
+            <input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleLogoChange} />
+          </div>
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
