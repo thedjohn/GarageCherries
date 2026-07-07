@@ -14,6 +14,10 @@ const BASE_URL = 'https://www.garagecherries.com';
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
+  icons: {
+    icon: '/cherry-logo.jpg',
+    apple: '/cherry-logo.jpg',
+  },
   title: {
     default: 'GarageCherries — Classic, Muscle, Sport & Collector Cars',
     template: '%s | GarageCherries',

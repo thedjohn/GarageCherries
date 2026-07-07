@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 
 function NewsletterForm() {
@@ -77,7 +78,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-xl">🍒</span>
+              <Image src="/cherry-logo.jpg" alt="GarageCherries" width={28} height={28} className="rounded-sm" />
               <span className="text-white font-bold">Garage<span className="text-red-500">Cherries</span></span>
             </div>
             <p className="text-sm leading-relaxed">The premier marketplace for classic, muscle, and collector cars. Buy, sell, and discover automotive history.</p>
