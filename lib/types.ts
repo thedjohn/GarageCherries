@@ -85,7 +85,7 @@ export const BODY_STYLES = [
 // Good, Project" would be a worse scan order than "Excellent, Good, Fair, Project".
 export const CONDITIONS = ['All','Excellent','Good','Fair','Project'];
 
-export const TRANSMISSIONS = ['Automatic','Manual'];
+export const TRANSMISSIONS = ['Automatic', 'Manual', '1-Speed'];
 
 export const STATES = [
   'All States','AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA',
