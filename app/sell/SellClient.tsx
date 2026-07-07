@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useCallback } from 'react';
-import { MAKES, BODY_STYLES, CONDITIONS } from '@/lib/types';
+import { MAKES, BODY_STYLES, CONDITIONS, TRANSMISSIONS } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
 import Turnstile from '@/components/Turnstile';
 
@@ -28,6 +28,7 @@ export default function SellClient() {
   const [vin, setVin] = useState('');
   const [vinResult, setVinResult] = useState<VinResult | null>(null);
   const [vinLoading, setVinLoading] = useState(false);
+  const [fuelType, setFuelType] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragIndex = useRef<number | null>(null);
   const onCaptchaVerify = useCallback((token: string) => setCaptchaToken(token), []);
@@ -126,6 +127,10 @@ export default function SellClient() {
           imageUrls.push(publicUrl);
         }
         fd.set('imageUrls', JSON.stringify(imageUrls));
+        ['mileage', 'price'].forEach(field => {
+          const val = fd.get(field) as string;
+          if (val) fd.set(field, val.replace(/,/g, ''));
+        });
         if (captchaToken) fd.set('cf-turnstile-response', captchaToken);
         if (vin.trim()) fd.set('vin', vin.trim());
         fd.set('vinVerified', vinResult?.verified ? 'true' : 'false');
@@ -164,7 +169,8 @@ export default function SellClient() {
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Mileage</label>
-              <input type="number" name="mileage" min="0" placeholder="Leave blank if unknown"
+              <input type="text" inputMode="numeric" name="mileage" placeholder="Leave blank if unknown"
+                onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); e.target.value = raw ? Number(raw).toLocaleString() : ''; }}
                 className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
             </div>
             <div>
@@ -181,6 +187,18 @@ export default function SellClient() {
               </select>
             </div>
             <div>
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Fuel Type</label>
+              <select name="fuelType" value={fuelType} onChange={e => setFuelType(e.target.value)}
+                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                <option value="">Select...</option>
+                <option>Gasoline</option>
+                <option>Diesel</option>
+                <option>Electric</option>
+                <option>Hybrid</option>
+                <option>Flex Fuel</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Engine</label>
               <input type="text" name="engine" placeholder="396 V8"
                 className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
@@ -188,8 +206,11 @@ export default function SellClient() {
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Transmission</label>
               <select name="transmission" className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-                <option>Manual</option>
-                <option>Automatic</option>
+                <option value="">Select...</option>
+                {fuelType === 'Electric'
+                  ? <option>1-Speed</option>
+                  : TRANSMISSIONS.map(t => <option key={t}>{t}</option>)
+                }
               </select>
             </div>
             <div>
@@ -201,7 +222,8 @@ export default function SellClient() {
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Asking Price *</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
-                <input type="number" name="price" required min="0" placeholder="89500"
+                <input type="text" inputMode="numeric" name="price" required placeholder="89,500"
+                  onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); e.target.value = raw ? Number(raw).toLocaleString() : ''; }}
                   className="w-full border border-zinc-200 rounded-xl pl-7 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
               </div>
             </div>
