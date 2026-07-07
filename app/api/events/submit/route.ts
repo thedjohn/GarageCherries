@@ -6,6 +6,10 @@ import { createLogger } from '@/lib/logger';
 const log = createLogger('api/events/submit');
 const VALID_TYPES = ['show', 'swap-meet', 'cruise', 'auction'] as const;
 
+function toEventSlug(name: string, date: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + date;
+}
+
 export async function POST(req: NextRequest) {
   const ip = getClientIP(req);
   const { allowed } = rateLimit(`events-submit:${ip}`, 5, 60 * 60 * 1000);
@@ -36,6 +40,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await admin.from('events').insert({
     name: name.trim(),
+    slug: toEventSlug(name.trim(), date),
     date,
     end_date: end_date?.trim() || null,
     start_time: start_time?.trim() || null,

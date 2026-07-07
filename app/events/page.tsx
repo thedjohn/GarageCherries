@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import SubmitEventForm from './SubmitEventForm';
 
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 interface CarShowEvent {
-  id: string; name: string; date: string; end_date?: string | null;
+  id: string; name: string; slug?: string | null; date: string; end_date?: string | null;
   start_time?: string | null; end_time?: string | null;
   location: string; state: string;
   type: 'show' | 'swap-meet' | 'cruise' | 'auction';
@@ -142,10 +143,10 @@ function EventCard({ event, highlight }: { event: CarShowEvent; highlight?: bool
           )}
         </div>
         <h3 className="font-bold text-zinc-900 text-sm leading-snug">
-          {event.url ? (
-            <a href={event.url} target="_blank" rel="noopener noreferrer" className="hover:text-red-600 transition-colors">
+          {event.slug ? (
+            <Link href={`/events/${event.slug}`} className="hover:text-red-600 transition-colors">
               {event.name}
-            </a>
+            </Link>
           ) : event.name}
         </h3>
         <p className="text-xs text-zinc-500 mt-0.5">

@@ -14,10 +14,11 @@ const BASE_URL = 'https://www.garagecherries.com';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createAdminClient();
 
-  const [{ data: cars }, { data: dealers }, { data: advertisers }] = await Promise.all([
+  const [{ data: cars }, { data: dealers }, { data: advertisers }, { data: events }] = await Promise.all([
     supabase.from('listings').select('id, slug, make, model, featured, listed_at, created_at'),
     supabase.from('dealers').select('slug, created_at'),
     supabase.from('advertisers').select('slug, created_at').eq('active', true).gt('trial_ends_at', new Date().toISOString()),
+    supabase.from('events').select('slug, date').eq('status', 'approved').not('slug', 'is', null),
   ]);
 
   const GUIDE_SLUGS = [
@@ -105,6 +106,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
+  const eventPages: MetadataRoute.Sitemap = (events ?? [])
+    .filter(e => e.slug)
+    .map(e => ({
+      url: `${BASE_URL}/events/${e.slug}`,
+      lastModified: new Date(e.date ?? new Date()),
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
+    }));
+
   // Make + model combo pages derived from live listings (e.g. /listings/ford/mustang)
   const makeModelCombos = [...new Set((cars ?? []).map(c => `${toSegment(c.make)}/${toSegment(c.model)}`))];
   const makeModelPages: MetadataRoute.Sitemap = makeModelCombos.map(combo => ({
@@ -125,5 +135,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...encyclopediaModelPages,
     ...advertiserPages,
     ...guidePages,
+    ...eventPages,
   ];
 }

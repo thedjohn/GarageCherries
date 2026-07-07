@@ -6,6 +6,10 @@ import { createLogger } from '@/lib/logger';
 
 const VALID_TYPES = ['show', 'swap-meet', 'cruise', 'auction'] as const;
 
+function toEventSlug(name: string, date: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + date;
+}
+
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -38,6 +42,7 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data, error } = await admin.from('events').insert({
     name: name.trim(),
+    slug: toEventSlug(name.trim(), date),
     date,
     end_date: end_date || null,
     start_time: start_time?.trim() || null,
