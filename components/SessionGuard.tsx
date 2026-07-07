@@ -30,8 +30,13 @@ export default function SessionGuard() {
         const path = new URL(rawUrl, window.location.origin).pathname;
 
         if (path.startsWith('/api/')) {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
+          // getUser() (not getSession()) -- it round-trips to the Supabase Auth
+          // server to confirm the session is genuinely still valid, rather than
+          // trusting the local cache. A stray 401 can happen right after sign-in
+          // from an unrelated timing race; only a server-confirmed invalid
+          // session should trigger a forced logout.
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
             await supabase.auth.signOut();
             router.push('/account/login?reason=session_ended');
           }
