@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-06 — current as of commit bb31525 (SEO deep dive, advertiser public pages, sitemap expansion, filter clamping, GSC + Bing verified)*
+*Last updated: 2026-07-06 — current as of commit cfab57f (dealer logo upload, dealer password reset page, dealer-logos storage bucket)*
 
 **Note on data:** this site is pre-launch. As of 2026-07-03 the production database has 2 manually-added test listings and otherwise no real users, dealers, or advertisers. Empty tables (`dealers`, `advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -39,7 +39,8 @@
 - [x] Overview tab — active listings, views (30d), inquiries (30d), avg. days on market, month-over-month comparison
 - [x] Inventory tab — add, edit, delete, mark as sold; dealer-added listings bypass review (inserted `status: 'approved'` immediately)
 - [x] Inquiries tab — buyer messages (real data from `GET /api/dealer/metrics`)
-- [x] Settings tab — full profile management (name, phone, address, logo, description, specialties)
+- [x] Settings tab — full profile management (name, phone, address, description, specialties)
+- [x] **Logo upload in Settings tab** — dealers upload/replace logo (JPG/PNG/WebP ≤2 MB); stored in Supabase Storage `dealer-logos` bucket (public); URL saved to `dealers.logo`; cache-busted preview updates immediately (added 2026-07-06)
 - [x] Price history recorded automatically on every price edit, fires watcher notification
 - [x] Mark as Sold with confirmation modal
 - [x] Free-text make input with `<datalist>` autocomplete
@@ -74,6 +75,7 @@
 - [x] Public application form (`/dealer/apply`) — name, contact, dealer name, address, specialties, description, CAPTCHA
 - [x] Rate limited 3/hr/IP; duplicate application/dealer detection
 - [x] Admin review at `/admin` — approve creates an auth user + `dealers` row (`plan: 'beta'`); `beta_expires_at = 2026-10-31` for 250th promo applications (submitted before Aug 1 2026), otherwise `now + 6 months`; emails a password-reset link; reject sends a note
+- [x] **Dealer password reset page** (`/dealer/reset-password`) — validates Supabase session from reset email link; shows new-password + confirm fields; updates auth on submit; redirects to `/dealer/login`; handles expired/invalid links gracefully (added 2026-07-06)
 
 ### Advertising System
 - [x] Public marketing page (`/advertise`) and advertiser signup (`/advertiser/signup`) — 14-day trial, tier selection
@@ -148,7 +150,7 @@
 - [x] Next.js 16 App Router with TypeScript, React 19
 - [x] Supabase PostgreSQL with Row Level Security
 - [x] Supabase Auth (buyer + private seller + dealer + advertiser + admin sessions)
-- [x] Supabase Storage (listing photo uploads via signed URL + lazy client-side upload)
+- [x] Supabase Storage (listing photo uploads via signed URL + lazy client-side upload); `dealer-logos` public bucket with RLS policies for authenticated dealer uploads (added 2026-07-06)
 - [x] Server components + client components correctly separated
 - [x] `createClient()` (async, RLS-enforced) and `createAdminClient()` (sync, service role) pattern
 - [x] Cloudflare Turnstile CAPTCHA on public-facing submission forms
@@ -248,7 +250,7 @@
 | **GitHub** | Source control | ✅ Live | github.com/thedjohn/GarageCherries |
 | **Supabase** | Database, Auth, Storage | ✅ Live | supabase.com |
 | **Resend** | Transactional email | ✅ Live | resend.com |
-| **Cloudflare Turnstile** | CAPTCHA on public forms | ✅ Live (new widget created 2026-07-06; site key `0x4AAAAAADwrrVwgKfPSKflI`) | dash.cloudflare.com |
+| **Cloudflare Turnstile** | CAPTCHA on public forms | ✅ Live (new widget created 2026-07-06; site key `0x4AAAAAADw8X7lzy2nijmab`) | dash.cloudflare.com |
 | **NHTSA VIN Decoder API** | VIN format/decode verification | ✅ Live (free, no key required) | vpic.nhtsa.dot.gov |
 | **Enzuzo** | Hosted Privacy Policy / Terms of Service content | ✅ Live | app.enzuzo.com |
 | **Anthropic** | AI features (Claude) | ❌ Removed 2026-07-01 — deferred to future release | console.anthropic.com |
