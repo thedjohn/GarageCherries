@@ -41,7 +41,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
     year:         car ? String(car.year)        : '',
     make:         car?.make                     ?? '',
     model:        car?.model                    ?? '',
-    mileage:      car ? String(car.mileage)     : '',
+    mileage:      car && car.mileage > 0 ? String(car.mileage) : '',
     condition:    car?.condition                ?? '',
     bodyStyle:    car?.body_style               ?? '',
     engine:          car?.engine            ?? '',
@@ -58,7 +58,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
     interiorColor: car?.interior_color           ?? '',
     seatMaterial:  car?.seat_material            ?? '',
     seatingType:   car?.seating_type             ?? '',
-    price:        car && car.price > 0 ? String(car.price) : '',
+    price:        car && car.price > 0 ? car.price.toLocaleString() : '',
     description:  car?.description              ?? '',
     location:     car?.location                 ?? '',
     state:        car?.state                    ?? '',
@@ -128,7 +128,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
       interior_color: fields.interiorColor,
       seat_material:  fields.seatMaterial,
       seating_type:   fields.seatingType,
-      price:        parseInt(fields.price) || 0,
+      price:        parseInt(fields.price.replace(/,/g, '')) || 0,
       description:  fields.description,
       location:     fields.location,
       state:        fields.state.toUpperCase().slice(0, 2),
@@ -225,7 +225,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Mileage *</label>
-              <input type="number" required min="0" placeholder="Mileage" value={fields.mileage}
+              <input type="number" required min="0" placeholder="Mileage (0 = Unknown)" value={fields.mileage}
                 onChange={e => set('mileage', e.target.value)} className={inp} />
             </div>
             <div>
@@ -350,8 +350,11 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Asking Price</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
-                <input type="number" min="0" placeholder="Asking Price" value={fields.price}
-                  onChange={e => set('price', e.target.value)}
+                <input type="text" inputMode="numeric" placeholder="Asking Price" value={fields.price}
+                  onChange={e => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                    set('price', raw ? Number(raw).toLocaleString() : '');
+                  }}
                   className="w-full border border-zinc-200 rounded-xl pl-6 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
               </div>
             </div>
