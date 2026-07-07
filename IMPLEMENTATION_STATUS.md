@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-07 — current as of commit 445a707 (reported message full-thread view with Warn/Suspend actions; E2E test suite updated and expanded)*
+*Last updated: 2026-07-07 — current as of commit 9921535 (individual event detail pages with JSON-LD Event schema; sitemap includes event URLs; Google Search Console sitemap submitted)*
 
 **Note on data:** this site is pre-launch. As of 2026-07-06 the production database has 1 demo dealer (Demo Motors / contact-us+dealer1@garagecherries.com) with 1 test listing, plus a FastLane dealer account. No real buyers or advertisers yet. Empty tables (`dealers`, `advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -97,7 +97,7 @@
 - [x] Pricing page (`/pricing`) — dealer plan tiers, private-seller pricing, advertiser section (banner ads, sponsored listings, newsletter), 250th promo banner, Stripe coming-soon note
 - [x] About (`/about`), Contact (`/contact`), Privacy Policy (`/privacy`), Terms of Service (`/terms`)
 - [x] Cookie consent banner and Turnstile CAPTCHA on public forms
-- [x] XML Sitemap (`/sitemap.xml`) — dynamic, covers homepage, listings (individual + make + make/model), dealers, encyclopedia (54 models), advertisers, guides (6 articles), `/events`, `/dealer/apply`, `/advertiser/signup`, `/privacy`, `/terms`; revalidates every hour
+- [x] XML Sitemap (`/sitemap.xml`) — dynamic, covers homepage, listings (individual + make + make/model), dealers, encyclopedia (54 models), advertisers, guides (6 articles), `/events`, individual event detail pages (`/events/[slug]`), `/dealer/apply`, `/advertiser/signup`, `/privacy`, `/terms`; revalidates every hour
 - [x] Robots.txt (`/robots.txt`) — allows all crawlers, blocks `/admin`, `/api/`, `/dealer/dashboard`
 - [x] **Advertiser public directory** (`/advertisers`) — grouped by category (detail, insurance, finance, transport, storage, restoration, inspection); active + valid trial only
 - [x] **Advertiser public profile pages** (`/advertisers/[slug]`) — business info, description, phone/website CTAs, active ads as "Current Offers"; `slug`, `description`, `website` columns added via migration
@@ -172,7 +172,8 @@
 - [x] **Sentry error tracking** — `@sentry/nextjs`; client + server + edge configs; `instrumentation.ts` hook; `app/error.tsx` captures unhandled errors; env vars in Vercel (added 2026-07-06)
 - [x] **Axiom structured logging** — `next-axiom`; `lib/logger.ts` unified logger with Axiom + Sentry integration; `createLogger(source)` wired across all high-value API routes: `api/inquire`, `api/dealer/apply`, `api/alerts/match`, `api/notify-watchers`, `api/conversations`, `api/conversations/[id]/messages`, `api/email/digest`, `api/email/dealer-report`, `api/email/expiring-listings`, `api/admin/listings`, `api/admin/events`, `api/listings/submit`; env vars in Vercel (added 2026-07-06, expanded 2026-07-07)
 - [x] Deployed to Vercel (project `garage-cherries`, GarageCherries team account, Hobby plan); custom domain `garagecherries.com` and `www.garagecherries.com` live with SSL
-- [x] **Events calendar** (`/events`) — DB-backed; `events` table with `status` (`pending/approved/rejected`), `submitted_by`, `submitter_email`, `submitter_name` columns; public page (approved only) shows upcoming/featured/past sections; logged-in users can submit events via inline form (goes to `pending`); logged-out users see sign-in prompt; admin Events tab has pending approval queue with Approve/Reject buttons; admin-created events go straight to `approved` (added 2026-07-07, submission workflow added 2026-07-07)
+- [x] **Events calendar** (`/events`) — DB-backed; `events` table with `status` (`pending/approved/rejected`), `submitted_by`, `submitter_email`, `submitter_name`, `start_time`, `end_time`, `slug` columns; public page (approved only) shows upcoming/featured/past sections with time display; logged-in users can submit events via inline form (goes to `pending`); logged-out users see sign-in prompt; admin Events tab has pending approval queue with Approve/Reject buttons; admin-created events go straight to `approved`; `revalidatePath('/events')` called on every admin mutation so page updates instantly without hard refresh (added 2026-07-07)
+- [x] **Individual event detail pages** (`/events/[slug]`) — per-event page with `generateMetadata` (title/description/OG), JSON-LD `Event` schema for Google rich results, date/time/location details card, "Add to Google Calendar" deep link, "Visit Event Website" CTA; event names on `/events` list link to detail pages; slugs auto-generated on insert (`name-date` format); `slug` column backfilled for existing events via migration (added 2026-07-07)
 - [x] **Google Analytics 4** — Measurement ID `G-B36QB0J7TX`; added to `app/layout.tsx` via Next.js `Script` (afterInteractive)
 - [x] **SEO — JSON-LD structured data** — Organization (homepage, about, contact), AutoDealer + BreadcrumbList (dealer pages), Vehicle + BreadcrumbList (listing detail), Article + BreadcrumbList (encyclopedia model pages), LocalBusiness + BreadcrumbList (advertiser detail pages)
 - [x] **SEO — OG image** — dynamic `app/opengraph-image.tsx` using Next.js ImageResponse (1200×630); replaces missing static file
@@ -226,7 +227,6 @@
 | **Community Posts** | "Spotted at a show" posts, Q&A on listings |
 | **Dealer Follow / Subscribe** | Buyers follow a dealer and get notified of new listings |
 | **Inventory Import** | CSV bulk upload, DealerSocket/vAuto integration (VIN decode exists; this is bulk import) |
-| **Car Show / Events Calendar** | `/events` page is live with community submission + approval workflow — needs real event data added |
 
 ### Long-Term
 
@@ -276,7 +276,7 @@
 | **Sentry** | Error tracking | ✅ Live — `@sentry/nextjs`, DSN configured, errors flowing (added 2026-07-06) | sentry.io |
 | **Axiom** | Structured logging | ✅ Live — `next-axiom`, dataset `garagecherries`, logs flowing (added 2026-07-06) | axiom.co |
 | **Stripe** | Payments | ❌ Not connected | stripe.com |
-| **Google Search Console** | SEO indexing | ❌ Not submitted | search.google.com/search-console |
+| **Google Search Console** | SEO indexing | ✅ Live — property verified, sitemap submitted (2026-07-07) | search.google.com/search-console |
 | **Google Analytics** | Traffic analytics | ✅ Live — GA4 `G-B36QB0J7TX` installed 2026-07-06 | analytics.google.com |
 | **Carfax / AutoCheck** | Full vehicle history verification | ❌ Not connected | — |
 | **Lemon Squad (or similar)** | Pre-purchase inspection affiliate | ❌ Built once, lost in a merge; agreement not finalized | — |
@@ -293,7 +293,7 @@
 6. **Build `/account/inquiries`** — completes the buyer account experience
 7. **Build public `/sold` archive page** — SEO value + buyer trust signal
 8. **Restore inspection-affiliate button** — once Lemon Squad agreement is confirmed
-9. **Add real events to `/events`** — the calendar currently shows zero events
+9. **Submit event pages to Google** — use URL Inspection in Search Console to request indexing for individual `/events/[slug]` pages; rich Event results will appear once Google crawls the JSON-LD
 
 ---
 
