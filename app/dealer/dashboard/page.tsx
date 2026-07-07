@@ -833,14 +833,8 @@ export default function DealerDashboard() {
 }
 
 // ─── Inquiries Tab ───────────────────────────────────────────────────────────
-const SAMPLE_INQUIRIES = [
-  { name: 'James K.',  vehicle: '1967 Plymouth GTX Hemi', carYear: 1967, carMake: 'Plymouth', carModel: 'GTX Hemi', type: 'Message', time: '2 min ago',  msg: 'Interested in scheduling a viewing this weekend. Is the car still available?' },
-  { name: 'Sarah M.',  vehicle: '1966 Shelby GT350',       carYear: 1966, carMake: 'Shelby',   carModel: 'GT350',    type: 'Message', time: '1 hour ago', msg: 'Is the Shelby still available? Have cash ready and can move fast.' },
-  { name: 'Robert T.', vehicle: '1969 Dodge Charger R/T',  carYear: 1969, carMake: 'Dodge',    carModel: 'Charger',  type: 'Message', time: 'Yesterday',  msg: 'Can you tell me more about the documentation and restoration history?' },
-];
-
 function InquiriesTab({ realInquiries }: { realInquiries?: any[] }) {
-  const displayInquiries = realInquiries && realInquiries.length > 0
+  const inquiries = realInquiries && realInquiries.length > 0
     ? realInquiries.map(i => ({
         name: i.buyer_name,
         vehicle: i.carTitle,
@@ -848,14 +842,18 @@ function InquiriesTab({ realInquiries }: { realInquiries?: any[] }) {
         time: new Date(i.created_at).toLocaleDateString(),
         msg: i.message,
       }))
-    : SAMPLE_INQUIRIES;
+    : [];
 
   return (
     <div className="bg-white rounded-xl border border-zinc-100 shadow-sm divide-y divide-zinc-50">
       <div className="px-5 py-4">
         <h2 className="font-bold text-zinc-800">Inquiries</h2>
       </div>
-      {displayInquiries.map((inq, i) => (
+      {inquiries.length === 0 ? (
+        <div className="px-5 py-16 text-center text-zinc-400 text-sm">
+          No inquiries yet — they'll appear here when buyers message you.
+        </div>
+      ) : inquiries.map((inq, i) => (
         <div key={i} className="px-5 py-4">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center text-sm font-bold text-red-600 shrink-0">
