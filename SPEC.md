@@ -1,6 +1,6 @@
 # GarageCherries — Master Specification
 
-> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-06 (promo campaign, homepage hero copy, E2E test fixes, GA4, Vercel redeploy, custom domain, promo expiry enforcement, pricing page advertiser section, advertiser public pages, sitemap expansion, SEO structured data, GSC + Bing verified).
+> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-06 (promo campaign, homepage hero copy, E2E test fixes, GA4, Vercel redeploy, custom domain, promo expiry enforcement, pricing page advertiser section, advertiser public pages, sitemap expansion, SEO structured data, GSC + Bing verified; Sentry error tracking + Axiom structured logging added; sell form contact section removed — seller identity sourced from profiles table).
 > Stack: Next.js 16.2.9 · React 19 · Supabase (Auth + Postgres + Storage) · Resend (email) · Cloudflare Turnstile (CAPTCHA) · NHTSA VIN API · Tailwind CSS 4 · Vitest + Playwright
 
 ---
@@ -105,9 +105,9 @@ support < moderator < admin < superadmin
    a. Fills vehicle info: year (required, 1900–2030), make (dropdown), model (required), mileage (optional), body style, condition (required), engine, transmission, color, price (required), description (required).
    a2. Optionally enters VIN and clicks "Verify VIN" — calls `POST /api/cars/verify-vin` inline; result shown as color-coded badge (green=verified, yellow=partial, blue=pre-1981, red=invalid). VIN and verification status stored with listing on submit.
    b. Fills location: city (required), state (required, validated against US state codes).
-   c. Fills contact: seller name (required), phone (required, auto-formatted), email (required).
+   c. ~~Contact section removed (2026-07-06)~~ — seller name, phone, and email are no longer collected on the form. Because `/sell` requires login, the API reads seller identity from the authenticated session and the `profiles` table (`full_name`, `phone`); falls back to the auth email if `full_name` is not yet set.
    d. Uploads photos (up to 30): clicks "Add photos" → files stored as `File` objects in component state with local `URL.createObjectURL()` previews — nothing uploaded yet. Upload happens on submit (see step 4).
-4. On submit, images are uploaded first — directly from the browser to Supabase Storage (`listing-images` bucket, `cars/private/` path) using the Supabase JS client. Public URLs are collected, then `POST /api/listings/submit` (multipart) is sent with all fields + `imageUrls` JSON array. The `POST /api/listings/upload-image` signed-URL route exists but is not used by this form.
+4. On submit, images are uploaded first — directly from the browser to Supabase Storage (`listing-images` bucket, `cars/private/` path) using the Supabase JS client. Public URLs are collected, then `POST /api/listings/submit` (multipart) is sent with all fields + `imageUrls` JSON array. The API looks up `seller_name` and `seller_phone` from `profiles`; `seller_email` is taken from `user.email`. The `POST /api/listings/upload-image` signed-URL route exists but is not used by this form.
 5. API checks: rate limit (5/hour/IP), Turnstile CAPTCHA, listing limit (10 active if not dealer, unless `BETA_MODE=true`), beta expiry for dealers.
 6. Listing inserted with `status: 'pending'`, `featured: false`.
 7. Seller sees "Listing Submitted" confirmation screen.
@@ -525,10 +525,11 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 ## 4. API Contract
 
 ### `POST /api/listings/submit`
-- **Auth**: optional (sellerId = null if anonymous, but listing still accepted)
+- **Auth**: required — unauthenticated users see `SellGate` before reaching the form; `sellerId` is always set from the session
 - **Rate limit**: 5 requests / IP / hour
-- **Suspension check**: yes — authenticated suspended users blocked with 403 before any DB writes
+- **Suspension check**: yes — suspended users blocked with 403 before any DB writes
 - **State validation**: `state` must be a valid US state/territory code from `lib/constants.ts US_STATES` — returns 400 if invalid
+- **Seller identity**: `seller_name` and `seller_phone` are read from the `profiles` table (keyed by `user.id`); `seller_email` is taken from `user.email`. These are **not** form fields — they are never submitted by the client.
 - **Input** (multipart/form-data):
 
 | Field | Required | Type | Validation |
@@ -547,9 +548,6 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `engine` | no | string | Null if blank |
 | `color` | no | string | Null if blank |
 | `description` | yes | string | |
-| `sellerName` | yes | string | |
-| `sellerPhone` | yes | string | |
-| `sellerEmail` | yes | string | |
 | `imageUrls` | yes | JSON string | Array of Supabase URLs; capped at 20; must match our Supabase domain and `/listing-images/` path |
 | `vin` | no | string | Optional; stored as-is |
 | `vinVerified` | no | string | `'true'` if user verified via NHTSA; stored as `vin_verified` boolean |
@@ -1083,7 +1081,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | Rule | File:Line | Details |
 |---|---|---|
 | Private seller listing limit | `app/api/listings/submit/route.ts:44` | Max 10 active (pending + approved) listings per private seller; dealers exempt |
-| Beta mode bypass | `app/api/listings/submit/route.ts:29` | `BETA_MODE=true` env var bypasses the listing limit check entirely |
+| Beta mode bypass | `app/api/listings/submit/route.ts:29` | `BETA_MODE=true` env var bypasses the 10-listing cap entirely — useful during pre-launch testing; set to `false` (or omit) in production |
 | Dealer beta expiry | `app/api/listings/submit/route.ts`, `app/api/listings/[id]/route.ts` | If dealer's `beta_expires_at < now`, 403 BETA_EXPIRED on listing submit and listing edit; dashboard access and metrics not blocked |
 | Dealer beta period duration | `app/api/admin/dealer-applications/route.ts:97` | Applications submitted before `2026-08-01` (250th promo period) → `beta_expires_at = 2026-10-31T23:59:59Z`; all others → `now + 6 months` |
 | Individual promo expiry | `app/account/signup/page.tsx` | Signup with `promo=250th` stores `promo_expires_at = 2026-10-31T23:59:59Z` on `profiles` row; enforced when paid plans launch |
@@ -1137,10 +1135,9 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `engine` | no | string | Stored null if blank |
 | `color` | no | string | Stored null if blank |
 | `description` | yes | string | |
-| `sellerName` | yes | string | |
-| `sellerPhone` | yes | string | |
-| `sellerEmail` | yes | string | |
 | `imageUrls` | yes | JSON array | URLs validated: https, match supabaseUrl, contain /listing-images/; capped at 20 |
+
+**Note:** `sellerName`, `sellerPhone`, and `sellerEmail` are not form fields — the API reads them server-side from `profiles` and `auth.users`.
 
 ### Client-side form validation (SellForm)
 
@@ -1154,10 +1151,9 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `description` | required textarea |
 | `city` | required text |
 | `state` | required text, maxLength=2 |
-| `sellerName` | required text |
-| `sellerPhone` | required tel; formatted as (XXX) XXX-XXXX |
-| `sellerEmail` | required email type |
 | `vin` | optional; uppercased; max 17 chars; "Verify VIN" button triggers inline NHTSA check |
+
+**Removed (2026-07-06):** `sellerName`, `sellerPhone`, `sellerEmail` fields — seller identity now sourced from `profiles` table server-side.
 
 ### Dealer Application (`POST /api/dealer/apply`)
 
@@ -1307,6 +1303,9 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Search filter clamping | **Complete (2026-07-06)** | Year inputs `min=1900 max=2030`, price inputs `min=0` (client-side HTML). `lib/db.ts` `fetchCars()` clamps year to [1900–2030] and rejects negative price server-side. |
 | Google Search Console | **Complete (2026-07-06)** | Property `https://www.garagecherries.com` verified via DNS (auto-detected from GoDaddy TXT records). Sitemap submitted; 81 pages discovered, status: Success. |
 | Bing Webmaster Tools | **Complete (2026-07-06)** | Imported from Google Search Console. Sitemap `https://www.garagecherries.com/sitemap.xml` submitted; status: Processing. |
+| Sentry error tracking | **Complete (2026-07-06)** | `@sentry/nextjs` installed. Client, server, and edge configs in `sentry.{client,server,edge}.config.ts`; loaded via `instrumentation.ts`. `app/error.tsx` captures unhandled errors via `Sentry.captureException`. Env vars: `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`. |
+| Axiom structured logging | **Complete (2026-07-06)** | `next-axiom` installed. `lib/logger.ts` exports `createLogger(source)` — a unified logger that writes structured logs to Axiom and forwards errors/warnings to Sentry as breadcrumbs/exceptions. Used in `app/api/listings/submit/route.ts` and `app/api/admin/listings/route.ts`. Env vars: `AXIOM_TOKEN`, `AXIOM_DATASET=garagecherries`. |
+| Sell form — contact section removed | **Complete (2026-07-06)** | Seller name, phone, and email fields removed from `SellClient.tsx`. The submit API now reads `seller_name`/`seller_phone` from the `profiles` table and `seller_email` from the auth session. |
 | Homepage hero stats | **Updated 2026-07-06** | Replaced placeholder stats ("12,400+ listings · All 50 states") with honest copy: "Growing daily · Nationwide · Classic, Muscle, Sport & Supercar". |
 | Dedicated watchlist page (`/account/watchlist`) | **Complete** | Standalone URL for watchlist; price-change indicators; mirrors `/account?tab=watchlist` |
 | Import JSON / Sync Now buttons | **Missing** | UI buttons exist in dealer dashboard but click handlers are stubs — no API route or format defined; sample format saved at `docs/dealer-import-sample.json` |

@@ -35,6 +35,8 @@ GarageCherries is a modern alternative to platforms like Hemmings and ClassicCar
 | Storage | Supabase Storage | `listing-images` bucket for listing photos |
 | Email | Resend | All transactional email — inquiries, alerts, digests, reports |
 | CAPTCHA | Cloudflare Turnstile | On all public-facing submission forms |
+| Error tracking | Sentry (`@sentry/nextjs`) | Client + server + edge; wired via `instrumentation.ts` |
+| Structured logging | Axiom (`next-axiom`) | Server-side structured logs from API routes |
 | Styling | Tailwind CSS | |
 | Hosting | Vercel | Auto-deploy from `main` branch |
 
@@ -71,6 +73,19 @@ TURNSTILE_SECRET_KEY=your_turnstile_secret_key
 ADMIN_API_SECRET=your_admin_api_secret
 INTERNAL_API_SECRET=your_internal_api_secret
 ADMIN_EMAIL=derek_ljohnson@yahoo.com
+
+# Feature flags
+BETA_MODE=false   # Set to "true" to bypass the 10-active-listing cap for private sellers (useful during pre-launch testing)
+
+# Error tracking (Sentry)
+NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn
+SENTRY_ORG=garage-cherries
+SENTRY_PROJECT=garage-cherries
+SENTRY_AUTH_TOKEN=your_sentry_auth_token
+
+# Structured logging (Axiom)
+AXIOM_TOKEN=your_axiom_ingest_token
+AXIOM_DATASET=garagecherries
 ```
 
 ### Run the Dev Server
@@ -252,10 +267,16 @@ lib/
   rateLimit.ts                     # In-memory rate limiter
   admin.ts                         # Role hierarchy helpers
   data.ts                          # Pure utilities (formatPrice, toSegment, etc.)
+  logger.ts                        # Unified logger — Axiom structured logs + Sentry breadcrumbs/exceptions
   types.ts                         # TypeScript interfaces + filter constants
   supabase/
     client.ts                      # Browser Supabase client
     server.ts                      # Server client + admin client
+
+instrumentation.ts                 # Next.js instrumentation hook — initializes Sentry server + edge
+sentry.client.config.ts            # Sentry browser SDK init (Session Replay included)
+sentry.server.config.ts            # Sentry Node.js SDK init
+sentry.edge.config.ts              # Sentry edge runtime SDK init
 
 supabase/
   migrations/                      # SQL migration files

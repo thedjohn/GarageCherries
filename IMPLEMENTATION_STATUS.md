@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-06 — current as of commit 47ff9b1 (sold banner, auth gate /sell, require photos, mark as sold, form placeholder cleanup)*
+*Last updated: 2026-07-06 — current as of commit bec8160 (Sentry error tracking, Axiom structured logging, sell form contact section removed)*
 
 **Note on data:** this site is pre-launch. As of 2026-07-06 the production database has 1 demo dealer (Demo Motors / contact-us+dealer1@garagecherries.com) with 1 test listing, plus a FastLane dealer account. No real buyers or advertisers yet. Empty tables (`dealers`, `advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -66,7 +66,8 @@
 
 ### Private Seller Flow
 - [x] `/sell` gated behind auth — server component checks session; logged-out visitors see `SellGate` ("Create a Free Account" / "Sign In"); form moved to `SellClient.tsx` (added 2026-07-06)
-- [x] Full listing submission — vehicle info, VIN + verify, location, contact, up to 30 photos (lazy upload: images stay as File objects until submit, then uploaded inside `onSubmit`)
+- [x] **Contact section removed from sell form** — seller name, phone, and email fields removed (2026-07-06); submit API reads `seller_name`/`seller_phone` from the `profiles` table and `seller_email` from `user.email`
+- [x] Full listing submission — vehicle info, VIN + verify, location, up to 30 photos (lazy upload: images stay as File objects until submit, then uploaded inside `onSubmit`)
 - [x] **Require at least one photo** — both `/sell` form and dealer Add/Edit Vehicle modal block submission if no images are attached (added 2026-07-06)
 - [x] CAPTCHA (Turnstile), rate limiting (5/hr/IP), 10-active-listing cap for non-dealers
 - [x] Admin review queue — pending listings approved/rejected at `/admin`; seller emailed either way
@@ -157,13 +158,17 @@
 - [x] Server components + client components correctly separated
 - [x] `createClient()` (async, RLS-enforced) and `createAdminClient()` (sync, service role) pattern
 - [x] Cloudflare Turnstile CAPTCHA on public-facing submission forms
+- [x] **Sentry error tracking** — `@sentry/nextjs`; client + server + edge configs; `instrumentation.ts` hook; `app/error.tsx` captures unhandled errors; env vars in Vercel (added 2026-07-06)
+- [x] **Axiom structured logging** — `next-axiom`; `lib/logger.ts` unified logger with Axiom + Sentry integration; used in listing submit and admin listing routes; env vars in Vercel (added 2026-07-06)
 - [x] Deployed to Vercel (project `garage-cherries`, GarageCherries team account, Hobby plan); custom domain `garagecherries.com` and `www.garagecherries.com` live with SSL
+- [x] **Events calendar** (`/events`) — DB-backed; `events` table with type, date, location, featured flag; public page shows upcoming/featured/past sections; admin Events tab (admin+) has full add/edit/delete CRUD with confirmation modal (added 2026-07-07)
 - [x] **Google Analytics 4** — Measurement ID `G-B36QB0J7TX`; added to `app/layout.tsx` via Next.js `Script` (afterInteractive)
 - [x] **SEO — JSON-LD structured data** — Organization (homepage, about, contact), AutoDealer + BreadcrumbList (dealer pages), Vehicle + BreadcrumbList (listing detail), Article + BreadcrumbList (encyclopedia model pages), LocalBusiness + BreadcrumbList (advertiser detail pages)
 - [x] **SEO — OG image** — dynamic `app/opengraph-image.tsx` using Next.js ImageResponse (1200×630); replaces missing static file
 - [x] **SEO — sell page metadata** — `app/sell/layout.tsx` adds title, description, canonical (page is `use client` so layout wrapper required)
 - [x] **SEO — filter clamping** — year inputs `min=1900 max=2030`, price inputs `min=0` (client); `lib/db.ts` clamps year to [1900–2030] and rejects negative price server-side
 - [x] **Google Search Console** — property `https://www.garagecherries.com` verified (DNS method, auto-detected); sitemap submitted; 81 pages discovered
+- [x] **Admin — Events tab** — add, edit, delete events; visible to admin and superadmin roles; logged via Axiom/Sentry (added 2026-07-07)
 - [x] **Bing Webmaster Tools** — imported from GSC; sitemap submitted; processing
 - [x] `SPEC.md` — detailed master specification; treat as the primary technical reference
 
@@ -175,10 +180,10 @@
 |---|---|---|
 | **AI Features** | Nothing — all 5 AI routes deliberately removed 2026-07-01 | Everything; deferred to future release |
 | **Advertising — ad display** | Full backend + `AdSlot` wired into listing detail page | "Detail 360" sponsor card and inspection-affiliate button were built, then lost in a merge |
-| **Dealer Watcher Messaging** | `GET /api/dealer/watcher-counts` and `POST /api/dealer/message-watchers` API routes work | No UI in dealer dashboard calls them |
+| ~~**Dealer Watcher Messaging**~~ | ✅ Complete (2026-07-07) — watcher counts load per listing; "Message X watchers" button appears on eligible approved listings; compose modal with send confirmation; "Messaged" label shown after send to prevent duplicates | — |
 | **Dealer Subscriptions** | Pricing page shows Starter/Pro/Unlimited plans | No Stripe — nothing actually charges |
 | **Featured Listing Toggle** | Toggle in dashboard, `featured` DB field, badge + homepage placement | No payment gate — free for all dealers currently |
-| **Import/Sync Inventory** | "Import JSON" and "Sync Now" buttons visible in dealer dashboard; sample file at `docs/dealer-import-sample.json` | Both are stubs — no API route or click handler |
+| **Import/Sync Inventory** | "Import JSON" and "Sync Now" buttons visible in dealer dashboard; sample file at `docs/dealer-import-sample.json` | Both are visually disabled (greyed out, `disabled` attr, "Coming soon" tooltip) — no API route or click handler yet |
 | **Email preferences UI** | All unsubscribe pages built and linked from emails | No email preferences tab in `/account` settings — users must click unsubscribe in an email |
 
 ---
@@ -257,6 +262,8 @@
 | **NHTSA VIN Decoder API** | VIN format/decode verification | ✅ Live (free, no key required) | vpic.nhtsa.dot.gov |
 | **Enzuzo** | Hosted Privacy Policy / Terms of Service content | ✅ Live | app.enzuzo.com |
 | **Anthropic** | AI features (Claude) | ❌ Removed 2026-07-01 — deferred to future release | console.anthropic.com |
+| **Sentry** | Error tracking | ✅ Live — `@sentry/nextjs`, DSN configured, errors flowing (added 2026-07-06) | sentry.io |
+| **Axiom** | Structured logging | ✅ Live — `next-axiom`, dataset `garagecherries`, logs flowing (added 2026-07-06) | axiom.co |
 | **Stripe** | Payments | ❌ Not connected | stripe.com |
 | **Google Search Console** | SEO indexing | ❌ Not submitted | search.google.com/search-console |
 | **Google Analytics** | Traffic analytics | ✅ Live — GA4 `G-B36QB0J7TX` installed 2026-07-06 | analytics.google.com |
