@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-07 — current as of newsletter signup (footer form + `/api/newsletter/subscribe`; cascading model filter; email preferences tab in /account)*
+*Last updated: 2026-07-07 — current as of resend setup email button for approved dealer applications*
 
 **Note on data:** this site is pre-launch. As of 2026-07-07 the production database has a handful of manually-created test listings (private-seller and dealer) and no real buyers or advertisers yet. Empty tables (`advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -44,6 +44,7 @@
 - [x] Inventory tab — add, edit, delete, mark as sold; dealer-added listings bypass review (inserted `status: 'approved'` immediately)
 - [x] **Mark as Sold** — green "Mark Sold" button on approved listings; confirmation modal; calls `POST /api/cars/sold`; badge changes to "Sold"; Mark Sold and Renew buttons hidden after sold (added 2026-07-06)
 - [x] Inquiries tab — buyer messages (real data from `GET /api/dealer/metrics`); shows empty state when no inquiries exist (no fake placeholder data)
+- [x] **Offers tab** — dealer sees all offers on their listings (amount, buyer name, status); Accept/Decline buttons for pending offers; updates `offers` table status inline (added 2026-07-07)
 - [x] Settings tab — full profile management (name, phone, address, description, specialties)
 - [x] **Logo upload in Settings tab** — dealers upload/replace logo (JPG/PNG/WebP ≤2 MB); stored in Supabase Storage `dealer-logos` bucket (public); URL saved to `dealers.logo`; cache-busted preview updates immediately (added 2026-07-06)
 - [x] Price history recorded automatically on every price edit, fires watcher notification
@@ -91,7 +92,9 @@
 ### Dealer Application & Onboarding
 - [x] Public application form (`/dealer/apply`) — name, contact, dealer name, address, specialties, description, CAPTCHA
 - [x] Rate limited 3/hr/IP; duplicate application/dealer detection
-- [x] Admin review at `/admin` — approve creates an auth user + `dealers` row (`plan: 'beta'`); `beta_expires_at = 2026-10-31` for 250th promo applications (submitted before Aug 1 2026), otherwise `now + 6 months`; emails a password-reset link; reject sends a note
+- [x] Admin review at `/admin` — approve creates an auth user + `dealers` row (`plan: 'beta'`); `beta_expires_at = 2026-10-31` for 250th promo applications (submitted before Aug 1 2026), otherwise `now + 6 months`; emails a password-reset link with `redirectTo: /dealer/reset-password`; reject sends a note
+- [x] **Applications tab — filter + pagination** — filter buttons (Pending/Approved/Rejected/All) with counts, defaults to Pending; 10-per-page pagination with Prev/Next; error alerts on approve/reject failure (added 2026-07-07)
+- [x] **Resend Setup Email button** — on approved applications; generates a fresh recovery link via `auth.admin.generateLink` with correct `redirectTo` and emails it; fixes cases where Supabase dashboard "Send password recovery" sent link to wrong URL (added 2026-07-07)
 - [x] **Dealer password reset page** (`/dealer/reset-password`) — validates Supabase session from reset email link; shows new-password + confirm fields; updates auth on submit; redirects to `/dealer/login`; handles expired/invalid links gracefully (added 2026-07-06)
 
 ### Advertising System
@@ -165,7 +168,7 @@
 - [x] State-code validation on listing submit and dealer apply
 - [x] Ad `cta_url` scheme validation (`http(s)://` only)
 - [x] UUID regex guard before all `admin.auth.admin.getUserById()` calls (prevents SDK throws on non-UUID input)
-- [x] **`SessionGuard`** (`components/SessionGuard.tsx`, mounted app-wide in `app/layout.tsx`) — Supabase sessions are stateless JWTs, so deleting a user (e.g. admin removes an account) doesn't revoke an already-issued token; the browser could keep showing "logged in" while every real action failed. Patches `fetch` to detect a same-origin `/api/` 401 while a local session still exists (the zombie-session mismatch) and forces a clean sign-out + redirect to `/account/login?reason=session_ended` with a plain message. A normal logged-out 401 is untouched (added 2026-07-07)
+- [x] **`SessionGuard`** (`components/SessionGuard.tsx`) — detects zombie sessions (deleted user still has valid JWT) and forces sign-out. **Currently disabled in `app/layout.tsx`** (2026-07-07) — two back-to-back bugs (timing-race false positive, then logic inversion) force-logged-out at least one real user. Re-enable only after root cause of `/api/` 401s on valid sessions is diagnosed and tested without a live user as subject.
 
 ### Testing
 
@@ -190,6 +193,7 @@
 - [x] Deployed to Vercel (project `garage-cherries`, GarageCherries team account, Hobby plan); custom domain `garagecherries.com` and `www.garagecherries.com` live with SSL
 - [x] **Events calendar** (`/events`) — DB-backed; `events` table with `status` (`pending/approved/rejected`), `submitted_by`, `submitter_email`, `submitter_name`, `start_time`, `end_time`, `slug` columns; public page (approved only) shows upcoming/featured/past sections with time display; logged-in users can submit events via inline form (goes to `pending`); logged-out users see sign-in prompt; admin Events tab has pending approval queue with Approve/Reject buttons; admin-created events go straight to `approved`; `revalidatePath('/events')` called on every admin mutation so page updates instantly without hard refresh (added 2026-07-07)
 - [x] **Individual event detail pages** (`/events/[slug]`) — per-event page with `generateMetadata` (title/description/OG), JSON-LD `Event` schema for Google rich results, date/time/location details card, "Add to Google Calendar" deep link, "Visit Event Website" CTA; event names on `/events` list link to detail pages; slugs auto-generated on insert (`name-date` format); `slug` column backfilled for existing events via migration (added 2026-07-07)
+- [x] **Cherry logo + favicon** — `public/cherry-logo.png` (transparent background PNG); used in Header (44×44, `unoptimized` to preserve alpha), Footer (36×36); `app/favicon.ico` replaced with cherry ICO file (Next.js App Router: `app/favicon.ico` always takes precedence over metadata icons) (added 2026-07-07)
 - [x] **Google Analytics 4** — Measurement ID `G-B36QB0J7TX`; added to `app/layout.tsx` via Next.js `Script` (afterInteractive)
 - [x] **SEO — JSON-LD structured data** — Organization (homepage, about, contact), AutoDealer + BreadcrumbList (dealer pages), Vehicle + BreadcrumbList (listing detail), Article + BreadcrumbList (encyclopedia model pages), LocalBusiness + BreadcrumbList (advertiser detail pages)
 - [x] **SEO — OG image** — dynamic `app/opengraph-image.tsx` using Next.js ImageResponse (1200×630); replaces missing static file
