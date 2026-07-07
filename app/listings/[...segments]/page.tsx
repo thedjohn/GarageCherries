@@ -371,8 +371,8 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
             {car.price > 0 && <FinancingCalculator price={car.price} />}
           </div>
 
-          <div className="space-y-5">
-            <div className="hidden lg:block bg-white rounded-2xl border border-zinc-100 shadow-sm p-6 sticky top-24">
+          <div className="space-y-5 lg:sticky lg:top-24">
+            <div className="hidden lg:block bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
               <div className="flex items-start justify-between gap-2 mb-1">
                 <h1 className="text-xl font-extrabold text-zinc-900 leading-tight">{car.title}</h1>
                 <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full border ${CONDITION_COLORS[car.condition]}`}>{car.condition}</span>
