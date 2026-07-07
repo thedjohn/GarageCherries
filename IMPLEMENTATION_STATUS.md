@@ -1,7 +1,7 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-07 — current as of commit 3d9a51c (/sold archive page; individual event detail pages with JSON-LD Event schema; sitemap updated; Google Search Console sitemap submitted)*
+*Last updated: 2026-07-07 — current as of commit f098067 (sidebar/AdSlot overlap fix; persistent "Post a Listing" button; client-side image resize + gallery preloading; Ram + dropdown alphabetization; sold listings excluded from homepage/`/listings`/`fetchCars`; `SessionGuard` forced logout)*
 
-**Note on data:** this site is pre-launch. As of 2026-07-06 the production database has 1 demo dealer (Demo Motors / contact-us+dealer1@garagecherries.com) with 1 test listing, plus a FastLane dealer account. No real buyers or advertisers yet. Empty tables (`dealers`, `advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
+**Note on data:** this site is pre-launch. As of 2026-07-07 the production database has a handful of manually-created test listings (private-seller and dealer) and no real buyers or advertisers yet. Empty tables (`advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
 ---
 
@@ -16,10 +16,11 @@
 - [x] Recently listed section on homepage
 - [x] Listing card component with price, condition, mileage, location, photos
 - [x] Database-driven makes — make filter dropdown and make/model URL pages work for any make present in the database; `/api/makes` endpoint serves distinct makes to client components
+- [x] **`MAKES`/`BODY_STYLES` alphabetized, Ram added** (`lib/types.ts`) — Ram was missing entirely, blocking sellers from listing under its correct make; also added a shared `TRANSMISSIONS` constant, consolidating Manual/Automatic which had been hardcoded independently (and inconsistently ordered) in 4 separate places. `CONDITIONS` intentionally left in quality order rather than alphabetized (added 2026-07-07)
 
 ### Listing Detail Pages
 - [x] **Sold listing banner** — when `is_sold = true`, a dark "This vehicle has sold" banner appears at the top of the listing page with a "View Similar Listings" link filtered to the same make; page stays live for SEO value (added 2026-07-06)
-- [x] Full photo gallery with thumbnail navigation
+- [x] Full photo gallery with thumbnail navigation — adjacent (prev/next) photos preloaded invisibly at the same `sizes` variant so Prev/Next feels instant instead of triggering a fresh fetch per click (added 2026-07-07)
 - [x] Complete spec sheet — engine, drivetrain, interior, options, hobby segment, lot number
 - [x] Dealer info panel with map embed and click-to-call
 - [x] Message Seller contact form — emails seller/dealer, buyer address never exposed
@@ -28,6 +29,7 @@
 - [x] Financing calculator (`FinancingCalculator`) — collapsible, pure client-side amortization math; links to J.J. Best Banc and Woodside Credit
 - [x] SEO — per-page title, description, Open Graph tags, JSON-LD Vehicle + BreadcrumbList schema, canonical URL
 - [x] View tracking — deduplicated by hashed IP per day, records dealer_id when a dealer listing
+- [x] **Sidebar layout fixed** — the price/contact/map card and `AdSlot` used to be positioned independently (one sticky, one not), which could make the ad card visually overlap the map mid-scroll; now the whole sidebar scrolls as one sticky unit (added 2026-07-07)
 
 ### Dealer Public Pages
 - [x] Dealer directory (`/dealers`) — all dealers with listing counts
@@ -54,6 +56,7 @@
 ### Listing Expiry & Renewal
 - [x] Listings auto-expire 30 days after approval (`expires_at`)
 - [x] Expired listings excluded from all public browse/search surfaces
+- [x] **Sold listings excluded from showcase surfaces** — homepage (Featured/Recently Listed), `/listings` search, and `fetchCars()` (encyclopedia model pages' live listings) all filter `is_sold = false`; `fetchCars()` previously had no filtering at all (pending/rejected listings could appear publicly on encyclopedia pages) — now matches `status='approved'` + not expired + not sold everywhere. The listing detail page and `/sold` archive intentionally still show sold listings (added 2026-07-07)
 - [x] One-click "Renew listing" — private-seller account page and dealer dashboard, both show a days-remaining countdown (amber warning at ≤7 days)
 - [x] **Renewal reminder email** — `POST /api/email/expiring-listings` emails sellers 3 days before expiry; idempotent via `renewal_reminder_sent_at`; triggerable from `/admin/email` (added 2026-07-03)
 
@@ -68,6 +71,7 @@
 - [x] `/sell` gated behind auth — server component checks session; logged-out visitors see `SellGate` ("Create a Free Account" / "Sign In"); form moved to `SellClient.tsx` (added 2026-07-06)
 - [x] **Contact section removed from sell form** — seller name, phone, and email fields removed (2026-07-06); submit API reads `seller_name`/`seller_phone` from the `profiles` table and `seller_email` from `user.email`
 - [x] Full listing submission — vehicle info, VIN + verify, location, up to 30 photos (lazy upload: images stay as File objects until submit, then uploaded inside `onSubmit`)
+- [x] **Client-side image resize/compression before upload** (`lib/resizeImage.ts`) — applied on `/sell`, `/account` listing edit, and dealer Add/Edit Vehicle; downscales to fit 1920px on the long edge, re-encodes JPEG at 82% quality, preserves EXIF orientation, skips already-small images, falls back to the original on decode failure. Fixes slow uploads/gallery loads from unresized multi-MB phone photos, especially on cellular (added 2026-07-07)
 - [x] **Require at least one photo** — both `/sell` form and dealer Add/Edit Vehicle modal block submission if no images are attached (added 2026-07-06)
 - [x] CAPTCHA (Turnstile), rate limiting (5/hr/IP), 10-active-listing cap for non-dealers
 - [x] Admin review queue — pending listings approved/rejected at `/admin`; seller emailed either way
@@ -108,7 +112,7 @@
 - [x] Profile management (`/account/profile`)
 - [x] Watchlist — save listings, view at `/account?tab=watchlist` and standalone `/account/watchlist`
 - [x] Car Alerts — saved searches with automatic email notification on new matches, up to 10 per user, edit/pause/delete
-- [x] My Listings tab — private sellers manage their own listings
+- [x] My Listings tab — private sellers manage their own listings; persistent "+ Post a Listing" button in the tab header (previously only shown in the empty state, disappearing once a user had any listings) (added 2026-07-07)
 - [x] Live buyer-seller messaging — in-page Messenger-style chat widget, Supabase Realtime push, unread badges, report-message flow
 
 ### Email (via Resend)
@@ -151,6 +155,7 @@
 - [x] State-code validation on listing submit and dealer apply
 - [x] Ad `cta_url` scheme validation (`http(s)://` only)
 - [x] UUID regex guard before all `admin.auth.admin.getUserById()` calls (prevents SDK throws on non-UUID input)
+- [x] **`SessionGuard`** (`components/SessionGuard.tsx`, mounted app-wide in `app/layout.tsx`) — Supabase sessions are stateless JWTs, so deleting a user (e.g. admin removes an account) doesn't revoke an already-issued token; the browser could keep showing "logged in" while every real action failed. Patches `fetch` to detect a same-origin `/api/` 401 while a local session still exists (the zombie-session mismatch) and forces a clean sign-out + redirect to `/account/login?reason=session_ended` with a plain message. A normal logged-out 401 is untouched (added 2026-07-07)
 
 ### Testing
 
