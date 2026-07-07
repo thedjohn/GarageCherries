@@ -32,7 +32,7 @@ export default async function AboutPage() {
 
   const [{ count: listingCount }, { count: eventCount }] = await Promise.all([
     admin.from('listings').select('id', { count: 'exact', head: true })
-      .eq('status', 'approved').eq('is_sold', false).gt('expires_at', now),
+      .eq('status', 'approved').eq('is_sold', false).or(`expires_at.is.null,expires_at.gt.${now}`),
     admin.from('events').select('id', { count: 'exact', head: true })
       .eq('status', 'approved'),
   ]);
@@ -67,17 +67,12 @@ export default async function AboutPage() {
             {
               icon: '🔍',
               title: 'Built for This Market',
-              body: 'Every feature — from AI price assessment to the classic car encyclopedia — was designed specifically for collectors and enthusiasts, not repurposed from a generic auto platform.',
+              body: 'Every feature — from the classic car encyclopedia to buyer alerts — was designed specifically for collectors and enthusiasts, not repurposed from a generic auto platform.',
             },
             {
               icon: '🤝',
               title: 'Verified Dealers Only',
               body: 'We work exclusively with established dealers who specialize in classic and collector vehicles. No private scammers, no bait-and-switch listings.',
-            },
-            {
-              icon: '🧠',
-              title: 'AI-Powered Research',
-              body: 'Our AI tools help buyers understand fair market value, identify red flags, and draft the right questions — so you negotiate from knowledge, not guesswork.',
             },
             {
               icon: '📖',
@@ -87,12 +82,17 @@ export default async function AboutPage() {
             {
               icon: '📣',
               title: 'Car Alerts',
-              body: 'Save your search criteria and get notified the moment a matching car lists. Never miss the right car because you weren\'t watching that day.',
+              body: "Save your search criteria and get notified the moment a matching car lists. Never miss the right car because you weren't watching that day.",
             },
             {
               icon: '💰',
               title: 'Transparent Pricing',
-              body: 'Price history on every listing, market context from our AI, and comparable sales data — so you know exactly where any car stands in the market.',
+              body: 'Asking price, mileage, condition, and full specs on every listing — so you can compare fairly and go into any negotiation with the full picture.',
+            },
+            {
+              icon: '💬',
+              title: 'Direct Communication',
+              body: 'Message dealers directly through the platform. No middlemen, no phone tag — just a straight line between you and the seller.',
             },
           ].map(item => (
             <div key={item.title} className="bg-white border border-zinc-100 rounded-2xl p-6 shadow-sm">
