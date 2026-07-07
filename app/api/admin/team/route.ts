@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin';
 
-// Only superadmins can manage the team
 async function authSuperadmin() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -12,8 +11,11 @@ async function authSuperadmin() {
 }
 
 export async function GET() {
-  const user = await authSuperadmin();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Any team member can call GET (used by Header to check admin status)
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const role = await requireAdmin(user?.id ?? null);
+  if (!role) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const admin = createAdminClient();
   const { data, error } = await admin
