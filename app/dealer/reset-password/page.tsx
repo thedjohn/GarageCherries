@@ -16,27 +16,34 @@ export default function DealerResetPasswordPage() {
   useEffect(() => {
     const supabase = createClient();
 
-    // Listen for PASSWORD_RECOVERY event — fired when Supabase processes the hash tokens
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' && session) {
+    // @supabase/ssr doesn't auto-detect hash tokens — parse them manually.
+    // generateLink (admin API) uses the implicit flow: tokens arrive as #access_token=...
+    const hash = window.location.hash.substring(1);
+    const params = new URLSearchParams(hash);
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token') ?? '';
+    const type = params.get('type');
+
+    if (accessToken && type === 'recovery') {
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ data, error }) => {
+          if (data.session) {
+            setReady(true);
+          } else {
+            setError(error?.message ?? 'This reset link is invalid or has expired.');
+          }
+        });
+      return;
+    }
+
+    // Fallback: check for an existing session (page refresh after hash is consumed)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
         setReady(true);
+      } else {
+        setError('This reset link is invalid or has expired. Please contact support for a new one.');
       }
     });
-
-    // Also check for an existing session (handles page refresh after hash is consumed)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) setReady(true);
-    });
-
-    // If neither fires within 3s, the link is invalid/expired
-    const timeout = setTimeout(() => {
-      setError('This reset link is invalid or has expired. Please contact support for a new one.');
-    }, 3000);
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(timeout);
-    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
