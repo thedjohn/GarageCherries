@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-07 — current as of commit 7f0b0d9 (form UX: EV field conditionals expanded; Fuel Type reordered before Engine; comma formatting on numeric inputs; phone formatting in dealer settings)*
+*Last updated: 2026-07-07 — current as of commit ea1201b (fix: form UX changes applied to SellClient.tsx — the actual /sell component; SellForm.tsx is unused)*
 
 **Note on data:** this site is pre-launch. As of 2026-07-07 the production database has a handful of manually-created test listings (private-seller and dealer) and no real buyers or advertisers yet. Empty tables (`advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -74,9 +74,10 @@
 ### Private Seller Flow
 - [x] `/sell` gated behind auth — server component checks session; logged-out visitors see `SellGate` ("Create a Free Account" / "Sign In"); form moved to `SellClient.tsx` (added 2026-07-06)
 - [x] **Contact section removed from sell form** — seller name, phone, and email fields removed (2026-07-06); submit API reads `seller_name`/`seller_phone` from the `profiles` table and `seller_email` from `user.email`
-- [x] **Fuel Type field added to `/sell` form** — Gasoline/Diesel/Electric/Hybrid/Flex Fuel; controlled via `fuelType` state; positioned before Engine field (added 2026-07-07)
+- [x] **Fuel Type field added to `/sell` form** — Gasoline/Diesel/Electric/Hybrid/Flex Fuel; controlled via `fuelType` state; positioned before Engine field (added 2026-07-07); implemented in `SellClient.tsx`
 - [x] **EV-conditional form fields on `/sell`** — when Fuel Type = Electric: Transmission shows only "1-Speed" (added 2026-07-07)
 - [x] **Comma formatting on `/sell` numeric inputs** — Mileage and Price display commas while typing; stripped before FormData submit (added 2026-07-07)
+- [x] **Note:** `/sell` renders `SellClient.tsx` — `SellForm.tsx` exists but is unused
 - [x] Full listing submission — vehicle info, VIN + verify, location, up to 30 photos (lazy upload: images stay as File objects until submit, then uploaded inside `onSubmit`)
 - [x] **Client-side image resize/compression before upload** (`lib/resizeImage.ts`) — applied on `/sell`, `/account` listing edit, and dealer Add/Edit Vehicle; downscales to fit 1920px on the long edge, re-encodes JPEG at 82% quality, preserves EXIF orientation, skips already-small images, falls back to the original on decode failure. Fixes slow uploads/gallery loads from unresized multi-MB phone photos, especially on cellular (added 2026-07-07)
 - [x] **Require at least one photo** — both `/sell` form and dealer Add/Edit Vehicle modal block submission if no images are attached (added 2026-07-06)
