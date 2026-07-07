@@ -1,6 +1,6 @@
 'use client';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { MAKES, BODY_STYLES, CONDITIONS, STATES, TRANSMISSIONS } from '@/lib/types';
 
 export default function SearchFilters({ initialMakes }: { initialMakes?: string[] }) {
@@ -9,10 +9,10 @@ export default function SearchFilters({ initialMakes }: { initialMakes?: string[
 
   const makes = initialMakes ?? MAKES.filter(m => m !== 'All Makes');
 
-
   const [filters, setFilters] = useState({
     q:            params.get('q')           || '',
     make:         params.get('make')        || '',
+    model:        params.get('model')       || '',
     yearMin:      params.get('yearMin')     || '',
     yearMax:      params.get('yearMax')     || '',
     priceMin:     params.get('priceMin')    || '',
@@ -23,6 +23,15 @@ export default function SearchFilters({ initialMakes }: { initialMakes?: string[
     state:        params.get('state')       || '',
   });
 
+  const [models, setModels] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!filters.make) { setModels([]); return; }
+    fetch(`/api/models?make=${encodeURIComponent(filters.make)}`)
+      .then(r => r.json())
+      .then(d => setModels(d.models ?? []));
+  }, [filters.make]);
+
   const apply = useCallback(() => {
     const p = new URLSearchParams();
     Object.entries(filters).forEach(([k, v]) => { if (v) p.set(k, v); });
@@ -30,7 +39,7 @@ export default function SearchFilters({ initialMakes }: { initialMakes?: string[
   }, [filters, router]);
 
   const clear = () => {
-    setFilters({ q:'', make:'', yearMin:'', yearMax:'', priceMin:'', priceMax:'', condition:'', bodyStyle:'', transmission:'', state:'' });
+    setFilters({ q:'', make:'', model:'', yearMin:'', yearMax:'', priceMin:'', priceMax:'', condition:'', bodyStyle:'', transmission:'', state:'' });
     router.push('/listings');
   };
 
@@ -67,6 +76,18 @@ export default function SearchFilters({ initialMakes }: { initialMakes?: string[
               {makes.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
+
+          {/* Model — only shown when a make is selected and models exist */}
+          {filters.make && models.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Model</label>
+              <select value={filters.model} onChange={e => set('model', e.target.value)}
+                className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                <option value="">All Models</option>
+                {models.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+          )}
 
           {/* Year */}
           <div>

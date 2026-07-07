@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 interface Props {
   searchParams: Promise<{
-    q?: string; make?: string; yearMin?: string; yearMax?: string;
+    q?: string; make?: string; model?: string; yearMin?: string; yearMax?: string;
     priceMin?: string; priceMax?: string; condition?: string;
     bodyStyle?: string; transmission?: string; state?: string;
   }>;
@@ -33,6 +33,7 @@ export default async function ListingsPage({ searchParams }: Props) {
 
   if (sp.q) query = query.or(`title.ilike.%${sp.q}%,description.ilike.%${sp.q}%`);
   if (sp.make && sp.make !== 'All Makes') query = query.eq('make', sp.make);
+  if (sp.model) query = query.eq('model', sp.model);
   if (sp.yearMin)      query = query.gte('year', Number(sp.yearMin));
   if (sp.yearMax)      query = query.lte('year', Number(sp.yearMax));
   if (sp.priceMin)     query = query.gte('price', Number(sp.priceMin));
