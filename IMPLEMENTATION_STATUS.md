@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-07 — current as of item 6 complete (Axiom logging expanded to all high-value API routes)*
+*Last updated: 2026-07-07 — current as of commit 19c4253 (community event submissions with admin approval; sitemap expanded)*
 
 **Note on data:** this site is pre-launch. As of 2026-07-06 the production database has 1 demo dealer (Demo Motors / contact-us+dealer1@garagecherries.com) with 1 test listing, plus a FastLane dealer account. No real buyers or advertisers yet. Empty tables (`dealers`, `advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -97,7 +97,7 @@
 - [x] Pricing page (`/pricing`) — dealer plan tiers, private-seller pricing, advertiser section (banner ads, sponsored listings, newsletter), 250th promo banner, Stripe coming-soon note
 - [x] About (`/about`), Contact (`/contact`), Privacy Policy (`/privacy`), Terms of Service (`/terms`)
 - [x] Cookie consent banner and Turnstile CAPTCHA on public forms
-- [x] XML Sitemap (`/sitemap.xml`) — dynamic, covers homepage, listings, dealers, encyclopedia (54 models), advertisers, and all static pages; revalidates every hour; 81 pages discovered by Google
+- [x] XML Sitemap (`/sitemap.xml`) — dynamic, covers homepage, listings (individual + make + make/model), dealers, encyclopedia (54 models), advertisers, guides (6 articles), `/events`, `/dealer/apply`, `/advertiser/signup`, `/privacy`, `/terms`; revalidates every hour
 - [x] Robots.txt (`/robots.txt`) — allows all crawlers, blocks `/admin`, `/api/`, `/dealer/dashboard`
 - [x] **Advertiser public directory** (`/advertisers`) — grouped by category (detail, insurance, finance, transport, storage, restoration, inspection); active + valid trial only
 - [x] **Advertiser public profile pages** (`/advertisers/[slug]`) — business info, description, phone/website CTAs, active ads as "Current Offers"; `slug`, `description`, `website` columns added via migration
@@ -161,14 +161,14 @@
 - [x] **Sentry error tracking** — `@sentry/nextjs`; client + server + edge configs; `instrumentation.ts` hook; `app/error.tsx` captures unhandled errors; env vars in Vercel (added 2026-07-06)
 - [x] **Axiom structured logging** — `next-axiom`; `lib/logger.ts` unified logger with Axiom + Sentry integration; `createLogger(source)` wired across all high-value API routes: `api/inquire`, `api/dealer/apply`, `api/alerts/match`, `api/notify-watchers`, `api/conversations`, `api/conversations/[id]/messages`, `api/email/digest`, `api/email/dealer-report`, `api/email/expiring-listings`, `api/admin/listings`, `api/admin/events`, `api/listings/submit`; env vars in Vercel (added 2026-07-06, expanded 2026-07-07)
 - [x] Deployed to Vercel (project `garage-cherries`, GarageCherries team account, Hobby plan); custom domain `garagecherries.com` and `www.garagecherries.com` live with SSL
-- [x] **Events calendar** (`/events`) — DB-backed; `events` table with type, date, location, featured flag; public page shows upcoming/featured/past sections; admin Events tab (admin+) has full add/edit/delete CRUD with confirmation modal (added 2026-07-07)
+- [x] **Events calendar** (`/events`) — DB-backed; `events` table with `status` (`pending/approved/rejected`), `submitted_by`, `submitter_email`, `submitter_name` columns; public page (approved only) shows upcoming/featured/past sections; logged-in users can submit events via inline form (goes to `pending`); logged-out users see sign-in prompt; admin Events tab has pending approval queue with Approve/Reject buttons; admin-created events go straight to `approved` (added 2026-07-07, submission workflow added 2026-07-07)
 - [x] **Google Analytics 4** — Measurement ID `G-B36QB0J7TX`; added to `app/layout.tsx` via Next.js `Script` (afterInteractive)
 - [x] **SEO — JSON-LD structured data** — Organization (homepage, about, contact), AutoDealer + BreadcrumbList (dealer pages), Vehicle + BreadcrumbList (listing detail), Article + BreadcrumbList (encyclopedia model pages), LocalBusiness + BreadcrumbList (advertiser detail pages)
 - [x] **SEO — OG image** — dynamic `app/opengraph-image.tsx` using Next.js ImageResponse (1200×630); replaces missing static file
 - [x] **SEO — sell page metadata** — `app/sell/layout.tsx` adds title, description, canonical (page is `use client` so layout wrapper required)
 - [x] **SEO — filter clamping** — year inputs `min=1900 max=2030`, price inputs `min=0` (client); `lib/db.ts` clamps year to [1900–2030] and rejects negative price server-side
 - [x] **Google Search Console** — property `https://www.garagecherries.com` verified (DNS method, auto-detected); sitemap submitted; 81 pages discovered
-- [x] **Admin — Events tab** — add, edit, delete events; visible to admin and superadmin roles; logged via Axiom/Sentry (added 2026-07-07)
+- [x] **Admin — Events tab** — add/edit/delete events (straight to approved); pending submissions queue with Approve/Reject; visible to admin and superadmin roles; logged via Axiom/Sentry (added 2026-07-07)
 - [x] **Bing Webmaster Tools** — imported from GSC; sitemap submitted; processing
 - [x] `SPEC.md` — detailed master specification; treat as the primary technical reference
 
@@ -215,7 +215,7 @@
 | **Community Posts** | "Spotted at a show" posts, Q&A on listings |
 | **Dealer Follow / Subscribe** | Buyers follow a dealer and get notified of new listings |
 | **Inventory Import** | CSV bulk upload, DealerSocket/vAuto integration (VIN decode exists; this is bulk import) |
-| **Car Show / Events Calendar** | `/events` page exists but lists zero events — needs real event data |
+| **Car Show / Events Calendar** | `/events` page is live with community submission + approval workflow — needs real event data added |
 
 ### Long-Term
 
