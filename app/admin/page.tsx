@@ -69,6 +69,7 @@ export default function AdminPage() {
   const [confirmDelete, setConfirmDelete] = useState<Listing | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [customRejectionReason, setCustomRejectionReason] = useState('');
   const [editing, setEditing] = useState<Listing | null>(null);
   const [editFields, setEditFields] = useState<EditFields | null>(null);
   const [saving, setSaving] = useState(false);
@@ -454,6 +455,7 @@ export default function AdminPage() {
   function startReject(id: string) {
     setRejectingId(id);
     setRejectionReason('');
+    setCustomRejectionReason('');
   }
 
   async function deleteListing(id: string) {
@@ -666,13 +668,14 @@ export default function AdminPage() {
                       <textarea
                         placeholder="Describe the reason for rejection…"
                         rows={2}
-                        onChange={e => setRejectionReason(e.target.value === 'other' ? '' : e.target.value)}
+                        value={customRejectionReason}
+                        onChange={e => setCustomRejectionReason(e.target.value)}
                         className="w-full border border-red-200 rounded-lg px-3 py-2 text-sm mb-2 resize-none focus:outline-none focus:ring-2 focus:ring-red-400"
                       />
                     )}
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleAction(l.id, 'reject', rejectionReason === 'other' ? '' : rejectionReason)}
+                        onClick={() => handleAction(l.id, 'reject', rejectionReason === 'other' ? customRejectionReason : rejectionReason)}
                         disabled={!!working}
                         className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
                         {working === l.id + 'reject' ? 'Rejecting…' : 'Confirm Reject'}
