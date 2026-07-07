@@ -116,52 +116,58 @@ export default function AdminPage() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) { setLoading(false); return; }
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setLoading(false); return; }
 
-      // Resolve role first so all subsequent decisions are role-aware
-      const roleRes = await fetch('/api/admin/team');
-      let resolvedRole: string | null = null;
-      if (roleRes.ok) {
-        const { team: teamData } = await roleRes.json();
-        setTeam(teamData ?? []);
-        const me = (teamData ?? []).find((m: TeamMember) => m.email === user.email);
-        resolvedRole = me?.role ?? null;
-        setAdminRole(resolvedRole);
-      }
+        // Resolve role first so all subsequent decisions are role-aware
+        const roleRes = await fetch('/api/admin/team');
+        let resolvedRole: string | null = null;
+        if (roleRes.ok) {
+          const { team: teamData } = await roleRes.json();
+          setTeam(teamData ?? []);
+          const me = (teamData ?? []).find((m: TeamMember) => m.email === user.email);
+          resolvedRole = me?.role ?? null;
+          setAdminRole(resolvedRole);
+        }
 
-      // Support role: land on Reported tab, skip listings + conversations
-      const isSupport = resolvedRole === 'support';
-      if (isSupport) {
-        setTab('reported');
-        const reportedRes = await fetch('/api/admin/reported');
+        // Support role: land on Reported tab, skip listings + conversations
+        const isSupport = resolvedRole === 'support';
+        if (isSupport) {
+          setTab('reported');
+          const reportedRes = await fetch('/api/admin/reported');
+          if (reportedRes.ok) {
+            const { reported: rep } = await reportedRes.json();
+            setReported(rep ?? []);
+          }
+          setLoading(false);
+          return;
+        }
+
+        // Moderator+ : load listings and conversations
+        const res = await fetch('/api/admin/listings');
+        if (!res.ok) { setLoading(false); return; }
+        const { listings: listingData } = await res.json();
+        setListings((listingData ?? []) as Listing[]);
+
+        const [convRes, reportedRes] = await Promise.all([
+          supabase.from('conversations')
+            .select('id,listing_title,buyer_name,buyer_email,seller_email,last_message_at,created_at')
+            .order('last_message_at', { ascending: false }),
+          fetch('/api/admin/reported'),
+        ]);
+        setConversations(convRes.data ?? []);
         if (reportedRes.ok) {
           const { reported: rep } = await reportedRes.json();
           setReported(rep ?? []);
         }
         setLoading(false);
-        return;
+      } catch (err) {
+        console.error('Admin page load error:', err);
+        setLoading(false);
       }
-
-      // Moderator+ : load listings and conversations
-      const res = await fetch('/api/admin/listings');
-      if (!res.ok) { setLoading(false); return; }
-      const { listings: listingData } = await res.json();
-      setListings((listingData ?? []) as Listing[]);
-
-      const [convRes, reportedRes] = await Promise.all([
-        supabase.from('conversations')
-          .select('id,listing_title,buyer_name,buyer_email,seller_email,last_message_at,created_at')
-          .order('last_message_at', { ascending: false }),
-        fetch('/api/admin/reported'),
-      ]);
-      setConversations(convRes.data ?? []);
-      if (reportedRes.ok) {
-        const { reported: rep } = await reportedRes.json();
-        setReported(rep ?? []);
-      }
-      setLoading(false);
-    });
+    })();
   }, []);
 
   async function loadUsers() {
