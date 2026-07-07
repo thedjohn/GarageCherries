@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-07 — current as of commit 19c4253 (community event submissions with admin approval; sitemap expanded)*
+*Last updated: 2026-07-07 — current as of commit 445a707 (reported message full-thread view with Warn/Suspend actions; E2E test suite updated and expanded)*
 
 **Note on data:** this site is pre-launch. As of 2026-07-06 the production database has 1 demo dealer (Demo Motors / contact-us+dealer1@garagecherries.com) with 1 test listing, plus a FastLane dealer account. No real buyers or advertisers yet. Empty tables (`dealers`, `advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -131,6 +131,7 @@
 ### Admin Tools
 - [x] Full admin panel (`/admin`) — Listings, Reported, Users, Applications, Events, Team tabs
 - [x] Role hierarchy: `support < moderator < admin < superadmin`; all 4 roles assignable via UI (fixed 2026-07-03)
+- [x] **Reported tab — full conversation thread** — clicking a reported card expands it to show the full message history (oldest → newest); reported message highlighted in red; three inline actions: Dismiss (clears flag), Warn User (sends warning email via Resend; customizable message), Suspend User (inline reason + confirm); `GET /api/admin/conversations/[id]/messages` admin-only endpoint; `PATCH /api/admin/users` extended with `action:'warn'` (added 2026-07-07)
 - [x] Users tab — search/filter, view seller listings, suspend/unsuspend, edit, promote seller to dealer, delete account
 - [x] Team tab — add/remove admin team members by email + role
 - [x] **Email Campaigns** card in Team tab (superadmin) — links to `/admin/email` (added 2026-07-03)
@@ -149,6 +150,16 @@
 - [x] State-code validation on listing submit and dealer apply
 - [x] Ad `cta_url` scheme validation (`http(s)://` only)
 - [x] UUID regex guard before all `admin.auth.admin.getUserById()` calls (prevents SDK throws on non-UUID input)
+
+### Testing
+
+- [x] **E2E test suite (Playwright)** — `tests/e2e/` directory; 6 spec files; all tests pass against production URL (`garagecherries.com`):
+  - `auth-pages.spec.ts` — buyer login/signup, dealer login, forgot-password, `/sell` auth gate
+  - `ui-flows.spec.ts` — homepage, listings browse, legal pages, sell page gate, dealer apply, 404
+  - `sell.spec.ts` — auth-gated sell page: loads without error, logged-out gate visible, sign-in CTA present
+  - `admin.spec.ts` — admin panel tabs (listings, events, reported, users, team, applications); non-admin denied (requires `ADMIN_EMAIL`/`ADMIN_PASSWORD` env vars)
+  - `events.spec.ts` — `/events` loads, logged-out sees sign-in CTA, page shows events or empty state, `POST /api/events/submit` returns 401 unauthenticated (added 2026-07-07)
+  - `api-auth.spec.ts` — API auth guards
 
 ### Technical Infrastructure
 - [x] Next.js 16 App Router with TypeScript, React 19

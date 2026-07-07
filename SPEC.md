@@ -1,6 +1,6 @@
 # GarageCherries — Master Specification
 
-> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-07 (community event submission + approval workflow; sitemap expanded to all pages; Axiom logging expanded to all high-value API routes; events calendar + admin Events tab; dealer watcher messaging UI; BETA_MODE documented; promo campaign, homepage hero copy, GA4, Vercel redeploy, custom domain, promo expiry enforcement, pricing page advertiser section, advertiser public pages, sitemap expansion, SEO structured data, GSC + Bing verified; Sentry error tracking + Axiom structured logging added; sell form contact section removed — seller identity sourced from profiles table).
+> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-07 (reported message full-thread view with Warn/Suspend actions; E2E suite updated + events spec added; community event submission + approval workflow; sitemap expanded to all pages; Axiom logging expanded to all high-value API routes; events calendar + admin Events tab; dealer watcher messaging UI; BETA_MODE documented; promo campaign, homepage hero copy, GA4, Vercel redeploy, custom domain, promo expiry enforcement, pricing page advertiser section, advertiser public pages, sitemap expansion, SEO structured data, GSC + Bing verified; Sentry error tracking + Axiom structured logging added; sell form contact section removed — seller identity sourced from profiles table).
 > Stack: Next.js 16.2.9 · React 19 · Supabase (Auth + Postgres + Storage) · Resend (email) · Cloudflare Turnstile (CAPTCHA) · NHTSA VIN API · Tailwind CSS 4 · Vitest + Playwright
 
 ---
@@ -71,6 +71,9 @@ support < moderator < admin < superadmin
 | View dealer applications | — | — | — | — | ✓ | ✓ | ✓ | ✓ |
 | Approve/reject dealer applications | — | — | — | — | — | — | ✓ | ✓ |
 | Dismiss reported messages | — | — | — | — | ✓ | ✓ | ✓ | ✓ |
+| View full conversation thread on report | — | — | — | — | ✓ | ✓ | ✓ | ✓ |
+| Warn reported message sender (email) | — | — | — | — | ✓ | ✓ | ✓ | ✓ |
+| Suspend user from reported tab | — | — | — | — | — | ✓ | ✓ | ✓ |
 | View admin team | — | — | — | — | — | — | — | ✓ |
 | Add/remove team members | — | — | — | — | — | — | — | ✓ |
 | Clean up orphaned storage images | — | — | — | — | — | — | — | ✓ |
