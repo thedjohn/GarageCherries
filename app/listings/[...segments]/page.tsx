@@ -126,6 +126,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
         hobbySegment: data.hobby_segment,
         lotNumber: data.lot_number,
         descriptionParagraphs: data.description_paragraphs,
+        isSold: data.is_sold ?? false,
       } as any;
     }
     if (!car) notFound();
@@ -248,6 +249,22 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
           <Link href={`/listings/${makeSeg}/${modelSeg}`} className="hover:text-red-600">{car.model}</Link><span>/</span>
           <span className="text-zinc-800">{car.title}</span>
         </nav>
+
+        {(car as any).isSold && (
+          <div className="mb-6 bg-zinc-900 text-white rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🏁</span>
+              <div>
+                <p className="font-bold text-lg leading-tight">This vehicle has sold</p>
+                <p className="text-zinc-400 text-sm">This listing is kept online for reference. Browse similar vehicles below.</p>
+              </div>
+            </div>
+            <Link href={`/listings?make=${encodeURIComponent(car.make)}`}
+              className="shrink-0 bg-red-600 hover:bg-red-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors">
+              View Similar Listings →
+            </Link>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
