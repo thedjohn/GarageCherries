@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requireAdmin, hasRole } from '@/lib/admin';
 import { createLogger } from '@/lib/logger';
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
   }
   log.info('Event created', { eventId: data.id, name: data.name, adminEmail: user?.email });
   await log.flush();
+  revalidatePath('/events');
   return NextResponse.json({ event: data });
 }
 
@@ -81,6 +83,7 @@ export async function PATCH(req: NextRequest) {
     }
     log.info(`Event ${action}d`, { eventId: id, adminEmail: user?.email });
     await log.flush();
+    revalidatePath('/events');
     return NextResponse.json({ success: true });
   }
 
@@ -104,6 +107,7 @@ export async function PATCH(req: NextRequest) {
   }
   log.info('Event updated', { eventId: id, adminEmail: user?.email });
   await log.flush();
+  revalidatePath('/events');
   return NextResponse.json({ success: true });
 }
 
@@ -126,5 +130,6 @@ export async function DELETE(req: NextRequest) {
   }
   log.info('Event deleted', { eventId: id, adminEmail: user?.email });
   await log.flush();
+  revalidatePath('/events');
   return NextResponse.json({ success: true });
 }
