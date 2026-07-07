@@ -83,7 +83,11 @@ export interface FetchCarsFilters {
 
 export async function fetchCars(filters: FetchCarsFilters = {}): Promise<Car[]> {
   const supabase = await createClient();
-  let query = supabase.from('listings').select('*').order('created_at', { ascending: false });
+  let query = supabase.from('listings').select('*')
+    .eq('status', 'approved')
+    .eq('is_sold', false)
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+    .order('created_at', { ascending: false });
 
   if (filters.make && filters.make !== 'All Makes')
     query = query.eq('make', filters.make);
