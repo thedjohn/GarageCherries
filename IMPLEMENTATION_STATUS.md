@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-07 — current as of commit 0ebf31d (dealer overview listing links; /reports active count fix; /pricing advertiser tiers added; /about live stats)*
+*Last updated: 2026-07-07 — current as of newsletter signup (footer form + `/api/newsletter/subscribe`; cascading model filter; email preferences tab in /account)*
 
 **Note on data:** this site is pre-launch. As of 2026-07-07 the production database has a handful of manually-created test listings (private-seller and dealer) and no real buyers or advertisers yet. Empty tables (`advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -9,6 +9,7 @@
 
 ### Browse & Search
 - [x] Full listings page (`/listings`) with filter sidebar — make, year, price, condition, body style, transmission, state
+- [x] **Cascading model filter** — when a make is selected AND that make has active listings with distinct models in the DB, a Model dropdown appears under Make; invisible with sparse/pre-launch inventory (added 2026-07-07)
 - [x] **Keyword search** — `q` param on `/listings`; `SearchFilters` adds a text input at the top; server applies `ilike` on `title` and `description` columns (added 2026-07-03)
 - [x] Make pages (`/cars/[make]`) — all cars by make with model sub-navigation
 - [x] Model pages (`/cars/[make]/[model]`) — filtered by make + model
@@ -122,6 +123,7 @@
 - [x] Car Alerts — saved searches with automatic email notification on new matches, up to 10 per user, edit/pause/delete
 - [x] My Listings tab — private sellers manage their own listings; persistent "+ Post a Listing" button in the tab header (previously only shown in the empty state, disappearing once a user had any listings) (added 2026-07-07)
 - [x] Live buyer-seller messaging — in-page Messenger-style chat widget, Supabase Realtime push, unread badges, report-message flow
+- [x] **Email preferences tab in `/account` settings** — "Email Preferences" card under Settings tab; toggle switches for Weekly Digest, Price Drop alerts, Car Alerts; reads/writes `digest_opt_out`, `price_drop_opt_out`, `alerts_opt_out` in Supabase `user_metadata` (added 2026-07-07)
 
 ### Email (via Resend)
 - [x] Buyer inquiry delivered to seller/dealer instantly
@@ -210,7 +212,7 @@
 | **Dealer Subscriptions** | Pricing page shows Starter/Pro/Unlimited plans | No Stripe — nothing actually charges |
 | **Featured Listing Toggle** | Toggle in dashboard, `featured` DB field, badge + homepage placement | No payment gate — free for all dealers currently |
 | **Import/Sync Inventory** | "Import JSON" and "Sync Now" buttons visible in dealer dashboard; sample file at `docs/dealer-import-sample.json` | Both are visually disabled (greyed out, `disabled` attr, "Coming soon" tooltip) — no API route or click handler yet |
-| **Email preferences UI** | All unsubscribe pages built and linked from emails | No email preferences tab in `/account` settings — users must click unsubscribe in an email |
+| ~~**Email preferences UI**~~ | ✅ Complete (2026-07-07) — Email Preferences card in `/account` Settings tab; three toggles; persisted to `user_metadata` | — |
 
 ---
 
@@ -227,10 +229,10 @@
 | **Buyer Inquiry History** | `/account/inquiries` — past contact forms sent | Not built |
 | **Geographic Analytics** | IP geolocation on views, buyer location map in dealer dashboard | No geolocation service wired up |
 | **Verified History Badge** | Full vehicle history report (accidents, title, prior owners) | Requires Carfax/AutoCheck API + commercial agreement |
-| **Email Newsletter Signup** | Buyer opt-in form for digest | No signup form on site |
+| ~~**Email Newsletter Signup**~~ | ✅ Complete (2026-07-07) — newsletter banner in footer with email form; `/api/newsletter/subscribe` POST; `newsletter_subscribers` table; duplicate emails silently succeed | — |
 | **Sales Pipeline / CRM** | Track dealers & advertisers through free → paying conversion. Options: (A) Sales tab in `/admin` showing active/expiring/expired/converted with one-click email; (B) Export contacts CSV from admin → load into HubSpot free tier for email sequences and deal tracking; (C) automated drip emails at 30 days / 14 days / day-of expiry. Recommended order: B first (quick export), then C (drip emails), then A. | Stripe must be live first for "converted" status to mean anything |
 | **Sold archive — actual sale price** | Add optional "Sold for $X" field to Mark as Sold flow; show real transaction price on `/sold` instead of asking price | Deferred (Option 2) — `/sold` page is live with asking price for now |
-| **Model filter on /listings** | Cascading Make → Model dropdown in the search sidebar. Backend is most of the way there — `fetchCars` already accepts a `model` param (`lib/db.ts:90`), and `fetchModelsByMake()` exists (`lib/db.ts:155`) but is currently unused and needs status/expiry scoping before reuse. Small, self-contained build whenever it's picked up. | Low value until real inventory volume exists — most makes currently have 0–1 live listings, so the dropdown would be nearly empty |
+| ~~**Model filter on /listings**~~ | ✅ Complete (2026-07-07) — cascading Make → Model dropdown; hidden until a make is selected AND models exist in DB; `/api/models` endpoint | — |
 
 ### Mid-Term
 
@@ -267,7 +269,7 @@
 | Featured listing upgrades | ⚠️ Toggle exists, no payment | $1,000–$8,000 |
 | Homepage spotlight | ❌ Not built | $300–$3,000 |
 | Display advertising | ✅ Signup, ad creation, targeting, tracking, and display all work | $500–$15,000 |
-| Newsletter sponsorships | ⚠️ Email built, no sponsor workflow | $400–$6,000 |
+| Newsletter sponsorships | ⚠️ Email built + subscriber signup form live; no sponsor workflow or audience yet | $400–$6,000 |
 | Lead gen / pay-per-inquiry | ❌ Not built | $3,000–$30,000 |
 | Auction buyer fee (5%) | ❌ Not built | $5,000–$35,000 |
 | Financing referrals | ❌ Not built (calculator links out with no affiliate tracking) | $1,000–$10,000 |
@@ -304,8 +306,8 @@
 
 1. **Promo expiry notification email** — automated email to all users (dealers, individuals, advertisers) warning that free period ends October 31, 2026; send ~2 weeks before cutoff
 2. **Wire Stripe** — featured listing upgrades are the fastest first product to charge for; pricing page already shows plan tiers; `promo_expires_at` column already tracking who needs to pay post-promo *(on hold)*
-3. **Build `/account/inquiries`** — completes the buyer account experience
-4. **Add email preferences tab to `/account`** — lets users manage all opt-outs in one place (unsubscribe links in emails already work; this is a convenience UI)
+3. **Build `/account/inquiries`** — completes the buyer account experience; last remaining "small win" item
+4. **Delete `app/sell/SellForm.tsx`** — dead file, never imported; `/sell` renders `SellClient.tsx` exclusively
 5. **Decide on dealer self-serve signup** — current apply-and-wait model may be intentional (vetting quality), but if faster growth is the goal, self-serve + Stripe removes the bottleneck
 6. **Restore inspection-affiliate button** — once Lemon Squad agreement is confirmed
 7. **Submit event pages to Google** — use URL Inspection in Search Console to request indexing for individual `/events/[slug]` pages; rich Event results will appear once Google crawls the JSON-LD

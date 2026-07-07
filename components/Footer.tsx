@@ -1,9 +1,79 @@
+'use client';
 import Link from 'next/link';
+import { useState } from 'react';
+
+function NewsletterForm() {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus('loading');
+    setErrorMsg('');
+    try {
+      const res = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.error ?? 'Signup failed. Please try again.');
+        setStatus('error');
+      } else {
+        setStatus('success');
+        setEmail('');
+      }
+    } catch {
+      setErrorMsg('Signup failed. Please try again.');
+      setStatus('error');
+    }
+  }
+
+  if (status === 'success') {
+    return <p className="text-sm text-green-400">You're in! Check your inbox for updates.</p>;
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2 mt-2">
+      <input
+        type="email"
+        required
+        placeholder="your@email.com"
+        value={email}
+        onChange={e => setEmail(e.target.value)}
+        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500"
+      />
+      <button
+        type="submit"
+        disabled={status === 'loading'}
+        className="bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+      >
+        {status === 'loading' ? 'Signing up…' : 'Subscribe'}
+      </button>
+      {status === 'error' && <p className="text-xs text-red-400 mt-1 w-full">{errorMsg}</p>}
+    </form>
+  );
+}
 
 export default function Footer() {
   return (
     <footer className="bg-zinc-900 text-zinc-400 mt-16">
       <div className="max-w-7xl mx-auto px-4 py-12">
+        {/* Newsletter banner */}
+        <div className="bg-zinc-800 rounded-xl px-6 py-5 mb-10">
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            <div className="flex-1">
+              <p className="text-white font-semibold text-sm">Stay in the loop</p>
+              <p className="text-zinc-400 text-xs mt-0.5">New listings, car news, and collector market updates — straight to your inbox.</p>
+            </div>
+            <div className="md:w-96 w-full">
+              <NewsletterForm />
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2 mb-3">
