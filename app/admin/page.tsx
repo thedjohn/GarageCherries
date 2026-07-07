@@ -22,6 +22,9 @@ interface ReportedMessage {
   conversation_id: string;
   conversations: { listing_title: string; buyer_name: string; buyer_email: string } | null;
 }
+interface ConvMsg {
+  id: string; sender_id: string; sender_name: string; body: string; reported: boolean; created_at: string;
+}
 interface SiteUser {
   id: string; email: string; name: string; created_at: string; last_sign_in_at: string | null;
   type: string;
@@ -75,6 +78,15 @@ export default function AdminPage() {
   // Reported
   const [reported, setReported] = useState<ReportedMessage[]>([]);
   const [dismissing, setDismissing] = useState<string | null>(null);
+  const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
+  const [convThreads, setConvThreads] = useState<Record<string, ConvMsg[]>>({});
+  const [threadLoading, setThreadLoading] = useState<string | null>(null);
+  const [warningSenderId, setWarningSenderId] = useState<string | null>(null);
+  const [warningText, setWarningText] = useState('');
+  const [warnWorking, setWarnWorking] = useState(false);
+  const [suspendFromReport, setSuspendFromReport] = useState<{ id: string; name: string } | null>(null);
+  const [reportSuspendReason, setReportSuspendReason] = useState('');
+  const [reportSuspendWorking, setReportSuspendWorking] = useState(false);
 
   // Cleanup images
   const [cleanupWorking, setCleanupWorking] = useState(false);
@@ -439,6 +451,44 @@ export default function AdminPage() {
     setDismissing(null);
   }
 
+  async function loadThread(convId: string) {
+    if (expandedConvId === convId) { setExpandedConvId(null); return; }
+    setExpandedConvId(convId);
+    if (convThreads[convId]) return;
+    setThreadLoading(convId);
+    const res = await fetch(`/api/admin/conversations/${convId}/messages`);
+    if (res.ok) {
+      const { messages } = await res.json();
+      setConvThreads(prev => ({ ...prev, [convId]: messages }));
+    }
+    setThreadLoading(null);
+  }
+
+  async function warnUser(senderId: string) {
+    setWarnWorking(true);
+    await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: senderId, action: 'warn', message: warningText }),
+    });
+    setWarnWorking(false);
+    setWarningSenderId(null);
+    setWarningText('');
+  }
+
+  async function suspendFromReportFn() {
+    if (!suspendFromReport) return;
+    setReportSuspendWorking(true);
+    await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: suspendFromReport.id, action: 'suspend', reason: reportSuspendReason }),
+    });
+    setReportSuspendWorking(false);
+    setSuspendFromReport(null);
+    setReportSuspendReason('');
+  }
+
   async function addTeamMember() {
     setTeamWorking(true); setTeamError('');
     const res = await fetch('/api/admin/team', {
@@ -652,28 +702,148 @@ export default function AdminPage() {
               <p>No reported messages.</p>
             </div>
           )}
-          {reported.map(r => (
-            <div key={r.id} className="bg-white rounded-2xl border border-red-100 shadow-sm p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-zinc-400 mb-1">
-                    {r.conversations?.listing_title} · reported {new Date(r.created_at).toLocaleDateString()}
-                  </p>
-                  <p className="font-semibold text-zinc-900 mb-0.5">{r.sender_name}</p>
-                  <p className="text-sm text-zinc-700 bg-red-50 rounded-lg px-3 py-2 mt-1">&ldquo;{r.body}&rdquo;</p>
-                  <p className="text-xs text-zinc-400 mt-2">
-                    Conversation: {r.conversations?.buyer_name} ({r.conversations?.buyer_email})
-                  </p>
-                </div>
+          {reported.map(r => {
+            const isExpanded = expandedConvId === r.conversation_id;
+            const thread = convThreads[r.conversation_id];
+            const isLoadingThread = threadLoading === r.conversation_id;
+            const isWarning = warningSenderId === r.sender_id;
+            const isSuspending = suspendFromReport?.id === r.sender_id;
+            return (
+              <div key={r.id} className="bg-white rounded-2xl border border-red-100 shadow-sm overflow-hidden">
+                {/* Header — click to expand */}
                 <button
-                  onClick={() => dismissReport(r.id)}
-                  disabled={dismissing === r.id}
-                  className="px-3 py-1.5 text-xs font-semibold border border-zinc-200 rounded-lg text-zinc-500 hover:bg-zinc-50 shrink-0 disabled:opacity-50">
-                  {dismissing === r.id ? 'Dismissing…' : 'Dismiss'}
+                  className="w-full text-left p-5 hover:bg-red-50/30 transition-colors"
+                  onClick={() => loadThread(r.conversation_id)}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-zinc-400 mb-1">
+                        {r.conversations?.listing_title} · reported {new Date(r.created_at).toLocaleDateString()}
+                      </p>
+                      <p className="font-semibold text-zinc-900 mb-1">{r.sender_name}</p>
+                      <p className="text-sm text-zinc-600 bg-red-50 rounded-lg px-3 py-2 line-clamp-2">&ldquo;{r.body}&rdquo;</p>
+                      <p className="text-xs text-zinc-400 mt-2">
+                        Other party: {r.conversations?.buyer_name} ({r.conversations?.buyer_email})
+                      </p>
+                    </div>
+                    <span className="text-zinc-400 text-sm shrink-0 mt-1">{isExpanded ? '▲' : '▼'}</span>
+                  </div>
                 </button>
+
+                {/* Expanded: full thread */}
+                {isExpanded && (
+                  <div className="border-t border-red-100 px-5 pb-5 pt-4">
+                    <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-3">Full Conversation</p>
+
+                    {isLoadingThread && (
+                      <div className="py-6 text-center text-zinc-400 text-sm">Loading thread…</div>
+                    )}
+
+                    {thread && (
+                      <div className="space-y-2 mb-5 max-h-72 overflow-y-auto pr-1">
+                        {thread.map(msg => {
+                          const isReported = msg.reported;
+                          const isSender = msg.sender_id === r.sender_id;
+                          return (
+                            <div key={msg.id} className={`flex gap-2.5 ${isSender ? 'justify-end' : 'justify-start'}`}>
+                              <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
+                                isReported
+                                  ? 'bg-red-100 border border-red-300'
+                                  : isSender
+                                  ? 'bg-zinc-100'
+                                  : 'bg-zinc-50 border border-zinc-100'
+                              }`}>
+                                <p className={`text-xs font-semibold mb-0.5 ${isReported ? 'text-red-600' : 'text-zinc-500'}`}>
+                                  {msg.sender_name}{isReported && ' · reported'}
+                                </p>
+                                <p className={`text-sm ${isReported ? 'text-red-800' : 'text-zinc-700'}`}>{msg.body}</p>
+                                <p className="text-[10px] text-zinc-400 mt-1">{new Date(msg.created_at).toLocaleString()}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Warn inline form */}
+                    {isWarning && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-3">
+                        <p className="text-xs font-semibold text-amber-700 mb-2">Warning message to {r.sender_name}</p>
+                        <textarea
+                          rows={3}
+                          value={warningText}
+                          onChange={e => setWarningText(e.target.value)}
+                          placeholder="Describe the violation or leave blank for the default message…"
+                          className="w-full border border-amber-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none bg-white mb-2"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => warnUser(r.sender_id)}
+                            disabled={warnWorking}
+                            className="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors">
+                            {warnWorking ? 'Sending…' : 'Send Warning'}
+                          </button>
+                          <button onClick={() => { setWarningSenderId(null); setWarningText(''); }}
+                            className="px-4 py-1.5 border border-zinc-200 text-zinc-500 text-xs font-semibold rounded-lg hover:bg-zinc-50">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Suspend inline form */}
+                    {isSuspending && (
+                      <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-3">
+                        <p className="text-xs font-semibold text-orange-700 mb-2">Suspend {r.sender_name}</p>
+                        <input
+                          value={reportSuspendReason}
+                          onChange={e => setReportSuspendReason(e.target.value)}
+                          placeholder="Reason (optional)"
+                          className="w-full border border-orange-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white mb-2"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={suspendFromReportFn}
+                            disabled={reportSuspendWorking}
+                            className="px-4 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors">
+                            {reportSuspendWorking ? 'Suspending…' : 'Confirm Suspend'}
+                          </button>
+                          <button onClick={() => { setSuspendFromReport(null); setReportSuspendReason(''); }}
+                            className="px-4 py-1.5 border border-zinc-200 text-zinc-500 text-xs font-semibold rounded-lg hover:bg-zinc-50">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    {!isWarning && !isSuspending && (
+                      <div className="flex gap-2 flex-wrap">
+                        <button
+                          onClick={() => dismissReport(r.id)}
+                          disabled={!!dismissing}
+                          className="px-4 py-1.5 text-xs font-semibold border border-zinc-200 rounded-lg text-zinc-500 hover:bg-zinc-50 disabled:opacity-50">
+                          {dismissing === r.id ? 'Dismissing…' : 'Dismiss'}
+                        </button>
+                        <button
+                          onClick={() => { setWarningSenderId(r.sender_id); setSuspendFromReport(null); }}
+                          className="px-4 py-1.5 text-xs font-semibold border border-amber-200 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors">
+                          Warn User
+                        </button>
+                        {(adminRole === 'moderator' || adminRole === 'admin' || adminRole === 'superadmin') && (
+                          <button
+                            onClick={() => { setSuspendFromReport({ id: r.sender_id, name: r.sender_name }); setWarningSenderId(null); }}
+                            className="px-4 py-1.5 text-xs font-semibold border border-orange-200 rounded-lg text-orange-600 hover:bg-orange-50 transition-colors">
+                            Suspend User
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

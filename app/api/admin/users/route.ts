@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requireAdmin, hasRole } from '@/lib/admin';
+import { Resend } from 'resend';
 
 async function auth() {
   const supabase = await createClient();
@@ -121,6 +122,37 @@ export async function PATCH(req: NextRequest) {
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
   const admin = createAdminClient();
+
+  // Warn user — sends a warning email
+  if (action === 'warn') {
+    if (!hasRole(role, 'moderator')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { data: authData } = await admin.auth.admin.getUserById(id);
+    const email = authData?.user?.email;
+    if (!email) return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    const warningMessage = body.message?.trim() || 'Please review our community guidelines. Continued violations may result in account suspension.';
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    await resend.emails.send({
+      from: 'GarageCherries <contact-us@garagecherries.com>',
+      to: email,
+      subject: 'A message about your GarageCherries account',
+      html: `
+        <div style="font-family:sans-serif;max-width:500px;margin:auto;padding:32px 24px">
+          <h2 style="font-size:20px;font-weight:800;color:#18181b;margin-bottom:16px">Account Notice</h2>
+          <p style="color:#52525b;font-size:15px;line-height:1.6;margin-bottom:16px">
+            Our team reviewed a reported message associated with your account and wanted to reach out.
+          </p>
+          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px;margin-bottom:20px">
+            <p style="color:#7f1d1d;font-size:14px;margin:0">${warningMessage}</p>
+          </div>
+          <p style="color:#52525b;font-size:14px;line-height:1.6">
+            If you have questions, reply to this email. Thank you for being part of GarageCherries.
+          </p>
+          <p style="color:#a1a1aa;font-size:12px;margin-top:32px">— The GarageCherries Team</p>
+        </div>
+      `,
+    });
+    return NextResponse.json({ success: true });
+  }
 
   // Suspend
   if (action === 'suspend') {
