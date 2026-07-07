@@ -281,12 +281,15 @@ export default function AdminPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action, rejection_note: note ?? null }),
     });
+    const json = await res.json().catch(() => ({}));
     setAppWorking(null);
     setRejectingApp(null);
     setAppRejectionNote('');
     if (res.ok) {
       setApplications(prev => prev.map(a => a.id === id
         ? { ...a, status: action === 'approve' ? 'approved' : 'rejected', reviewed_at: new Date().toISOString() } : a));
+    } else {
+      alert(`Failed to ${action} application: ${json.error ?? 'Unknown error'}`);
     }
   }
 
