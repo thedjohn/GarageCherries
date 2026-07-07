@@ -16,9 +16,11 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",
+    "@sentry/nextjs": "^10.63.0",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.1",
     "next": "16.2.9",
+    "next-axiom": "^1.10.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.12.4",

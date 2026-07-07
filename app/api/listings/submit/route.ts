@@ -5,12 +5,16 @@ import { verifyTurnstile } from '@/lib/verifyTurnstile';
 import { notifyAdmin } from '@/lib/notifyAdmin';
 import { US_STATES } from '@/lib/constants';
 import { CONDITIONS } from '@/lib/types';
+import { createLogger } from '@/lib/logger';
 
 export async function POST(req: NextRequest) {
+  const log = createLogger('listings/submit');
   const ip = getClientIP(req);
   const { allowed, firstBlock } = rateLimit(`submit:${ip}`, 5, 60 * 60 * 1000);
   if (!allowed) {
     if (firstBlock) notifyAdmin('Rate limit hit: listing submit', `IP <strong>${ip}</strong> exceeded the listing submission limit (5/hour).<br/>Consider increasing the limit if this is a legitimate user.`);
+    log.warn('Rate limit exceeded', { ip });
+    await log.flush();
     return NextResponse.json({ error: 'Too many submissions. Please try again later.' }, { status: 429 });
   }
 
@@ -128,12 +132,19 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     if (error.code === 'P0001') {
+      log.warn('Listing limit reached', { sellerId: sellerId ?? undefined, ip });
+      await log.flush();
       return NextResponse.json({
         error: 'LISTING_LIMIT',
         message: 'You have reached the 10 active listing limit for private sellers. Please contact us to upgrade to a Dealer account.',
       }, { status: 403 });
     }
+    log.error('Listing insert failed', new Error(error.message), { sellerId: sellerId ?? undefined, make, model, year, ip });
+    await log.flush();
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  log.info('Listing submitted', { sellerId: sellerId ?? undefined, sellerEmail, make, model, year, imageCount: validImageUrls.length, ip });
+  await log.flush();
   return NextResponse.json({ success: true });
 }

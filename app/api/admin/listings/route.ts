@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requireAdmin, hasRole } from '@/lib/admin';
 import { Resend } from 'resend';
+import { createLogger } from '@/lib/logger';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const log = createLogger('admin/listings');
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const role = await requireAdmin(user?.id ?? null);
@@ -66,7 +68,13 @@ export async function PATCH(req: NextRequest) {
       seller_name, seller_phone, seller_email,
       featured: !!featured, status,
     }).eq('id', id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      log.error('Listing edit failed', new Error(error.message), { listingId: id, adminEmail: user?.email });
+      await log.flush();
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    log.info('Listing edited', { listingId: id, adminEmail: user?.email, status });
+    await log.flush();
     return NextResponse.json({ success: true });
   }
 
@@ -103,7 +111,13 @@ export async function PATCH(req: NextRequest) {
     .update(update)
     .eq('id', id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    log.error('Listing action failed', new Error(error.message), { listingId: id, action, adminEmail: user?.email });
+    await log.flush();
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  log.info('Listing action', { listingId: id, action, adminEmail: user?.email, sellerEmail: listing?.seller_email });
+  await log.flush();
 
   // Send seller notification email — fire and forget
   if (listing?.seller_email) {
@@ -177,6 +191,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const log = createLogger('admin/listings');
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const role = await requireAdmin(user?.id ?? null);
@@ -210,7 +225,13 @@ export async function DELETE(req: NextRequest) {
 
   // Delete the listing
   const { error } = await admin.from('listings').delete().eq('id', id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    log.error('Listing delete failed', new Error(error.message), { listingId: id, adminEmail: user?.email });
+    await log.flush();
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  log.info('Listing deleted', { listingId: id, adminEmail: user?.email });
+  await log.flush();
 
   return NextResponse.json({ success: true });
 }
