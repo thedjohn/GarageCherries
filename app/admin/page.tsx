@@ -117,6 +117,9 @@ export default function AdminPage() {
   const [appWorking, setAppWorking] = useState<string | null>(null);
   const [rejectingApp, setRejectingApp] = useState<string | null>(null);
   const [appRejectionNote, setAppRejectionNote] = useState('');
+  const [appFilter, setAppFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [appPage, setAppPage] = useState(0);
+  const APP_PAGE_SIZE = 10;
 
   // Users
   const [users, setUsers] = useState<SiteUser[]>([]);
@@ -852,17 +855,28 @@ export default function AdminPage() {
       {/* Applications tab */}
       {tab === 'applications' && (adminRole === 'superadmin' || adminRole === 'admin') && (
         <div>
-          <p className="text-zinc-400 text-sm mb-6">
-            {applications.filter(a => a.status === 'pending').length} pending ·{' '}
-            {applications.filter(a => a.status === 'approved').length} approved ·{' '}
-            {applications.filter(a => a.status === 'rejected').length} rejected
-          </p>
+          {/* Filter tabs */}
+          <div className="flex gap-2 mb-6 flex-wrap">
+            {(['pending', 'approved', 'rejected', 'all'] as const).map(f => {
+              const count = f === 'all' ? applications.length : applications.filter(a => a.status === f).length;
+              return (
+                <button key={f} onClick={() => { setAppFilter(f); setAppPage(0); }}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                    appFilter === f ? 'bg-zinc-900 text-white border-zinc-900' : 'border-zinc-200 text-zinc-600 hover:border-zinc-400'
+                  }`}>
+                  {f.charAt(0).toUpperCase() + f.slice(1)} <span className="opacity-60">({count})</span>
+                </button>
+              );
+            })}
+          </div>
           {applicationsLoading && <div className="text-center py-20 text-zinc-400 text-sm">Loading…</div>}
           {!applicationsLoading && applications.length === 0 && (
             <div className="text-center py-20 text-zinc-400 text-sm">No dealer applications yet.</div>
           )}
           <div className="space-y-4">
-            {applications.map(app => (
+            {(appFilter === 'all' ? applications : applications.filter(a => a.status === appFilter))
+              .slice(appPage * APP_PAGE_SIZE, (appPage + 1) * APP_PAGE_SIZE)
+              .map(app => (
               <div key={app.id} className={`bg-white rounded-2xl border shadow-sm p-5 ${app.status === 'pending' ? 'border-yellow-200' : 'border-zinc-100'}`}>
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div>
@@ -944,6 +958,29 @@ export default function AdminPage() {
               </div>
             ))}
           </div>
+          {/* Pagination */}
+          {(() => {
+            const filtered = appFilter === 'all' ? applications : applications.filter(a => a.status === appFilter);
+            const totalPages = Math.ceil(filtered.length / APP_PAGE_SIZE);
+            if (totalPages <= 1) return null;
+            return (
+              <div className="flex items-center justify-between mt-6 text-sm">
+                <p className="text-zinc-400">
+                  Showing {appPage * APP_PAGE_SIZE + 1}–{Math.min((appPage + 1) * APP_PAGE_SIZE, filtered.length)} of {filtered.length}
+                </p>
+                <div className="flex gap-2">
+                  <button onClick={() => setAppPage(p => p - 1)} disabled={appPage === 0}
+                    className="px-3 py-1.5 border border-zinc-200 rounded-lg disabled:opacity-40 hover:border-zinc-400 transition-colors">
+                    ← Prev
+                  </button>
+                  <button onClick={() => setAppPage(p => p + 1)} disabled={appPage >= totalPages - 1}
+                    className="px-3 py-1.5 border border-zinc-200 rounded-lg disabled:opacity-40 hover:border-zinc-400 transition-colors">
+                    Next →
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
