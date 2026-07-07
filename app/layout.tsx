@@ -7,7 +7,6 @@ import Footer from '@/components/Footer';
 import { MessengerProvider } from '@/lib/messenger-context';
 import MessengerWidget from '@/components/MessengerWidget';
 import PromoBanner from '@/components/PromoBanner';
-import SessionGuard from '@/components/SessionGuard';
 
 const geist = Geist({ subsets: ['latin'] });
 
@@ -50,7 +49,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${geist.className} bg-zinc-50 text-zinc-900 min-h-screen flex flex-col`}>
         <MessengerProvider>
-          <SessionGuard />
+          {/* SessionGuard disabled 2026-07-07 -- two bugs in a row (a timing-race
+              false positive, then a logic inversion) force-logged-out at least one
+              real user. Re-enable only after the root cause of /api/ 401s on a
+              valid session is diagnosed and the fix is tested without a live user
+              as the test subject. See components/SessionGuard.tsx. */}
           <Header />
           <PromoBanner />
           <main className="flex-1">{children}</main>
