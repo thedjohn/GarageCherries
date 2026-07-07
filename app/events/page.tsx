@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { createAdminClient } from '@/lib/supabase/server';
 import SubmitEventForm from './SubmitEventForm';
 
-export const revalidate = 3600;
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: 'Classic Car Shows & Events 2026 | GarageCherries',
