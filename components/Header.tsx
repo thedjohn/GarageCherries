@@ -110,7 +110,7 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
-            <Image src="/cherry-logo.jpg" alt="GarageCherries" width={32} height={32} className="rounded-sm" />
+            <Image src="/cherry-logo.png" alt="GarageCherries" width={32} height={32} />
             <span className="text-xl font-bold tracking-tight">
               Garage<span className="text-red-500">Cherries</span>
             </span>
