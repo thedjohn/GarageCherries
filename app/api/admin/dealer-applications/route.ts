@@ -124,6 +124,7 @@ export async function PATCH(req: NextRequest) {
   const { data: linkData } = await admin.auth.admin.generateLink({
     type: 'recovery',
     email: app.email,
+    options: { redirectTo: 'https://www.garagecherries.com/dealer/reset-password' },
   });
   const actionLink = linkData?.properties?.action_link;
 
