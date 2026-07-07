@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { MAKES, BODY_STYLES, CONDITIONS } from '@/lib/types';
+import { MAKES, BODY_STYLES, CONDITIONS, TRANSMISSIONS } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
 import { formatPrice } from '@/lib/data';
 import { resizeImageFiles } from '@/lib/resizeImage';
@@ -301,8 +301,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Transmission</label>
               <select value={fields.transmission} onChange={e => set('transmission', e.target.value)} className={inp}>
                 <option value="">Select...</option>
-                <option>Manual</option>
-                <option>Automatic</option>
+                {TRANSMISSIONS.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
             <div>

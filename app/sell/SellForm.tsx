@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef } from 'react';
 import Link from 'next/link';
-import { MAKES, BODY_STYLES, CONDITIONS } from '@/lib/types';
+import { MAKES, BODY_STYLES, CONDITIONS, TRANSMISSIONS } from '@/lib/types';
 import { resizeImageFiles } from '@/lib/resizeImage';
 
 type UploadState = 'pending' | 'uploading' | 'done' | 'error';
@@ -251,8 +251,7 @@ export default function SellForm() {
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Transmission</label>
               <select name="transmission" className={inputCls}>
-                <option>Manual</option>
-                <option>Automatic</option>
+                {TRANSMISSIONS.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
             <div>

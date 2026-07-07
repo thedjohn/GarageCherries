@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { formatPhone } from '@/lib/data';
-import { MAKES, BODY_STYLES, CONDITIONS } from '@/lib/types';
+import { MAKES, BODY_STYLES, CONDITIONS, TRANSMISSIONS } from '@/lib/types';
 
 interface Listing {
   id: string; slug: string; title: string; year: number; make: string; model: string;
@@ -1629,7 +1629,7 @@ export default function AdminPage() {
                 </div>
                 <div><label className={labelCls}>Transmission</label>
                   <select value={editFields.transmission} onChange={e => set('transmission', e.target.value)} className={inputCls}>
-                    <option>Manual</option><option>Automatic</option>
+                    {TRANSMISSIONS.map(t => <option key={t}>{t}</option>)}
                   </select>
                 </div>
                 <div><label className={labelCls}>Engine</label><input value={editFields.engine ?? ''} onChange={e => set('engine', e.target.value)} className={inputCls} /></div>

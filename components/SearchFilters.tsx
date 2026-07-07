@@ -1,7 +1,7 @@
 'use client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useCallback } from 'react';
-import { MAKES, BODY_STYLES, CONDITIONS, STATES } from '@/lib/types';
+import { MAKES, BODY_STYLES, CONDITIONS, STATES, TRANSMISSIONS } from '@/lib/types';
 
 export default function SearchFilters({ initialMakes }: { initialMakes?: string[] }) {
   const router = useRouter();
@@ -122,7 +122,7 @@ export default function SearchFilters({ initialMakes }: { initialMakes?: string[
           <div>
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Transmission</label>
             <div className="flex gap-2">
-              {['Any','Manual','Automatic'].map(t => (
+              {['Any', ...TRANSMISSIONS].map(t => (
                 <button key={t}
                   onClick={() => set('transmission', t === 'Any' ? '' : t)}
                   className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${

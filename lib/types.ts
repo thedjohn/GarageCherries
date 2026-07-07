@@ -69,17 +69,23 @@ export interface SearchFilters {
 }
 
 export const MAKES = [
-  'All Makes','Chevrolet','Ford','Dodge','Pontiac','Buick','Oldsmobile',
-  'Cadillac','Lincoln','Mercury','Chrysler','Plymouth','AMC','Studebaker',
-  'Packard','Hudson','Nash','DeSoto','Willys','Kaiser','Tucker',
+  'All Makes',
+  'AMC','Buick','Cadillac','Chevrolet','Chrysler','DeSoto','Dodge','Ford',
+  'Hudson','Kaiser','Lincoln','Mercury','Nash','Oldsmobile','Packard',
+  'Plymouth','Pontiac','Ram','Studebaker','Tucker','Willys',
 ];
 
 export const BODY_STYLES = [
-  'All Styles','Coupe','Convertible','Sedan','Hardtop','Station Wagon',
-  'Pickup Truck','Roadster','Fastback','2-Door','4-Door',
+  'All Styles',
+  '2-Door','4-Door','Convertible','Coupe','Fastback','Hardtop',
+  'Pickup Truck','Roadster','Sedan','Station Wagon',
 ];
 
+// Kept in quality order (best to worst), not alphabetical — "Excellent, Fair,
+// Good, Project" would be a worse scan order than "Excellent, Good, Fair, Project".
 export const CONDITIONS = ['All','Excellent','Good','Fair','Project'];
+
+export const TRANSMISSIONS = ['Automatic','Manual'];
 
 export const STATES = [
   'All States','AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA',
