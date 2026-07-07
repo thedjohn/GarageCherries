@@ -689,8 +689,8 @@ export default function DealerDashboard() {
         <div className="bg-white border border-zinc-100 rounded-xl px-5 py-3 flex items-center justify-between mb-6 text-sm">
           <span className="text-zinc-500">Inventory: <span className="font-medium text-zinc-800">{listings.length} active vehicles</span></span>
           <div className="flex gap-2">
-            <button className="text-xs border border-zinc-200 px-3 py-1.5 rounded-lg hover:bg-zinc-50 transition-colors">Import JSON</button>
-            <button className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg transition-colors">Sync now</button>
+            <button disabled title="Coming soon" className="text-xs border border-zinc-200 px-3 py-1.5 rounded-lg text-zinc-400 cursor-not-allowed opacity-50">Import JSON</button>
+            <button disabled title="Coming soon" className="text-xs bg-zinc-300 text-zinc-400 px-3 py-1.5 rounded-lg cursor-not-allowed opacity-50">Sync now</button>
           </div>
         </div>
 
