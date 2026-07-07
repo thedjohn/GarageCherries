@@ -217,6 +217,7 @@
 | **Email Newsletter Signup** | Buyer opt-in form for digest | No signup form on site |
 | **Sales Pipeline / CRM** | Track dealers & advertisers through free → paying conversion. Options: (A) Sales tab in `/admin` showing active/expiring/expired/converted with one-click email; (B) Export contacts CSV from admin → load into HubSpot free tier for email sequences and deal tracking; (C) automated drip emails at 30 days / 14 days / day-of expiry. Recommended order: B first (quick export), then C (drip emails), then A. | Stripe must be live first for "converted" status to mean anything |
 | **Sold archive — actual sale price** | Add optional "Sold for $X" field to Mark as Sold flow; show real transaction price on `/sold` instead of asking price | Deferred (Option 2) — `/sold` page is live with asking price for now |
+| **Model filter on /listings** | Cascading Make → Model dropdown in the search sidebar. Backend is most of the way there — `fetchCars` already accepts a `model` param (`lib/db.ts:90`), and `fetchModelsByMake()` exists (`lib/db.ts:155`) but is currently unused and needs status/expiry scoping before reuse. Small, self-contained build whenever it's picked up. | Low value until real inventory volume exists — most makes currently have 0–1 live listings, so the dropdown would be nearly empty |
 
 ### Mid-Term
 
