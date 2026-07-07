@@ -14,17 +14,29 @@ export default function DealerResetPasswordPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Supabase puts the session tokens in the URL hash after following the reset link.
-    // getSession() picks them up automatically.
     const supabase = createClient();
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+
+    // Listen for PASSWORD_RECOVERY event — fired when Supabase processes the hash tokens
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' && session) {
         setReady(true);
-      } else {
-        // No valid session — link may be expired or already used
-        setError('This reset link is invalid or has expired. Please request a new one.');
       }
     });
+
+    // Also check for an existing session (handles page refresh after hash is consumed)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) setReady(true);
+    });
+
+    // If neither fires within 3s, the link is invalid/expired
+    const timeout = setTimeout(() => {
+      setError('This reset link is invalid or has expired. Please contact support for a new one.');
+    }, 3000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
