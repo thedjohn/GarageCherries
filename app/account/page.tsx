@@ -920,12 +920,18 @@ function AccountPage() {
       {/* My Listings tab */}
       {tab === 'listings' && (
         <div>
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-bold text-zinc-900">My Listings</h2>
+            <Link href="/sell" className="bg-red-600 hover:bg-red-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors">
+              + Post a Listing
+            </Link>
+          </div>
+
           {myListingsLoading ? (
             <div className="text-center py-20 text-zinc-400 text-sm">Loading your listings…</div>
           ) : myListings.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-zinc-400 text-sm mb-4">You haven&apos;t posted any listings yet.</p>
-              <Link href="/sell" className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">Post a Car</Link>
+              <p className="text-zinc-400 text-sm">You haven&apos;t posted any listings yet.</p>
             </div>
           ) : (
 
