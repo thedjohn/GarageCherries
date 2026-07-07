@@ -458,6 +458,12 @@ export default function DealerDashboard() {
   const [loading, setLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [soldConfirm, setSoldConfirm] = useState<string | null>(null);
+  const [watcherCounts, setWatcherCounts] = useState<Record<string, number>>({});
+  const [watcherMessaged, setWatcherMessaged] = useState<Record<string, boolean>>({});
+  const [messageWatchersFor, setMessageWatchersFor] = useState<DbCar | null>(null);
+  const [watcherMessage, setWatcherMessage] = useState('');
+  const [sendingWatcherMsg, setSendingWatcherMsg] = useState(false);
+  const [watcherMsgResult, setWatcherMsgResult] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<{
     views30d: number; viewsDelta: number | null;
     inquiries30d: number; inquiriesDelta: number | null;
@@ -488,6 +494,18 @@ export default function DealerDashboard() {
         .order('created_at', { ascending: false });
       setListings(cars ?? []);
 
+      // Load watcher counts for all listings
+      const ids = (cars ?? []).map((c: DbCar) => c.id).join(',');
+      if (ids) {
+        fetch(`/api/dealer/watcher-counts?carIds=${ids}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.counts) setWatcherCounts(data.counts);
+            if (data.messaged) setWatcherMessaged(data.messaged);
+          })
+          .catch(() => {});
+      }
+
       // Load real metrics
       fetch('/api/dealer/metrics')
         .then(r => r.json())
@@ -513,6 +531,28 @@ export default function DealerDashboard() {
     });
     setSoldConfirm(null);
     loadData();
+  };
+
+  const sendWatcherMessage = async () => {
+    if (!messageWatchersFor || !watcherMessage.trim()) return;
+    setSendingWatcherMsg(true);
+    setWatcherMsgResult(null);
+    const res = await fetch('/api/dealer/message-watchers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ carId: messageWatchersFor.id, message: watcherMessage.trim() }),
+    });
+    const data = await res.json();
+    setSendingWatcherMsg(false);
+    if (!res.ok) {
+      setWatcherMsgResult(`Error: ${data.error ?? 'Failed to send'}`);
+      return;
+    }
+    const sent = data.sent ?? 0;
+    setWatcherMsgResult(sent > 0 ? `Message sent to ${sent} watcher${sent !== 1 ? 's' : ''}.` : 'No eligible watchers to message.');
+    // Mark this car as messaged in local state
+    setWatcherMessaged(prev => ({ ...prev, [messageWatchersFor.id]: true }));
+    setWatcherCounts(prev => ({ ...prev, [messageWatchersFor.id]: 0 }));
   };
 
   const renewCar = async (id: string) => {
@@ -629,6 +669,46 @@ export default function DealerDashboard() {
               className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-xl text-sm">
               Delete
             </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Message Watchers modal */}
+    {messageWatchersFor && (
+      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+          <h2 className="font-bold text-zinc-900 mb-1">Message Watchers</h2>
+          <p className="text-sm text-zinc-500 mb-4">
+            Send a one-time message to <strong>{watcherCounts[messageWatchersFor.id] ?? 0} opted-in watcher{(watcherCounts[messageWatchersFor.id] ?? 0) !== 1 ? 's' : ''}</strong> for <strong>{messageWatchersFor.title}</strong>.
+            They won&apos;t see your email — replies go through the listing page.
+          </p>
+          <textarea
+            rows={5}
+            className="w-full border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none mb-3"
+            placeholder="e.g. Price just dropped to $34,900 — still available and in great condition. Come take a look!"
+            value={watcherMessage}
+            onChange={e => setWatcherMessage(e.target.value)}
+          />
+          {watcherMsgResult && (
+            <p className={`text-sm font-medium mb-3 ${watcherMsgResult.startsWith('Error') ? 'text-red-600' : 'text-green-700'}`}>
+              {watcherMsgResult}
+            </p>
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={() => { setMessageWatchersFor(null); setWatcherMessage(''); setWatcherMsgResult(null); }}
+              className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2 rounded-xl text-sm hover:bg-zinc-50">
+              {watcherMsgResult ? 'Close' : 'Cancel'}
+            </button>
+            {!watcherMsgResult && (
+              <button
+                onClick={sendWatcherMessage}
+                disabled={sendingWatcherMsg || !watcherMessage.trim()}
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2 rounded-xl text-sm transition-colors">
+                {sendingWatcherMsg ? 'Sending…' : 'Send Message'}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -839,6 +919,16 @@ export default function DealerDashboard() {
                               className="text-xs text-green-600 hover:text-green-800 font-medium transition-colors">
                               Mark Sold
                             </button>
+                          )}
+                          {car.status === 'approved' && !car.is_sold && (
+                            watcherMessaged[car.id]
+                              ? <span className="text-xs text-zinc-300 font-medium" title="Already messaged watchers for this car">Messaged</span>
+                              : watcherCounts[car.id] > 0
+                                ? <button onClick={() => { setMessageWatchersFor(car); setWatcherMessage(''); setWatcherMsgResult(null); }}
+                                    className="text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors">
+                                    Message {watcherCounts[car.id]} watcher{watcherCounts[car.id] !== 1 ? 's' : ''}
+                                  </button>
+                                : null
                           )}
                           <Link href={`/listings/${toSlug(car.make)}/${toSlug(car.model)}/${car.id}/${car.slug}`}
                             target="_blank" className="text-xs text-red-600 hover:underline">
