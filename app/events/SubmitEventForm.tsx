@@ -7,7 +7,7 @@ const TYPE_LABELS: Record<string, string> = {
   'show': 'Car Show', 'swap-meet': 'Swap Meet', 'cruise': 'Cruise Night', 'auction': 'Auction',
 };
 
-const BLANK = { name: '', date: '', end_date: '', location: '', state: '', type: 'show', description: '', url: '' };
+const BLANK = { name: '', date: '', end_date: '', start_time: '', end_time: '', location: '', state: '', type: 'show', description: '', url: '' };
 
 export default function SubmitEventForm() {
   const [user, setUser] = useState<{ email: string } | null | undefined>(undefined);
@@ -103,6 +103,14 @@ export default function SubmitEventForm() {
             <div>
               <label className={labelCls}>End Date (optional)</label>
               <input type="date" className={inputCls} value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
+            </div>
+            <div>
+              <label className={labelCls}>Start Time (optional)</label>
+              <input type="time" className={inputCls} value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} />
+            </div>
+            <div>
+              <label className={labelCls}>End Time (optional)</label>
+              <input type="time" className={inputCls} value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} />
             </div>
           </div>
           <div>

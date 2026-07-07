@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'You must be logged in to submit an event.' }, { status: 401 });
 
   const body = await req.json();
-  const { name, date, end_date, location, state, type, description, url } = body;
+  const { name, date, end_date, start_time, end_time, location, state, type, description, url } = body;
 
   if (!name?.trim() || !date || !location?.trim() || !state?.trim() || !description?.trim()) {
     return NextResponse.json({ error: 'Please fill in all required fields.' }, { status: 400 });
@@ -38,6 +38,8 @@ export async function POST(req: NextRequest) {
     name: name.trim(),
     date,
     end_date: end_date?.trim() || null,
+    start_time: start_time?.trim() || null,
+    end_time: end_time?.trim() || null,
     location: location.trim(),
     state: state.trim().toUpperCase(),
     type,

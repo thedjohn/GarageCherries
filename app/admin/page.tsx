@@ -41,11 +41,12 @@ type Tab = 'listings' | 'reported' | 'team' | 'users' | 'applications' | 'events
 
 interface CarEvent {
   id: string; name: string; date: string; end_date: string | null;
+  start_time: string | null; end_time: string | null;
   location: string; state: string; type: string; description: string;
   url: string | null; featured: boolean; created_at: string;
   status: string; submitted_by: string | null; submitter_email: string | null; submitter_name: string | null;
 }
-const BLANK_EVENT = { name: '', date: '', end_date: '', location: '', state: '', type: 'show', description: '', url: '', featured: false };
+const BLANK_EVENT = { name: '', date: '', end_date: '', start_time: '', end_time: '', location: '', state: '', type: 'show', description: '', url: '', featured: false };
 const EVENT_TYPES = ['show', 'swap-meet', 'cruise', 'auction'] as const;
 
 interface DealerApplication {
@@ -1124,6 +1125,14 @@ export default function AdminPage() {
                 <input type="date" className={inputCls} value={eventForm.end_date} onChange={e => setEventForm(f => ({ ...f, end_date: e.target.value }))} />
               </div>
               <div>
+                <label className={labelCls}>Start Time (optional)</label>
+                <input type="time" className={inputCls} value={eventForm.start_time} onChange={e => setEventForm(f => ({ ...f, start_time: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>End Time (optional)</label>
+                <input type="time" className={inputCls} value={eventForm.end_time} onChange={e => setEventForm(f => ({ ...f, end_time: e.target.value }))} />
+              </div>
+              <div>
                 <label className={labelCls}>City *</label>
                 <input className={inputCls} value={eventForm.location} onChange={e => setEventForm(f => ({ ...f, location: e.target.value }))} placeholder="Springfield" />
               </div>
@@ -1183,7 +1192,7 @@ export default function AdminPage() {
                   {e.description && <p className="text-xs text-zinc-400 mt-0.5 line-clamp-1">{e.description}</p>}
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <button onClick={() => { setEditingEvent(e); setEventForm({ name: e.name, date: e.date, end_date: e.end_date ?? '', location: e.location, state: e.state, type: e.type, description: e.description, url: e.url ?? '', featured: e.featured }); }}
+                  <button onClick={() => { setEditingEvent(e); setEventForm({ name: e.name, date: e.date, end_date: e.end_date ?? '', start_time: e.start_time ?? '', end_time: e.end_time ?? '', location: e.location, state: e.state, type: e.type, description: e.description, url: e.url ?? '', featured: e.featured }); }}
                     className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition-colors">Edit</button>
                   <button onClick={() => setConfirmDeleteEvent(e)}
                     className="text-xs font-semibold text-zinc-400 hover:text-red-600 transition-colors">Delete</button>

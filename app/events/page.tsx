@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 
 interface CarShowEvent {
   id: string; name: string; date: string; end_date?: string | null;
+  start_time?: string | null; end_time?: string | null;
   location: string; state: string;
   type: 'show' | 'swap-meet' | 'cruise' | 'auction';
   featured: boolean; description: string; url?: string | null; status: string;
@@ -31,6 +32,18 @@ function formatEventDate(date: string, endDate?: string | null) {
   if (!endDate) return `${fmt(start)}, ${start.getFullYear()}`;
   const end = new Date(endDate + 'T12:00:00');
   return `${fmt(start)} – ${fmt(end)}, ${start.getFullYear()}`;
+}
+
+function formatTime(t: string) {
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 || 12;
+  return m === 0 ? `${hour} ${ampm}` : `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+function formatTimeRange(start?: string | null, end?: string | null) {
+  if (!start) return null;
+  return end ? `${formatTime(start)} – ${formatTime(end)}` : formatTime(start);
 }
 
 export default async function EventsPage() {
@@ -136,7 +149,11 @@ function EventCard({ event, highlight }: { event: CarShowEvent; highlight?: bool
           ) : event.name}
         </h3>
         <p className="text-xs text-zinc-500 mt-0.5">
-          {formatEventDate(event.date, event.end_date)} · {event.location}, {event.state}
+          {formatEventDate(event.date, event.end_date)}
+          {formatTimeRange(event.start_time, event.end_time) && (
+            <> · {formatTimeRange(event.start_time, event.end_time)}</>
+          )}
+          {' · '}{event.location}, {event.state}
         </p>
         {event.description && (
           <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{event.description}</p>
