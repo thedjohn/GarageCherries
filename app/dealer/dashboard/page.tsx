@@ -43,7 +43,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
     model:        car?.model                    ?? '',
     mileage:      car ? String(car.mileage)     : '',
     condition:    car?.condition                ?? '',
-    bodyStyle:    car?.body_style               ?? 'Coupe',
+    bodyStyle:    car?.body_style               ?? '',
     engine:          car?.engine            ?? '',
     horsepower:      car?.horsepower ? String(car.horsepower) : '',
     torque:          car?.torque      ? String(car.torque)     : '',
@@ -53,7 +53,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
     fuelType:        car?.fuel_type             ?? '',
     numSpeeds:       car?.num_speeds  ? String(car.num_speeds) : '',
     driveType:       car?.drive_type            ?? '',
-    transmission: car?.transmission             ?? 'Manual',
+    transmission: car?.transmission             ?? '',
     color:         car?.color                    ?? '',
     interiorColor: car?.interior_color           ?? '',
     seatMaterial:  car?.seat_material            ?? '',
@@ -238,6 +238,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Body Style</label>
               <select value={fields.bodyStyle} onChange={e => set('bodyStyle', e.target.value)} className={inp}>
+                <option value="">Select...</option>
                 {BODY_STYLES.filter(b => b !== 'All Styles').map(b => <option key={b}>{b}</option>)}
               </select>
             </div>
@@ -271,7 +272,8 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Forced Induction</label>
               <select value={fields.forcedInduction} onChange={e => set('forcedInduction', e.target.value)} className={inp}>
-                <option value="">None / N/A</option>
+                <option value="">Select...</option>
+                <option>None / N/A</option>
                 <option>Supercharged</option>
                 <option>Turbocharged</option>
                 <option>Twin-Turbocharged</option>
@@ -292,6 +294,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Transmission</label>
               <select value={fields.transmission} onChange={e => set('transmission', e.target.value)} className={inp}>
+                <option value="">Select...</option>
                 <option>Manual</option>
                 <option>Automatic</option>
               </select>
