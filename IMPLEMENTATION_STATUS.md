@@ -129,7 +129,7 @@
 - [x] `/unsubscribe/alerts` — sets `alerts_opt_out` in `user_metadata`; UUID guard; link in alert emails (all added 2026-07-03)
 
 ### Admin Tools
-- [x] Full admin panel (`/admin`) — Listings, Messages, Reported, Users, Applications, Team tabs
+- [x] Full admin panel (`/admin`) — Listings, Reported, Users, Applications, Events, Team tabs
 - [x] Role hierarchy: `support < moderator < admin < superadmin`; all 4 roles assignable via UI (fixed 2026-07-03)
 - [x] Users tab — search/filter, view seller listings, suspend/unsuspend, edit, promote seller to dealer, delete account
 - [x] Team tab — add/remove admin team members by email + role

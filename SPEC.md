@@ -154,7 +154,7 @@ support < moderator < admin < superadmin
 
 1. Admin navigates to `/admin` — access gated by `admin_users` row.
 2. **Role resolved first** — before any data loads, the page calls `GET /api/admin/team` to read the acting user's role.
-3. **Support role scoping** (fixed 2026-07-02): support users are redirected to the Reported tab automatically; only reported content is loaded. They see only the Reported tab; Listings, Messages, and Users tabs are hidden from the nav. Attempting to access those tabs directly would still require moderator+ at the API layer.
+3. **Support role scoping** (fixed 2026-07-02): support users are redirected to the Reported tab automatically; only reported content is loaded. They see only the Reported tab; Listings and Users tabs are hidden from the nav. Attempting to access those tabs directly would still require moderator+ at the API layer.
 4. **Listings tab** (moderator+): sees all listings with pending/approved/rejected counts. Can approve, reject (with reason from preset list or custom), edit (admin+), delete (superadmin only). Hidden from support.
 5. **Messages tab** (moderator+): views all conversations (buyer/seller/listing title/timestamp). Hidden from support — support cannot browse all private conversations.
 6. **Reported tab** (all admin roles including support): sees flagged messages. Can dismiss (clears `reported` flag) via `DELETE /api/messages/[id]/report`. This is the primary job of the support tier.

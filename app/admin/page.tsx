@@ -34,7 +34,7 @@ interface SiteUser {
   conversation_count: number;
 }
 
-type Tab = 'listings' | 'messages' | 'reported' | 'team' | 'users' | 'applications' | 'events';
+type Tab = 'listings' | 'reported' | 'team' | 'users' | 'applications' | 'events';
 
 interface CarEvent {
   id: string; name: string; date: string; end_date: string | null;
@@ -71,7 +71,6 @@ export default function AdminPage() {
   const [saveError, setSaveError] = useState('');
 
   // Messages
-  const [conversations, setConversations] = useState<any[]>([]);
 
   // Reported
   const [reported, setReported] = useState<ReportedMessage[]>([]);
@@ -171,13 +170,9 @@ export default function AdminPage() {
         const { listings: listingData } = await res.json();
         setListings((listingData ?? []) as Listing[]);
 
-        const [convRes, reportedRes] = await Promise.all([
-          supabase.from('conversations')
-            .select('id,listing_title,buyer_name,buyer_email,seller_email,last_message_at,created_at')
-            .order('last_message_at', { ascending: false }),
+        const [reportedRes] = await Promise.all([
           fetch('/api/admin/reported'),
         ]);
-        setConversations(convRes.data ?? []);
         if (reportedRes.ok) {
           const { reported: rep } = await reportedRes.json();
           setReported(rep ?? []);
@@ -497,11 +492,7 @@ export default function AdminPage() {
             Listings <span className="ml-1 text-xs text-zinc-400">{pending.length} pending</span>
           </button>
         )}
-        {adminRole !== 'support' && (
-          <button onClick={() => setTab('messages')} className={tabCls('messages')}>
-            Messages <span className="ml-1 text-xs text-zinc-400">{conversations.length}</span>
-          </button>
-        )}
+
         <button onClick={() => setTab('reported')} className={tabCls('reported')}>
           Reported
           {reported.length > 0 && (
@@ -651,22 +642,6 @@ export default function AdminPage() {
         </div>
       </>}
 
-      {/* Messages tab */}
-      {tab === 'messages' && (
-        <div className="space-y-3">
-          {conversations.length === 0 && <div className="text-center py-20 text-zinc-400">No conversations yet.</div>}
-          {conversations.map((c: any) => (
-            <div key={c.id} className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-5">
-              <div className="flex items-start justify-between gap-2 mb-1">
-                <p className="font-bold text-zinc-900">{c.listing_title}</p>
-                <span className="text-xs text-zinc-400 shrink-0">{new Date(c.last_message_at).toLocaleDateString()}</span>
-              </div>
-              <p className="text-sm text-zinc-500">Buyer: {c.buyer_name} · {c.buyer_email}</p>
-              <p className="text-sm text-zinc-500">Seller: {c.seller_email}</p>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Reported tab */}
       {tab === 'reported' && (
