@@ -22,10 +22,20 @@ export async function POST(req: NextRequest) {
   }
   const admin = createAdminClient();
 
-  // Capture the logged-in user's ID as seller_id
+  // Capture the logged-in user's ID and profile as seller identity
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const sellerId = user?.id ?? null;
+
+  // Pull name/phone from profile; fall back to email for name if profile not set
+  let sellerName = user?.email ?? '';
+  let sellerPhone = '';
+  if (sellerId) {
+    const { data: profile } = await admin.from('profiles').select('full_name, phone').eq('id', sellerId).maybeSingle();
+    if (profile?.full_name) sellerName = profile.full_name;
+    if (profile?.phone) sellerPhone = profile.phone;
+  }
+  const sellerEmail = user?.email ?? '';
 
   // Block suspended users
   if (sellerId) {
@@ -105,9 +115,9 @@ export async function POST(req: NextRequest) {
     p_color: formData.get('color') || null,
     p_images: validImageUrls,
     p_description: formData.get('description'),
-    p_seller_name: formData.get('sellerName'),
-    p_seller_phone: formData.get('sellerPhone'),
-    p_seller_email: formData.get('sellerEmail'),
+    p_seller_name: sellerName,
+    p_seller_phone: sellerPhone,
+    p_seller_email: sellerEmail,
     p_vin: formData.get('vin') || null,
     p_vin_verified: formData.get('vinVerified') === 'true',
     p_featured: false,
