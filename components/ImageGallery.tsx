@@ -28,6 +28,24 @@ export default function ImageGallery({ images, title }: { images: string[]; titl
 
   return (
     <>
+      {/* Preload the adjacent photos so Prev/Next feels instant instead of
+          triggering a fresh fetch on click — especially noticeable on cellular. */}
+      {images.length > 1 && [
+        (active - 1 + images.length) % images.length,
+        (active + 1) % images.length,
+      ].map(i => (
+        <div key={`preload-${i}`} className="fixed top-0 left-0 w-px h-px overflow-hidden opacity-0 pointer-events-none" aria-hidden="true">
+          <Image
+            src={images[i]}
+            alt=""
+            fill
+            className="object-cover"
+            sizes="(max-width: 1024px) 100vw, 66vw"
+            loading="eager"
+          />
+        </div>
+      ))}
+
       {/* Main image */}
       <div
         className="relative h-72 md:h-[480px] rounded-2xl overflow-hidden bg-zinc-200 shadow-lg cursor-zoom-in group"
