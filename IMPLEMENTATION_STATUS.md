@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-07 — current as of commit ea1201b (fix: form UX changes applied to SellClient.tsx — the actual /sell component; SellForm.tsx is unused)*
+*Last updated: 2026-07-07 — current as of commit 0ebf31d (dealer overview listing links; /reports active count fix; /pricing advertiser tiers added; /about live stats)*
 
 **Note on data:** this site is pre-launch. As of 2026-07-07 the production database has a handful of manually-created test listings (private-seller and dealer) and no real buyers or advertisers yet. Empty tables (`advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -39,7 +39,7 @@
 - [x] Full inventory grid on dealer profile
 
 ### Dealer Dashboard (`/dealer/dashboard`)
-- [x] Overview tab — active listings, views (30d), inquiries (30d), avg. days on market, month-over-month comparison
+- [x] Overview tab — active listings, views (30d), inquiries (30d), avg. days on market, month-over-month comparison; "Your Listings" cards now link to the public listing page (fixed 2026-07-07)
 - [x] Inventory tab — add, edit, delete, mark as sold; dealer-added listings bypass review (inserted `status: 'approved'` immediately)
 - [x] **Mark as Sold** — green "Mark Sold" button on approved listings; confirmation modal; calls `POST /api/cars/sold`; badge changes to "Sold"; Mark Sold and Renew buttons hidden after sold (added 2026-07-06)
 - [x] Inquiries tab — buyer messages (real data from `GET /api/dealer/metrics`); shows empty state when no inquiries exist (no fake placeholder data)
@@ -105,9 +105,9 @@
 ### Content & Marketing Pages
 - [x] Classic Car Encyclopedia (`/cars`) — 54 models across 12 makes
 - [x] Buyer's Guides index (`/guides`) — 6 articles
-- [x] Market Report (`/reports`) — live avg price by make, most-viewed listings, market commentary
-- [x] Pricing page (`/pricing`) — dealer plan tiers, private-seller pricing, advertiser section (banner ads, sponsored listings, newsletter), 250th promo banner, Stripe coming-soon note
-- [x] About (`/about`), Contact (`/contact`), Privacy Policy (`/privacy`), Terms of Service (`/terms`)
+- [x] Market Report (`/reports`) — live avg price by make, most-viewed listings, market commentary; active listing count correctly filters `approved + not expired + not sold` (fixed 2026-07-07)
+- [x] Pricing page (`/pricing`) — dealer plan tiers, private-seller pricing, advertiser tier grid ($79/$139/$219/$349/mo matching `/advertiser/signup`), 250th promo banner, Stripe coming-soon note (advertiser tiers added 2026-07-07)
+- [x] About (`/about`), Contact (`/contact`), Privacy Policy (`/privacy`), Terms of Service (`/terms`); `/about` "The Platform" stats now live from DB — active listings + event counts (fixed 2026-07-07)
 - [x] Cookie consent banner and Turnstile CAPTCHA on public forms
 - [x] XML Sitemap (`/sitemap.xml`) — dynamic, covers homepage, listings (individual + make + make/model), dealers, encyclopedia (54 models), advertisers, guides (6 articles), `/events`, individual event detail pages (`/events/[slug]`), `/sold`, `/dealer/apply`, `/advertiser/signup`, `/privacy`, `/terms`; revalidates every hour
 - [x] Robots.txt (`/robots.txt`) — allows all crawlers, blocks `/admin`, `/api/`, `/dealer/dashboard`
