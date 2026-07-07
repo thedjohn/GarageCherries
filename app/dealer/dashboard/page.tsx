@@ -473,7 +473,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export default function DealerDashboard() {
   const router = useRouter();
-  const [tab, setTab] = useState<'overview' | 'inventory' | 'inquiries' | 'settings'>('overview');
+  const [tab, setTab] = useState<'overview' | 'inventory' | 'inquiries' | 'offers' | 'settings'>('overview');
   const [modalCar, setModalCar] = useState<DbCar | null | 'new'>(null); // null=closed, 'new'=add, DbCar=edit
   const [dealer, setDealer] = useState<DbDealer | null>(null);
   const [listings, setListings] = useState<DbCar[]>([]);
@@ -760,7 +760,7 @@ export default function DealerDashboard() {
       </div>
 
       <div className="bg-white border-b border-zinc-200 px-6 flex gap-1">
-        {(['overview', 'inventory', 'inquiries', 'settings'] as const).map(t => (
+        {(['overview', 'inventory', 'inquiries', 'offers', 'settings'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-3 text-sm font-medium capitalize border-b-2 transition-colors ${
               tab === t ? 'border-red-600 text-red-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'
@@ -982,6 +982,11 @@ export default function DealerDashboard() {
           <InquiriesTab realInquiries={metrics?.recentInquiries} />
         )}
 
+        {/* OFFERS */}
+        {tab === 'offers' && dealer && (
+          <OffersTab dealerId={dealer.id} />
+        )}
+
         {/* SETTINGS */}
         {tab === 'settings' && dealer && (
           <DealerSettings dealer={dealer} onSaved={loadData} />
@@ -990,6 +995,101 @@ export default function DealerDashboard() {
       </div>
     </div>
     </>
+  );
+}
+
+// ─── Offers Tab ──────────────────────────────────────────────────────────────
+function OffersTab({ dealerId }: { dealerId: string }) {
+  const [offers, setOffers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from('offers')
+      .select('*')
+      .eq('dealer_id', dealerId)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => { setOffers(data ?? []); setLoading(false); });
+  }, [dealerId]);
+
+  async function updateStatus(offerId: string, status: 'accepted' | 'declined') {
+    setUpdating(offerId);
+    const supabase = createClient();
+    const { error } = await supabase.from('offers').update({ status }).eq('id', offerId);
+    if (!error) setOffers(prev => prev.map(o => o.id === offerId ? { ...o, status } : o));
+    setUpdating(null);
+  }
+
+  const fmt = (n: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+
+  const statusBadge: Record<string, string> = {
+    pending:  'bg-amber-100 text-amber-700',
+    accepted: 'bg-green-100 text-green-700',
+    declined: 'bg-red-100 text-red-700',
+    countered:'bg-blue-100 text-blue-700',
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-zinc-100 shadow-sm divide-y divide-zinc-50">
+      <div className="px-5 py-4">
+        <h2 className="font-bold text-zinc-800">Offers</h2>
+        <p className="text-xs text-zinc-400 mt-0.5">Buyer offers submitted through vehicle listing pages.</p>
+      </div>
+      {loading ? (
+        <div className="px-5 py-16 text-center text-zinc-400 text-sm">Loading…</div>
+      ) : offers.length === 0 ? (
+        <div className="px-5 py-16 text-center text-zinc-400 text-sm">
+          No offers yet — they'll appear here when buyers submit an offer on one of your listings.
+        </div>
+      ) : offers.map(offer => (
+        <div key={offer.id} className="px-5 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <p className="text-sm font-bold text-zinc-900">{fmt(offer.amount)}</p>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${statusBadge[offer.status] ?? 'bg-zinc-100 text-zinc-600'}`}>
+                  {offer.status}
+                </span>
+              </div>
+              <p className="text-sm text-zinc-600 mb-0.5">
+                <span className="font-medium">{offer.buyer_name ?? 'Buyer'}</span>
+                {' on '}
+                <span className="font-medium">{offer.car_title}</span>
+              </p>
+              <p className="text-xs text-zinc-400">
+                <a href={`mailto:${offer.buyer_email}`} className="hover:text-red-600 transition-colors">{offer.buyer_email}</a>
+                {' · '}
+                {new Date(offer.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+              {offer.message && (
+                <p className="text-sm text-zinc-500 mt-2 italic">"{offer.message}"</p>
+              )}
+            </div>
+            {offer.status === 'pending' && (
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={() => updateStatus(offer.id, 'accepted')}
+                  disabled={updating === offer.id}
+                  className="text-xs font-semibold bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Accept
+                </button>
+                <button
+                  onClick={() => updateStatus(offer.id, 'declined')}
+                  disabled={updating === offer.id}
+                  className="text-xs font-semibold border border-zinc-200 hover:border-red-300 text-zinc-600 hover:text-red-600 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Decline
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
