@@ -170,6 +170,11 @@ function AccountPage() {
   const [pwSaved, setPwSaved] = useState(false);
   const [pwError, setPwError] = useState('');
 
+  // Email preferences
+  const [emailPrefs, setEmailPrefs] = useState({ digest: true, priceDrops: true, alerts: true });
+  const [emailPrefsSaving, setEmailPrefsSaving] = useState(false);
+  const [emailPrefsSaved, setEmailPrefsSaved] = useState(false);
+
   // Auth check
   useEffect(() => {
     const supabase = createClient();
@@ -177,6 +182,12 @@ function AccountPage() {
       if (!user) { router.replace('/account/login?return=/account'); return; }
       setUserId(user.id);
       setEmail(user.email ?? '');
+      const m = user.user_metadata ?? {};
+      setEmailPrefs({
+        digest:     !m.digest_opt_out,
+        priceDrops: !m.price_drop_opt_out,
+        alerts:     !m.alerts_opt_out,
+      });
     });
     fetch('/api/account/profile').then(r => r.json()).then(({ profile }) => {
       if (profile) { setFullName(profile.full_name ?? ''); setPhone(profile.phone ?? ''); }
@@ -519,6 +530,19 @@ function AccountPage() {
     setProfileSaving(false);
     if (res.ok) { setProfileSaved(true); setTimeout(() => setProfileSaved(false), 3000); }
     else { const j = await res.json(); setProfileError(j.error ?? 'Save failed.'); }
+  };
+
+  const saveEmailPrefs = async () => {
+    setEmailPrefsSaving(true);
+    const supabase = createClient();
+    await supabase.auth.updateUser({ data: {
+      digest_opt_out:     !emailPrefs.digest,
+      price_drop_opt_out: !emailPrefs.priceDrops,
+      alerts_opt_out:     !emailPrefs.alerts,
+    }});
+    setEmailPrefsSaving(false);
+    setEmailPrefsSaved(true);
+    setTimeout(() => setEmailPrefsSaved(false), 3000);
   };
 
   const changePassword = async (e: React.FormEvent) => {
@@ -1132,6 +1156,40 @@ function AccountPage() {
             <h2 className="text-base font-bold text-zinc-900 mb-1">Notifications</h2>
             <p className="text-sm text-zinc-500 mb-4">Get browser notifications when you receive a new message, even when the tab is in the background.</p>
             <NotificationPermissionButton />
+          </div>
+
+          {/* Email Preferences */}
+          <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
+            <h2 className="text-base font-bold text-zinc-900 mb-1">Email Preferences</h2>
+            <p className="text-sm text-zinc-500 mb-4">Choose which emails you receive from GarageCherries.</p>
+            <div className="space-y-4">
+              {[
+                { key: 'digest' as const,     label: 'Weekly Listings Digest',     desc: 'A weekly roundup of new listings matching your interests.' },
+                { key: 'priceDrops' as const, label: 'Price Drop Notifications',   desc: 'Get notified when a car on your watchlist drops in price.' },
+                { key: 'alerts' as const,     label: 'Car Alert Matches',           desc: 'Emails when a new listing matches one of your saved searches.' },
+              ].map(({ key, label, desc }) => (
+                <div key={key} className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-zinc-800">{label}</p>
+                    <p className="text-xs text-zinc-400 mt-0.5">{desc}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEmailPrefs(p => ({ ...p, [key]: !p[key] }))}
+                    className={`relative shrink-0 w-10 h-6 rounded-full transition-colors ${emailPrefs[key] ? 'bg-red-600' : 'bg-zinc-200'}`}
+                  >
+                    <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${emailPrefs[key] ? 'translate-x-4' : ''}`} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 flex items-center gap-3">
+              <button onClick={saveEmailPrefs} disabled={emailPrefsSaving}
+                className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors">
+                {emailPrefsSaving ? 'Saving…' : 'Save Preferences'}
+              </button>
+              {emailPrefsSaved && <span className="text-sm text-emerald-600 font-medium">✓ Saved</span>}
+            </div>
           </div>
 
           {/* Profile */}
