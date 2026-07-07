@@ -89,6 +89,10 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (existingImages.length + newImages.length === 0) {
+      setError('Please add at least one photo before saving.');
+      return;
+    }
     setSaving(true);
     setError('');
     const supabase = createClient();
@@ -453,6 +457,7 @@ export default function DealerDashboard() {
   const [listings, setListings] = useState<DbCar[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [soldConfirm, setSoldConfirm] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<{
     views30d: number; viewsDelta: number | null;
     inquiries30d: number; inquiriesDelta: number | null;
@@ -497,6 +502,16 @@ export default function DealerDashboard() {
   const deleteCar = async (id: string) => {
     await fetch(`/api/listings/${id}`, { method: 'DELETE' });
     setDeleteConfirm(null);
+    loadData();
+  };
+
+  const markSold = async (id: string) => {
+    await fetch('/api/cars/sold', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ carId: id }),
+    });
+    setSoldConfirm(null);
     loadData();
   };
 
@@ -577,6 +592,26 @@ export default function DealerDashboard() {
         onClose={() => setModalCar(null)}
         onSaved={() => { loadData(); }}
       />
+    )}
+
+    {/* Mark as Sold confirmation */}
+    {soldConfirm && (
+      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+          <h2 className="font-bold text-zinc-900 mb-2">Mark as sold?</h2>
+          <p className="text-zinc-500 text-sm mb-5">This will mark the listing as sold and notify any watchlist buyers. This cannot be undone.</p>
+          <div className="flex gap-3">
+            <button onClick={() => setSoldConfirm(null)}
+              className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2 rounded-xl text-sm hover:bg-zinc-50">
+              Cancel
+            </button>
+            <button onClick={() => markSold(soldConfirm)}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-xl text-sm">
+              Mark Sold
+            </button>
+          </div>
+        </div>
+      </div>
     )}
 
     {/* Delete confirmation */}
@@ -798,6 +833,12 @@ export default function DealerDashboard() {
                             className="text-xs text-zinc-500 hover:text-zinc-900 font-medium transition-colors">
                             Edit
                           </button>
+                          {car.status === 'approved' && (
+                            <button onClick={() => setSoldConfirm(car.id)}
+                              className="text-xs text-green-600 hover:text-green-800 font-medium transition-colors">
+                              Mark Sold
+                            </button>
+                          )}
                           <Link href={`/listings/${toSlug(car.make)}/${toSlug(car.model)}/${car.id}/${car.slug}`}
                             target="_blank" className="text-xs text-red-600 hover:underline">
                             View ↗
