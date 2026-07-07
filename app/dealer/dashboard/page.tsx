@@ -16,7 +16,7 @@ interface DbCar {
   location: string; state: string; featured: boolean;
   listed_at: string; images: string[]; seller_id: string;
   status?: string; rejection_reason?: string | null;
-  expires_at?: string | null; is_feed_managed?: boolean;
+  expires_at?: string | null; is_feed_managed?: boolean; is_sold?: boolean;
 }
 interface DbDealer {
   id: string; slug: string; name: string;
@@ -483,7 +483,7 @@ export default function DealerDashboard() {
       setDealer(dealerRow);
       const { data: cars } = await supabase
         .from('listings')
-        .select('id, slug, title, year, make, model, price, mileage, condition, body_style, engine, horsepower, torque, cylinders, displacement, forced_induction, fuel_type, num_speeds, drive_type, transmission, color, interior_color, seat_material, seating_type, description, location, state, featured, listed_at, images, seller_id, status, rejection_reason, expires_at, is_feed_managed')
+        .select('id, slug, title, year, make, model, price, mileage, condition, body_style, engine, horsepower, torque, cylinders, displacement, forced_induction, fuel_type, num_speeds, drive_type, transmission, color, interior_color, seat_material, seating_type, description, location, state, featured, listed_at, images, seller_id, status, rejection_reason, expires_at, is_feed_managed, is_sold')
         .eq('seller_id', dealerRow.id)
         .order('created_at', { ascending: false });
       setListings(cars ?? []);
@@ -804,12 +804,13 @@ export default function DealerDashboard() {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                          car.status === 'approved' ? 'bg-green-100 text-green-700' :
-                          car.status === 'pending'  ? 'bg-yellow-100 text-yellow-700' :
-                          car.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                          car.is_sold                ? 'bg-zinc-100 text-zinc-500' :
+                          car.status === 'approved'  ? 'bg-green-100 text-green-700' :
+                          car.status === 'pending'   ? 'bg-yellow-100 text-yellow-700' :
+                          car.status === 'rejected'  ? 'bg-red-100 text-red-700' :
                           'bg-zinc-100 text-zinc-500'
                         }`}>
-                          {car.status === 'approved' ? 'Active' : car.status === 'pending' ? 'Under Review' : car.status === 'rejected' ? 'Rejected' : (car.status ?? 'Unknown')}
+                          {car.is_sold ? 'Sold' : car.status === 'approved' ? 'Active' : car.status === 'pending' ? 'Under Review' : car.status === 'rejected' ? 'Rejected' : (car.status ?? 'Unknown')}
                         </span>
                         {car.status === 'rejected' && car.rejection_reason && (
                           <p className="text-xs text-red-600 mt-1 max-w-[180px] leading-tight">{car.rejection_reason}</p>
@@ -833,7 +834,7 @@ export default function DealerDashboard() {
                             className="text-xs text-zinc-500 hover:text-zinc-900 font-medium transition-colors">
                             Edit
                           </button>
-                          {car.status === 'approved' && (
+                          {car.status === 'approved' && !car.is_sold && (
                             <button onClick={() => setSoldConfirm(car.id)}
                               className="text-xs text-green-600 hover:text-green-800 font-medium transition-colors">
                               Mark Sold
@@ -843,7 +844,7 @@ export default function DealerDashboard() {
                             target="_blank" className="text-xs text-red-600 hover:underline">
                             View ↗
                           </Link>
-                          {car.status === 'approved' && !car.is_feed_managed && (
+                          {car.status === 'approved' && !car.is_sold && !car.is_feed_managed && (
                             <button onClick={() => renewCar(car.id)}
                               className="text-xs text-blue-600 hover:underline font-medium">
                               Renew
