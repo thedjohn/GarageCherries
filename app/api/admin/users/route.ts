@@ -157,6 +157,9 @@ export async function PATCH(req: NextRequest) {
   // Suspend
   if (action === 'suspend') {
     if (!hasRole(role, 'moderator')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { data: authData } = await admin.auth.admin.getUserById(id);
+    const userEmail = authData?.user?.email;
+    const userName = authData?.user?.user_metadata?.full_name || 'there';
     const { error } = await admin.from('suspended_users').upsert({
       user_id: id,
       reason: reason ?? null,
@@ -164,6 +167,34 @@ export async function PATCH(req: NextRequest) {
       suspended_at: new Date().toISOString(),
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (userEmail) {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      resend.emails.send({
+        from: 'GarageCherries <contact-us@garagecherries.com>',
+        to: userEmail,
+        subject: 'Your GarageCherries account has been suspended',
+        html: `
+          <div style="font-family:sans-serif;max-width:500px;margin:auto;padding:32px 24px">
+            <p style="font-size:28px;margin:0 0 8px">🍒</p>
+            <h2 style="font-size:20px;font-weight:800;color:#18181b;margin-bottom:16px">Hi ${userName}, your account has been suspended</h2>
+            <p style="color:#52525b;font-size:15px;line-height:1.6;margin-bottom:16px">
+              Your GarageCherries account has been suspended due to a violation of our community guidelines.
+            </p>
+            ${reason ? `
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px;margin-bottom:20px">
+              <p style="font-size:12px;font-weight:700;text-transform:uppercase;color:#dc2626;margin:0 0 6px">Reason</p>
+              <p style="color:#7f1d1d;font-size:14px;margin:0">${reason}</p>
+            </div>` : ''}
+            <p style="color:#52525b;font-size:14px;line-height:1.6;margin-bottom:24px">
+              If you believe this was a mistake, please contact us at
+              <a href="mailto:contact-us@garagecherries.com" style="color:#dc2626">contact-us@garagecherries.com</a>
+              and we will review your case.
+            </p>
+            <p style="color:#a1a1aa;font-size:12px">— The GarageCherries Team</p>
+          </div>
+        `,
+      }).catch(() => {});
+    }
     return NextResponse.json({ success: true });
   }
 

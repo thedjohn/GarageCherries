@@ -21,15 +21,31 @@ function LoginForm() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (authError) {
       setError('Invalid email or password.');
       setLoading(false);
-    } else {
-      router.push(returnTo);
-      router.refresh();
+      return;
     }
+
+    // Check if suspended
+    const userId = data.user?.id;
+    if (userId) {
+      const { data: suspended } = await supabase
+        .from('suspended_users')
+        .select('user_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (suspended) {
+        await supabase.auth.signOut();
+        router.push('/account/suspended');
+        return;
+      }
+    }
+
+    router.push(returnTo);
+    router.refresh();
   };
 
   return (
