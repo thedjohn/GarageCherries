@@ -25,7 +25,7 @@ export default async function MarketReportPage() {
     .select('make, model, price, condition, listed_at, is_sold, sold_at, views')
     .eq('is_sold', false)
     .eq('status', 'approved')
-    .gt('expires_at', now.toISOString())
+    .or(`expires_at.is.null,expires_at.gt.${now.toISOString()}`)
     .order('listed_at', { ascending: false });
 
   const allCars = cars ?? [];
