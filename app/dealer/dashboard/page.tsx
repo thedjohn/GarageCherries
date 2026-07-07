@@ -208,7 +208,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Year *</label>
-              <input type="number" required min="1900" max="2030" placeholder="1967" value={fields.year}
+              <input type="number" required min="1900" max="2030" placeholder="Year" value={fields.year}
                 onChange={e => set('year', e.target.value)} className={inp} />
             </div>
             <div>
@@ -220,12 +220,12 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Model *</label>
-              <input type="text" required placeholder="GTX" value={fields.model}
+              <input type="text" required placeholder="Model" value={fields.model}
                 onChange={e => set('model', e.target.value)} className={inp} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Mileage *</label>
-              <input type="number" required min="0" placeholder="42000" value={fields.mileage}
+              <input type="number" required min="0" placeholder="Mileage" value={fields.mileage}
                 onChange={e => set('mileage', e.target.value)} className={inp} />
             </div>
             <div>
@@ -244,12 +244,12 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Engine Description</label>
-              <input type="text" placeholder="426 Hemi V8" value={fields.engine}
+              <input type="text" placeholder="Engine Description" value={fields.engine}
                 onChange={e => set('engine', e.target.value)} className={inp} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Displacement</label>
-              <input type="text" placeholder="6.2L" value={fields.displacement}
+              <input type="text" placeholder="Displacement" value={fields.displacement}
                 onChange={e => set('displacement', e.target.value)} className={inp} />
             </div>
             <div>
@@ -261,12 +261,12 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Horsepower</label>
-              <input type="number" min="0" placeholder="807" value={fields.horsepower}
+              <input type="number" min="0" placeholder="Horsepower" value={fields.horsepower}
                 onChange={e => set('horsepower', e.target.value)} className={inp} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Torque (lb-ft)</label>
-              <input type="number" min="0" placeholder="707" value={fields.torque}
+              <input type="number" min="0" placeholder="Torque" value={fields.torque}
                 onChange={e => set('torque', e.target.value)} className={inp} />
             </div>
             <div>
@@ -318,12 +318,12 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Exterior Color</label>
-              <input type="text" placeholder="Bright Red" value={fields.color}
+              <input type="text" placeholder="Exterior Color" value={fields.color}
                 onChange={e => set('color', e.target.value)} className={inp} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Interior Color</label>
-              <input type="text" placeholder="Black" value={fields.interiorColor}
+              <input type="text" placeholder="Interior Color" value={fields.interiorColor}
                 onChange={e => set('interiorColor', e.target.value)} className={inp} />
             </div>
             <div>
@@ -350,7 +350,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Asking Price</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
-                <input type="number" min="0" placeholder="0 = Call for price" value={fields.price}
+                <input type="number" min="0" placeholder="Asking Price" value={fields.price}
                   onChange={e => set('price', e.target.value)}
                   className="w-full border border-zinc-200 rounded-xl pl-6 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
               </div>
@@ -360,19 +360,19 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">City</label>
-              <input type="text" placeholder="St. Charles" value={fields.location}
+              <input type="text" placeholder="City" value={fields.location}
                 onChange={e => set('location', e.target.value)} className={inp} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">State</label>
-              <input type="text" placeholder="MO" maxLength={2} value={fields.state}
+              <input type="text" placeholder="State" maxLength={2} value={fields.state}
                 onChange={e => set('state', e.target.value)} className={inp} />
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Description *</label>
-            <textarea required rows={4} placeholder="History, restoration work, matching numbers, options..."
+            <textarea required rows={4} placeholder="Description"
               value={fields.description} onChange={e => set('description', e.target.value)}
               className="w-full border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" />
           </div>
