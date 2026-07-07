@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { formatPrice, toSegment } from '@/lib/data';
 import { MAKES, BODY_STYLES, CONDITIONS, STATES } from '@/lib/types';
+import { resizeImageFiles } from '@/lib/resizeImage';
 import AccountTabBar from '@/components/AccountTabBar';
 import { useMessenger } from '@/lib/messenger-context';
 
@@ -358,12 +359,12 @@ function AccountPage() {
     });
   }
 
-  function handleEditImageAdd(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleEditImageAdd(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (editFileRef.current) editFileRef.current.value = '';
     const slots = 30 - editImages.length;
     if (slots <= 0) return;
-    const toAdd = files.slice(0, slots);
+    const toAdd = await resizeImageFiles(files.slice(0, slots));
     const newEntries = toAdd.map(file => ({
       file, preview: URL.createObjectURL(file),
       uploadState: 'uploading' as const, publicUrl: null, progress: 0,

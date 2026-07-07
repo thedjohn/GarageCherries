@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { MAKES, BODY_STYLES, CONDITIONS } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
 import { formatPrice } from '@/lib/data';
+import { resizeImageFiles } from '@/lib/resizeImage';
 
 interface DbCar {
   id: string; slug: string; title: string; year: number;
@@ -75,11 +76,12 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
   const set = (k: string, v: string) => setFields(f => ({ ...f, [k]: v }));
   const totalImages = existingImages.length + newImages.length;
 
-  const handleImageAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
-    const next = files.slice(0, 30 - totalImages).map(f => ({ file: f, preview: URL.createObjectURL(f) }));
-    setNewImages(prev => [...prev, ...next]);
     if (fileInputRef.current) fileInputRef.current.value = '';
+    const resized = await resizeImageFiles(files.slice(0, 30 - totalImages));
+    const next = resized.map(f => ({ file: f, preview: URL.createObjectURL(f) }));
+    setNewImages(prev => [...prev, ...next]);
   };
 
   const removeExisting = (i: number) => setExistingImages(prev => prev.filter((_, j) => j !== i));

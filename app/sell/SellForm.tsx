@@ -2,6 +2,7 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { MAKES, BODY_STYLES, CONDITIONS } from '@/lib/types';
+import { resizeImageFiles } from '@/lib/resizeImage';
 
 type UploadState = 'pending' | 'uploading' | 'done' | 'error';
 
@@ -68,7 +69,7 @@ export default function SellForm() {
 
     const slots = 30 - images.length;
     if (slots <= 0) return;
-    const toAdd = files.slice(0, slots);
+    const toAdd = await resizeImageFiles(files.slice(0, slots));
 
     // Add entries immediately so thumbnails appear, then upload in parallel
     const newEntries: ImageEntry[] = toAdd.map(file => ({
