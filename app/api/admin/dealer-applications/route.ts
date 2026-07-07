@@ -41,7 +41,6 @@ export async function PATCH(req: NextRequest) {
     .single();
 
   if (fetchErr || !app) return NextResponse.json({ error: 'Application not found' }, { status: 404 });
-  if (app.status !== 'pending') return NextResponse.json({ error: 'Application is no longer pending' }, { status: 409 });
 
   if (action === 'resend') {
     if (app.status !== 'approved') return NextResponse.json({ error: 'Can only resend for approved applications' }, { status: 409 });
@@ -74,6 +73,8 @@ export async function PATCH(req: NextRequest) {
     });
     return NextResponse.json({ success: true });
   }
+
+  if (app.status !== 'pending') return NextResponse.json({ error: 'Application is no longer pending' }, { status: 409 });
 
   if (action === 'reject') {
     const { error } = await admin
