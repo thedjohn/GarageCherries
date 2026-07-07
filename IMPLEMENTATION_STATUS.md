@@ -1,7 +1,7 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-06 — current as of commit cfab57f (dealer logo upload, dealer password reset page, dealer-logos storage bucket)*
+*Last updated: 2026-07-06 — current as of commit 47ff9b1 (sold banner, auth gate /sell, require photos, mark as sold, form placeholder cleanup)*
 
-**Note on data:** this site is pre-launch. As of 2026-07-03 the production database has 2 manually-added test listings and otherwise no real users, dealers, or advertisers. Empty tables (`dealers`, `advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
+**Note on data:** this site is pre-launch. As of 2026-07-06 the production database has 1 demo dealer (Demo Motors / contact-us+dealer1@garagecherries.com) with 1 test listing, plus a FastLane dealer account. No real buyers or advertisers yet. Empty tables (`dealers`, `advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
 ---
 
@@ -18,6 +18,7 @@
 - [x] Database-driven makes — make filter dropdown and make/model URL pages work for any make present in the database; `/api/makes` endpoint serves distinct makes to client components
 
 ### Listing Detail Pages
+- [x] **Sold listing banner** — when `is_sold = true`, a dark "This vehicle has sold" banner appears at the top of the listing page with a "View Similar Listings" link filtered to the same make; page stays live for SEO value (added 2026-07-06)
 - [x] Full photo gallery with thumbnail navigation
 - [x] Complete spec sheet — engine, drivetrain, interior, options, hobby segment, lot number
 - [x] Dealer info panel with map embed and click-to-call
@@ -38,7 +39,8 @@
 ### Dealer Dashboard (`/dealer/dashboard`)
 - [x] Overview tab — active listings, views (30d), inquiries (30d), avg. days on market, month-over-month comparison
 - [x] Inventory tab — add, edit, delete, mark as sold; dealer-added listings bypass review (inserted `status: 'approved'` immediately)
-- [x] Inquiries tab — buyer messages (real data from `GET /api/dealer/metrics`)
+- [x] **Mark as Sold** — green "Mark Sold" button on approved listings; confirmation modal; calls `POST /api/cars/sold`; badge changes to "Sold"; Mark Sold and Renew buttons hidden after sold (added 2026-07-06)
+- [x] Inquiries tab — buyer messages (real data from `GET /api/dealer/metrics`); shows empty state when no inquiries exist (no fake placeholder data)
 - [x] Settings tab — full profile management (name, phone, address, description, specialties)
 - [x] **Logo upload in Settings tab** — dealers upload/replace logo (JPG/PNG/WebP ≤2 MB); stored in Supabase Storage `dealer-logos` bucket (public); URL saved to `dealers.logo`; cache-busted preview updates immediately (added 2026-07-06)
 - [x] Price history recorded automatically on every price edit, fires watcher notification
@@ -63,8 +65,9 @@
 - [x] Rate limited 20/hr/IP
 
 ### Private Seller Flow
-- [x] `/sell` gated behind auth — `SellGate` shows "Create a Free Account" / "Sign In" for logged-out visitors
+- [x] `/sell` gated behind auth — server component checks session; logged-out visitors see `SellGate` ("Create a Free Account" / "Sign In"); form moved to `SellClient.tsx` (added 2026-07-06)
 - [x] Full listing submission — vehicle info, VIN + verify, location, contact, up to 30 photos (lazy upload: images stay as File objects until submit, then uploaded inside `onSubmit`)
+- [x] **Require at least one photo** — both `/sell` form and dealer Add/Edit Vehicle modal block submission if no images are attached (added 2026-07-06)
 - [x] CAPTCHA (Turnstile), rate limiting (5/hr/IP), 10-active-listing cap for non-dealers
 - [x] Admin review queue — pending listings approved/rejected at `/admin`; seller emailed either way
 - [x] Seller can edit/delete/resubmit their own listings at `/account?tab=listings`
