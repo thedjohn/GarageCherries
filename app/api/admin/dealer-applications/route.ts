@@ -30,7 +30,7 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json();
   const { id, action, rejection_note } = body;
   if (!id || !action) return NextResponse.json({ error: 'Missing id or action' }, { status: 400 });
-  if (!['approve', 'reject'].includes(action)) return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  if (!['approve', 'reject', 'resend'].includes(action)) return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
 
   const admin = createAdminClient();
 
@@ -42,6 +42,38 @@ export async function PATCH(req: NextRequest) {
 
   if (fetchErr || !app) return NextResponse.json({ error: 'Application not found' }, { status: 404 });
   if (app.status !== 'pending') return NextResponse.json({ error: 'Application is no longer pending' }, { status: 409 });
+
+  if (action === 'resend') {
+    if (app.status !== 'approved') return NextResponse.json({ error: 'Can only resend for approved applications' }, { status: 409 });
+    const { data: linkData } = await admin.auth.admin.generateLink({
+      type: 'recovery',
+      email: app.email,
+      options: { redirectTo: 'https://www.garagecherries.com/dealer/reset-password' },
+    });
+    const actionLink = linkData?.properties?.action_link;
+    if (!actionLink) return NextResponse.json({ error: 'Failed to generate reset link' }, { status: 500 });
+    await resend.emails.send({
+      from: 'GarageCherries <no-reply@garagecherries.com>',
+      to: app.email,
+      subject: 'Set Up Your GarageCherries Dealer Password',
+      html: `
+        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px">
+          <p style="font-size:28px;margin:0 0 8px">🍒</p>
+          <h1 style="font-size:22px;font-weight:800;color:#18181b;margin:0 0 16px">Hi ${app.name}, here's your password setup link</h1>
+          <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 24px">
+            Click below to set your password and access your dealer dashboard for <strong>${app.dealer_name}</strong>.
+          </p>
+          <a href="${actionLink}" style="display:inline-block;background:#dc2626;color:#fff;font-weight:700;font-size:15px;padding:14px 28px;border-radius:12px;text-decoration:none">
+            Set Your Password & Get Started
+          </a>
+          <p style="color:#a1a1aa;font-size:12px;margin:32px 0 0">
+            This link expires in 24 hours. If you didn't apply for a dealer account, you can ignore this email.
+          </p>
+        </div>
+      `,
+    });
+    return NextResponse.json({ success: true });
+  }
 
   if (action === 'reject') {
     const { error } = await admin

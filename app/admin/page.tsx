@@ -120,6 +120,7 @@ export default function AdminPage() {
   const [appFilter, setAppFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
   const [appPage, setAppPage] = useState(0);
   const APP_PAGE_SIZE = 10;
+  const [resendingApp, setResendingApp] = useState<string | null>(null);
 
   // Users
   const [users, setUsers] = useState<SiteUser[]>([]);
@@ -272,6 +273,22 @@ export default function AdminPage() {
     });
     if (res.ok) setEvents(prev => prev.filter(e => e.id !== confirmDeleteEvent.id));
     setConfirmDeleteEvent(null);
+  }
+
+  async function resendDealerSetup(id: string) {
+    setResendingApp(id);
+    const res = await fetch('/api/admin/dealer-applications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, action: 'resend' }),
+    });
+    setResendingApp(null);
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      alert(`Failed to resend: ${json.error ?? 'Unknown error'}`);
+    } else {
+      alert('Setup email resent successfully.');
+    }
   }
 
   async function handleApplication(id: string, action: 'approve' | 'reject', note?: string) {
@@ -954,9 +971,17 @@ export default function AdminPage() {
                   <p className="text-xs text-zinc-400 mt-2">Note: {app.rejection_note}</p>
                 )}
                 {app.status === 'approved' && (
-                  <p className="text-xs text-green-600 mt-2">
-                    Account created — dealer was sent a password setup email. Beta expires {new Date(new Date(app.reviewed_at!).setMonth(new Date(app.reviewed_at!).getMonth() + 6)).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
-                  </p>
+                  <div className="flex items-center gap-3 mt-2 flex-wrap">
+                    <p className="text-xs text-green-600">
+                      Account created — beta expires {new Date(new Date(app.reviewed_at!).setMonth(new Date(app.reviewed_at!).getMonth() + 6)).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
+                    </p>
+                    <button
+                      onClick={() => resendDealerSetup(app.id)}
+                      disabled={resendingApp === app.id}
+                      className="px-3 py-1 text-xs font-semibold border border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 disabled:opacity-50 transition-colors">
+                      {resendingApp === app.id ? 'Sending…' : 'Resend Setup Email'}
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
