@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { createAdminClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'About Us — GarageCherries',
@@ -23,7 +24,18 @@ const orgJsonLd = {
   },
 };
 
-export default function AboutPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function AboutPage() {
+  const admin = createAdminClient();
+  const now = new Date().toISOString();
+
+  const [{ count: listingCount }, { count: eventCount }] = await Promise.all([
+    admin.from('listings').select('id', { count: 'exact', head: true })
+      .eq('status', 'approved').eq('is_sold', false).gt('expires_at', now),
+    admin.from('events').select('id', { count: 'exact', head: true })
+      .eq('status', 'approved'),
+  ]);
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
@@ -97,10 +109,10 @@ export default function AboutPage() {
         <h2 className="text-2xl font-bold text-zinc-900 mb-8 text-center">The Platform</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
-            { stat: '50+', label: 'Model Guides' },
-            { stat: '12', label: 'Makes Covered' },
+            { stat: (listingCount ?? 0).toLocaleString(), label: 'Active Listings' },
+            { stat: '54', label: 'Model Guides' },
             { stat: '6', label: "Buyer's Guides" },
-            { stat: '12', label: '2026 Car Events' },
+            { stat: (eventCount ?? 0).toLocaleString(), label: 'Car Events' },
           ].map(item => (
             <div key={item.label}>
               <p className="text-4xl font-extrabold text-red-600 mb-1">{item.stat}</p>

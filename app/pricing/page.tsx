@@ -253,26 +253,33 @@ export default function PricingPage() {
 
       {/* Advertiser */}
       <section className="bg-white border-y border-zinc-100 py-16">
-        <div className="max-w-3xl mx-auto px-4 text-center">
-          <h2 className="text-2xl font-extrabold text-zinc-900 mb-2">Advertise on GarageCherries</h2>
-          <p className="text-zinc-500 text-sm mb-2">Reach a passionate audience of classic, muscle, and collector car enthusiasts across the USA.</p>
-          <p className="text-red-600 text-sm font-semibold mb-8">🇺🇸 250th Birthday Promo: Contact us before July 31, 2026 for free access through October 31, 2026.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-left mb-8">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl font-extrabold text-zinc-900 mb-2">Advertise on GarageCherries</h2>
+            <p className="text-zinc-500 text-sm mb-2">Reach a passionate audience of classic, muscle, and collector car enthusiasts across the USA.</p>
+            <p className="text-red-600 text-sm font-semibold">🇺🇸 250th Birthday Promo: Sign up before July 31, 2026 for free access through October 31, 2026.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
             {[
-              { name: 'Banner Ads', desc: 'Prominent placements on search results, listing pages, and the homepage.' },
-              { name: 'Sponsored Listings', desc: 'Pin your listings to the top of search results with a Sponsored label.' },
-              { name: 'Newsletter Sponsorships', desc: 'Reach our subscriber list of classic car buyers and enthusiasts.' },
-            ].map(a => (
-              <div key={a.name} className="bg-zinc-50 rounded-2xl border border-zinc-100 p-6">
-                <p className="font-bold text-zinc-900 mb-2">{a.name}</p>
-                <p className="text-zinc-500 text-sm">{a.desc}</p>
+              { name: 'Starter',   price: '$79',  per: '/mo', radius: '15-mile radius' },
+              { name: 'Metro',     price: '$139', per: '/mo', radius: '30-mile radius' },
+              { name: 'Regional',  price: '$219', per: '/mo', radius: '60-mile radius' },
+              { name: 'Statewide', price: '$349', per: '/mo', radius: 'Entire state' },
+            ].map(t => (
+              <div key={t.name} className="bg-zinc-50 rounded-2xl border border-zinc-100 p-6 text-center">
+                <p className="font-extrabold text-zinc-900 mb-1">{t.name}</p>
+                <p className="text-3xl font-extrabold text-zinc-900 my-3">{t.price}<span className="text-sm font-normal text-zinc-400">{t.per}</span></p>
+                <p className="text-xs text-zinc-500">{t.radius}</p>
               </div>
             ))}
           </div>
-          <a href="mailto:contact-us@garagecherries.com"
-            className="inline-block bg-zinc-900 hover:bg-zinc-800 text-white font-bold px-8 py-3 rounded-xl transition-colors">
-            Contact Us for Rates
-          </a>
+          <div className="text-center">
+            <Link href="/advertiser/signup"
+              className="inline-block bg-zinc-900 hover:bg-zinc-800 text-white font-bold px-8 py-3 rounded-xl transition-colors">
+              Start Free Trial
+            </Link>
+            <p className="text-xs text-zinc-400 mt-3">14-day free trial · No credit card required · Geographic ad targeting included</p>
+          </div>
         </div>
       </section>
 

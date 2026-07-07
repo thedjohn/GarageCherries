@@ -844,7 +844,8 @@ export default function DealerDashboard() {
                           {car.images?.[0] && <img src={car.images[0]} alt="" className="w-full h-full object-cover" />}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-zinc-800 truncate">{car.title}</p>
+                          <Link href={`/listings/${toSlug(car.make)}/${toSlug(car.model)}/${car.id}/${car.slug}`} target="_blank"
+                            className="font-semibold text-zinc-800 hover:text-red-600 transition-colors truncate block">{car.title}</Link>
                           <p className="text-xs text-zinc-400">{car.condition} · {car.price > 0 ? `$${car.price.toLocaleString()}` : 'Call for price'}</p>
                         </div>
                       </div>
