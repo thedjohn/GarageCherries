@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-07 — current as of resend setup email button for approved dealer applications*
+*Last updated: 2026-07-08 — current as of dealer password setup flow fixes and Event structured data OG image*
 
 **Note on data:** this site is pre-launch. As of 2026-07-07 the production database has a handful of manually-created test listings (private-seller and dealer) and no real buyers or advertisers yet. Empty tables (`advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -95,7 +95,7 @@
 - [x] Admin review at `/admin` — approve creates an auth user + `dealers` row (`plan: 'beta'`); `beta_expires_at = 2026-10-31` for 250th promo applications (submitted before Aug 1 2026), otherwise `now + 6 months`; emails a password-reset link with `redirectTo: /dealer/reset-password`; reject sends a note
 - [x] **Applications tab — filter + pagination** — filter buttons (Pending/Approved/Rejected/All) with counts, defaults to Pending; 10-per-page pagination with Prev/Next; error alerts on approve/reject failure (added 2026-07-07)
 - [x] **Resend Setup Email button** — on approved applications; generates a fresh recovery link via `auth.admin.generateLink` with correct `redirectTo` and emails it; fixes cases where Supabase dashboard "Send password recovery" sent link to wrong URL (added 2026-07-07)
-- [x] **Dealer password reset page** (`/dealer/reset-password`) — validates Supabase session from reset email link; shows new-password + confirm fields; updates auth on submit; redirects to `/dealer/login`; handles expired/invalid links gracefully (added 2026-07-06)
+- [x] **Dealer password setup flow** — recovery token handling moved inline to `/dealer/login` (Supabase ignores `redirect_to` and always sends tokens there); detects `#access_token=...&type=recovery` hash, shows Set Password form directly; expired/invalid links show error via Supabase `#error=...` hash detection; `setSession()` establishes dealer session before password update; on success redirects to `/dealer/dashboard`; **Resend Setup Email** admin button generates a fresh recovery link (added 2026-07-06, fixed 2026-07-08)
 
 ### Advertising System
 - [x] Public marketing page (`/advertise`) and advertiser signup (`/advertiser/signup`) — 14-day trial, tier selection
@@ -192,7 +192,7 @@
 - [x] **Axiom structured logging** — `next-axiom`; `lib/logger.ts` unified logger with Axiom + Sentry integration; `createLogger(source)` wired across all high-value API routes: `api/inquire`, `api/dealer/apply`, `api/alerts/match`, `api/notify-watchers`, `api/conversations`, `api/conversations/[id]/messages`, `api/email/digest`, `api/email/dealer-report`, `api/email/expiring-listings`, `api/admin/listings`, `api/admin/events`, `api/listings/submit`; env vars in Vercel (added 2026-07-06, expanded 2026-07-07)
 - [x] Deployed to Vercel (project `garage-cherries`, GarageCherries team account, Hobby plan); custom domain `garagecherries.com` and `www.garagecherries.com` live with SSL
 - [x] **Events calendar** (`/events`) — DB-backed; `events` table with `status` (`pending/approved/rejected`), `submitted_by`, `submitter_email`, `submitter_name`, `start_time`, `end_time`, `slug` columns; public page (approved only) shows upcoming/featured/past sections with time display; logged-in users can submit events via inline form (goes to `pending`); logged-out users see sign-in prompt; admin Events tab has pending approval queue with Approve/Reject buttons; admin-created events go straight to `approved`; `revalidatePath('/events')` called on every admin mutation so page updates instantly without hard refresh (added 2026-07-07)
-- [x] **Individual event detail pages** (`/events/[slug]`) — per-event page with `generateMetadata` (title/description/OG), JSON-LD `Event` schema for Google rich results, date/time/location details card, "Add to Google Calendar" deep link, "Visit Event Website" CTA; event names on `/events` list link to detail pages; slugs auto-generated on insert (`name-date` format); `slug` column backfilled for existing events via migration (added 2026-07-07)
+- [x] **Individual event detail pages** (`/events/[slug]`) — per-event page with `generateMetadata` (title/description/OG), JSON-LD `Event` schema for Google rich results, date/time/location details card, "Add to Google Calendar" deep link, "Visit Event Website" CTA; event names on `/events` list link to detail pages; slugs auto-generated on insert (`name-date` format); `slug` column backfilled for existing events via migration (added 2026-07-07); **JSON-LD `image` and `offers` fields added** to fix Google Search Console non-critical warnings; using promo eagle image (Supabase storage) — **swap to permanent brand OG image after 2026-07-31** (added 2026-07-08)
 - [x] **Cherry logo + favicon** — `public/cherry-logo.png` (transparent background PNG); used in Header (44×44, `unoptimized` to preserve alpha), Footer (36×36); `app/favicon.ico` replaced with cherry ICO file (Next.js App Router: `app/favicon.ico` always takes precedence over metadata icons) (added 2026-07-07)
 - [x] **Google Analytics 4** — Measurement ID `G-B36QB0J7TX`; added to `app/layout.tsx` via Next.js `Script` (afterInteractive)
 - [x] **SEO — JSON-LD structured data** — Organization (homepage, about, contact), AutoDealer + BreadcrumbList (dealer pages), Vehicle + BreadcrumbList (listing detail), Article + BreadcrumbList (encyclopedia model pages), LocalBusiness + BreadcrumbList (advertiser detail pages)
@@ -201,6 +201,9 @@
 - [x] **SEO — filter clamping** — year inputs `min=1900 max=2030`, price inputs `min=0` (client); `lib/db.ts` clamps year to [1900–2030] and rejects negative price server-side
 - [x] **Google Search Console** — property `https://www.garagecherries.com` verified (DNS method, auto-detected); sitemap submitted; 81 pages discovered
 - [x] **Admin — Events tab** — add/edit/delete events (straight to approved); pending submissions queue with Approve/Reject; visible to admin and superadmin roles; logged via Axiom/Sentry (added 2026-07-07)
+- [x] **Account suspension flow** — suspend action in Users tab sends Resend email to user with reason; suspended users redirected to `/account/suspended` on login with "Contact Support" CTA (added 2026-07-08)
+- [x] **Admin Panel link for non-superadmin team members** — `GET /api/admin/team` now accessible to all team roles (previously superadmin-only), allowing Header to detect admin status and show the Admin Panel link (fixed 2026-07-08)
+- [x] **Admin listings rejection "Other" textarea fix** — separate `customRejectionReason` state prevents textarea from closing when typing (fixed 2026-07-08)
 - [x] **Bing Webmaster Tools** — imported from GSC; sitemap submitted; processing
 - [x] `SPEC.md` — detailed master specification; treat as the primary technical reference
 
