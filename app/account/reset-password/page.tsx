@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -55,7 +56,7 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <span className="text-2xl">🍒</span>
+            <Image src="/cherry-logo.png" alt="GarageCherries" width={32} height={32} unoptimized />
             <span className="text-xl font-bold">Garage<span className="text-red-600">Cherries</span></span>
           </Link>
         </div>
