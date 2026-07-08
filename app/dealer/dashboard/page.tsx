@@ -932,7 +932,7 @@ export default function DealerDashboard() {
                         {car.status === 'rejected' && !car.rejection_reason && (
                           <p className="text-xs text-red-500 mt-1">Edit listing to resubmit.</p>
                         )}
-                        {car.status === 'approved' && !car.is_feed_managed && car.expires_at && (() => {
+                        {car.status === 'approved' && !car.is_sold && !car.is_feed_managed && car.expires_at && (() => {
                           const daysLeft = Math.ceil((new Date(car.expires_at!).getTime() - Date.now()) / 86400000);
                           return (
                             <p className={`text-xs mt-1 ${daysLeft <= 7 ? 'text-amber-600 font-semibold' : 'text-zinc-400'}`}>
@@ -944,10 +944,12 @@ export default function DealerDashboard() {
                       <td className="px-4 py-3 text-zinc-400 text-xs">{car.listed_at}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3 justify-end">
-                          <button onClick={() => setModalCar(car)}
-                            className="text-xs text-zinc-500 hover:text-zinc-900 font-medium transition-colors">
-                            Edit
-                          </button>
+                          {!car.is_sold && (
+                            <button onClick={() => setModalCar(car)}
+                              className="text-xs text-zinc-500 hover:text-zinc-900 font-medium transition-colors">
+                              Edit
+                            </button>
+                          )}
                           {car.status === 'approved' && !car.is_sold && (
                             <button onClick={() => setSoldConfirm(car.id)}
                               className="text-xs text-green-600 hover:text-green-800 font-medium transition-colors">
