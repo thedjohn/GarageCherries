@@ -471,6 +471,33 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
   );
 }
 
+// ─── Tooltip ─────────────────────────────────────────────────────────────────
+function Tooltip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex items-center ml-1">
+      <button
+        type="button"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onClick={() => setOpen(v => !v)}
+        aria-label="More information"
+        className="w-3.5 h-3.5 rounded-full bg-zinc-200 text-zinc-500 hover:bg-zinc-300 text-[9px] font-bold leading-none flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-400"
+      >
+        i
+      </button>
+      {open && (
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-zinc-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg z-50 pointer-events-none leading-relaxed">
+          {text}
+          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-zinc-900" />
+        </span>
+      )}
+    </span>
+  );
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export default function DealerDashboard() {
   const router = useRouter();
@@ -604,24 +631,28 @@ export default function DealerDashboard() {
       value: listings.length,
       sub: 'total in inventory',
       up: true,
+      tooltip: 'Total number of your approved listings currently visible to buyers.',
     },
     {
       label: 'Views (30d)',
       value: metrics ? metrics.views30d.toLocaleString() : '—',
       sub: metrics ? fmtDelta(metrics.viewsDelta) : 'Loading…',
       up: (metrics?.viewsDelta ?? 0) >= 0,
+      tooltip: 'Unique page views on your listings over the last 30 days. Devices sharing the same network (e.g. home Wi-Fi) count as one view per day.',
     },
     {
       label: 'Inquiries (30d)',
       value: metrics ? metrics.inquiries30d.toLocaleString() : '—',
       sub: metrics ? fmtDelta(metrics.inquiriesDelta) : 'Loading…',
       up: (metrics?.inquiriesDelta ?? 0) >= 0,
+      tooltip: 'Number of contact form messages sent by buyers on your listings in the last 30 days.',
     },
     {
       label: 'Avg. days on market',
       value: metrics ? String(metrics.avgDaysOnMarket) : '—',
       sub: 'across all active listings',
       up: true,
+      tooltip: 'Average number of days your active listings have been live. Calculated from the date each listing was approved.',
     },
   ];
 
@@ -803,7 +834,10 @@ export default function DealerDashboard() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {statCards.map(m => (
                 <div key={m.label} className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
-                  <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-1">{m.label}</p>
+                  <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-1 flex items-center">
+                    {m.label}
+                    <Tooltip text={m.tooltip} />
+                  </p>
                   <p className="text-2xl font-bold text-zinc-900">{m.value}</p>
                   <p className={`text-xs mt-1 font-medium ${m.up ? 'text-green-600' : 'text-red-500'}`}>
                     {m.up ? '▲' : '▼'} {m.sub}
