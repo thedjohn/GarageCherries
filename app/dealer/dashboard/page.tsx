@@ -753,7 +753,6 @@ export default function DealerDashboard() {
           <span className="text-zinc-300 text-sm">{dealerName}</span>
           <span className="inline-flex items-center gap-1">
             <span className="text-xs bg-green-700 text-green-200 px-2 py-0.5 rounded-full font-medium">Verified</span>
-            <Tooltip text="Your dealership has been reviewed and approved by GarageCherries. Verified dealers get a badge on their public profile and listings." side="bottom" />
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -950,13 +949,10 @@ export default function DealerDashboard() {
                             Edit
                           </button>
                           {car.status === 'approved' && !car.is_sold && (
-                            <span className="inline-flex items-center gap-0.5">
-                              <button onClick={() => setSoldConfirm(car.id)}
-                                className="text-xs text-green-600 hover:text-green-800 font-medium transition-colors">
-                                Mark Sold
-                              </button>
-                              <Tooltip text="Marks this vehicle as sold. Buyers who saved it to their watchlist will be notified. This cannot be undone." />
-                            </span>
+                            <button onClick={() => setSoldConfirm(car.id)}
+                              className="text-xs text-green-600 hover:text-green-800 font-medium transition-colors">
+                              Mark Sold
+                            </button>
                           )}
                           {car.status === 'approved' && !car.is_sold && (
                             watcherMessaged[car.id]
