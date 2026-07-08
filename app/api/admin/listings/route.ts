@@ -143,7 +143,11 @@ export async function PATCH(req: NextRequest) {
             </div>
           </div>
         `,
-      }).catch(() => {});
+      }).then(() => {
+        log.info('Approval email sent', { listingId: id, sellerEmail: listing.seller_email });
+      }).catch((err: unknown) => {
+        log.error('Approval email failed', new Error(String(err)), { listingId: id, sellerEmail: listing.seller_email });
+      });
 
       // Trigger alert matching (internal — requires secret)
       const origin = req.nextUrl.origin;
@@ -180,8 +184,14 @@ export async function PATCH(req: NextRequest) {
             </div>
           </div>
         `,
-      }).catch(() => {});
+      }).then(() => {
+        log.info('Rejection email sent', { listingId: id, sellerEmail: listing.seller_email });
+      }).catch((err: unknown) => {
+        log.error('Rejection email failed', new Error(String(err)), { listingId: id, sellerEmail: listing.seller_email });
+      });
     }
+  } else {
+    log.warn('Skipped seller email — no seller_email on listing', { listingId: id, action });
   }
 
   return NextResponse.json({ success: true });
