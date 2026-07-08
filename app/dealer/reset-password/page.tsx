@@ -32,8 +32,7 @@ export default function DealerResetPasswordPage() {
     const type = params.get('type');
 
     if (accessToken && type === 'recovery') {
-      supabase.auth.signOut().then(() =>
-      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }))
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
         .then(({ data, error }) => {
           if (data.session) {
             setReady(true);
