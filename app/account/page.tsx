@@ -1090,7 +1090,7 @@ function AccountPage() {
                       <p className="text-xs text-zinc-500">${l.price.toLocaleString()} · {l.location}, {l.state}</p>
 
                       {/* Expiry */}
-                      {l.status === 'approved' && l.expires_at && (() => {
+                      {l.status === 'approved' && !l.is_sold && l.expires_at && (() => {
                         const daysLeft = Math.ceil((new Date(l.expires_at!).getTime() - Date.now()) / 86400000);
                         return (
                           <p className={`text-xs mt-1 ${daysLeft <= 7 ? 'text-amber-600 font-semibold' : 'text-zinc-400'}`}>
@@ -1115,7 +1115,7 @@ function AccountPage() {
                       )}
 
                       <div className="flex gap-2 mt-3 flex-wrap">
-                        {l.status !== 'removed' && (
+                        {l.status !== 'removed' && !l.is_sold && (
                           <button onClick={() => openEditListing(l)}
                             className="text-xs font-semibold px-3 py-1.5 border border-zinc-200 rounded-lg text-zinc-600 hover:bg-zinc-50 transition-colors">
                             {l.status === 'rejected' ? 'Fix & Resubmit' : 'Edit'}
