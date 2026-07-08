@@ -83,7 +83,8 @@
 - [ ] Edit a vehicle's price — price history updates, watcher notification fires (spot-check via a watching test account/email)
 - [ ] Mark a listing as **Sold** — confirmation modal, badge changes to "Sold", Mark Sold/Renew buttons disappear
 - [ ] Toggle "Featured" on a listing — badge appears on the listing card
-- [ ] Export inventory as CSV and as JSON — both downloads work and contain real data
+- [ ] Export inventory as CSV and as JSON — both downloads work and contain real data including seat_material and seating_type columns
+- [ ] Mark a listing as Sold in dealer dashboard — Edit button and "Expires in Xd" text disappear; only View remains
 - [ ] Settings tab — update dealer profile fields, upload a logo (JPG/PNG/WebP), preview updates immediately
 - [ ] "Message watchers" on a listing with watchers — compose modal sends, "Messaged" label appears after
 - [ ] Confirm **Import JSON** and **Sync Now** buttons are visibly disabled with a "Coming soon" tooltip — this is expected, not a bug
