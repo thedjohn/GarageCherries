@@ -1,6 +1,7 @@
 'use client';
 import Image from 'next/image';
 import { useState, useRef, useEffect, useCallback } from 'react';
+import Tooltip from '@/components/Tooltip';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { MAKES, BODY_STYLES, CONDITIONS, TRANSMISSIONS } from '@/lib/types';
@@ -471,33 +472,6 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
   );
 }
 
-// ─── Tooltip ─────────────────────────────────────────────────────────────────
-function Tooltip({ text }: { text: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <span className="relative inline-flex items-center ml-1">
-      <button
-        type="button"
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
-        onClick={() => setOpen(v => !v)}
-        aria-label="More information"
-        className="w-3.5 h-3.5 rounded-full bg-zinc-200 text-zinc-500 hover:bg-zinc-300 text-[9px] font-bold leading-none flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-red-400"
-      >
-        i
-      </button>
-      {open && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-zinc-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg z-50 pointer-events-none leading-relaxed">
-          {text}
-          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-zinc-900" />
-        </span>
-      )}
-    </span>
-  );
-}
-
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export default function DealerDashboard() {
   const router = useRouter();
@@ -777,7 +751,10 @@ export default function DealerDashboard() {
           </Link>
           <span className="text-zinc-600">/</span>
           <span className="text-zinc-300 text-sm">{dealerName}</span>
-          <span className="text-xs bg-green-700 text-green-200 px-2 py-0.5 rounded-full font-medium">Verified</span>
+          <span className="inline-flex items-center gap-1">
+            <span className="text-xs bg-green-700 text-green-200 px-2 py-0.5 rounded-full font-medium">Verified</span>
+            <Tooltip text="Your dealership has been reviewed and approved by GarageCherries. Verified dealers get a badge on their public profile and listings." />
+          </span>
         </div>
         <div className="flex items-center gap-3">
           {dealerSlug && (
@@ -973,10 +950,13 @@ export default function DealerDashboard() {
                             Edit
                           </button>
                           {car.status === 'approved' && !car.is_sold && (
-                            <button onClick={() => setSoldConfirm(car.id)}
-                              className="text-xs text-green-600 hover:text-green-800 font-medium transition-colors">
-                              Mark Sold
-                            </button>
+                            <span className="inline-flex items-center gap-0.5">
+                              <button onClick={() => setSoldConfirm(car.id)}
+                                className="text-xs text-green-600 hover:text-green-800 font-medium transition-colors">
+                                Mark Sold
+                              </button>
+                              <Tooltip text="Marks this vehicle as sold. Buyers who saved it to their watchlist will be notified. This cannot be undone." />
+                            </span>
                           )}
                           {car.status === 'approved' && !car.is_sold && (
                             watcherMessaged[car.id]
@@ -993,10 +973,13 @@ export default function DealerDashboard() {
                             View ↗
                           </Link>
                           {car.status === 'approved' && !car.is_sold && !car.is_feed_managed && (
-                            <button onClick={() => renewCar(car.id)}
-                              className="text-xs text-blue-600 hover:underline font-medium">
-                              Renew
-                            </button>
+                            <span className="inline-flex items-center gap-0.5">
+                              <button onClick={() => renewCar(car.id)}
+                                className="text-xs text-blue-600 hover:underline font-medium">
+                                Renew
+                              </button>
+                              <Tooltip text="Resets the listing date to today, bumping it back to the top of search results and resetting the expiry window." />
+                            </span>
                           )}
                           <button onClick={() => setDeleteConfirm(car.id)}
                             className="text-xs text-zinc-300 hover:text-red-500 transition-colors">

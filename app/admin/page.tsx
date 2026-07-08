@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import Tooltip from '@/components/Tooltip';
 import { formatPhone } from '@/lib/data';
 import { MAKES, BODY_STYLES, CONDITIONS, TRANSMISSIONS } from '@/lib/types';
 
@@ -694,10 +695,13 @@ export default function AdminPage() {
                       {working === l.id + 'approve' ? 'Approving…' : 'Approve'}
                     </button>
                     {rejectingId !== l.id && (
-                      <button onClick={() => startReject(l.id)} disabled={!!working}
-                        className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
-                        Reject
-                      </button>
+                      <span className="inline-flex items-center gap-1">
+                        <button onClick={() => startReject(l.id)} disabled={!!working}
+                          className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg disabled:opacity-50">
+                          Reject
+                        </button>
+                        <Tooltip text="Sends the seller a rejection email with your reason. They can edit and resubmit the listing." />
+                      </span>
                     )}
                   </>}
                   {(adminRole === 'admin' || adminRole === 'superadmin') && (
@@ -960,11 +964,14 @@ export default function AdminPage() {
                           className="px-4 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors">
                           {appWorking === app.id + 'approve' ? 'Approving…' : 'Approve'}
                         </button>
-                        <button
-                          onClick={() => setRejectingApp(app.id)}
-                          className="px-4 py-1.5 border border-red-200 text-red-600 text-xs font-semibold rounded-lg hover:bg-red-50 transition-colors">
-                          Reject
-                        </button>
+                        <span className="inline-flex items-center gap-1">
+                          <button
+                            onClick={() => setRejectingApp(app.id)}
+                            className="px-4 py-1.5 border border-red-200 text-red-600 text-xs font-semibold rounded-lg hover:bg-red-50 transition-colors">
+                            Reject
+                          </button>
+                          <Tooltip text="Declines this dealer application. The applicant is not notified automatically — use the note field to record your reason." />
+                        </span>
                       </div>
                     )}
                   </div>
@@ -978,12 +985,15 @@ export default function AdminPage() {
                     <p className="text-xs text-green-600">
                       Account created — beta expires {new Date(new Date(app.reviewed_at!).setMonth(new Date(app.reviewed_at!).getMonth() + 6)).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
                     </p>
-                    <button
-                      onClick={() => resendDealerSetup(app.id)}
-                      disabled={resendingApp === app.id}
-                      className="px-3 py-1 text-xs font-semibold border border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 disabled:opacity-50 transition-colors">
-                      {resendingApp === app.id ? 'Sending…' : 'Resend Setup Email'}
-                    </button>
+                    <span className="inline-flex items-center gap-1">
+                      <button
+                        onClick={() => resendDealerSetup(app.id)}
+                        disabled={resendingApp === app.id}
+                        className="px-3 py-1 text-xs font-semibold border border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 disabled:opacity-50 transition-colors">
+                        {resendingApp === app.id ? 'Sending…' : 'Resend Setup Email'}
+                      </button>
+                      <Tooltip text="Generates a fresh password-setup link and emails it to the dealer. Use this if their original setup email expired or they never received it." />
+                    </span>
                   </div>
                 )}
               </div>
@@ -1397,10 +1407,13 @@ export default function AdminPage() {
                         )}
                         {!u.suspended && (adminRole === 'moderator' || adminRole === 'admin' || adminRole === 'superadmin') &&
                           (!u.roles.includes('dealer') || adminRole === 'admin' || adminRole === 'superadmin') && (
-                          <button onClick={() => setSuspendTarget(u)}
-                            className="px-3 py-1.5 text-xs font-semibold border border-orange-200 rounded-lg text-orange-600 hover:bg-orange-50">
-                            Suspend
-                          </button>
+                          <span className="inline-flex items-center gap-1">
+                            <button onClick={() => setSuspendTarget(u)}
+                              className="px-3 py-1.5 text-xs font-semibold border border-orange-200 rounded-lg text-orange-600 hover:bg-orange-50">
+                              Suspend
+                            </button>
+                            <Tooltip text="Blocks this account from signing in and shows a suspension notice. Reversible — use Unsuspend to restore access. For permanent removal, delete the account instead." />
+                          </span>
                         )}
                         {u.suspended && (adminRole === 'admin' || adminRole === 'superadmin') && (
                           <button onClick={() => unsuspendUser(u.id)}
