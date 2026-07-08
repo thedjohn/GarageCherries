@@ -20,6 +20,13 @@ export default function DealerResetPasswordPage() {
     // generateLink (admin API) uses the implicit flow: tokens arrive as #access_token=...
     const hash = window.location.hash.substring(1);
     const params = new URLSearchParams(hash);
+
+    // Supabase sends error params when the link is expired or already used
+    if (params.get('error')) {
+      setError(params.get('error_description')?.replace(/\+/g, ' ') ?? 'This reset link is invalid or has expired.');
+      return;
+    }
+
     const accessToken = params.get('access_token');
     const refreshToken = params.get('refresh_token') ?? '';
     const type = params.get('type');
@@ -37,14 +44,8 @@ export default function DealerResetPasswordPage() {
       return;
     }
 
-    // Fallback: check for an existing session (page refresh after hash is consumed)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setReady(true);
-      } else {
-        setError('This reset link is invalid or has expired. Please contact support for a new one.');
-      }
-    });
+    // No valid token in the hash — link is missing or already consumed
+    setError('This reset link is invalid or has expired. Please contact support for a new one.');
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
