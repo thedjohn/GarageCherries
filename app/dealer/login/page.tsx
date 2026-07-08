@@ -1,11 +1,20 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
 export default function DealerLoginPage() {
   const router = useRouter();
+
+  useEffect(() => {
+    // Supabase sometimes ignores redirect_to and sends recovery tokens here.
+    // Forward them to the correct page so the dealer can set their password.
+    const hash = window.location.hash;
+    if (hash.includes('type=recovery') && hash.includes('access_token=')) {
+      router.replace('/dealer/reset-password' + hash);
+    }
+  }, [router]);
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
