@@ -18,7 +18,7 @@ interface MyListing {
   transmission: string; engine: string | null; color: string | null;
   location: string; state: string; images: string[]; description: string;
   seller_name: string; seller_phone: string; seller_email: string;
-  status: string; rejection_reason: string | null; resubmission_note: string | null;
+  status: string; is_sold: boolean; rejection_reason: string | null; resubmission_note: string | null;
   resubmission_count: number; created_at: string; expires_at: string | null;
 }
 
@@ -414,7 +414,7 @@ function AccountPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ carId: id }),
     });
-    setMyListings(prev => prev.map(l => l.id === id ? { ...l, status: 'removed' } : l));
+    if (res.ok) setMyListings(prev => prev.map(l => l.id === id ? { ...l, is_sold: true } : l));
   }
 
   async function renewListing(id: string) {
@@ -1080,11 +1080,12 @@ function AccountPage() {
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <h3 className="font-bold text-zinc-900 text-sm">{l.title}</h3>
                         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${
+                          l.is_sold ? 'bg-zinc-100 text-zinc-500' :
                           l.status === 'approved' ? 'bg-green-100 text-green-700' :
                           l.status === 'rejected' ? 'bg-red-100 text-red-700' :
                           l.status === 'removed' ? 'bg-zinc-100 text-zinc-500' :
                           'bg-yellow-100 text-yellow-700'
-                        }`}>{l.status === 'approved' ? 'Live' : l.status === 'removed' ? 'Removed' : l.status}</span>
+                        }`}>{l.is_sold ? 'Sold' : l.status === 'approved' ? 'Live' : l.status === 'removed' ? 'Removed' : l.status}</span>
                       </div>
                       <p className="text-xs text-zinc-500">${l.price.toLocaleString()} · {l.location}, {l.state}</p>
 
@@ -1120,13 +1121,13 @@ function AccountPage() {
                             {l.status === 'rejected' ? 'Fix & Resubmit' : 'Edit'}
                           </button>
                         )}
-                        {l.status === 'approved' && (
+                        {l.status === 'approved' && !l.is_sold && (
                           <button onClick={() => markAsSold(l.id)}
                             className="text-xs font-semibold px-3 py-1.5 border border-green-200 rounded-lg text-green-700 hover:bg-green-50 transition-colors">
                             Mark as Sold
                           </button>
                         )}
-                        {l.status === 'approved' && (
+                        {l.status === 'approved' && !l.is_sold && (
                           <button onClick={() => renewListing(l.id)}
                             className="text-xs font-semibold px-3 py-1.5 border border-blue-200 rounded-lg text-blue-700 hover:bg-blue-50 transition-colors">
                             Renew listing
