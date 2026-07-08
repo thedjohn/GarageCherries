@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/promo-expiry",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/expiring-listings",
+      "schedule": "0 10 * * *"
     }
   ]
 }
