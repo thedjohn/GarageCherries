@@ -3,6 +3,10 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { rateLimit, getClientIP } from '@/lib/rateLimit';
 import { notifyAdmin } from '@/lib/notifyAdmin';
 import { createLogger } from '@/lib/logger';
+import { Resend } from 'resend';
+import { emailWrap } from '@/lib/emailBranding';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const log = createLogger('api/conversations');
 
@@ -92,6 +96,31 @@ export async function POST(req: NextRequest) {
   }
 
   await admin.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversationId);
+
+  // Email seller on first contact only — fire and forget
+  if (!existing && resolvedSellerEmail) {
+    const accountUrl = 'https://www.garagecherries.com/account?tab=messages';
+    resend.emails.send({
+      from: 'GarageCherries <no-reply@garagecherries.com>',
+      to: resolvedSellerEmail,
+      subject: `New message about your listing — ${resolvedTitle}`,
+      html: emailWrap(`
+        <h1 style="font-size:20px;font-weight:800;color:#18181b;margin:0 0 8px">You have a new message</h1>
+        <p style="color:#71717a;font-size:14px;margin:0 0 16px"><strong style="color:#18181b">${buyerName}</strong> sent you a message about your listing <strong style="color:#18181b">${resolvedTitle}</strong>.</p>
+        <div style="background:#f4f4f5;border-radius:10px;padding:16px 20px;margin-bottom:24px">
+          <p style="font-size:14px;color:#18181b;margin:0">${message.trim()}</p>
+        </div>
+        <a href="${accountUrl}" style="display:block;text-align:center;background:#ef4444;color:white;font-weight:700;padding:14px 24px;border-radius:10px;text-decoration:none;font-size:15px;margin-bottom:24px">Reply to Message →</a>
+        <p style="color:#a1a1aa;font-size:12px;margin:0">You can manage all your messages from your <a href="${accountUrl}" style="color:#71717a">account page</a>.</p>
+      `),
+    }).then(() => {
+      log.info('New conversation email sent', { conversationId, listingId, sellerEmail: resolvedSellerEmail });
+      void log.flush();
+    }).catch((err: unknown) => {
+      log.error('New conversation email failed', new Error(String(err)), { conversationId, listingId, sellerEmail: resolvedSellerEmail });
+      void log.flush();
+    });
+  }
 
   log.info('Conversation message sent', { conversationId, listingId, userId: user.id, isNew: !existing?.id });
   return NextResponse.json({ conversationId });

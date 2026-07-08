@@ -139,7 +139,7 @@ export async function PATCH(req: NextRequest) {
               <a href="${listingUrl}" style="display:block;text-align:center;background:#ef4444;color:white;font-weight:700;padding:14px 24px;border-radius:10px;text-decoration:none;font-size:15px;margin-bottom:24px;">
                 View Your Listing →
               </a>
-              <p style="color:#a1a1aa;font-size:12px;margin:0;">You'll receive an email whenever a buyer sends you an inquiry. You can manage your listing from your <a href="https://www.garagecherries.com/account" style="color:#71717a;">account page</a>.</p>
+              <p style="color:#a1a1aa;font-size:12px;margin:0;">You'll receive an email when a buyer first contacts you about this listing. You can manage your listing from your <a href="https://www.garagecherries.com/account" style="color:#71717a;">account page</a>.</p>
             </div>
           </div>
         `,
