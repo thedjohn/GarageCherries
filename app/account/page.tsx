@@ -711,7 +711,7 @@ function AccountPage() {
                   <div className="flex-1 min-w-0">
                     <p className={`truncate ${conv.unread ? 'font-bold text-zinc-900' : 'font-semibold text-zinc-900'}`}>{conv.listing_title}</p>
                     <p className="text-xs text-zinc-400 mt-0.5">
-                      {conv.buyer_id === userId ? 'You are the buyer' : `Buyer: ${conv.buyer_name || 'Unknown'}`}
+                      {conv.buyer_id === userId ? 'Private Seller' : (conv.buyer_name || 'Unknown')}
                       {' · '}{new Date(conv.last_message_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </p>
                   </div>

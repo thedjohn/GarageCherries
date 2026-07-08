@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
   // Buyer conversations
   const { data: buyerConvs } = await supabase
     .from('conversations')
-    .select('id, listing_id, listing_title, seller_email, buyer_name, last_message_at, created_at')
+    .select('id, listing_id, listing_title, seller_email, buyer_id, buyer_name, last_message_at, created_at')
     .eq('buyer_id', user.id)
     .order('last_message_at', { ascending: false });
 
