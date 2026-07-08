@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import Tooltip from '@/components/Tooltip';
 
 export default function WatchlistButton({ carId, price }: { carId: string; price: number }) {
   const [watched, setWatched] = useState(false);
@@ -56,7 +55,6 @@ export default function WatchlistButton({ carId, price }: { carId: string; price
         </svg>
         {working ? '…' : watched ? 'Saved to Watchlist' : 'Save to Watchlist'}
       </button>
-      <Tooltip text="Save this listing to your watchlist. You'll get an email alert if the price drops." />
     </div>
   );
 }
