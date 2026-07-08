@@ -409,7 +409,7 @@ function AccountPage() {
   }
 
   async function markAsSold(id: string) {
-    await fetch('/api/cars/sold', {
+    const res = await fetch('/api/cars/sold', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ carId: id }),
