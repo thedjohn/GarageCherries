@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   const { data: listings, error } = await admin
     .from('listings')
-    .select('id,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,interior_color,horsepower,torque,cylinders,displacement,forced_induction,fuel_type,num_speeds,drive_type,location,state,description,vin,vin_verified,status,is_sold,images,created_at,listed_at')
+    .select('id,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,interior_color,horsepower,torque,cylinders,displacement,forced_induction,fuel_type,num_speeds,drive_type,seat_material,seating_type,location,state,description,vin,vin_verified,status,is_sold,images,created_at,listed_at')
     .eq('seller_id', user.id)
     .order('created_at', { ascending: false });
 
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   const format = new URL(request.url).searchParams.get('format') ?? 'json';
 
   if (format === 'csv') {
-    const cols = ['id','title','year','make','model','price','mileage','condition','body_style','transmission','engine','color','interior_color','horsepower','torque','cylinders','displacement','forced_induction','fuel_type','num_speeds','drive_type','location','state','description','vin','vin_verified','status','is_sold','created_at','listed_at'];
+    const cols = ['id','title','year','make','model','price','mileage','condition','body_style','transmission','engine','color','interior_color','horsepower','torque','cylinders','displacement','forced_induction','fuel_type','num_speeds','drive_type','seat_material','seating_type','location','state','description','vin','vin_verified','status','is_sold','created_at','listed_at'];
     const escape = (v: unknown) => {
       if (v == null) return '';
       const s = String(v).replace(/"/g, '""');
