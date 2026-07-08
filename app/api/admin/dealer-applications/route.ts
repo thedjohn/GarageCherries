@@ -155,28 +155,28 @@ export async function PATCH(req: NextRequest) {
   });
   const actionLink = linkData?.properties?.action_link;
 
+  const actionHtml = actionLink
+    ? `<a href="${actionLink}" style="display:inline-block;background:#dc2626;color:#fff;font-weight:700;font-size:15px;padding:14px 28px;border-radius:12px;text-decoration:none">Set Your Password &amp; Get Started</a>`
+    : `<p style="color:#dc2626">Please contact us at support@garagecherries.com to set up your password.</p>`;
+  const approveHtml = emailWrap(`
+    <h1 style="font-size:22px;font-weight:800;color:#18181b;margin:0 0 16px">Welcome to GarageCherries, ${app.name}!</h1>
+    <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 16px">
+      Your dealer account for <strong>${app.dealer_name}</strong> has been approved.
+      You're on our ${isPromo ? 'free promo plan through October 31, 2026' : '6-month beta plan'} — no charges during that period.
+    </p>
+    <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 24px">
+      Click below to set your password and access your dealer dashboard.
+    </p>
+    ${actionHtml}
+    <p style="color:#a1a1aa;font-size:12px;margin:32px 0 0">
+      This link expires in 24 hours. If you didn't apply for a dealer account, you can ignore this email.
+    </p>
+  `);
   await resend.emails.send({
     from: 'GarageCherries <no-reply@garagecherries.com>',
     to: app.email,
-    subject: 'Your GarageCherries Dealer Account is Approved 🍒',
-    html: `
-      ${emailWrap(`
-        <h1 style="font-size:22px;font-weight:800;color:#18181b;margin:0 0 16px">Welcome to GarageCherries, ${app.name}!</h1>
-        <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 16px">
-          Your dealer account for <strong>${app.dealer_name}</strong> has been approved.
-          You're on our ${isPromo ? 'free promo plan through October 31, 2026' : '6-month beta plan'} — no charges during that period.
-        </p>
-        <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 24px">
-          Click below to set your password and access your dealer dashboard.
-        </p>
-        ${actionLink ? `
-        <a href="${actionLink}" style="display:inline-block;background:#dc2626;color:#fff;font-weight:700;font-size:15px;padding:14px 28px;border-radius:12px;text-decoration:none">
-          Set Your Password &amp; Get Started
-        </a>` : `<p style="color:#dc2626">Please contact us at support@garagecherries.com to set up your password.</p>`}
-        <p style="color:#a1a1aa;font-size:12px;margin:32px 0 0">
-          This link expires in 24 hours. If you didn't apply for a dealer account, you can ignore this email.
-        </p>
-      `)},
+    subject: 'Your GarageCherries Dealer Account is Approved',
+    html: approveHtml,
   });
 
   // Mark application as approved
