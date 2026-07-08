@@ -3,10 +3,24 @@ import { createAdminClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { email, password, businessName, contactName, phone, address, city, state, zip, category, tier, description, website } = body;
+  const { email, password, businessName, contactName, phone, address, city, state, zip, category, tier, description, website, cfToken } = body;
 
   if (!email || !password || !businessName) {
     return NextResponse.json({ error: 'email, password, and businessName are required' }, { status: 400 });
+  }
+
+  // Verify Turnstile CAPTCHA
+  const secret = process.env.TURNSTILE_SECRET_KEY;
+  if (secret) {
+    const verify = await fetch('https://challenges.cloudflare.com/turnstile/v1/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret, response: cfToken }),
+    });
+    const result = await verify.json() as { success: boolean };
+    if (!result.success) {
+      return NextResponse.json({ error: 'CAPTCHA verification failed. Please try again.' }, { status: 400 });
+    }
   }
 
   const admin = createAdminClient();

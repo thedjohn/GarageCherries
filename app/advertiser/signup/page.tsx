@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { STATES } from '@/lib/types';
+import Turnstile from '@/components/Turnstile';
 
 const TIERS = [
   { id: 'starter',   label: 'Starter',   price: '$79/mo',  radius: '15-mile radius' },
@@ -34,6 +35,7 @@ function SignupInner() {
     address: '', city: '', state: '', zip: '',
     category: 'detail', tier: defaultTier,
   });
+  const [cfToken, setCfToken] = useState('');
   const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -53,6 +55,7 @@ function SignupInner() {
         phone: form.phone, address: form.address, city: form.city,
         state: form.state, zip: form.zip,
         category: form.category, tier: form.tier,
+        cfToken,
       }),
     });
 
@@ -150,6 +153,8 @@ function SignupInner() {
               </div>
               <p className="text-xs text-zinc-400 mt-2">14-day free trial, then billed monthly. Cancel anytime.</p>
             </div>
+
+            <Turnstile onVerify={token => setCfToken(token)} />
 
             {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
 
