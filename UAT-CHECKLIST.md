@@ -131,6 +131,8 @@
 
 *(Requires access to a real inbox for a test account — dealer, buyer, and advertiser test emails recommended.)*
 
+- [ ] Buyer sends first message on a listing → seller receives email with buyer name, listing title, message preview, and "Reply to Message" link
+- [ ] Buyer sends a second message in the same conversation → seller does NOT receive a second email (first contact only)
 - [ ] Buyer inquiry → seller/dealer receives email with buyer's message
 - [ ] Listing approved → seller gets "your listing is live" email
 - [ ] Listing rejected → seller gets email with rejection reason

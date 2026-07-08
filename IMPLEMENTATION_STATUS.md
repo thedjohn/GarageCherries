@@ -135,6 +135,7 @@
 ### Email (via Resend)
 - [x] **Shared email branding** — `lib/emailBranding.ts` exports `emailHeader` (dark zinc bar with cherry image + GarageCherries wordmark) and `emailWrap(body)` helper; all outgoing transactional emails (approval, rejection, dealer application, alerts, digest, price-drop, sold notifications, renewal reminder, warn user, account suspension) import from this single source so branding is consistent (added 2026-07-08)
 - [x] **Rejection email logging hardened** — `log.flush()` called inside `.then()/.catch()` callbacks on Resend send calls; previously log entries were batched and dropped when the route returned before the promise resolved; also added `log.warn` when `seller_email` is missing (fixed 2026-07-08)
+- [x] **New message email to seller** — when a buyer starts a new conversation, seller receives an email with the buyer's name, listing title, message preview, and a "Reply to Message →" CTA linking to `/account?tab=messages`; fire-and-forget, logged to Axiom; only fires on first contact (not every reply) (added 2026-07-08)
 - [x] Buyer inquiry delivered to seller/dealer instantly
 - [x] Listing approved / listing rejected notifications to seller
 - [x] Dealer application approved / rejected notifications
