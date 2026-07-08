@@ -12,9 +12,9 @@ export default function DealerLoginPage() {
     // Forward them to the correct page so the dealer can set their password.
     const hash = window.location.hash;
     if (hash.includes('type=recovery') && hash.includes('access_token=')) {
-      router.replace('/dealer/reset-password' + hash);
+      window.location.replace('/dealer/reset-password' + hash);
     }
-  }, [router]);
+  }, []);
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
