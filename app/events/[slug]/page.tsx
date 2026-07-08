@@ -114,6 +114,14 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
       name: 'GarageCherries',
       url: 'https://www.garagecherries.com',
     },
+    image: 'https://www.garagecherries.com/og-image.png',
+    offers: {
+      '@type': 'Offer',
+      url: e.url ?? `https://www.garagecherries.com/events/${e.slug}`,
+      availability: 'https://schema.org/InStock',
+      price: '0',
+      priceCurrency: 'USD',
+    },
     ...(e.url ? { url: e.url } : {}),
   };
 
