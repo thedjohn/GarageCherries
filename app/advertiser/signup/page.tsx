@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -87,7 +88,7 @@ function SignupInner() {
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <span className="text-2xl">🍒</span>
+            <Image src="https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/branding/cherries.png" alt="GarageCherries" width={32} height={32} unoptimized />
             <span className="text-xl font-bold">Garage<span className="text-red-600">Cherries</span></span>
           </Link>
           <p className="text-zinc-500 text-sm mt-2">Create your advertiser account · 14-day free trial</p>

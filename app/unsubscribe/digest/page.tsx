@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 
@@ -36,7 +37,7 @@ export default async function UnsubscribeDigestPage({
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="w-full max-w-sm text-center">
         <Link href="/" className="inline-flex items-center gap-2 mb-8">
-          <span className="text-2xl">🍒</span>
+          <Image src="https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/branding/cherries.png" alt="GarageCherries" width={32} height={32} unoptimized />
           <span className="text-xl font-bold">Garage<span className="text-red-600">Cherries</span></span>
         </Link>
 
