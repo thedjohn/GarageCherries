@@ -89,6 +89,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
       : formatTime(e.start_time)
     : null;
 
+  // TODO after 2026-07-31: replace promo eagle image with permanent brand OG image (cherry logo + tagline, no promo text)
   // JSON-LD Event schema
   const jsonLd = {
     '@context': 'https://schema.org',
