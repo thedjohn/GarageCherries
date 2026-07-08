@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import Turnstile from '@/components/Turnstile';
@@ -54,7 +55,7 @@ export default function DealerApplyPage() {
     <div className="max-w-2xl mx-auto px-4 py-12">
       <div className="mb-8">
         <Link href="/" className="inline-flex items-center gap-2 mb-6">
-          <span className="text-xl">🍒</span>
+          <Image src="https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/branding/cherries.png" alt="GarageCherries" width={28} height={28} unoptimized />
           <span className="font-bold text-lg">Garage<span className="text-red-600">Cherries</span></span>
         </Link>
         <h1 className="text-2xl font-extrabold text-zinc-900 mb-2">Dealer Account Application</h1>

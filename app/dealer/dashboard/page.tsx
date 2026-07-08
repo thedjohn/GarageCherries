@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -740,7 +741,7 @@ export default function DealerDashboard() {
       <div className="bg-zinc-900 text-white px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2">
-            <span>🍒</span>
+            <Image src="https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/branding/cherries.png" alt="GarageCherries" width={32} height={32} unoptimized />
             <span className="font-bold">Garage<span className="text-red-400">Cherries</span></span>
           </Link>
           <span className="text-zinc-600">/</span>
