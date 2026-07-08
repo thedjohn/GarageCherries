@@ -2,8 +2,19 @@
 
 import { useState } from 'react';
 
-export default function Tooltip({ text }: { text: string }) {
+export default function Tooltip({ text, align = 'center' }: { text: string; align?: 'left' | 'center' | 'right' }) {
   const [open, setOpen] = useState(false);
+
+  const bubblePos =
+    align === 'right' ? 'right-0' :
+    align === 'left'  ? 'left-0' :
+    'left-1/2 -translate-x-1/2';
+
+  const arrowPos =
+    align === 'right' ? 'right-2' :
+    align === 'left'  ? 'left-2' :
+    'left-1/2 -translate-x-1/2';
+
   return (
     <span className="relative inline-flex items-center ml-1">
       <button
@@ -19,9 +30,9 @@ export default function Tooltip({ text }: { text: string }) {
         i
       </button>
       {open && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 bg-zinc-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg z-50 pointer-events-none leading-relaxed">
+        <span className={`absolute bottom-full mb-2 w-56 bg-zinc-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg z-50 pointer-events-none leading-relaxed ${bubblePos}`}>
           {text}
-          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-zinc-900" />
+          <span className={`absolute top-full border-4 border-transparent border-t-zinc-900 ${arrowPos}`} />
         </span>
       )}
     </span>

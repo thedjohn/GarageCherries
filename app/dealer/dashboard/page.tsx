@@ -978,7 +978,7 @@ export default function DealerDashboard() {
                                 className="text-xs text-blue-600 hover:underline font-medium">
                                 Renew
                               </button>
-                              <Tooltip text="Resets the listing date to today, bumping it back to the top of search results and resetting the expiry window." />
+                              <Tooltip text="Resets the listing date to today, bumping it back to the top of search results and resetting the expiry window." align="right" />
                             </span>
                           )}
                           <button onClick={() => setDeleteConfirm(car.id)}
