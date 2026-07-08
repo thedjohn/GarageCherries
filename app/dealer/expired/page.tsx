@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 
 export default function DealerExpiredPage() {
@@ -6,7 +5,7 @@ export default function DealerExpiredPage() {
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md text-center">
         <Link href="/" className="inline-flex items-center gap-2 mb-8">
-          <Image src="/cherry-logo.png" alt="GarageCherries" width={32} height={32} unoptimized />
+          <span className="text-2xl">🍒</span>
           <span className="text-xl font-bold">Garage<span className="text-red-600">Cherries</span></span>
         </Link>
 

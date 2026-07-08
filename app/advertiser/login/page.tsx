@@ -1,5 +1,4 @@
 'use client';
-import Image from 'next/image';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -49,7 +48,7 @@ export default function AdvertiserLoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <Image src="/cherry-logo.png" alt="GarageCherries" width={32} height={32} unoptimized />
+            <span className="text-2xl">🍒</span>
             <span className="text-xl font-bold">Garage<span className="text-red-600">Cherries</span></span>
           </Link>
           <p className="text-zinc-500 text-sm mt-2">Advertiser portal</p>

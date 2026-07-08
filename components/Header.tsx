@@ -1,6 +1,5 @@
 'use client';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -110,7 +109,7 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
-            <Image src="/cherry-logo.png" alt="GarageCherries" width={44} height={44} unoptimized />
+            <span className="text-3xl leading-none">🍒</span>
             <span className="text-xl font-bold tracking-tight">
               Garage<span className="text-red-500">Cherries</span>
             </span>

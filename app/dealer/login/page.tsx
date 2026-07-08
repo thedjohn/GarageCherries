@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 
 export default function DealerLoginPage() {
@@ -101,7 +100,7 @@ export default function DealerLoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <Image src="/cherry-logo.png" alt="GarageCherries" width={32} height={32} unoptimized />
+            <span className="text-2xl">🍒</span>
             <span className="text-xl font-bold">Garage<span className="text-red-600">Cherries</span></span>
           </Link>
           <p className="text-zinc-500 text-sm mt-2">Dealer portal</p>
@@ -154,7 +153,7 @@ export default function DealerLoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <Image src="/cherry-logo.png" alt="GarageCherries" width={32} height={32} unoptimized />
+            <span className="text-2xl">🍒</span>
             <span className="text-xl font-bold">Garage<span className="text-red-600">Cherries</span></span>
           </Link>
           <p className="text-zinc-500 text-sm mt-2">Dealer portal</p>
@@ -198,7 +197,7 @@ export default function DealerLoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2">
-            <Image src="/cherry-logo.png" alt="GarageCherries" width={32} height={32} unoptimized />
+            <span className="text-2xl">🍒</span>
             <span className="text-xl font-bold">Garage<span className="text-red-600">Cherries</span></span>
           </Link>
           <p className="text-zinc-500 text-sm mt-2">Dealer portal</p>
