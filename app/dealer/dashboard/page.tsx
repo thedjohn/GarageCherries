@@ -753,7 +753,7 @@ export default function DealerDashboard() {
           <span className="text-zinc-300 text-sm">{dealerName}</span>
           <span className="inline-flex items-center gap-1">
             <span className="text-xs bg-green-700 text-green-200 px-2 py-0.5 rounded-full font-medium">Verified</span>
-            <Tooltip text="Your dealership has been reviewed and approved by GarageCherries. Verified dealers get a badge on their public profile and listings." />
+            <Tooltip text="Your dealership has been reviewed and approved by GarageCherries. Verified dealers get a badge on their public profile and listings." side="bottom" />
           </span>
         </div>
         <div className="flex items-center gap-3">

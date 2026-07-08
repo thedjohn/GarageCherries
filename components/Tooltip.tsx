@@ -2,7 +2,15 @@
 
 import { useState } from 'react';
 
-export default function Tooltip({ text, align = 'center' }: { text: string; align?: 'left' | 'center' | 'right' }) {
+export default function Tooltip({
+  text,
+  align = 'center',
+  side = 'top',
+}: {
+  text: string;
+  align?: 'left' | 'center' | 'right';
+  side?: 'top' | 'bottom';
+}) {
   const [open, setOpen] = useState(false);
 
   const bubblePos =
@@ -14,6 +22,11 @@ export default function Tooltip({ text, align = 'center' }: { text: string; alig
     align === 'right' ? 'right-2' :
     align === 'left'  ? 'left-2' :
     'left-1/2 -translate-x-1/2';
+
+  const bubbleVertical = side === 'bottom' ? 'top-full mt-2' : 'bottom-full mb-2';
+  const arrowVertical  = side === 'bottom'
+    ? 'bottom-full border-b-zinc-900'
+    : 'top-full border-t-zinc-900';
 
   return (
     <span className="relative inline-flex items-center ml-1">
@@ -30,9 +43,9 @@ export default function Tooltip({ text, align = 'center' }: { text: string; alig
         i
       </button>
       {open && (
-        <span className={`absolute bottom-full mb-2 w-56 bg-zinc-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg z-50 pointer-events-none leading-relaxed ${bubblePos}`}>
+        <span className={`absolute w-56 bg-zinc-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg z-50 pointer-events-none leading-relaxed ${bubbleVertical} ${bubblePos}`}>
           {text}
-          <span className={`absolute top-full border-4 border-transparent border-t-zinc-900 ${arrowPos}`} />
+          <span className={`absolute border-4 border-transparent ${arrowVertical} ${arrowPos}`} />
         </span>
       )}
     </span>
