@@ -87,6 +87,7 @@ export default function AdminPage() {
   const [warningSenderId, setWarningSenderId] = useState<string | null>(null);
   const [warningText, setWarningText] = useState('');
   const [warnWorking, setWarnWorking] = useState(false);
+  const [warnedMsgIds, setWarnedMsgIds] = useState<Set<string>>(new Set());
   const [suspendFromReport, setSuspendFromReport] = useState<{ id: string; name: string } | null>(null);
   const [reportSuspendReason, setReportSuspendReason] = useState('');
   const [reportSuspendWorking, setReportSuspendWorking] = useState(false);
@@ -491,7 +492,7 @@ export default function AdminPage() {
     setThreadLoading(null);
   }
 
-  async function warnUser(senderId: string) {
+  async function warnUser(senderId: string, msgId: string) {
     setWarnWorking(true);
     await fetch('/api/admin/users', {
       method: 'PATCH',
@@ -501,6 +502,7 @@ export default function AdminPage() {
     setWarnWorking(false);
     setWarningSenderId(null);
     setWarningText('');
+    setWarnedMsgIds(prev => new Set(prev).add(msgId));
   }
 
   async function suspendFromReportFn() {
@@ -739,6 +741,7 @@ export default function AdminPage() {
             const isLoadingThread = threadLoading === r.conversation_id;
             const isWarning = warningSenderId === r.sender_id;
             const isSuspending = suspendFromReport?.id === r.sender_id;
+            const isWarned = warnedMsgIds.has(r.id);
             return (
               <div key={r.id} className="bg-white rounded-2xl border border-red-100 shadow-sm overflow-hidden">
                 {/* Header — click to expand */}
@@ -809,7 +812,7 @@ export default function AdminPage() {
                         />
                         <div className="flex gap-2">
                           <button
-                            onClick={() => warnUser(r.sender_id)}
+                            onClick={() => warnUser(r.sender_id, r.id)}
                             disabled={warnWorking}
                             className="px-4 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors">
                             {warnWorking ? 'Sending…' : 'Send Warning'}
@@ -847,8 +850,23 @@ export default function AdminPage() {
                       </div>
                     )}
 
+                    {/* Warning sent confirmation */}
+                    {isWarned && (
+                      <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                        <div className="flex items-center gap-2 text-amber-700 text-sm font-semibold">
+                          <span>⚠️</span>
+                          <span>Warning sent to {r.sender_name}</span>
+                        </div>
+                        <button
+                          onClick={() => dismissReport(r.id)}
+                          className="text-xs font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-900">
+                          Dismiss
+                        </button>
+                      </div>
+                    )}
+
                     {/* Action buttons */}
-                    {!isWarning && !isSuspending && (
+                    {!isWarning && !isSuspending && !isWarned && (
                       <div className="flex gap-2 flex-wrap">
                         <button
                           onClick={() => dismissReport(r.id)}

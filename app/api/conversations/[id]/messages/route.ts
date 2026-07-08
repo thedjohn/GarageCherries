@@ -65,8 +65,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const hasAccess = await verifyAccess(id, user.id);
   if (!hasAccess) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const { body, senderName } = await req.json();
+  const { body } = await req.json();
   if (!body?.trim()) return NextResponse.json({ error: 'Empty message' }, { status: 400 });
+
+  // Derive sender name from trusted auth metadata, not client-supplied value
+  const senderName = user.user_metadata?.full_name || user.email || '';
 
   // Fetch conversation details to find recipient and listing title
   const { data: conv } = await admin
@@ -78,7 +81,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { error } = await admin.from('messages').insert({
     conversation_id: id,
     sender_id: user.id,
-    sender_name: senderName || user.email,
+    sender_name: senderName,
     body: body.trim(),
   });
   if (error) {

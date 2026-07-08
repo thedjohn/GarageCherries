@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
   if (suspension) return NextResponse.json({ error: 'Your account has been suspended.' }, { status: 403 });
 
-  const { listingId, listingTitle, buyerName, message } = await req.json();
+  const { listingId, listingTitle, message } = await req.json();
+  const buyerName = user.user_metadata?.full_name || user.email || '';
   if (!listingId || !message?.trim()) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
   }

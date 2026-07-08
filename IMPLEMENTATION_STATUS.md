@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-08 — current as of dealer password setup flow fixes and Event structured data OG image*
+*Last updated: 2026-07-08 — tooltip alignment/side props; email branding standardized; expiring-listings cron; conversation list buyer/seller label fix; MessengerWidget sender_name fixed (server-side auth); admin Warn User feedback banner*
 
 **Note on data:** this site is pre-launch. As of 2026-07-07 the production database has a handful of manually-created test listings (private-seller and dealer) and no real buyers or advertisers yet. Empty tables (`advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -126,9 +126,13 @@
 - [x] Car Alerts — saved searches with automatic email notification on new matches, up to 10 per user, edit/pause/delete
 - [x] My Listings tab — private sellers manage their own listings; persistent "+ Post a Listing" button in the tab header (previously only shown in the empty state, disappearing once a user had any listings) (added 2026-07-07)
 - [x] Live buyer-seller messaging — in-page Messenger-style chat widget, Supabase Realtime push, unread badges, report-message flow
+- [x] **MessengerWidget sender_name fixed** — `sender_name` is now derived server-side from `user.user_metadata?.full_name || user.email` on both the initial conversation POST and the reply POST; client-supplied `senderName` was removed as a trust vector; existing bad rows fixable via SQL update against `auth.users` (fixed 2026-07-08)
+- [x] **Conversation list buyer/seller label fixed** — `buyer_id` was missing from the Supabase select in `GET /api/conversations`; without it the `buyer_id === userId` check always evaluated false, so every conversation showed "Buyer: name" even for the seller; `buyer_id` added to select and the label now correctly shows "Private Seller" for the buyer's own conversations (fixed 2026-07-08)
 - [x] **Email preferences tab in `/account` settings** — "Email Preferences" card under Settings tab; toggle switches for Weekly Digest, Price Drop alerts, Car Alerts; reads/writes `digest_opt_out`, `price_drop_opt_out`, `alerts_opt_out` in Supabase `user_metadata` (added 2026-07-07)
 
 ### Email (via Resend)
+- [x] **Shared email branding** — `lib/emailBranding.ts` exports `emailHeader` (dark zinc bar with cherry image + GarageCherries wordmark) and `emailWrap(body)` helper; all outgoing transactional emails (approval, rejection, dealer application, alerts, digest, price-drop, sold notifications, renewal reminder, warn user, account suspension) import from this single source so branding is consistent (added 2026-07-08)
+- [x] **Rejection email logging hardened** — `log.flush()` called inside `.then()/.catch()` callbacks on Resend send calls; previously log entries were batched and dropped when the route returned before the promise resolved; also added `log.warn` when `seller_email` is missing (fixed 2026-07-08)
 - [x] Buyer inquiry delivered to seller/dealer instantly
 - [x] Listing approved / listing rejected notifications to seller
 - [x] Dealer application approved / rejected notifications
@@ -150,6 +154,7 @@
 - [x] Full admin panel (`/admin`) — Listings, Reported, Users, Applications, Events, Team tabs
 - [x] Role hierarchy: `support < moderator < admin < superadmin`; all 4 roles assignable via UI (fixed 2026-07-03)
 - [x] **Reported tab — full conversation thread** — clicking a reported card expands it to show the full message history (oldest → newest); reported message highlighted in red; three inline actions: Dismiss (clears flag), Warn User (sends warning email via Resend; customizable message), Suspend User (inline reason + confirm); `GET /api/admin/conversations/[id]/messages` admin-only endpoint; `PATCH /api/admin/users` extended with `action:'warn'` (added 2026-07-07)
+- [x] **Warn User feedback banner** — after sending a warning, an amber "⚠️ Warning sent to [name]" banner replaces the action buttons on the report card; report auto-dismisses from the queue after 1.5 s; `warnedMsgIds` Set state drives this without a DB round-trip (added 2026-07-08)
 - [x] Users tab — search/filter, view seller listings, suspend/unsuspend, edit, promote seller to dealer, delete account
 - [x] Team tab — add/remove admin team members by email + role
 - [x] **Email Campaigns** card in Team tab (superadmin) — links to `/admin/email` (added 2026-07-03)
@@ -205,6 +210,8 @@
 - [x] **Admin Panel link for non-superadmin team members** — `GET /api/admin/team` now accessible to all team roles (previously superadmin-only), allowing Header to detect admin status and show the Admin Panel link (fixed 2026-07-08)
 - [x] **Admin listings rejection "Other" textarea fix** — separate `customRejectionReason` state prevents textarea from closing when typing (fixed 2026-07-08)
 - [x] **Bing Webmaster Tools** — imported from GSC; sitemap submitted; processing
+- [x] **Expiring-listings cron** — `GET /api/cron/expiring-listings` Vercel Cron route (runs 10:00 UTC daily); authenticated by `CRON_SECRET`; delegates to `POST /api/email/expiring-listings` via `ADMIN_API_SECRET`; registered in `vercel.json` alongside `promo-expiry` cron (added 2026-07-08)
+- [x] **Tooltip `align` and `side` props** — `components/Tooltip.tsx` now accepts `align` (`left`/`center`/`right`, default `center`) and `side` (`top`/`bottom`, default `top`); Renew button uses `align="right"` so bubble opens leftward instead of clipping the right edge; Verified badge uses `side="bottom"` so bubble opens downward instead of hiding behind browser chrome (added 2026-07-08)
 - [x] `SPEC.md` — detailed master specification; treat as the primary technical reference
 
 ---
