@@ -1,22 +1,27 @@
 'use client';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import Turnstile from '@/components/Turnstile';
 
 export default function AccountSignupPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm]   = useState('');
+  const [cfToken, setCfToken]   = useState('');
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
   const [sent, setSent]         = useState(false);
+
+  const onCaptchaVerify = useCallback((token: string) => setCfToken(token), []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirm) { setError('Passwords do not match.'); return; }
     if (password.length < 6)  { setError('Password must be at least 6 characters.'); return; }
+    if (!cfToken) { setError('Please complete the CAPTCHA.'); return; }
     setError('');
     setLoading(true);
 
@@ -103,6 +108,8 @@ export default function AccountSignupPage() {
                 placeholder="••••••••"
                 className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
             </div>
+
+            <Turnstile onVerify={onCaptchaVerify} />
 
             {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
 
