@@ -114,7 +114,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
       name: 'GarageCherries',
       url: 'https://www.garagecherries.com',
     },
-    image: 'https://www.garagecherries.com/cherry-logo.png',
+    image: 'https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/promo/gc%20eagle.png',
     offers: {
       '@type': 'Offer',
       url: e.url ?? `https://www.garagecherries.com/events/${e.slug}`,
