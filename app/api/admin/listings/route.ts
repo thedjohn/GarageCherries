@@ -145,8 +145,10 @@ export async function PATCH(req: NextRequest) {
         `,
       }).then(() => {
         log.info('Approval email sent', { listingId: id, sellerEmail: listing.seller_email });
+        void log.flush();
       }).catch((err: unknown) => {
         log.error('Approval email failed', new Error(String(err)), { listingId: id, sellerEmail: listing.seller_email });
+        void log.flush();
       });
 
       // Trigger alert matching (internal — requires secret)
@@ -186,8 +188,10 @@ export async function PATCH(req: NextRequest) {
         `,
       }).then(() => {
         log.info('Rejection email sent', { listingId: id, sellerEmail: listing.seller_email });
+        void log.flush();
       }).catch((err: unknown) => {
         log.error('Rejection email failed', new Error(String(err)), { listingId: id, sellerEmail: listing.seller_email });
+        void log.flush();
       });
     }
   } else {
