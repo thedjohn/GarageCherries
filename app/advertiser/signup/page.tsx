@@ -1,6 +1,6 @@
 'use client';
 import Image from 'next/image';
-import { useState, Suspense } from 'react';
+import { useState, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -36,6 +36,7 @@ function SignupInner() {
     category: 'detail', tier: defaultTier,
   });
   const [cfToken, setCfToken] = useState('');
+  const onCaptchaVerify = useCallback((token: string) => setCfToken(token), []);
   const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -154,7 +155,7 @@ function SignupInner() {
               <p className="text-xs text-zinc-400 mt-2">14-day free trial, then billed monthly. Cancel anytime.</p>
             </div>
 
-            <Turnstile onVerify={token => setCfToken(token)} />
+            <Turnstile onVerify={onCaptchaVerify} />
 
             {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
 
