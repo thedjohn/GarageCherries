@@ -68,6 +68,7 @@
 - [ ] Delete your own listing — removed from account and public listings
 - [ ] Listing shows a days-remaining countdown as it approaches 30-day expiry (amber warning at ≤7 days) — check on an older test listing if available
 - [ ] "Renew listing" button extends the expiry date
+- [ ] Mark listing as Sold — badge immediately changes to "Sold", Mark as Sold and Renew buttons disappear; badge still shows "Sold" after page refresh
 
 ---
 

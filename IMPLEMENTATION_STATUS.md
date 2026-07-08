@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-08 — tooltip alignment/side props; email branding standardized; expiring-listings cron; conversation list buyer/seller label fix; MessengerWidget sender_name fixed (server-side auth); admin Warn User feedback banner*
+*Last updated: 2026-07-08 — tooltip alignment/side props; email branding standardized; expiring-listings cron; conversation list buyer/seller label fix; MessengerWidget sender_name fixed (server-side auth); admin Warn User feedback banner; Mark as Sold UI fix; WatchlistButton tooltip removed*
 
 **Note on data:** this site is pre-launch. As of 2026-07-07 the production database has a handful of manually-created test listings (private-seller and dealer) and no real buyers or advertisers yet. Empty tables (`advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -126,6 +126,8 @@
 - [x] Car Alerts — saved searches with automatic email notification on new matches, up to 10 per user, edit/pause/delete
 - [x] My Listings tab — private sellers manage their own listings; persistent "+ Post a Listing" button in the tab header (previously only shown in the empty state, disappearing once a user had any listings) (added 2026-07-07)
 - [x] Live buyer-seller messaging — in-page Messenger-style chat widget, Supabase Realtime push, unread badges, report-message flow
+- [x] **Mark as Sold UI fixed (private seller)** — `is_sold` added to `/api/listings/my` select and `MyListing` interface; `markAsSold` now updates local state with `is_sold: true` on success; badge shows "Sold" (not "Live") immediately and persists after refresh; Mark as Sold and Renew buttons hidden when `is_sold` is true (fixed 2026-07-08)
+- [x] **WatchlistButton tooltip removed** — info tooltip ("Save this listing to your watchlist…") removed from `components/WatchlistButton.tsx`; button label already communicates the action (fixed 2026-07-08)
 - [x] **MessengerWidget sender_name fixed** — `sender_name` is now derived server-side from `user.user_metadata?.full_name || user.email` on both the initial conversation POST and the reply POST; client-supplied `senderName` was removed as a trust vector; existing bad rows fixable via SQL update against `auth.users` (fixed 2026-07-08)
 - [x] **Conversation list buyer/seller label fixed** — `buyer_id` was missing from the Supabase select in `GET /api/conversations`; without it the `buyer_id === userId` check always evaluated false, so every conversation showed "Buyer: name" even for the seller; `buyer_id` added to select and the label now correctly shows "Private Seller" for the buyer's own conversations (fixed 2026-07-08)
 - [x] **Email preferences tab in `/account` settings** — "Email Preferences" card under Settings tab; toggle switches for Weekly Digest, Price Drop alerts, Car Alerts; reads/writes `digest_opt_out`, `price_drop_opt_out`, `alerts_opt_out` in Supabase `user_metadata` (added 2026-07-07)
