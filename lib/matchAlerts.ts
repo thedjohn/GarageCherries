@@ -74,7 +74,10 @@ function buildEmail(car: Car, s: any, listingUrl: string, alertId: string, userI
   return `
 <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;color:#18181b">
   <div style="background:#18181b;padding:20px 24px;border-radius:12px 12px 0 0">
-    <span style="font-size:20px;font-weight:800;color:#fff">Garage<span style="color:#ef4444">Cherries</span></span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <img src="https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/branding/cherries.png" alt="" width="28" height="28" style="display:inline-block;vertical-align:middle" />
+      <span style="font-size:20px;font-weight:800;color:#fff">Garage<span style="color:#ef4444">Cherries</span></span>
+    </div>
   </div>
   <div style="background:#fff;border:1px solid #e4e4e7;border-top:none;padding:32px 24px;border-radius:0 0 12px 12px">
     <p style="font-size:13px;color:#71717a;margin:0 0 6px">A car matching your alert just listed</p>
