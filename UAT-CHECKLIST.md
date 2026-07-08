@@ -95,7 +95,7 @@
 ## 5. Advertiser Flow
 
 - [ ] `/advertise` marketing page loads
-- [ ] Advertiser signup (`/advertiser/signup`) — trial starts, redirected to dashboard
+- [ ] Advertiser signup (`/advertiser/signup`) — CAPTCHA required, trial starts, redirected to dashboard
 - [ ] Advertiser login/logout works
 - [ ] Create an ad (headline, body, CTA, phone, logo, photo) — saves successfully
 - [ ] Edit an existing ad
@@ -114,7 +114,7 @@
 - [ ] Reject → seller resubmits with a note → listing returns to pending
 - [ ] **Reported tab**: open a reported message — full conversation thread expands, reported message highlighted
 - [ ] **Reported tab**: Dismiss a report — clears the flag
-- [ ] **Reported tab**: Warn a user — warning email sends; amber "⚠️ Warning sent to [name]" banner appears on the card; card auto-dismisses after ~1.5 s
+- [ ] **Reported tab**: Warn a user — warning email sends; amber "⚠️ Warning sent to [name]" banner appears on the card; banner persists until admin clicks the Dismiss link
 - [ ] **Reported tab**: Suspend a user (with reason) — user can no longer submit listings or message
 - [ ] **Users tab**: search/filter users, view a seller's listings
 - [ ] **Users tab**: promote a seller to dealer

@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-08 — tooltip alignment/side props; email branding standardized; expiring-listings cron; conversation list buyer/seller label fix; MessengerWidget sender_name fixed (server-side auth); admin Warn User feedback banner; Mark as Sold UI fix; WatchlistButton tooltip removed; seller new-message email; dealer inventory export seat_material/seating_type; sold listing UI cleanup (dealer dashboard + account page)*
+*Last updated: 2026-07-08 — tooltip alignment/side props; email branding standardized; expiring-listings cron; conversation list buyer/seller label fix; MessengerWidget sender_name fixed (server-side auth); admin Warn User feedback banner; Mark as Sold UI fix; WatchlistButton tooltip removed; seller new-message email; dealer inventory export seat_material/seating_type; sold listing UI cleanup (dealer dashboard + account page); Cloudflare Turnstile CAPTCHA added to advertiser signup*
 
 **Note on data:** this site is pre-launch. As of 2026-07-07 the production database has a handful of manually-created test listings (private-seller and dealer) and no real buyers or advertisers yet. Empty tables (`advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -98,7 +98,7 @@
 - [x] **Dealer password setup flow** — recovery token handling moved inline to `/dealer/login` (Supabase ignores `redirect_to` and always sends tokens there); detects `#access_token=...&type=recovery` hash, shows Set Password form directly; expired/invalid links show error via Supabase `#error=...` hash detection; `setSession()` establishes dealer session before password update; on success redirects to `/dealer/dashboard`; **Resend Setup Email** admin button generates a fresh recovery link (added 2026-07-06, fixed 2026-07-08)
 
 ### Advertising System
-- [x] Public marketing page (`/advertise`) and advertiser signup (`/advertiser/signup`) — 14-day trial, tier selection
+- [x] Public marketing page (`/advertise`) and advertiser signup (`/advertiser/signup`) — 14-day trial, tier selection; **Turnstile CAPTCHA added** (2026-07-08)
 - [x] Advertiser login (`/advertiser/login`) and dashboard (`/advertiser/dashboard`)
 - [x] Ad create/edit — headline, body copy, CTA label/URL, phone, logo, photo, rating
 - [x] `GET /api/ads/serve` — geographic targeting via haversine distance between state centroids
