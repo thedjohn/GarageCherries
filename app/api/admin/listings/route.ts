@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requireAdmin, hasRole } from '@/lib/admin';
 import { Resend } from 'resend';
+import { emailHeader } from '@/lib/emailBranding';
 import { createLogger } from '@/lib/logger';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -131,9 +132,7 @@ export async function PATCH(req: NextRequest) {
         subject: `Your listing is live — ${listing.title}`,
         html: `
           <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-            <div style="background:#18181b;padding:24px;border-radius:12px 12px 0 0;">
-              <p style="color:#ef4444;font-size:22px;font-weight:900;margin:0;">🍒 GarageCherries</p>
-            </div>
+            ${emailHeader}
             <div style="background:white;border:1px solid #f4f4f5;border-top:none;padding:32px;border-radius:0 0 12px 12px;">
               <h1 style="font-size:20px;font-weight:800;color:#18181b;margin:0 0 8px;">Your listing is live!</h1>
               <p style="color:#71717a;font-size:14px;margin:0 0 24px;">Hi ${sellerName}, your listing for <strong style="color:#18181b;">${listing.title}</strong> has been approved and is now visible to buyers on GarageCherries.</p>
@@ -165,9 +164,7 @@ export async function PATCH(req: NextRequest) {
         subject: `Your listing needs attention — ${listing.title}`,
         html: `
           <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-            <div style="background:#18181b;padding:24px;border-radius:12px 12px 0 0;">
-              <p style="color:#ef4444;font-size:22px;font-weight:900;margin:0;">🍒 GarageCherries</p>
-            </div>
+            ${emailHeader}
             <div style="background:white;border:1px solid #f4f4f5;border-top:none;padding:32px;border-radius:0 0 12px 12px;">
               <h1 style="font-size:20px;font-weight:800;color:#18181b;margin:0 0 8px;">Your listing wasn't approved</h1>
               <p style="color:#71717a;font-size:14px;margin:0 0 24px;">Hi ${sellerName}, your listing for <strong style="color:#18181b;">${listing.title}</strong> needs a few changes before it can go live.</p>

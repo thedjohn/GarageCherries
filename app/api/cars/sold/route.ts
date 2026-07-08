@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
+import { emailWrap } from '@/lib/emailBranding';
 
 // POST /api/cars/sold — dealer marks a listing as sold
 export async function POST(request: NextRequest) {
@@ -47,20 +48,15 @@ export async function POST(request: NextRequest) {
         from: 'GarageCherries <noreply@garagecherries.com>',
         to: email,
         subject: `${car.title} has sold`,
-        html: `
-          <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
-            <p style="color:#ef4444;font-weight:900;font-size:18px;margin:0 0 16px;">🍒 GarageCherries</p>
-            <h1 style="font-size:20px;font-weight:800;color:#18181b;">A car on your watchlist has sold</h1>
-            <p style="color:#52525b;"><strong>${car.title}</strong> has been marked as sold.</p>
-            <p style="color:#52525b;">Browse similar listings on GarageCherries to find your next vehicle.</p>
-            <p style="margin-top:24px;">
-              <a href="https://www.garagecherries.com/listings"
-                 style="background:#dc2626;color:#fff;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;">
-                Browse Listings
-              </a>
-            </p>
-          </div>
-        `,
+        html: emailWrap(`
+            <h1 style="font-size:20px;font-weight:800;color:#18181b;margin:0 0 8px">A car on your watchlist has sold</h1>
+            <p style="color:#52525b;margin:0 0 8px"><strong>${car.title}</strong> has been marked as sold.</p>
+            <p style="color:#52525b;margin:0 0 24px">Browse similar listings on GarageCherries to find your next vehicle.</p>
+            <a href="https://www.garagecherries.com/listings"
+               style="background:#dc2626;color:#fff;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;">
+              Browse Listings
+            </a>
+          `),
       })
     ));
   })();

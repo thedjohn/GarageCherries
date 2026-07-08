@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { createClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
 import { rateLimit, getClientIP } from '@/lib/rateLimit';
+import { emailWrap } from '@/lib/emailBranding';
 
 export async function POST(request: NextRequest) {
   const ip = getClientIP(request);
@@ -55,25 +56,22 @@ export async function POST(request: NextRequest) {
       from: 'GarageCherries <offers@garagecherries.com>',
       to: dealerEmail,
       subject: `New offer on ${carTitle}: ${fmt(amount)}`,
-      html: `
-        <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
-          <h2 style="color:#dc2626">New Offer Received</h2>
-          <p>You've received an offer on <strong>${carTitle}</strong>.</p>
-          <table style="width:100%;border-collapse:collapse;margin:16px 0">
-            <tr><td style="padding:8px 0;color:#666;border-bottom:1px solid #eee">Offer Amount</td>
-                <td style="padding:8px 0;font-weight:bold;font-size:20px;color:#111;border-bottom:1px solid #eee">${fmt(amount)}</td></tr>
-            <tr><td style="padding:8px 0;color:#666;border-bottom:1px solid #eee">Buyer Name</td>
-                <td style="padding:8px 0;border-bottom:1px solid #eee">${buyerName ?? 'Not provided'}</td></tr>
-            <tr><td style="padding:8px 0;color:#666;border-bottom:1px solid #eee">Buyer Email</td>
-                <td style="padding:8px 0;border-bottom:1px solid #eee"><a href="mailto:${buyerEmail}">${buyerEmail}</a></td></tr>
-            ${message ? `<tr><td style="padding:8px 0;color:#666;vertical-align:top">Message</td>
-                <td style="padding:8px 0">${message}</td></tr>` : ''}
+      html: emailWrap(`
+          <h2 style="font-size:20px;font-weight:800;color:#18181b;margin:0 0 8px">New Offer Received</h2>
+          <p style="color:#71717a;font-size:14px;margin:0 0 20px">You've received an offer on <strong style="color:#18181b">${carTitle}</strong>.</p>
+          <table style="width:100%;border-collapse:collapse;margin:0 0 20px">
+            <tr><td style="padding:8px 0;color:#71717a;font-size:14px;border-bottom:1px solid #f4f4f5">Offer Amount</td>
+                <td style="padding:8px 0;font-weight:800;font-size:20px;color:#18181b;border-bottom:1px solid #f4f4f5">${fmt(amount)}</td></tr>
+            <tr><td style="padding:8px 0;color:#71717a;font-size:14px;border-bottom:1px solid #f4f4f5">Buyer Name</td>
+                <td style="padding:8px 0;font-size:14px;border-bottom:1px solid #f4f4f5">${buyerName ?? 'Not provided'}</td></tr>
+            <tr><td style="padding:8px 0;color:#71717a;font-size:14px;border-bottom:1px solid #f4f4f5">Buyer Email</td>
+                <td style="padding:8px 0;font-size:14px;border-bottom:1px solid #f4f4f5"><a href="mailto:${buyerEmail}" style="color:#ef4444">${buyerEmail}</a></td></tr>
+            ${message ? `<tr><td style="padding:8px 0;color:#71717a;font-size:14px;vertical-align:top">Message</td>
+                <td style="padding:8px 0;font-size:14px">${message}</td></tr>` : ''}
           </table>
-          <p>Reply directly to the buyer at <a href="mailto:${buyerEmail}">${buyerEmail}</a> to accept, counter, or decline.</p>
-          <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
-          <p style="color:#999;font-size:12px">GarageCherries — The Classic Car Marketplace</p>
-        </div>
-      `,
+          <a href="mailto:${buyerEmail}" style="display:inline-block;background:#ef4444;color:#fff;font-weight:700;padding:12px 24px;border-radius:10px;text-decoration:none;font-size:14px">Reply to Buyer</a>
+          <p style="color:#a1a1aa;font-size:12px;margin:24px 0 0">Reply directly to <a href="mailto:${buyerEmail}" style="color:#71717a">${buyerEmail}</a> to accept, counter, or decline.</p>
+      `),
     }).catch(() => {});
   }
 
@@ -82,15 +80,11 @@ export async function POST(request: NextRequest) {
     from: 'GarageCherries <offers@garagecherries.com>',
     to: buyerEmail,
     subject: `Your offer on ${carTitle} has been sent`,
-    html: `
-      <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
-        <h2 style="color:#dc2626">Offer Submitted</h2>
-        <p>Your offer of <strong>${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(amount)}</strong> on <strong>${carTitle}</strong> has been sent to the dealer.</p>
-        <p>The dealer will contact you directly at <strong>${buyerEmail}</strong> to respond.</p>
-        <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
-        <p style="color:#999;font-size:12px">GarageCherries — The Classic Car Marketplace</p>
-      </div>
-    `,
+    html: emailWrap(`
+        <h2 style="font-size:20px;font-weight:800;color:#18181b;margin:0 0 8px">Offer Submitted</h2>
+        <p style="color:#71717a;font-size:14px;margin:0 0 16px">Your offer of <strong style="color:#18181b">${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(amount)}</strong> on <strong style="color:#18181b">${carTitle}</strong> has been sent to the dealer.</p>
+        <p style="color:#71717a;font-size:14px;margin:0">The dealer will contact you directly at <strong style="color:#18181b">${buyerEmail}</strong> to respond.</p>
+    `),
   }).catch(() => {});
 
   return NextResponse.json({ ok: true, offerId: offer.id });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
+import { emailWrap } from '@/lib/emailBranding';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('api/email/digest');
@@ -64,23 +65,19 @@ export async function POST(request: NextRequest) {
   let sent = 0;
   for (const { id: userId, email } of subscriberUsers) {
     const unsubscribeUrl = `https://www.garagecherries.com/unsubscribe/digest?uid=${userId}`;
-    const html = `
-      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
-        <h1 style="font-size:24px;font-weight:800;color:#18181b;">Fresh Listings This Week</h1>
-        <p style="color:#52525b;">Here are the ${cars.length} newest classic cars added to GarageCherries in the last 7 days.</p>
-        <table style="width:100%;border-collapse:collapse;margin-top:16px;">${listingsHtml}</table>
-        <p style="margin-top:24px;">
-          <a href="https://www.garagecherries.com/listings" style="background:#dc2626;color:#fff;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;">
-            Browse All Listings
-          </a>
-        </p>
+    const html = emailWrap(`
+        <h1 style="font-size:24px;font-weight:800;color:#18181b;margin:0 0 8px">Fresh Listings This Week</h1>
+        <p style="color:#52525b;margin:0 0 16px">Here are the ${cars.length} newest classic cars added to GarageCherries in the last 7 days.</p>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">${listingsHtml}</table>
+        <a href="https://www.garagecherries.com/listings" style="background:#dc2626;color:#fff;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;">
+          Browse All Listings
+        </a>
         <p style="color:#a1a1aa;font-size:12px;margin-top:24px;">
           You're receiving this because you're watching listings on GarageCherries.
           <br/>
           <a href="${unsubscribeUrl}" style="color:#a1a1aa;">Unsubscribe from weekly digest</a>
         </p>
-      </div>
-    `;
+    `);
     try {
       await resend.emails.send({
         from: 'GarageCherries <noreply@garagecherries.com>',

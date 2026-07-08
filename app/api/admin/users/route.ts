@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requireAdmin, hasRole } from '@/lib/admin';
 import { Resend } from 'resend';
+import { emailWrap } from '@/lib/emailBranding';
 
 async function auth() {
   const supabase = await createClient();
@@ -135,8 +136,7 @@ export async function PATCH(req: NextRequest) {
       from: 'GarageCherries <contact-us@garagecherries.com>',
       to: email,
       subject: 'A message about your GarageCherries account',
-      html: `
-        <div style="font-family:sans-serif;max-width:500px;margin:auto;padding:32px 24px">
+      html: emailWrap(`
           <h2 style="font-size:20px;font-weight:800;color:#18181b;margin-bottom:16px">Account Notice</h2>
           <p style="color:#52525b;font-size:15px;line-height:1.6;margin-bottom:16px">
             Our team reviewed a reported message associated with your account and wanted to reach out.
@@ -147,9 +147,7 @@ export async function PATCH(req: NextRequest) {
           <p style="color:#52525b;font-size:14px;line-height:1.6">
             If you have questions, reply to this email. Thank you for being part of GarageCherries.
           </p>
-          <p style="color:#a1a1aa;font-size:12px;margin-top:32px">— The GarageCherries Team</p>
-        </div>
-      `,
+      `),
     });
     return NextResponse.json({ success: true });
   }
@@ -174,8 +172,7 @@ export async function PATCH(req: NextRequest) {
         to: userEmail,
         subject: 'Your GarageCherries account has been suspended',
         html: `
-          <div style="font-family:sans-serif;max-width:500px;margin:auto;padding:32px 24px">
-            <p style="font-size:28px;margin:0 0 8px">🍒</p>
+          ${emailWrap(`
             <h2 style="font-size:20px;font-weight:800;color:#18181b;margin-bottom:16px">Hi ${userName}, your account has been suspended</h2>
             <p style="color:#52525b;font-size:15px;line-height:1.6;margin-bottom:16px">
               Your GarageCherries account has been suspended due to a violation of our community guidelines.
@@ -190,8 +187,7 @@ export async function PATCH(req: NextRequest) {
               <a href="mailto:contact-us@garagecherries.com" style="color:#dc2626">contact-us@garagecherries.com</a>
               and we will review your case.
             </p>
-            <p style="color:#a1a1aa;font-size:12px">— The GarageCherries Team</p>
-          </div>
+          `)}
         `,
       }).catch(() => {});
     }

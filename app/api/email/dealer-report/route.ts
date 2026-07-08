@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
+import { emailWrap } from '@/lib/emailBranding';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('api/email/dealer-report');
@@ -61,10 +62,9 @@ export async function POST(request: NextRequest) {
       </tr>
     `).join('');
 
-    const html = `
-      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
-        <h1 style="font-size:22px;font-weight:800;color:#18181b;">Your Monthly GarageCherries Report</h1>
-        <p style="color:#52525b;">Here's how your inventory performed over the last 30 days, ${dealer.name}.</p>
+    const html = emailWrap(`
+        <h1 style="font-size:22px;font-weight:800;color:#18181b;margin:0 0 8px">Your Monthly GarageCherries Report</h1>
+        <p style="color:#52525b;margin:0 0 16px">Here's how your inventory performed over the last 30 days, ${dealer.name}.</p>
 
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:24px 0;">
           <div style="background:#f9fafb;border-radius:12px;padding:16px;text-align:center;">
@@ -102,8 +102,7 @@ export async function POST(request: NextRequest) {
           GarageCherries · Monthly Dealer Performance Report<br/>
           <a href="https://www.garagecherries.com/unsubscribe/dealer-report?uid=${dealer.id}" style="color:#a1a1aa;">Unsubscribe from monthly reports</a>
         </p>
-      </div>
-    `;
+    `);
 
     try {
       await new Resend(process.env.RESEND_API_KEY).emails.send({

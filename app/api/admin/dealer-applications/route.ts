@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requireAdmin, hasRole } from '@/lib/admin';
 import { Resend } from 'resend';
+import { emailWrap } from '@/lib/emailBranding';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -55,21 +56,18 @@ export async function PATCH(req: NextRequest) {
       from: 'GarageCherries <no-reply@garagecherries.com>',
       to: app.email,
       subject: 'Set Up Your GarageCherries Dealer Password',
-      html: `
-        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px">
-          <p style="font-size:28px;margin:0 0 8px">🍒</p>
+      html: emailWrap(`
           <h1 style="font-size:22px;font-weight:800;color:#18181b;margin:0 0 16px">Hi ${app.name}, here's your password setup link</h1>
           <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 24px">
             Click below to set your password and access your dealer dashboard for <strong>${app.dealer_name}</strong>.
           </p>
           <a href="${actionLink}" style="display:inline-block;background:#dc2626;color:#fff;font-weight:700;font-size:15px;padding:14px 28px;border-radius:12px;text-decoration:none">
-            Set Your Password & Get Started
+            Set Your Password &amp; Get Started
           </a>
           <p style="color:#a1a1aa;font-size:12px;margin:32px 0 0">
             This link expires in 24 hours. If you didn't apply for a dealer account, you can ignore this email.
           </p>
-        </div>
-      `,
+      `),
     });
     return NextResponse.json({ success: true });
   }
@@ -88,9 +86,7 @@ export async function PATCH(req: NextRequest) {
       from: 'GarageCherries <no-reply@garagecherries.com>',
       to: app.email,
       subject: 'Your GarageCherries Dealer Application',
-      html: `
-        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;">
-          <p style="font-size:28px;margin:0 0 8px;">🍒</p>
+      html: emailWrap(`
           <h1 style="font-size:22px;font-weight:800;color:#18181b;margin:0 0 16px;">Hi ${app.name}, thanks for applying</h1>
           <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 16px;">
             After reviewing your application for <strong>${app.dealer_name}</strong>, we're unable to approve it at this time.
@@ -104,9 +100,7 @@ export async function PATCH(req: NextRequest) {
             If you have questions or would like to reapply, please reach out to us at
             <a href="mailto:support@garagecherries.com" style="color:#dc2626;">support@garagecherries.com</a>.
           </p>
-          <p style="color:#a1a1aa;font-size:12px;margin:0;">GarageCherries · garagecherries.com</p>
-        </div>
-      `,
+      `),
     }).catch(() => {});
 
     return NextResponse.json({ success: true });
@@ -166,8 +160,7 @@ export async function PATCH(req: NextRequest) {
     to: app.email,
     subject: 'Your GarageCherries Dealer Account is Approved 🍒',
     html: `
-      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:32px 24px">
-        <p style="font-size:28px;margin:0 0 8px">🍒</p>
+      ${emailWrap(`
         <h1 style="font-size:22px;font-weight:800;color:#18181b;margin:0 0 16px">Welcome to GarageCherries, ${app.name}!</h1>
         <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 16px">
           Your dealer account for <strong>${app.dealer_name}</strong> has been approved.
@@ -178,13 +171,12 @@ export async function PATCH(req: NextRequest) {
         </p>
         ${actionLink ? `
         <a href="${actionLink}" style="display:inline-block;background:#dc2626;color:#fff;font-weight:700;font-size:15px;padding:14px 28px;border-radius:12px;text-decoration:none">
-          Set Your Password & Get Started
+          Set Your Password &amp; Get Started
         </a>` : `<p style="color:#dc2626">Please contact us at support@garagecherries.com to set up your password.</p>`}
         <p style="color:#a1a1aa;font-size:12px;margin:32px 0 0">
           This link expires in 24 hours. If you didn't apply for a dealer account, you can ignore this email.
         </p>
-      </div>
-    `,
+      `)},
   });
 
   // Mark application as approved
