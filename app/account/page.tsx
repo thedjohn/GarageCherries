@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { formatPrice, toSegment } from '@/lib/data';
-import { MAKES, BODY_STYLES, CONDITIONS, STATES } from '@/lib/types';
+import { MAKES, BODY_STYLES, CONDITIONS, TRANSMISSIONS, STATES } from '@/lib/types';
 import { resizeImageFiles } from '@/lib/resizeImage';
 import AccountTabBar from '@/components/AccountTabBar';
 import { useMessenger } from '@/lib/messenger-context';
@@ -151,7 +151,7 @@ function AccountPage() {
   const [myListings, setMyListings] = useState<MyListing[]>([]);
   const [myListingsLoading, setMyListingsLoading] = useState(false);
   const [editingListing, setEditingListing] = useState<MyListing | null>(null);
-  const [editForm, setEditForm] = useState({ price: '', mileage: '', description: '', seller_name: '', seller_phone: '', seller_email: '', resubmission_note: '' });
+  const [editForm, setEditForm] = useState({ year: '', make: '', model: '', body_style: '', condition: '', fuel_type: '', engine: '', transmission: '', color: '', city: '', state: '', price: '', mileage: '', description: '', seller_name: '', seller_phone: '', seller_email: '', resubmission_note: '' });
   const [editImages, setEditImages] = useState<{ preview: string; publicUrl: string | null; uploadState: 'done' | 'uploading' | 'error'; file?: File; progress: number }[]>([]);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
@@ -326,6 +326,17 @@ function AccountPage() {
   function openEditListing(l: MyListing) {
     setEditingListing(l);
     setEditForm({
+      year: String(l.year),
+      make: l.make,
+      model: l.model,
+      body_style: l.body_style ?? '',
+      condition: l.condition ?? '',
+      fuel_type: '',
+      engine: l.engine ?? '',
+      transmission: l.transmission ?? '',
+      color: l.color ?? '',
+      city: l.location ?? '',
+      state: l.state ?? '',
       price: String(l.price),
       mileage: l.mileage != null ? String(l.mileage) : '',
       description: l.description,
@@ -399,13 +410,32 @@ function AccountPage() {
     const res = await fetch(`/api/listings/${editingListing.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...editForm, price: Number(editForm.price), mileage: editForm.mileage || null, images }),
+      body: JSON.stringify({
+        ...editForm,
+        year: Number(editForm.year),
+        price: Number(editForm.price),
+        mileage: editForm.mileage || null,
+        images,
+      }),
     });
     const json = await res.json();
     setEditSaving(false);
     if (!res.ok) { setEditError(json.error ?? 'Failed to save.'); return; }
     setMyListings(prev => prev.map(l => l.id === editingListing.id
-      ? { ...l, ...editForm, price: Number(editForm.price), mileage: editForm.mileage ? Number(editForm.mileage) : null, images, status: l.status === 'rejected' || l.status === 'approved' ? 'pending' : l.status, resubmission_note: editForm.resubmission_note, rejection_reason: null }
+      ? {
+          ...l,
+          year: Number(editForm.year), make: editForm.make, model: editForm.model,
+          title: `${editForm.year} ${editForm.make} ${editForm.model}`,
+          body_style: editForm.body_style, condition: editForm.condition,
+          engine: editForm.engine || null, transmission: editForm.transmission,
+          color: editForm.color || null, location: editForm.city, state: editForm.state,
+          price: Number(editForm.price), mileage: editForm.mileage ? Number(editForm.mileage) : null,
+          description: editForm.description, seller_name: editForm.seller_name,
+          seller_phone: editForm.seller_phone, seller_email: editForm.seller_email,
+          images,
+          status: l.status === 'rejected' || l.status === 'approved' ? 'pending' : l.status,
+          resubmission_note: editForm.resubmission_note, rejection_reason: null,
+        }
       : l));
     setEditingListing(null);
   }
@@ -979,7 +1009,74 @@ function AccountPage() {
                 )}
 
                 <div className="space-y-4">
+                  {/* Vehicle info */}
                   <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Year *</label>
+                      <input type="number" value={editForm.year} onChange={e => setEditForm(f => ({ ...f, year: e.target.value }))}
+                        min="1900" max="2030"
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Make *</label>
+                      <select value={editForm.make} onChange={e => setEditForm(f => ({ ...f, make: e.target.value }))}
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
+                        <option value="">Select make…</option>
+                        {MAKES.filter(m => m !== 'All Makes').map(m => <option key={m}>{m}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Model *</label>
+                      <input type="text" value={editForm.model} onChange={e => setEditForm(f => ({ ...f, model: e.target.value }))}
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Body Style</label>
+                      <select value={editForm.body_style} onChange={e => setEditForm(f => ({ ...f, body_style: e.target.value }))}
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
+                        {BODY_STYLES.filter(b => b !== 'All Styles').map(b => <option key={b}>{b}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Condition *</label>
+                      <select value={editForm.condition} onChange={e => setEditForm(f => ({ ...f, condition: e.target.value }))}
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
+                        <option value="">Select condition…</option>
+                        {CONDITIONS.filter(c => c !== 'All').map(c => <option key={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Fuel Type</label>
+                      <select value={editForm.fuel_type} onChange={e => setEditForm(f => ({ ...f, fuel_type: e.target.value }))}
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
+                        <option value="">Select…</option>
+                        <option>Gasoline</option>
+                        <option>Diesel</option>
+                        <option>Electric</option>
+                        <option>Hybrid</option>
+                        <option>Flex Fuel</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Engine</label>
+                      <input type="text" value={editForm.engine} onChange={e => setEditForm(f => ({ ...f, engine: e.target.value }))}
+                        placeholder="396 V8"
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Transmission</label>
+                      <select value={editForm.transmission} onChange={e => setEditForm(f => ({ ...f, transmission: e.target.value }))}
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
+                        <option value="">Select…</option>
+                        {TRANSMISSIONS.map(t => <option key={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Color</label>
+                      <input type="text" value={editForm.color} onChange={e => setEditForm(f => ({ ...f, color: e.target.value }))}
+                        placeholder="Rally Green"
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                    </div>
                     <div>
                       <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Asking Price *</label>
                       <div className="relative">
@@ -994,9 +1091,21 @@ function AccountPage() {
                         placeholder="Leave blank if unknown"
                         className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
                     </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">City *</label>
+                      <input type="text" value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))}
+                        placeholder="Nashville"
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">State *</label>
+                      <input type="text" value={editForm.state} onChange={e => setEditForm(f => ({ ...f, state: e.target.value }))}
+                        maxLength={2} placeholder="TN"
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                    </div>
                   </div>
 
-                  <div>
+                  <div className="col-span-2">
                     <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Description *</label>
                     <textarea rows={5} value={editForm.description} onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
                       className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" />

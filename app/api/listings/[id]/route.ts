@@ -33,7 +33,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Verify ownership
   const { data: listing } = await admin
     .from('listings')
-    .select('seller_id, status, resubmission_count, price')
+    .select('seller_id, status, resubmission_count, price, year, make, model')
     .eq('id', id)
     .single();
 
@@ -42,7 +42,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const body = await req.json();
-  const { price, mileage, description, seller_name, seller_phone, seller_email, images, resubmission_note } = body;
+  const {
+    price, mileage, description, seller_name, seller_phone, seller_email, images, resubmission_note,
+    year, make, model, body_style, condition, fuel_type, engine, transmission, color, city, state,
+  } = body;
 
   // Build update — only allowed fields
   const update: Record<string, unknown> = {};
@@ -53,6 +56,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (seller_phone !== undefined) update.seller_phone = seller_phone;
   if (seller_email !== undefined) update.seller_email = seller_email;
   if (images !== undefined) update.images = images;
+  if (year !== undefined) update.year = Number(year);
+  if (make !== undefined) update.make = make;
+  if (model !== undefined) update.model = model;
+  if (body_style !== undefined) update.body_style = body_style;
+  if (condition !== undefined) update.condition = condition;
+  if (fuel_type !== undefined) update.fuel_type = fuel_type;
+  if (engine !== undefined) update.engine = engine || null;
+  if (transmission !== undefined) update.transmission = transmission;
+  if (color !== undefined) update.color = color || null;
+  if (city !== undefined) update.location = city;
+  if (state !== undefined) update.state = state;
+  if (make !== undefined || model !== undefined || year !== undefined) {
+    const y = year ?? listing.year ?? '';
+    const mk = make ?? listing.make ?? '';
+    const mo = model ?? listing.model ?? '';
+    if (y && mk && mo) update.title = `${y} ${mk} ${mo}`;
+  }
 
   // If resubmitting a rejected listing, require a fix note and send back to pending
   if (listing.status === 'rejected') {
