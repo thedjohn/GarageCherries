@@ -12,14 +12,18 @@ export async function POST(request: NextRequest) {
   // Verify Turnstile CAPTCHA
   const secret = process.env.TURNSTILE_SECRET_KEY;
   if (secret) {
-    const verify = await fetch('https://challenges.cloudflare.com/turnstile/v1/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret, response: cfToken }),
-    });
-    const result = await verify.json() as { success: boolean };
-    if (!result.success) {
-      return NextResponse.json({ error: 'CAPTCHA verification failed. Please try again.' }, { status: 400 });
+    try {
+      const verify = await fetch('https://challenges.cloudflare.com/turnstile/v1/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret, response: cfToken ?? '' }),
+      });
+      const result = await verify.json() as { success: boolean };
+      if (!result.success) {
+        return NextResponse.json({ error: 'CAPTCHA verification failed. Please try again.' }, { status: 400 });
+      }
+    } catch {
+      return NextResponse.json({ error: 'CAPTCHA verification error. Please try again.' }, { status: 500 });
     }
   }
 
