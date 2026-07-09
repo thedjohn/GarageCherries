@@ -4,6 +4,7 @@ import { requireAdmin, hasRole } from '@/lib/admin';
 import { Resend } from 'resend';
 import { emailHeader } from '@/lib/emailBranding';
 import { createLogger } from '@/lib/logger';
+import { postListingToFacebook } from '@/lib/facebook/postToPage';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -85,10 +86,10 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
 
-  // Fetch listing details needed for seller notification email
+  // Fetch listing details needed for seller notification email and Facebook post
   const { data: listing } = await admin
     .from('listings')
-    .select('title, make, model, slug, seller_email, seller_name, seller_id')
+    .select('id, title, make, model, year, price, images, slug, seller_email, seller_name, seller_id')
     .eq('id', id)
     .single();
 
@@ -119,6 +120,11 @@ export async function PATCH(req: NextRequest) {
   }
   log.info('Listing action', { listingId: id, action, adminEmail: user?.email, sellerEmail: listing?.seller_email });
   await log.flush();
+
+  // Post to the Facebook Page now that this listing is publicly live — fire and forget
+  if (listing && action === 'approve') {
+    postListingToFacebook(listing).catch(() => {});
+  }
 
   // Send seller notification email — fire and forget
   if (listing?.seller_email) {

@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requireAdmin, hasRole } from '@/lib/admin';
 import { createLogger } from '@/lib/logger';
+import { postEventToFacebook } from '@/lib/facebook/postToPage';
 
 const VALID_TYPES = ['show', 'swap-meet', 'cruise', 'auction'] as const;
 
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
   }
   log.info('Event created', { eventId: data.id, name: data.name, adminEmail: user?.email });
   await log.flush();
+  postEventToFacebook(data).catch(() => {});
   revalidatePath('/events');
   return NextResponse.json({ event: data });
 }
@@ -82,7 +84,12 @@ export async function PATCH(req: NextRequest) {
 
   // approve / reject actions
   if (action === 'approve' || action === 'reject') {
-    const { error } = await admin.from('events').update({ status: action === 'approve' ? 'approved' : 'rejected' }).eq('id', id);
+    const { data: updated, error } = await admin
+      .from('events')
+      .update({ status: action === 'approve' ? 'approved' : 'rejected' })
+      .eq('id', id)
+      .select('slug, name, date, location, state')
+      .single();
     if (error) {
       log.error(`Event ${action} failed`, new Error(error.message), { eventId: id, adminEmail: user?.email });
       await log.flush();
@@ -90,6 +97,9 @@ export async function PATCH(req: NextRequest) {
     }
     log.info(`Event ${action}d`, { eventId: id, adminEmail: user?.email });
     await log.flush();
+    if (action === 'approve' && updated) {
+      postEventToFacebook(updated).catch(() => {});
+    }
     revalidatePath('/events');
     return NextResponse.json({ success: true });
   }

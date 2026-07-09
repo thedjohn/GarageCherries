@@ -175,9 +175,14 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
         expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       });
       dbError = error;
-      // Trigger buyer alert matching after successful insert — fire and forget
+      // Trigger buyer alert matching and Facebook Page post after successful insert — fire and forget
       if (!error) {
         fetch('/api/alerts/match', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ carId: newId }),
+        }).catch(() => {});
+        fetch('/api/facebook/post-listing', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ carId: newId }),
