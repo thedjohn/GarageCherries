@@ -60,14 +60,6 @@ export default function ContactPage() {
               </div>
             </div>
 
-            <div className="bg-white border border-zinc-100 rounded-2xl p-6 shadow-sm">
-              <h2 className="text-sm font-bold text-zinc-900 mb-3">Response Times</h2>
-              <ul className="text-sm text-zinc-500 space-y-1.5">
-                <li className="flex gap-2"><span className="text-green-500 font-bold">✓</span> General inquiries — within 24 hours</li>
-                <li className="flex gap-2"><span className="text-green-500 font-bold">✓</span> Dealer support — within 4 hours (business hours)</li>
-                <li className="flex gap-2"><span className="text-green-500 font-bold">✓</span> Trust &amp; safety — within 2 hours</li>
-              </ul>
-            </div>
           </div>
 
           {/* Quick links */}
