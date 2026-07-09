@@ -4,11 +4,14 @@ import { createAdminClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata: Metadata = {
-  title: 'Classic Car Market Report — June 2026 | GarageCherries',
-  description: 'Monthly classic car market data: average prices by make, most-watched models, price trends, and market insights from GarageCherries listings.',
-  alternates: { canonical: 'https://www.garagecherries.com/reports' },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const monthName = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  return {
+    title: `Classic Car Market Report — ${monthName} | GarageCherries`,
+    description: 'Monthly classic car market data: average prices by make, most-watched models, price trends, and market insights from GarageCherries listings.',
+    alternates: { canonical: 'https://www.garagecherries.com/reports' },
+  };
+}
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
