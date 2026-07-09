@@ -1737,10 +1737,11 @@ export default function AdminPage() {
                 <div><label className={labelCls}>State</label><input value={editFields.state} maxLength={2} onChange={e => set('state', e.target.value.toUpperCase())} className={inputCls} /></div>
               </div>
               <div><label className={labelCls}>Description</label><textarea rows={4} value={editFields.description} onChange={e => set('description', e.target.value)} className={inputCls + ' resize-none'} /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className={labelCls}>Seller Name</label><input value={editFields.seller_name} onChange={e => set('seller_name', e.target.value)} className={inputCls} /></div>
-                <div><label className={labelCls}>Seller Phone</label><input value={editFields.seller_phone} onChange={e => set('seller_phone', e.target.value)} className={inputCls} /></div>
-                <div className="col-span-2"><label className={labelCls}>Seller Email</label><input type="email" value={editFields.seller_email} onChange={e => set('seller_email', e.target.value)} className={inputCls} /></div>
+              <div className="rounded-lg bg-zinc-50 border border-zinc-200 px-4 py-3 space-y-1">
+                <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-2">Seller (read-only — managed in seller profile)</p>
+                <p className="text-sm text-zinc-700"><span className="font-medium">Name:</span> {editFields.seller_name || '—'}</p>
+                <p className="text-sm text-zinc-700"><span className="font-medium">Phone:</span> {editFields.seller_phone || '—'}</p>
+                <p className="text-sm text-zinc-700"><span className="font-medium">Email:</span> {editFields.seller_email || '—'}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div><label className={labelCls}>Status</label>
