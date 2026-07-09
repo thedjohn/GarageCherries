@@ -32,13 +32,13 @@ export const metadata: Metadata = {
     title: 'GarageCherries — Classic, Muscle, Sport & Collector Cars',
     description: 'Buy and sell classic cars, muscle cars, and collector vehicles. Browse thousands of listings from trusted dealers across the United States.',
     url: BASE_URL,
-    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'GarageCherries — Specialty Cars For Sale' }],
+    images: [{ url: '/opengraph-image.jpg', width: 1200, height: 630, alt: 'GarageCherries — Specialty Cars For Sale' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'GarageCherries — Classic, Muscle, Sport & Collector Cars',
     description: 'Buy and sell classic cars, muscle cars, and collector vehicles.',
-    images: ['/opengraph-image'],
+    images: ['/opengraph-image.jpg'],
   },
   robots: {
     index: true,
