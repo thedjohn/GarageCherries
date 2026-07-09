@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-09 — drag-and-drop image reorder fixed; edit listing form expanded to all vehicle fields; Detail 360 sponsor card + Lemon Squad inspection affiliate button restored to listing detail sidebar; unit test suite expanded to 312 tests across 21 files; buyer golden-path E2E test suite added (27 tests, 15 spec files total)*
+*Last updated: 2026-07-09 — drag-and-drop image reorder fixed; edit listing form expanded to all vehicle fields; Detail 360 sponsor card + Lemon Squad inspection affiliate button restored to listing detail sidebar; unit test suite expanded to 312 tests across 21 files; buyer golden-path E2E test suite added (27 tests, 15 spec files total); admin Users tab: color-coded type icons + left border stripe per primary role; server-side role/status filtering + 25-per-page pagination*
 
 **Note on data:** this site is pre-launch. As of 2026-07-07 the production database has a handful of manually-created test listings (private-seller and dealer) and no real buyers or advertisers yet. Empty tables (`advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -162,7 +162,7 @@
 - [x] Role hierarchy: `support < moderator < admin < superadmin`; all 4 roles assignable via UI (fixed 2026-07-03)
 - [x] **Reported tab — full conversation thread** — clicking a reported card expands it to show the full message history (oldest → newest); reported message highlighted in red; three inline actions: Dismiss (clears flag), Warn User (sends warning email via Resend; customizable message), Suspend User (inline reason + confirm); `GET /api/admin/conversations/[id]/messages` admin-only endpoint; `PATCH /api/admin/users` extended with `action:'warn'` (added 2026-07-07)
 - [x] **Warn User feedback banner** — after sending a warning, an amber "⚠️ Warning sent to [name]" banner replaces the action buttons on the report card; report auto-dismisses from the queue after 1.5 s; `warnedMsgIds` Set state drives this without a DB round-trip (added 2026-07-08)
-- [x] Users tab — search/filter, view seller listings, suspend/unsuspend, edit, promote seller to dealer, delete account
+- [x] Users tab — search/filter, view seller listings, suspend/unsuspend, edit, promote seller to dealer, delete account; **color-coded left border stripe + type icon per primary role** (dealer=blue/🏢, advertiser=purple/📢, seller=green/🧑, buyer=gray/👤; suspended=red override); **server-side role/status filtering** + **25-per-page pagination** with Prev/Next controls and total count (added 2026-07-09)
 - [x] Team tab — add/remove admin team members by email + role
 - [x] **Email Campaigns** card in Team tab (superadmin) — links to `/admin/email` (added 2026-07-03)
 - [x] **Cleanup Orphan Images** button in Team tab (superadmin) — triggers `POST /api/admin/cleanup-images`, shows deleted count inline (added 2026-07-03)
