@@ -127,6 +127,9 @@ export default function AdminPage() {
 
   // Users
   const [users, setUsers] = useState<SiteUser[]>([]);
+  const [usersTotal, setUsersTotal] = useState(0);
+  const [userPage, setUserPage] = useState(1);
+  const USER_PAGE_SIZE = 25;
   const [usersLoading, setUsersLoading] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('all');
@@ -205,11 +208,11 @@ export default function AdminPage() {
     })();
   }, []);
 
-  async function loadUsers() {
-    if (users.length > 0) return;
+  async function loadUsers(page = 1, role = userRoleFilter, status = userStatusFilter) {
     setUsersLoading(true);
-    const res = await fetch('/api/admin/users');
-    if (res.ok) { const { users: u } = await res.json(); setUsers(u ?? []); }
+    const p = new URLSearchParams({ page: String(page), limit: String(USER_PAGE_SIZE), role, status });
+    const res = await fetch(`/api/admin/users?${p}`);
+    if (res.ok) { const { users: u, total } = await res.json(); setUsers(u ?? []); setUsersTotal(total ?? 0); }
     setUsersLoading(false);
   }
 
@@ -386,7 +389,7 @@ export default function AdminPage() {
     if (!res.ok) { setCreateError(json.error ?? 'Failed'); return; }
     setCreateDealer(false);
     setNewDealer({ email: '', password: '', name: '', dealerName: '', location: '', state: '' });
-    setUsers([]); // force refresh
+    setUserPage(1); loadUsers(1);
   }
 
   async function openSellerListings(u: SiteUser) {
@@ -1328,7 +1331,7 @@ export default function AdminPage() {
                 className="w-full pl-8 pr-4 py-2 border border-zinc-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
               />
             </div>
-            <select value={userRoleFilter} onChange={e => setUserRoleFilter(e.target.value)}
+            <select value={userRoleFilter} onChange={e => { setUserRoleFilter(e.target.value); setUserPage(1); loadUsers(1, e.target.value, userStatusFilter); }}
               className="border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
               <option value="all">All Roles</option>
               <option value="buyer">Buyer</option>
@@ -1338,7 +1341,7 @@ export default function AdminPage() {
               <option value="new">New</option>
               <option value="inactive">Inactive</option>
             </select>
-            <select value={userStatusFilter} onChange={e => setUserStatusFilter(e.target.value)}
+            <select value={userStatusFilter} onChange={e => { setUserStatusFilter(e.target.value); setUserPage(1); loadUsers(1, userRoleFilter, e.target.value); }}
               className="border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -1376,13 +1379,10 @@ export default function AdminPage() {
               inactive: 'bg-zinc-100 text-zinc-400',
             };
             const q = userSearch.toLowerCase();
-            const filtered = users.filter(u => {
-              if (q && !u.email.toLowerCase().includes(q) && !u.name.toLowerCase().includes(q)) return false;
-              if (userStatusFilter === 'active' && u.suspended) return false;
-              if (userStatusFilter === 'suspended' && !u.suspended) return false;
-              if (userRoleFilter !== 'all' && !u.roles.includes(userRoleFilter)) return false;
-              return true;
-            });
+            const filtered = users.filter(u =>
+              !q || u.email.toLowerCase().includes(q) || u.name.toLowerCase().includes(q)
+            );
+            const totalPages = Math.max(1, Math.ceil(usersTotal / USER_PAGE_SIZE));
             if (filtered.length === 0) return (
               <div className="text-center py-20 text-zinc-400">
                 {userSearch || userRoleFilter !== 'all' || userStatusFilter !== 'all'
@@ -1391,7 +1391,7 @@ export default function AdminPage() {
             );
             return (
               <div className="space-y-3">
-                <p className="text-xs text-zinc-400 mb-3">{filtered.length} user{filtered.length !== 1 ? 's' : ''}</p>
+                <p className="text-xs text-zinc-400 mb-3">{usersTotal} user{usersTotal !== 1 ? 's' : ''} · page {userPage} of {totalPages}</p>
                 {filtered.map(u => {
                   const pt = primaryType(u);
                   const cfg = typeConfig[pt];
@@ -1475,6 +1475,23 @@ export default function AdminPage() {
                   </div>
                 );
                 })}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-4 border-t border-zinc-100">
+                    <button
+                      onClick={() => { const p = userPage - 1; setUserPage(p); loadUsers(p); }}
+                      disabled={userPage <= 1}
+                      className="px-4 py-2 text-sm font-semibold border border-zinc-200 rounded-xl text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                      ← Previous
+                    </button>
+                    <span className="text-xs text-zinc-400">{userPage} / {totalPages}</span>
+                    <button
+                      onClick={() => { const p = userPage + 1; setUserPage(p); loadUsers(p); }}
+                      disabled={userPage >= totalPages}
+                      className="px-4 py-2 text-sm font-semibold border border-zinc-200 rounded-xl text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                      Next →
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })()}

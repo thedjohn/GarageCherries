@@ -18,8 +18,10 @@ export async function GET(req: NextRequest) {
   if (!hasRole(role, 'moderator')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const params = req.nextUrl.searchParams;
-  const page  = Math.max(1, parseInt(params.get('page')  ?? '1',  10));
-  const limit = Math.min(200, Math.max(1, parseInt(params.get('limit') ?? '100', 10)));
+  const page       = Math.max(1, parseInt(params.get('page')  ?? '1',  10));
+  const limit      = Math.min(200, Math.max(1, parseInt(params.get('limit') ?? '25', 10)));
+  const roleFilter = params.get('role') ?? 'all';
+  const statusFilter = params.get('status') ?? 'all';
 
   const admin = createAdminClient();
 
@@ -109,8 +111,15 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  const total = result.length;
-  const paginated = result.slice((page - 1) * limit, page * limit);
+  const filtered = result.filter(u => {
+    if (roleFilter !== 'all' && !u.roles.includes(roleFilter)) return false;
+    if (statusFilter === 'active' && u.suspended) return false;
+    if (statusFilter === 'suspended' && !u.suspended) return false;
+    return true;
+  });
+
+  const total = filtered.length;
+  const paginated = filtered.slice((page - 1) * limit, page * limit);
   return NextResponse.json({ users: paginated, total, page, limit });
 }
 
