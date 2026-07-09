@@ -150,8 +150,9 @@
 
 - [ ] Logged-out user visiting `/account`, `/dealer/dashboard`, or `/advertiser/dashboard` is redirected to the relevant login page
 - [ ] A suspended test user cannot submit a listing or send a message (clear error shown)
-- [ ] Submitting the sell form, dealer apply form, or contact-seller form without solving the CAPTCHA is blocked
-- [ ] Rapidly submitting the same form many times in a row (5+ in under a minute) eventually gets rate-limited with a clear message, not a silent failure
+- [ ] Submitting the sell form, dealer apply form, advertiser signup, or contact-seller form without solving the CAPTCHA is blocked with a 400 error
+- [ ] `/account/signup` — submitting before CAPTCHA completes shows inline "Please complete the CAPTCHA." error
+- [ ] Rapidly submitting the same form many times in a row eventually gets rate-limited with a 429 — verified on `/dealer/apply` (3/hr), `/api/listings/submit` (5/hr), `/api/inquire` (10/hr), `/advertiser/signup` (3/hr)
 
 ---
 

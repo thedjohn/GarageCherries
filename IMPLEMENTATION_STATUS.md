@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-08 — tooltip alignment/side props; email branding standardized; expiring-listings cron; conversation list buyer/seller label fix; MessengerWidget sender_name fixed (server-side auth); admin Warn User feedback banner; Mark as Sold UI fix; WatchlistButton tooltip removed; seller new-message email; dealer inventory export seat_material/seating_type; sold listing UI cleanup (dealer dashboard + account page); Cloudflare Turnstile CAPTCHA added to advertiser signup*
+*Last updated: 2026-07-08 — tooltip alignment/side props; email branding standardized; expiring-listings cron; conversation list buyer/seller label fix; MessengerWidget sender_name fixed (server-side auth); admin Warn User feedback banner; Mark as Sold UI fix; WatchlistButton tooltip removed; seller new-message email; dealer inventory export seat_material/seating_type; sold listing UI cleanup (dealer dashboard + account page); Cloudflare Turnstile CAPTCHA added to advertiser signup + account signup; rate limiting (3/hr/IP) added to advertiser signup*
 
 **Note on data:** this site is pre-launch. As of 2026-07-07 the production database has a handful of manually-created test listings (private-seller and dealer) and no real buyers or advertisers yet. Empty tables (`advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -199,7 +199,7 @@
 - [x] Supabase Storage (listing photo uploads via signed URL + lazy client-side upload); `dealer-logos` public bucket with RLS policies for authenticated dealer uploads (added 2026-07-06)
 - [x] Server components + client components correctly separated
 - [x] `createClient()` (async, RLS-enforced) and `createAdminClient()` (sync, service role) pattern
-- [x] Cloudflare Turnstile CAPTCHA on public-facing submission forms
+- [x] Cloudflare Turnstile CAPTCHA on public-facing submission forms — `/sell`, `/dealer/apply`, `/advertiser/signup`, `/account/signup`; all verified blocking empty/fake tokens with correct 400 responses
 - [x] **Sentry error tracking** — `@sentry/nextjs`; client + server + edge configs; `instrumentation.ts` hook; `app/error.tsx` captures unhandled errors; env vars in Vercel (added 2026-07-06)
 - [x] **Axiom structured logging** — `next-axiom`; `lib/logger.ts` unified logger with Axiom + Sentry integration; `createLogger(source)` wired across all high-value API routes: `api/inquire`, `api/dealer/apply`, `api/alerts/match`, `api/notify-watchers`, `api/conversations`, `api/conversations/[id]/messages`, `api/email/digest`, `api/email/dealer-report`, `api/email/expiring-listings`, `api/admin/listings`, `api/admin/events`, `api/listings/submit`; env vars in Vercel (added 2026-07-06, expanded 2026-07-07)
 - [x] Deployed to Vercel (project `garage-cherries`, GarageCherries team account, Hobby plan); custom domain `garagecherries.com` and `www.garagecherries.com` live with SSL
