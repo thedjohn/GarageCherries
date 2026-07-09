@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
+import FacebookSignInButton from '@/components/FacebookSignInButton';
 
 function LoginForm() {
   const router   = useRouter();
@@ -102,7 +103,10 @@ function LoginForm() {
             <div className="flex-1 h-px bg-zinc-100" />
           </div>
 
-          <GoogleSignInButton returnTo={returnTo} />
+          <div className="space-y-2.5">
+            <GoogleSignInButton returnTo={returnTo} />
+            <FacebookSignInButton returnTo={returnTo} />
+          </div>
 
           <p className="text-xs text-zinc-400 text-center mt-6">
             New to GarageCherries?{' '}

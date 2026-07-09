@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import Turnstile from '@/components/Turnstile';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
+import FacebookSignInButton from '@/components/FacebookSignInButton';
 
 function SignupForm() {
   const promo = useSearchParams().get('promo') ?? '';
@@ -127,7 +128,10 @@ function SignupForm() {
             <div className="flex-1 h-px bg-zinc-100" />
           </div>
 
-          <GoogleSignInButton promo={promo} label="Sign up with Google" />
+          <div className="space-y-2.5">
+            <GoogleSignInButton promo={promo} label="Sign up with Google" />
+            <FacebookSignInButton promo={promo} label="Sign up with Facebook" />
+          </div>
 
           <p className="text-xs text-zinc-400 text-center mt-6">
             Already have an account?{' '}

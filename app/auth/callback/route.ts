@@ -4,9 +4,9 @@ import { cookies } from 'next/headers';
 import { createAdminClient } from '@/lib/supabase/server';
 
 // This route is shared infrastructure: it's used both by dealer password-reset
-// links (PKCE recovery flow) and by Google sign-in. The profiles seeding below
-// only applies to the latter -- gated on app_metadata.provider === 'google' so
-// a dealer resetting their password never gets a stray profiles row created.
+// links (PKCE recovery flow) and by Google/Facebook sign-in. The profiles seeding
+// below only applies to the latter -- gated on app_metadata.provider so a dealer
+// resetting their password never gets a stray profiles row created.
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const code = searchParams.get('code');
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     );
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      if (data.user && data.user.app_metadata?.provider === 'google') {
+      if (data.user && ['google', 'facebook'].includes(data.user.app_metadata?.provider ?? '')) {
         const admin = createAdminClient();
         const { data: existingProfile } = await admin
           .from('profiles')
