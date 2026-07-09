@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+﻿import { test, expect } from '@playwright/test';
 
 const DEALER_EMAIL = process.env.DEALER_EMAIL ?? '';
 const DEALER_PASSWORD = process.env.DEALER_PASSWORD ?? '';
@@ -7,7 +7,7 @@ test.describe('Dealer portal', () => {
   test('dealer login page loads', async ({ page }) => {
     await page.goto('/dealer/login');
     await expect(page.getByRole('heading', { name: /sign in to your account/i })).toBeVisible();
-    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('main input[type="email"]')).toBeVisible();
     await expect(page.locator('input[type="password"]')).toBeVisible();
   });
 
@@ -24,7 +24,7 @@ test.describe('Dealer portal', () => {
   test('dealer apply form has all required fields', async ({ page }) => {
     await page.goto('/dealer/apply');
     await expect(page.locator('input[placeholder="Full name"]')).toBeVisible();
-    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('main input[type="email"]')).toBeVisible();
     await expect(page.locator('input[type="tel"]')).toBeVisible();
   });
 
@@ -33,7 +33,7 @@ test.describe('Dealer portal', () => {
 
     test.beforeEach(async ({ page }) => {
       await page.goto('/dealer/login');
-      await page.locator('input[type="email"]').fill(DEALER_EMAIL);
+      await page.locator('main input[type="email"]').fill(DEALER_EMAIL);
       await page.locator('input[type="password"]').fill(DEALER_PASSWORD);
       await page.getByRole('button', { name: /sign in|log in/i }).click();
       await page.waitForURL(/dealer\/dashboard/, { timeout: 10000 });
@@ -74,3 +74,4 @@ test.describe('Dealer portal', () => {
     });
   });
 });
+

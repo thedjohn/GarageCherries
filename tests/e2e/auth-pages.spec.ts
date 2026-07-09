@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+﻿import { test, expect } from '@playwright/test';
 
 test.describe('Buyer login page', () => {
   test.beforeEach(async ({ page }) => {
@@ -10,7 +10,7 @@ test.describe('Buyer login page', () => {
   });
 
   test('shows email and password inputs', async ({ page }) => {
-    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('main input[type="email"]')).toBeVisible();
     await expect(page.locator('input[type="password"]')).toBeVisible();
   });
 
@@ -37,7 +37,7 @@ test.describe('Buyer signup page', () => {
   });
 
   test('shows email and password inputs', async ({ page }) => {
-    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('main input[type="email"]')).toBeVisible();
     await expect(page.locator('input[type="password"]').first()).toBeVisible();
   });
 
@@ -60,7 +60,7 @@ test.describe('Dealer login page', () => {
   });
 
   test('shows email and password inputs', async ({ page }) => {
-    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('main input[type="email"]')).toBeVisible();
     await expect(page.locator('input[type="password"]')).toBeVisible();
   });
 
@@ -76,7 +76,7 @@ test.describe('Dealer login page', () => {
 test.describe('Forgot password page', () => {
   test('renders the reset form', async ({ page }) => {
     await page.goto('/account/forgot-password');
-    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('main input[type="email"]')).toBeVisible();
     await expect(page.getByRole('button', { name: /send reset link/i })).toBeVisible();
   });
 });
@@ -89,7 +89,7 @@ test.describe('/sell page', () => {
 
   test('logged-out visitor sees auth gate, not the listing form', async ({ page }) => {
     await page.goto('/sell');
-    // SellGate is shown — the form requires login
+    // SellGate is shown â€” the form requires login
     await expect(page.locator('input[name="year"]')).not.toBeVisible();
     // A sign-in or create-account CTA must be present
     await expect(
@@ -97,3 +97,4 @@ test.describe('/sell page', () => {
     ).toBeVisible();
   });
 });
+
