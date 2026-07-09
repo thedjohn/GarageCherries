@@ -13,10 +13,12 @@ export async function POST(request: NextRequest) {
   const secret = process.env.TURNSTILE_SECRET_KEY;
   if (secret) {
     try {
+      const formData = new URLSearchParams();
+      formData.append('secret', secret);
+      formData.append('response', cfToken ?? '');
       const verify = await fetch('https://challenges.cloudflare.com/turnstile/v1/siteverify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret, response: cfToken ?? '' }),
+        body: formData,
       });
       const result = await verify.json() as { success: boolean };
       if (!result.success) {
