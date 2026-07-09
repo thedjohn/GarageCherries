@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 
 function LoginForm() {
   const router   = useRouter();
@@ -94,6 +95,14 @@ function LoginForm() {
               {loading ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
+
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-zinc-100" />
+            <span className="text-xs text-zinc-400">or</span>
+            <div className="flex-1 h-px bg-zinc-100" />
+          </div>
+
+          <GoogleSignInButton returnTo={returnTo} />
 
           <p className="text-xs text-zinc-400 text-center mt-6">
             New to GarageCherries?{' '}

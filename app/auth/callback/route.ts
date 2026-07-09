@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { createAdminClient } from '@/lib/supabase/server';
 
+// This route is shared infrastructure: it's used both by dealer password-reset
+// links (PKCE recovery flow) and by Google sign-in. The profiles seeding below
+// only applies to the latter -- gated on app_metadata.provider === 'google' so
+// a dealer resetting their password never gets a stray profiles row created.
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/';
+  const promo = searchParams.get('promo');
 
   if (code) {
     const cookieStore = await cookies();
@@ -19,8 +25,28 @@ export async function GET(req: NextRequest) {
         },
       }
     );
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      if (data.user && data.user.app_metadata?.provider === 'google') {
+        const admin = createAdminClient();
+        const { data: existingProfile } = await admin
+          .from('profiles')
+          .select('id')
+          .eq('id', data.user.id)
+          .maybeSingle();
+
+        if (!existingProfile) {
+          const fullName = data.user.user_metadata?.full_name ?? data.user.user_metadata?.name ?? '';
+          const promoExpiresAt = promo ? '2026-10-31T23:59:59Z' : null;
+          await admin.from('profiles').upsert({
+            id: data.user.id,
+            full_name: fullName,
+            updated_at: new Date().toISOString(),
+            ...(promoExpiresAt && { promo_expires_at: promoExpiresAt }),
+          });
+        }
+      }
+
       return NextResponse.redirect(new URL(next, req.url));
     }
   }

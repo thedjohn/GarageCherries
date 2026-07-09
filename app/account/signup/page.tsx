@@ -1,11 +1,14 @@
 'use client';
 import Image from 'next/image';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import Turnstile from '@/components/Turnstile';
+import GoogleSignInButton from '@/components/GoogleSignInButton';
 
-export default function AccountSignupPage() {
+function SignupForm() {
+  const promo = useSearchParams().get('promo') ?? '';
   const [fullName, setFullName] = useState('');
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
@@ -26,7 +29,6 @@ export default function AccountSignupPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const promo = new URLSearchParams(window.location.search).get('promo') ?? '';
     const { data, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -119,6 +121,14 @@ export default function AccountSignupPage() {
             </button>
           </form>
 
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-zinc-100" />
+            <span className="text-xs text-zinc-400">or</span>
+            <div className="flex-1 h-px bg-zinc-100" />
+          </div>
+
+          <GoogleSignInButton promo={promo} label="Sign up with Google" />
+
           <p className="text-xs text-zinc-400 text-center mt-6">
             Already have an account?{' '}
             <Link href="/account/login" className="text-red-600 hover:underline">Sign in</Link>
@@ -126,5 +136,13 @@ export default function AccountSignupPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AccountSignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
   );
 }
