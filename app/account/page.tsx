@@ -156,6 +156,8 @@ function AccountPage() {
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
   const editFileRef = useRef<HTMLInputElement>(null);
+  const editDragIndex = useRef<number | null>(null);
+  const [editDragOver, setEditDragOver] = useState<number | null>(null);
 
   // Settings
   const [fullName, setFullName] = useState('');
@@ -336,7 +338,7 @@ function AccountPage() {
     setEditError('');
   }
 
-  async function uploadEditImage(file: File, index: number): Promise<string | null> {
+  async function uploadEditImage(file: File, stableId: string): Promise<string | null> {
     const res = await fetch('/api/listings/upload-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -350,20 +352,20 @@ function AccountPage() {
       xhr.setRequestHeader('Content-Type', file.type);
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
-          setEditImages(prev => prev.map((img, i) => i === index ? { ...img, progress: Math.round((e.loaded / e.total) * 100) } : img));
+          setEditImages(prev => prev.map(img => img.preview === stableId ? { ...img, progress: Math.round((e.loaded / e.total) * 100) } : img));
         }
       };
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          setEditImages(prev => prev.map((img, i) => i === index ? { ...img, uploadState: 'done', publicUrl, progress: 100 } : img));
+          setEditImages(prev => prev.map(img => img.preview === stableId ? { ...img, uploadState: 'done', publicUrl, progress: 100 } : img));
           resolve(publicUrl);
         } else {
-          setEditImages(prev => prev.map((img, i) => i === index ? { ...img, uploadState: 'error' } : img));
+          setEditImages(prev => prev.map(img => img.preview === stableId ? { ...img, uploadState: 'error' } : img));
           resolve(null);
         }
       };
       xhr.onerror = () => {
-        setEditImages(prev => prev.map((img, i) => i === index ? { ...img, uploadState: 'error' } : img));
+        setEditImages(prev => prev.map(img => img.preview === stableId ? { ...img, uploadState: 'error' } : img));
         resolve(null);
       };
       xhr.send(file);
@@ -382,7 +384,7 @@ function AccountPage() {
     }));
     setEditImages(prev => {
       const updated = [...prev, ...newEntries];
-      newEntries.forEach((_, i) => uploadEditImage(toAdd[i], prev.length + i));
+      newEntries.forEach((entry, i) => uploadEditImage(toAdd[i], entry.preview));
       return updated;
     });
   }
@@ -1005,7 +1007,23 @@ function AccountPage() {
                     <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Photos</label>
                     <div className="grid grid-cols-4 gap-2 mb-2">
                       {editImages.map((img, i) => (
-                        <div key={img.preview} className="relative aspect-square rounded-lg overflow-hidden border border-zinc-200">
+                        <div key={img.preview} draggable
+                          onDragStart={() => { editDragIndex.current = i; }}
+                          onDragOver={e => { e.preventDefault(); setEditDragOver(i); }}
+                          onDragLeave={() => setEditDragOver(null)}
+                          onDrop={() => {
+                            const from = editDragIndex.current;
+                            if (from === null || from === i) { setEditDragOver(null); return; }
+                            setEditImages(prev => {
+                              const next = [...prev];
+                              const [item] = next.splice(from, 1);
+                              next.splice(i, 0, item);
+                              return next;
+                            });
+                            editDragIndex.current = null;
+                            setEditDragOver(null);
+                          }}
+                          className={`relative aspect-square rounded-lg overflow-hidden border-2 cursor-grab active:cursor-grabbing transition-all ${editDragOver === i ? 'border-red-500 scale-105' : 'border-zinc-200'}`}>
                           <img src={img.preview} alt="" className="w-full h-full object-cover" />
                           {img.uploadState === 'uploading' && (
                             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -1014,7 +1032,9 @@ function AccountPage() {
                           )}
                           <button type="button" onClick={() => setEditImages(prev => prev.filter((_, j) => j !== i))}
                             className="absolute top-1 right-1 w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center">✕</button>
-                          {i === 0 && <span className="absolute bottom-1 left-1 text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded font-bold">Cover</span>}
+                          <span className={`absolute bottom-1 left-1 text-[10px] px-1.5 py-0.5 rounded font-bold ${i === 0 ? 'bg-red-600 text-white' : 'bg-black/60 text-white'}`}>
+                            {i === 0 ? 'Cover' : i + 1}
+                          </span>
                         </div>
                       ))}
                       {editImages.length < 30 && (
