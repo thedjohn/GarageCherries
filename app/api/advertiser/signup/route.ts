@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
+import { rateLimit, getClientIP } from '@/lib/rateLimit';
+import { notifyAdmin } from '@/lib/notifyAdmin';
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIP(request);
+  const { allowed, firstBlock } = rateLimit(`advertiser-signup:${ip}`, 3, 60 * 60 * 1000);
+  if (!allowed) {
+    if (firstBlock) notifyAdmin('Rate limit hit: advertiser signup', `IP <strong>${ip}</strong> exceeded the advertiser signup limit (3/hour).`);
+    return NextResponse.json({ error: 'Too many signups. Please try again later.' }, { status: 429 });
+  }
+
   const body = await request.json();
   const { email, password, businessName, contactName, phone, address, city, state, zip, category, tier, description, website, cfToken } = body;
 
