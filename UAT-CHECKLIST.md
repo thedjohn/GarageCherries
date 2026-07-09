@@ -16,8 +16,6 @@
 - [ ] Listing detail page shows **Make an Offer** button (dealer listings) and the offer modal opens
 - [ ] Listing detail page shows **Financing Calculator** (collapsible) and the math updates when inputs change
 - [ ] Listing detail page shows an **ad** in the sidebar (`AdSlot`) — or confirm it gracefully shows nothing if no eligible advertiser, not a broken layout
-- [ ] Listing detail page sidebar shows **"Get This Car Inspected"** card with a "Book an Inspection →" link; link URL contains `lemonsquad.com` with year/make/model pre-populated and `utm_source=garagecherries`; FTC referral disclosure visible below the button
-- [ ] Listing detail page sidebar shows **Detail 360** sponsor card below the ad slot with logo, tagline ("Professional auto detailing…"), and "Book a Detail →" link to `detail360stl.com`
 - [ ] Sold listing shows a "This vehicle has sold" banner + "View Similar Listings" link
 - [ ] Dealer directory (`/dealers`) lists all dealers with listing counts
 - [ ] Dealer profile page (`/dealers/[slug]`) shows logo, description, specialties, map, **tier badge** (Bronze/Silver/Gold), and **reviews** section

@@ -137,39 +137,6 @@ test.describe('Listing detail page — sidebar', () => {
     ).toBeVisible();
   });
 
-  test('inspection affiliate card is visible with Book an Inspection link', async ({ page }) => {
-    const found = await navigateToFirstListing(page);
-    if (!found) { test.skip(); return; }
-
-    await expect(page.getByRole('heading', { name: /get this car inspected/i })).toBeVisible();
-    const bookLink = page.getByRole('link', { name: /book an inspection/i });
-    await expect(bookLink).toBeVisible();
-    const href = await bookLink.getAttribute('href');
-    expect(href).toContain('lemonsquad.com');
-    expect(href).toContain('utm_source=garagecherries');
-  });
-
-  test('inspection card pre-populates year and make in Lemon Squad URL', async ({ page }) => {
-    const found = await navigateToFirstListing(page);
-    if (!found) { test.skip(); return; }
-
-    const bookLink = page.getByRole('link', { name: /book an inspection/i });
-    const href = await bookLink.getAttribute('href') ?? '';
-    // year and make should be in the URL (URL-encoded)
-    expect(href).toMatch(/year=\d{4}/);
-    expect(href).toMatch(/make=/);
-  });
-
-  test('Detail 360 sponsor card is visible', async ({ page }) => {
-    const found = await navigateToFirstListing(page);
-    if (!found) { test.skip(); return; }
-
-    // SponsorCard renders a single <a> whose text content includes "Detail 360"
-    const card = page.locator('a[href*="detail360stl.com"]');
-    await expect(card).toBeVisible();
-    await expect(card).toContainText('Detail 360');
-  });
-
   test('financing calculator section is present', async ({ page }) => {
     const found = await navigateToFirstListing(page);
     if (!found) { test.skip(); return; }
