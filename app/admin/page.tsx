@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client';
 import Tooltip from '@/components/Tooltip';
 import { formatPhone } from '@/lib/data';
 import { MAKES, BODY_STYLES, CONDITIONS, TRANSMISSIONS } from '@/lib/types';
+import AdminEmailCampaigns from '@/components/AdminEmailCampaigns';
 
 interface Listing {
   id: string; slug: string; title: string; year: number; make: string; model: string;
@@ -38,7 +39,7 @@ interface SiteUser {
   conversation_count: number;
 }
 
-type Tab = 'listings' | 'reported' | 'team' | 'users' | 'applications' | 'events';
+type Tab = 'listings' | 'reported' | 'team' | 'users' | 'applications' | 'events' | 'email';
 
 interface CarEvent {
   id: string; name: string; date: string; end_date: string | null;
@@ -606,6 +607,11 @@ export default function AdminPage() {
             Team <span className="ml-1 text-xs text-zinc-400">{team.length}</span>
           </button>
         )}
+        {(adminRole === 'superadmin' || adminRole === 'admin') && (
+          <button onClick={() => setTab('email')} className={tabCls('email')}>
+            Email
+          </button>
+        )}
       </div>
 
       {/* Listings tab */}
@@ -1104,24 +1110,6 @@ export default function AdminPage() {
           </div>}
         </div>
 
-        {/* Email campaigns shortcut — superadmin only */}
-        {adminRole === 'superadmin' && (
-          <div className="mt-6 bg-white border border-zinc-100 rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-zinc-900">Email Campaigns</h3>
-                <p className="text-sm text-zinc-500 mt-0.5">Manually trigger digest, price drop, and dealer report emails.</p>
-              </div>
-              <a
-                href="/admin/email"
-                className="flex-shrink-0 bg-zinc-900 hover:bg-zinc-700 text-white font-bold text-sm px-5 py-2 rounded-xl transition-colors"
-              >
-                Open →
-              </a>
-            </div>
-          </div>
-        )}
-
         {/* Cleanup orphan images — superadmin only */}
         {adminRole === 'superadmin' && (
           <div className="mt-4 bg-white border border-zinc-100 rounded-2xl p-6 shadow-sm">
@@ -1160,6 +1148,11 @@ export default function AdminPage() {
           </div>
         )}
     </>)}
+
+      {/* Email tab */}
+      {tab === 'email' && (adminRole === 'superadmin' || adminRole === 'admin') && (
+        <AdminEmailCampaigns />
+      )}
 
       {/* Events tab */}
       {tab === 'events' && (adminRole === 'superadmin' || adminRole === 'admin') && (
