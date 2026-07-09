@@ -26,8 +26,8 @@ export default function SellForm() {
   const dragIndex = useRef<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
 
-  async function uploadImage(entry: ImageEntry, index: number): Promise<string | null> {
-    // Get a signed upload URL from our API
+  async function uploadImage(entry: ImageEntry): Promise<string | null> {
+    const stableId = entry.preview; // blob URL is unique per file and stable across reorders
     const res = await fetch('/api/listings/upload-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -44,20 +44,20 @@ export default function SellForm() {
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
           const pct = Math.round((e.loaded / e.total) * 100);
-          setImages(prev => prev.map((img, i) => i === index ? { ...img, progress: pct } : img));
+          setImages(prev => prev.map(img => img.preview === stableId ? { ...img, progress: pct } : img));
         }
       };
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          setImages(prev => prev.map((img, i) => i === index ? { ...img, uploadState: 'done', publicUrl, progress: 100 } : img));
+          setImages(prev => prev.map(img => img.preview === stableId ? { ...img, uploadState: 'done', publicUrl, progress: 100 } : img));
           resolve(publicUrl);
         } else {
-          setImages(prev => prev.map((img, i) => i === index ? { ...img, uploadState: 'error' } : img));
+          setImages(prev => prev.map(img => img.preview === stableId ? { ...img, uploadState: 'error' } : img));
           resolve(null);
         }
       };
       xhr.onerror = () => {
-        setImages(prev => prev.map((img, i) => i === index ? { ...img, uploadState: 'error' } : img));
+        setImages(prev => prev.map(img => img.preview === stableId ? { ...img, uploadState: 'error' } : img));
         resolve(null);
       };
       xhr.send(entry.file);
@@ -83,11 +83,8 @@ export default function SellForm() {
 
     setImages(prev => {
       const updated = [...prev, ...newEntries];
-      // Kick off parallel uploads — use updated array indices
-      newEntries.forEach((entry, i) => {
-        const index = prev.length + i;
-        uploadImage(entry, index);
-      });
+      // Kick off parallel uploads — identified by stable preview blob URL
+      newEntries.forEach(entry => uploadImage(entry));
       return updated;
     });
   };
@@ -104,7 +101,7 @@ export default function SellForm() {
       const entry = prev[index];
       if (!entry) return prev;
       const updated = prev.map((img, i) => i === index ? { ...img, uploadState: 'uploading' as UploadState, progress: 0 } : img);
-      uploadImage(updated[index], index);
+      uploadImage(updated[index]);
       return updated;
     });
   };
