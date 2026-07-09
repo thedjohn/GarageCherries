@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-09 — drag-and-drop image reorder fixed (stale index bug in sell form + missing drag handlers in edit form); edit listing form expanded to all vehicle fields (year, make, model, body style, condition, fuel type, engine, transmission, exterior color, interior color, seat material, city, state, price, mileage, description, photos); seller name/phone/email removed from edit form (managed in Settings); /api/listings/my SELECT updated to include fuel_type, interior_color, seat_material; encyclopedia expanded from 54 → 77 models; unit test suite 294 tests across 19 files*
+*Last updated: 2026-07-09 — drag-and-drop image reorder fixed; edit listing form expanded to all vehicle fields; Detail 360 sponsor card + Lemon Squad inspection affiliate button restored to listing detail sidebar; unit test suite expanded to 312 tests across 21 files; buyer golden-path E2E test suite added (27 tests, 15 spec files total)*
 
 **Note on data:** this site is pre-launch. As of 2026-07-07 the production database has a handful of manually-created test listings (private-seller and dealer) and no real buyers or advertisers yet. Empty tables (`advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -184,17 +184,21 @@
 
 ### Testing
 
-- [x] **Unit test suite (Vitest)** — `tests/unit/` directory; 19 test files, **294 tests**, all passing (added/expanded 2026-07-08):
+- [x] **Unit test suite (Vitest)** — `tests/unit/` directory; **21 test files, 312 tests**, all passing (expanded 2026-07-09):
   - Pure lib functions fully covered: `lib/emailBranding.ts`, `lib/encyclopedia.ts`, `lib/admin.ts` (hasRole + mocked Supabase for getAdminRole/requireAdmin), `lib/verifyTurnstile.ts` (fetch mock), `lib/notifyAdmin.ts` (Resend mock), `lib/logger.ts` (Axiom + Sentry mocks)
   - Business logic: `lib/rateLimit.ts`, `lib/data.ts`, `lib/matchAlerts.ts` (via scoreMatch), listing limits, slug generation, auth guards, validation
+  - API route behavior: `GET /api/listings/my` (7 tests — auth, field selection, ordering, empty/error states), `PATCH /api/listings/[id]` (10 tests — auth, ownership, all vehicle fields, interior_color/seat_material, title regeneration, status transitions, resubmission_note gate, empty string nullification)
   - Vitest config: `tests/unit/**/*.test.ts`, coverage provider `v8`, includes `lib/**` and `app/api/**`
-- [x] **E2E test suite (Playwright)** — `tests/e2e/` directory; 6 spec files; all tests pass against production URL (`garagecherries.com`):
+- [x] **E2E test suite (Playwright)** — `tests/e2e/` directory; **15 spec files**, all tests pass against local dev server (reuses existing server via `reuseExistingServer: true`):
   - `auth-pages.spec.ts` — buyer login/signup, dealer login, forgot-password, `/sell` auth gate
   - `ui-flows.spec.ts` — homepage, listings browse, legal pages, sell page gate, dealer apply, 404
   - `sell.spec.ts` — auth-gated sell page: loads without error, logged-out gate visible, sign-in CTA present
   - `admin.spec.ts` — admin panel tabs (listings, events, reported, users, team, applications); non-admin denied (requires `ADMIN_EMAIL`/`ADMIN_PASSWORD` env vars)
-  - `events.spec.ts` — `/events` loads, logged-out sees sign-in CTA, page shows events or empty state, `POST /api/events/submit` returns 401 unauthenticated (added 2026-07-07)
-  - `api-auth.spec.ts` — API auth guards
+  - `events.spec.ts` — `/events` loads, logged-out sees sign-in CTA, page shows events or empty state, `POST /api/events/submit` returns 401 unauthenticated
+  - `api-auth.spec.ts` — all protected API endpoints return 401 unauthenticated; public endpoints accept unauthenticated requests
+  - `buyer-golden-path.spec.ts` — **27 tests** covering full unauthenticated buyer journey: browse/filter (keyword, body style, year/price range, empty state), listing detail core content (title, price, condition, gallery, spec sheet, breadcrumbs), listing detail sidebar (watchlist button, message seller, inspection affiliate card with Lemon Squad URL/UTM, Detail 360 sponsor card, financing calculator), contact form presence, watchlist auth guard (UI + API), car alerts API auth guard, make/model encyclopedia pages, sold archive (added 2026-07-09)
+  - `browse.spec.ts`, `listings.spec.ts`, `listing-detail.spec.ts`, `auth.spec.ts`, `dealer.spec.ts`, `homepage.spec.ts`, `unsubscribe.spec.ts`, `criticalGaps.spec.ts`, `highGaps.spec.ts` — additional coverage across all major surfaces
+- [x] **GitHub Actions CI** — `.github/workflows/ci.yml`; runs `tsc --noEmit` + `npm test` (Vitest unit tests) on every push to `main` and on PRs; Node 24; branch protection requires `check` job to pass (added 2026-07-09)
 
 ### Technical Infrastructure
 - [x] Next.js 16 App Router with TypeScript, React 19
@@ -232,7 +236,7 @@
 | Feature | What Exists | What Is Missing |
 |---|---|---|
 | **AI Features** | Nothing — all 5 AI routes deliberately removed 2026-07-01 | Everything; deferred to future release |
-| **Advertising — ad display** | Full backend + `AdSlot` wired into listing detail page | "Detail 360" sponsor card and inspection-affiliate button were built, then lost in a merge |
+| **Advertising — ad display** | Full backend + `AdSlot` wired into listing detail page sidebar; Detail 360 `SponsorCard` restored below AdSlot; Lemon Squad inspection affiliate card restored above AdSlot (2026-07-09) | — |
 | ~~**Dealer Watcher Messaging**~~ | ✅ Complete (2026-07-07) — watcher counts load per listing; "Message X watchers" button appears on eligible approved listings; compose modal with send confirmation; "Messaged" label shown after send to prevent duplicates | — |
 | **Dealer Subscriptions** | Pricing page shows Starter/Pro/Unlimited plans | No Stripe — nothing actually charges |
 | **Featured Listing Toggle** | Toggle in dashboard, `featured` DB field, badge + homepage placement | No payment gate — free for all dealers currently |
