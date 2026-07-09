@@ -362,6 +362,7 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       { label: 'Transmission', value: '3/4-spd manual, TorqueFlite automatic' },
     ],
     notableVersions: [
+      { name: 'GT (1963–69)', description: 'Sport trim with bucket seats, console, and V8 options — the entry-level performance Dart before the GTS arrived.' },
       { name: 'GTS (1968–69)', description: '340 or 383 V8 in a compact package. Rare and increasingly valued by collectors.' },
       { name: 'Demon 340 (1971–72)', description: '340 V8, 275 hp, fastback body. Renamed Sport Demon in 1973 due to controversy over the name.' },
       { name: 'Swinger 340', description: 'Value-priced performance package combining economy with real V8 performance.' },
@@ -1616,5 +1617,618 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       { title: '1953 Starliner sheetmetal is rare', detail: "Original-condition 1953 Starliners are extremely difficult to restore correctly due to parts scarcity. Buy the best example you can afford." },
     ],
     priceRange: { project: '$8,000–$20,000', driver: '$20,000–$48,000', show: '$48,000–$110,000' },
+  },
+
+  // === AMC (additions) ===
+  {
+    make: 'AMC',
+    model: 'SC/Rambler',
+    years: '1969',
+    tagline: "The Scrambler — AMC's budget muscle car that shocked the competition.",
+    overview: "The SC/Rambler (nicknamed the Scrambler) was a one-year-only collaboration between AMC and Hurst Performance that stuffed a 390 cubic inch V8 into the humble Rambler Rogue body. Built to a tight price point, it ran the quarter mile in the low 14s stock — faster than many better-known muscle cars of the era. Its wild red, white, and blue graphics made it impossible to ignore.",
+    history: [
+      "AMC partnered with Hurst Performance to build the SC/Rambler as a limited-edition drag-strip special. The formula was simple: the lightest available AMC body, the biggest available engine, and a Hurst 4-speed shifter. Approximately 1,512 were built across two graphic schemes — the original 'A' scheme with a bold red and white paint with a large arrow graphic, and the slightly more restrained 'B' scheme. Both used the same 315 hp 390 V8 with a cold-air hood scoop.",
+    ],
+    specs: [
+      { label: 'Engine', value: '390 V8, 315 hp' },
+      { label: 'Transmission', value: 'Hurst 4-speed manual' },
+      { label: 'Wheelbase', value: '106 in' },
+      { label: 'Weight', value: '~3,160 lbs' },
+      { label: '0–60', value: 'approx. 6.3 seconds' },
+    ],
+    notableVersions: [
+      { name: 'Scheme A', description: 'Original graphic — bold horizontal red stripe with large arrow pointing to the hood scoop. The rarer and more desirable of the two.' },
+      { name: 'Scheme B', description: 'Revised graphics with red hood and trunk, blue and white body. Slightly more produced than Scheme A.' },
+    ],
+    buyingTips: [
+      { title: 'Production was tiny — fakes exist', detail: 'Only 1,512 were built. Verify the VIN decode and door data plate carefully; clones from base Rogue coupes are known to exist.' },
+      { title: 'AMC parts support is thin', detail: 'The 390 engine has reasonable aftermarket support but AMC-specific body parts are scarce. The AMC community and specialty suppliers are your best resources.' },
+      { title: 'Original graphics are hard to find', detail: 'Correct SC/Rambler stripe graphics are reproduced but quality varies. Original-paint cars carry a significant premium.' },
+    ],
+    priceRange: { project: '$18,000–$35,000', driver: '$35,000–$65,000', show: '$65,000–$110,000' },
+  },
+  {
+    make: 'AMC',
+    model: 'Matador Machine',
+    years: '1971',
+    tagline: "AMC's last true muscle car — more power than it gets credit for.",
+    overview: "The 1971 AMC Matador The Machine was AMC's attempt to extend the muscle car formula into the next generation. Based on the Matador two-door, it offered the 401 V8 with a cold-air Go-Package hood scoop, functional scoops, and bold graphics in red, white, and blue. It was heavier than its Rebel Machine predecessor but still offered genuine performance credentials at a competitive price.",
+    history: [
+      "After the success of the Rebel Machine in 1970, AMC rebodied the concept on the new Matador platform for 1971. The Machine package added the 401 V8 (AMC's largest engine), a cold-air hood scoop, handling package, and distinctive graphics. AMC marketed it aggressively to performance buyers but the muscle car market was already contracting from insurance pressures and emissions regulations. The Matador Machine was a brief final expression of AMC's performance ambitions.",
+    ],
+    specs: [
+      { label: 'Engine', value: '401 V8, 330 hp' },
+      { label: 'Transmission', value: '4-speed manual or Torque-Command automatic' },
+      { label: 'Wheelbase', value: '118 in' },
+      { label: 'Hood scoop', value: 'Functional cold-air induction' },
+    ],
+    notableVersions: [
+      { name: 'Go-Package', description: 'The full Machine package: 401 V8, cold-air scoop, handling suspension, and bold graphics.' },
+    ],
+    buyingTips: [
+      { title: 'AMC parts are increasingly scarce', detail: 'The 401 V8 has a dedicated following but body parts and trim are harder to source than Big Three muscle cars.' },
+      { title: 'Verify the Machine package authentically', detail: 'Not all Matadors with 401s were Machine-package cars. The door data plate and VIN decode will confirm original equipment.' },
+      { title: 'Undervalued relative to comparable muscle cars', detail: 'Matador Machines are consistently underpriced compared to Chevelles or GTOs with similar performance. A smart buy for performance per dollar.' },
+    ],
+    priceRange: { project: '$8,000–$18,000', driver: '$18,000–$40,000', show: '$40,000–$70,000' },
+  },
+  {
+    make: 'AMC',
+    model: 'Hornet SC 360',
+    years: '1971',
+    tagline: 'Small, light, and surprisingly fast — AMC\'s compact muscle sleeper.',
+    overview: "The AMC Hornet SC 360 was a compact muscle car built around a simple premise: drop AMC's 360 V8 into the lightweight Hornet body. At roughly 3,000 lbs with a Go-Package that added a cold-air hood scoop and handling upgrades, it was one of the better power-to-weight ratios AMC offered. It went largely unnoticed at the time, which makes it a genuine sleeper collectible today.",
+    history: [
+      "AMC offered the SC 360 package on the Hornet SST two-door for 1971 only. The package centered on the 360 V8 in two states of tune — a 245 hp base version and a 285 hp four-barrel with dual exhausts — paired with the Go-Package handling upgrades and functional hood scoops. The Hornet's compact dimensions and relatively light weight made the combination genuinely quick. It was underappreciated in period and remains so today, making it an excellent value in the muscle car market.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '360 V8, 245 hp or 285 hp (4-barrel)' },
+      { label: 'Transmission', value: '4-speed manual or Torque-Command automatic' },
+      { label: 'Wheelbase', value: '108 in' },
+      { label: 'Weight', value: '~3,050 lbs' },
+    ],
+    notableVersions: [
+      { name: '360 Four-Barrel', description: '285 hp with dual exhaust — the performance choice and the one to seek out.' },
+    ],
+    buyingTips: [
+      { title: 'Genuine SC 360 cars are rare', detail: 'Production numbers were small and documentation is essential to confirm the SC 360 package versus a plain 360-equipped Hornet.' },
+      { title: 'AMC parts support requires specialist knowledge', detail: 'Find suppliers and clubs focused on AMC before buying — parts availability is inconsistent but the community is knowledgeable.' },
+      { title: 'Excellent sleeper value', detail: 'SC 360 Hornets are priced far below comparable Big Three compact muscle. Performance is genuine; recognition is low.' },
+    ],
+    priceRange: { project: '$6,000–$14,000', driver: '$14,000–$30,000', show: '$30,000–$55,000' },
+  },
+
+  // === BUICK (additions) ===
+  {
+    make: 'Buick',
+    model: 'GSX',
+    years: '1970–1972',
+    tagline: "Buick's boldest muscle car — Saturn Yellow, Apollo White, and tire-shredding Stage 1 power.",
+    overview: "The GSX was the ultimate expression of Buick's Gran Sport performance line. Available in striking Saturn Yellow or Apollo White with bold stripes, spoilers, and the legendary Stage 1 455 V8, the GSX was one of the fastest production cars of 1970 — capable of running the quarter mile in the 13s from the factory. Its combination of Buick luxury with genuine supercar performance makes it one of the most desirable GM muscle cars.",
+    history: [
+      "Buick created the GSX as a high-visibility performance statement to compete with the Chevelle SS and Pontiac GTO Judge. The Stage 1 455 engine — producing 360 hp and a massive 510 lb-ft of torque — gave the GSX performance that eclipsed nearly everything else on the street. Only 678 GSX models were built in 1970 (488 with Stage 1), making them among the rarest of all GM A-body muscle cars. Production continued in 1971 and 1972 with lower numbers and diminishing power due to emissions detuning.",
+    ],
+    specs: [
+      { label: 'Engine (Stage 1)', value: '455 V8, 360 hp, 510 lb-ft torque' },
+      { label: 'Engine (Stage 2)', value: '455 V8, 345 hp (1971–72, emissions-reduced)' },
+      { label: 'Transmission', value: '4-speed manual or TH400 automatic' },
+      { label: 'Wheelbase', value: '112 in' },
+      { label: '0–60', value: 'approx. 5.5 seconds (Stage 1)' },
+    ],
+    notableVersions: [
+      { name: 'Stage 1 GSX (1970)', description: '455 with 360 hp and 510 lb-ft torque. The most powerful and most valuable GSX — 488 built.' },
+      { name: 'Saturn Yellow', description: 'The most recognizable GSX color. Standard GSX colors were Saturn Yellow and Apollo White only.' },
+    ],
+    buyingTips: [
+      { title: 'GSX documentation is essential', detail: 'The GSX registry and broadcast sheet are the primary authentication tools. Stage 1 cars are frequently faked by adding stripes and badging.' },
+      { title: 'Stage 1 engine must be numbers-matching', detail: 'The Stage 1 engine stamp is on the block. A mismatched or missing stamp eliminates the Stage 1 premium entirely.' },
+      { title: 'A-body rust patterns apply', detail: 'Standard GM A-body rust areas: lower quarters, trunk floor, floor pans. Reproduction parts are available.' },
+      { title: 'Production was tiny', detail: 'Only 678 total GSX units in 1970 — fewer than many exotic European cars. Treat any purchase with corresponding scrutiny.' },
+    ],
+    priceRange: { project: '$25,000–$50,000', driver: '$50,000–$110,000', show: '$110,000–$250,000' },
+  },
+
+  // === CHEVROLET (additions) ===
+  {
+    make: 'Chevrolet',
+    model: 'Biscayne',
+    years: '1958–1972',
+    tagline: "The no-frills Chevy that drag racers loved — light weight, big engines, zero luxury.",
+    overview: "The Biscayne was Chevrolet's entry-level full-size car, sitting below the Bel Air and Impala. Its appeal to performance enthusiasts was exactly what made it unappealing to regular buyers: bare-bones trim meant less weight. With Chevrolet's full engine lineup available — including the 409 and later the 427 — a Biscayne was one of the quickest large cars available from a factory dealer, and many were purchased new specifically for drag racing.",
+    history: [
+      "Introduced in 1958 alongside the Impala and Bel Air on GM's new X-body platform, the Biscayne was the utilitarian choice — rubber floor mats, minimal chrome, and basic seating. That simplicity made it a natural choice for performance buyers who wanted the big engine without paying for luxury trim. By the early 1960s, factory-prepared Biscaynes with the 409 were being campaigned on drag strips across the country. The 1966–72 Biscayne continued to offer V8 options up to the 427, remaining a practical performance platform even as the car itself became increasingly dated.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '235 I6, 283–427 V8 (varies by year)' },
+      { label: 'Horsepower', value: '135–425 hp' },
+      { label: 'Wheelbase', value: '119 in' },
+      { label: 'Transmission', value: 'Powerglide, TH350/400, 3/4-spd manual' },
+    ],
+    notableVersions: [
+      { name: '409 Biscayne (1961–65)', description: '409 V8 in the lightest available Chevrolet body — the original factory drag car.' },
+      { name: '427 Biscayne (1966–69)', description: '427 in the base trim — maximum performance, minimum weight and cost.' },
+    ],
+    buyingTips: [
+      { title: 'Minimal trim makes for easy restoration', detail: 'The lack of chrome and luxury trim simplifies restoration. Most parts interchange with Impala and Bel Air.' },
+      { title: 'Full-size floor rust is significant', detail: 'Inspect every inch of the large floor pans, trunk floor, and lower quarters — all common rust areas on full-size GM cars.' },
+      { title: 'Performance versions are undervalued', detail: 'A 409 or 427 Biscayne delivers similar performance to an Impala SS of the same spec at a lower collector price. Good value.' },
+    ],
+    priceRange: { project: '$5,000–$15,000', driver: '$15,000–$38,000', show: '$38,000–$90,000' },
+  },
+  {
+    make: 'Chevrolet',
+    model: 'Caprice',
+    years: '1965–1976',
+    tagline: "Chevrolet's top-of-the-line full-size — the Impala's more luxurious sibling.",
+    overview: "The Caprice debuted in 1965 as a luxury trim level on the Impala and became its own model in 1966. As Chevrolet's flagship full-size car, it offered plush interiors and a smooth ride while still accessing the full Chevrolet engine lineup including the 427 and 454. The 1966–70 Caprice with a big-block engine occupies a unique space: full-size luxury performance rarely matched by any other manufacturer.",
+    history: [
+      "General Motors introduced the Caprice as Chevrolet's answer to the personal luxury market dominated by Ford's Thunderbird and Buick's Riviera. From 1966 onward it occupied the top of the Chevrolet lineup. While its luxury positioning made it a family car for most buyers, the 427 and 454 V8 options transformed it into a boulevard bruiser. The 1971–76 Caprice grew larger still under federal safety mandates but remained the best-selling large car in America for much of the decade.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '250 I6, 307–454 V8' },
+      { label: 'Horsepower', value: '155–360 hp' },
+      { label: 'Wheelbase', value: '119 in (1965–70), 121.5 in (1971–76)' },
+      { label: 'Transmission', value: 'Powerglide, TH350/400, 3/4-spd manual' },
+    ],
+    notableVersions: [
+      { name: '427 Caprice (1966–69)', description: 'Full-size luxury with full-size big-block power. A rare combination today.' },
+      { name: '454 Caprice (1970–76)', description: 'The LS5 454 in the Caprice — torque over refinement, but both are present in abundance.' },
+    ],
+    buyingTips: [
+      { title: 'Rust is extensive on full-size cars', detail: 'Full-size GM cars have large floor pans and trunk areas — inspect every panel carefully, especially on convertibles and cars stored outdoors.' },
+      { title: 'Big-block cars are the collector choice', detail: 'Base six-cylinder and small-block Caprices have limited collector interest. Seek 427 or 454 cars for value appreciation potential.' },
+      { title: 'Parts interchange freely with Impala', detail: 'Virtually all mechanical and most body parts interchange with Impala, keeping parts costs reasonable.' },
+    ],
+    priceRange: { project: '$5,000–$14,000', driver: '$14,000–$35,000', show: '$35,000–$75,000' },
+  },
+  {
+    make: 'Chevrolet',
+    model: 'Chevy II',
+    years: '1966–1967',
+    tagline: "A compact body, a 327 V8, and nothing else — factory sleeper before anyone called it that.",
+    overview: "The 1966–67 Chevy II SS with the 327 V8 is one of the great factory sleepers of the muscle car era. Chevrolet stuffed its high-performance small-block into the compact Chevy II body with minimal fanfare, creating a lightweight, quick car that surprised a lot of bigger-engined competition at traffic lights and drag strips. The L79 327 option — 350 hp — is the one to find.",
+    history: [
+      "Chevrolet had offered the Chevy II since 1962 as an economy compact. The addition of V8 power in 1964 transformed it. By 1966, the SS package with the 327 in L30 (275 hp) or L79 (350 hp) form made it a legitimate performance machine. The L79 327 was the same engine used in the Corvette and Chevelle SS — in the lighter Chevy II, it produced blistering performance for the money. Only 1966–67 are the true high-performance years; the third-generation Nova (1968–74) replaced this body.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '327 V8 — L30 (275 hp) or L79 (350 hp)' },
+      { label: 'Transmission', value: '4-speed manual or Powerglide automatic' },
+      { label: 'Wheelbase', value: '110 in' },
+      { label: 'Weight', value: '~2,800 lbs' },
+    ],
+    notableVersions: [
+      { name: 'L79 327 SS (1966–67)', description: '350 hp Corvette-spec small-block in a ~2,800 lb body. One of the best power-to-weight ratios of the era.' },
+    ],
+    buyingTips: [
+      { title: 'L79 cars are frequently cloned', detail: 'The L79 option carries a premium. Verify with the partial VIN stamp on the block and the broadcast sheet.' },
+      { title: 'Compact body means less rust surface', detail: 'Smaller than a Chevelle but rust still concentrates at rockers, floor pans, and lower quarters.' },
+      { title: 'Parts share with Nova', detail: 'The 1966–67 Chevy II shares many components with the subsequent Nova line, improving parts availability.' },
+    ],
+    priceRange: { project: '$8,000–$20,000', driver: '$20,000–$48,000', show: '$48,000–$95,000' },
+  },
+
+  // === CHRYSLER (additions) ===
+  {
+    make: 'Chrysler',
+    model: 'Hurst 300',
+    years: '1970',
+    tagline: "One year, 485 cars — Hurst turned Chrysler's luxury flagship into a muscle car.",
+    overview: "The 1970 Hurst 300 was a limited-edition collaboration between Chrysler and Hurst Performance that grafted the muscle car formula onto Chrysler's full-size 300 luxury coupe. Only 485 were built, all in white with gold stripes and a Hurst dual-gate automatic shifter. Under the hood sat the 440 TNT V8 — 375 hp of torque-rich full-size performance. It remains one of the most unusual and underappreciated muscle cars of the era.",
+    history: [
+      "Hurst Performance had established a reputation for collaborating with manufacturers on limited-edition muscle cars — the Hurst/Olds and the Hurst Barracuda being earlier examples. The 1970 Chrysler 300H (H for Hurst) took the 300's letter-series heritage and added the muscle car recipe: performance engine, Hurst shifter, bold graphics, and a sunroof. All 485 cars were white with gold stripes and the dual-gate 'His and Hers' shifter that allowed either console-mode or column-mode operation.",
+    ],
+    specs: [
+      { label: 'Engine', value: '440 TNT V8, 375 hp' },
+      { label: 'Transmission', value: 'TorqueFlite automatic with Hurst dual-gate shifter' },
+      { label: 'Production', value: '485 units (all white/gold)' },
+      { label: 'Wheelbase', value: '124 in' },
+    ],
+    notableVersions: [
+      { name: '1970 Hurst 300H', description: 'The only year and only configuration — all 485 were identical in white with gold graphics and the Hurst dual-gate.' },
+    ],
+    buyingTips: [
+      { title: 'Only 485 were built — documentation is everything', detail: 'The VIN, broadcast sheet, and Chrysler build records are essential. Fakes and clones from base 300 coupes are known to exist.' },
+      { title: 'Full-size parts are readily available', detail: 'The 440 engine and TorqueFlite transmission are well-supported. Hurst-specific parts (shifter, striping) require specialty suppliers.' },
+      { title: 'Sunroof condition is critical', detail: 'The factory sunroof is a unique feature of the 300H. Inspect the headliner and surrounding structure for water damage carefully.' },
+    ],
+    priceRange: { project: '$18,000–$35,000', driver: '$35,000–$70,000', show: '$70,000–$120,000' },
+  },
+
+  // === FORD (additions) ===
+  {
+    make: 'Ford',
+    model: 'Thunderbolt',
+    years: '1964',
+    tagline: "Ford's factory drag car — a Fairlane with a 427 crammed in by hand.",
+    overview: "The Ford Thunderbolt was a factory drag racing weapon built in 1964 by Dearborn Steel Tubing under contract from Ford. Starting with a Fairlane two-door sedan, builders removed the standard engine bay structure and hand-fitted Ford's 427 High Riser V8 — an engine too large to fit without significant modifications. Only 100 were built, all in white or Rangoon Red, and they dominated NHRA Super/Stock drag racing in 1964.",
+    history: [
+      "Ford contracted Dearborn Steel Tubing to build the Thunderbolts using a specific formula: Fairlane 500 two-door body, 427 High Riser or Low Riser V8, fiberglass front fenders and hood (to save weight), Plexiglas side windows, and a stripped interior. The cars were delivered to dealers who then sold them to approved drag racers. On the strip, they ran the quarter mile in the 11-second range — devastating for a factory car. Only two colors were offered: Vintage Burgundy (a special red) and white.",
+    ],
+    specs: [
+      { label: 'Engine', value: '427 High Riser or Low Riser V8, 425 hp' },
+      { label: 'Transmission', value: '4-speed manual (Lincoln automatic on some)' },
+      { label: 'Production', value: '100 units' },
+      { label: 'Body modifications', value: 'Fiberglass front clip, Plexiglas windows, gutted interior' },
+      { label: '1/4 mile', value: 'Low 11s' },
+    ],
+    notableVersions: [
+      { name: 'High Riser 427', description: 'The top engine option — high-rise intake manifold for maximum top-end power.' },
+      { name: 'Low Riser 427', description: 'Slightly lower intake for better hood clearance; comparable power output.' },
+    ],
+    buyingTips: [
+      { title: 'Only 100 were built — authentication is paramount', detail: 'The Thunderbolt registry and Ford production records are essential. With values this high, thorough documentation is non-negotiable.' },
+      { title: 'Many parts were modified at the factory', detail: 'Original fiberglass hoods and fenders, Plexiglas windows, and stripped interiors must be verified as original, not later modifications.' },
+      { title: 'These are race cars, not street cars', detail: 'Original Thunderbolts were not equipped for comfortable street use. Most survivors show race history and significant wear.' },
+    ],
+    priceRange: { project: '$80,000–$150,000', driver: '$150,000–$280,000', show: '$280,000–$500,000+' },
+  },
+  {
+    make: 'Ford',
+    model: 'Maverick Grabber',
+    years: '1970–1977',
+    tagline: "Ford's budget pony car — a 302 V8 in a compact package at Pinto money.",
+    overview: "The Ford Maverick Grabber was the performance variant of Ford's economy compact, offering a 302 V8 with sporty graphics and a handling package at a price point below any other muscle car. While it was never a true performance machine by the standards of the era, the Grabber offered genuine V8 fun in an affordable package — and its low original price means it remains accessible to collectors today.",
+    history: [
+      "Ford introduced the Maverick in 1970 as a no-frills economy car priced at $1,995. The Grabber package immediately offered a sportier appearance with hood graphics, stripes, and bright colors. A 200 cubic inch straight-six was standard, but the optional 302 V8 transformed the lightweight Maverick into a capable performer. The Sprint option for 1972–73 added a 302 with dual exhausts, bucket seats, and sport wheel covers, representing the performance peak of the Maverick line.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '200 I6 (base); 250 I6; 302 V8' },
+      { label: 'Horsepower', value: '170–210 hp (302 V8)' },
+      { label: 'Wheelbase', value: '103 in' },
+      { label: 'Weight', value: '~2,800 lbs' },
+      { label: 'Transmission', value: '3-spd manual, FMX or C4 automatic' },
+    ],
+    notableVersions: [
+      { name: 'Grabber (1970–73)', description: 'Appearance package with hood graphics, Grabber colors, and optional 302 V8.' },
+      { name: 'Sprint (1972–73)', description: 'Performance package with 302 V8, dual exhausts, bucket seats, and sport trim.' },
+    ],
+    buyingTips: [
+      { title: 'Rust is the primary concern', detail: 'Rockers, lower quarters, and floor pans rust heavily on Mavericks. Budget for significant metal work on any project.' },
+      { title: '302 V8 is easy to work on', detail: 'The 302 Windsor engine has outstanding aftermarket support. Parts and expertise are widely available and affordable.' },
+      { title: 'Values are still accessible', detail: "Grabber Mavericks are among the most affordable V8 muscle-era cars on the market. Don't overpay — supply is reasonable." },
+    ],
+    priceRange: { project: '$4,000–$10,000', driver: '$10,000–$22,000', show: '$22,000–$45,000' },
+  },
+
+  // === MERCURY (additions) ===
+  {
+    make: 'Mercury',
+    model: 'Monterey',
+    years: '1959–1974',
+    tagline: "Mercury's full-size workhorse — available with the same big-blocks as the Galaxie.",
+    overview: "The Mercury Monterey was Ford Motor Company's full-size Mercury, sharing its platform with the Ford Galaxie and offering access to the same high-performance engine lineup. The S-55 option package in the early 1960s made it a genuine big-block performer, and the 427-equipped Montereys of 1963–66 are legitimate muscle cars hiding under a Mercury badge.",
+    history: [
+      "The Monterey served as Mercury's primary full-size car from 1952 onward. Its performance era peaked in the early 1960s when Ford made its 406 and 427 V8 engines available across the FoMoCo full-size lineup. The S-55 package (see separate entry) was offered on the Monterey body. By the mid-1960s, as Ford's performance focus shifted to the Mustang and mid-size cars, the Monterey settled into comfortable family car duty. The 429 engine remained available into the early 1970s.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '223 I6, 292–429 V8 (varies by year)' },
+      { label: 'Horsepower', value: '145–425 hp' },
+      { label: 'Wheelbase', value: '126 in (1959–60), 120 in (1961–68), 124 in (1969–74)' },
+      { label: 'Transmission', value: '3/4-spd manual, Multi-Drive automatic' },
+    ],
+    notableVersions: [
+      { name: 'S-55 (1962–64)', description: 'Sport Sedan package with bucket seats, console, and 406/427 engine options.' },
+      { name: '427 Monterey (1963–66)', description: 'Full-size Mercury with Ford\'s 427 — a drag strip competitor in a luxury wrapper.' },
+    ],
+    buyingTips: [
+      { title: 'Mercury full-size parts interchange with Ford', detail: 'Virtually all mechanical components and many body parts interchange with the Ford Galaxie, keeping restoration practical.' },
+      { title: 'Full-size rust is extensive', detail: 'Inspect floor pans, trunk floor, lower quarters, and convertible top mechanisms carefully on any example.' },
+      { title: 'Undervalued versus equivalent Galaxies', detail: 'A 427 Monterey performs identically to a 427 Galaxie at a lower collector premium. Good value for performance buyers.' },
+    ],
+    priceRange: { project: '$5,000–$14,000', driver: '$14,000–$35,000', show: '$35,000–$80,000' },
+  },
+  {
+    make: 'Mercury',
+    model: 'Comet',
+    years: '1960–1977',
+    tagline: "Mercury's compact that surprised everyone on the drag strip.",
+    overview: "The Mercury Comet began as a compact economy car but earned a performance reputation in the mid-1960s through its success in drag racing and the Cyclone GT performance variant. A factory A/FX drag racing program in 1964–65 put the Comet in the spotlight; the subsequent street performance Comets carried that credibility into the showroom. The Cyclone Spoiler II of 1969 is the aerodynamic NASCAR homologation version and the rarest Comet-family car.",
+    history: [
+      "Introduced for 1960 (as a delayed Falcon derivative), the Comet was a conventional compact. Ford's drag racing program transformed its image: factory Comets with 427 Thunderbolts ran A/FX at the drags in 1964–65, winning national events. The Cyclone GT of 1966–67 brought real street performance with the 390 and 427 big-block options. The 1969 Cyclone Spoiler and Spoiler II were built for NASCAR's superspeedways — the Spoiler II with its extended aerodynamic nose is one of the rarest Ford-family muscle cars.",
+    ],
+    specs: [
+      { label: 'Engine options (street)', value: '200–250 I6, 289–429 V8' },
+      { label: 'Engine options (Cyclone GT)', value: '390, 427, 428 CJ V8' },
+      { label: 'Wheelbase', value: '109.5 in (compact), 116 in (Cyclone)' },
+      { label: 'Transmission', value: '3/4-spd manual, C4/C6 automatic' },
+    ],
+    notableVersions: [
+      { name: 'Cyclone GT 427 (1966–67)', description: 'Big-block Mercury compact — underrated and underpriced compared to Mustang equivalents.' },
+      { name: 'Cyclone Spoiler II (1969)', description: 'NASCAR aero homologation car with extended nose. Approximately 519 produced; extremely rare.' },
+    ],
+    buyingTips: [
+      { title: 'Spoiler II authentication requires specialist knowledge', detail: 'The unique nose and rear trim of the Spoiler II are frequently faked on standard Cyclones. Verify with Mercury production records.' },
+      { title: 'Ford parts interchange extensively', detail: 'Cyclone-era cars share most mechanical components with Ford Torino and Fairlane. Parts support is reasonable.' },
+      { title: 'Compact Comets are affordable entry points', detail: 'A 289 or 302 Comet GT is an accessible and fun performance compact at prices well below Mustang equivalents.' },
+    ],
+    priceRange: { project: '$5,000–$14,000', driver: '$14,000–$35,000', show: '$35,000–$100,000+' },
+  },
+  {
+    make: 'Mercury',
+    model: 'Cougar Eliminator',
+    years: '1969–1970',
+    tagline: "The Cougar with racing intentions — Boss 302 and 428 Cobra Jet under a Mercury badge.",
+    overview: "The Mercury Cougar Eliminator was Mercury's answer to the Boss Mustang — a high-performance variant of the Cougar pony car with race-derived engine options, functional hood scoops, spoilers, and bold graphics. Available with the Boss 302, 428 Cobra Jet, and even the 429 Super Cobra Jet, the Eliminator was as fast as anything Ford was selling in 1969–70 and is significantly rarer than its Mustang equivalents.",
+    history: [
+      "Mercury created the Eliminator package to give the Cougar a direct performance counterpart to the Boss Mustang. The Eliminator added a functional front air dam, rear spoiler, sport mirrors, and a choice of high-output engines including the Boss 302 and 428 Cobra Jet. The 429 Super Cobra Jet option for 1970 produced 375 hp. Production was limited — fewer than 3,000 in both years combined — making it genuinely rare. The Cougar's slightly larger platform gave it better straight-line stability than the Mustang at the cost of some handling agility.",
+    ],
+    specs: [
+      { label: 'Engine options', value: 'Boss 302 (290 hp), 390 GT, 428 CJ (335 hp), 429 SCJ (375 hp)' },
+      { label: 'Transmission', value: '4-speed manual or C6 automatic' },
+      { label: 'Wheelbase', value: '111 in' },
+      { label: 'Production', value: '<3,000 total across 1969–70' },
+    ],
+    notableVersions: [
+      { name: '428 CJ Eliminator', description: '335 hp (underrated) Cobra Jet — the most capable Eliminator for street performance.' },
+      { name: 'Boss 302 Eliminator', description: 'Trans-Am-derived 290 hp small-block in the Cougar body — excellent handling balance.' },
+      { name: '429 SCJ Eliminator (1970)', description: '375 hp solid-lifter engine — the rarest and most powerful Eliminator.' },
+    ],
+    buyingTips: [
+      { title: 'Rarer than equivalent Mustangs', detail: 'Production was far lower than Boss Mustangs of the same era. Demand the Marti Report equivalent — Cougar production records from Ford archives.' },
+      { title: 'Eliminator package is frequently faked', detail: 'The Eliminator graphics and trim are reproduced. Verify engine stamps and trim codes from the door data plate.' },
+      { title: 'Slightly undervalued relative to Boss Mustangs', detail: 'Performance is equivalent but prices are lower due to name recognition. A smart buy for the performance-focused collector.' },
+    ],
+    priceRange: { project: '$18,000–$38,000', driver: '$38,000–$80,000', show: '$80,000–$180,000' },
+  },
+  {
+    make: 'Mercury',
+    model: 'Cyclone Spoiler',
+    years: '1969–1970',
+    tagline: "NASCAR's aerodynamic weapon — 519 built to homologate a race car.",
+    overview: "The Mercury Cyclone Spoiler and Spoiler II were built for one purpose: to homologate an aerodynamic nose for NASCAR superspeedway racing. The Spoiler II's extended front end and unique trim gave it a slippery coefficient of drag that translated directly to higher top speeds on tracks like Daytona and Talladega. Only 519 Spoiler IIs were produced — making them among the rarest factory Ford-family performance cars.",
+    history: [
+      "NASCAR's homologation rules required manufacturers to produce a minimum number of street-legal versions of any body modification used in competition. Mercury needed to homologate the Cyclone's extended aerodynamic nose for the 1969 season, so 519 Spoiler IIs were built for street sale. Two editions commemorated NASCAR drivers: the Dan Gurney Special (blue and white) and the Cale Yarborough Special (red and white). Both used the 351 Windsor as the standard engine, with the 428 CJ available as an option.",
+    ],
+    specs: [
+      { label: 'Standard engine', value: '351 Windsor V8, 290 hp' },
+      { label: 'Optional engine', value: '428 Cobra Jet, 335 hp' },
+      { label: 'Production', value: '~519 Spoiler II units' },
+      { label: 'Wheelbase', value: '116 in' },
+    ],
+    notableVersions: [
+      { name: 'Dan Gurney Special', description: 'Blue and white Spoiler II commemorating the Ford racing driver.' },
+      { name: 'Cale Yarborough Special', description: 'Red and white Spoiler II commemorating the NASCAR champion.' },
+      { name: '428 CJ Spoiler II', description: 'Cobra Jet-powered version — the performance choice for street use.' },
+    ],
+    buyingTips: [
+      { title: 'Authentication is critical — only 519 built', detail: 'The unique extended nose, VIN, and trim codes must all be verified. Standard Cyclone Spoilers (without the extended nose) are far more common.' },
+      { title: 'Body parts for the unique nose are scarce', detail: 'The extended front-end sheetmetal is unique to the Spoiler II and difficult to source. Buy only rust-free or fully restored examples.' },
+      { title: 'Ford Torino parts interchange', detail: 'Mechanical components and much of the interior interchange with Ford Torino and Fairlane, keeping maintenance practical.' },
+    ],
+    priceRange: { project: '$20,000–$45,000', driver: '$45,000–$100,000', show: '$100,000–$200,000+' },
+  },
+  {
+    make: 'Mercury',
+    model: 'Montego',
+    years: '1968–1976',
+    tagline: "Mercury's mid-size muscle — the Torino's better-looking twin.",
+    overview: "The Mercury Montego was the Mercury Division's mid-size car, sharing its platform with the Ford Torino but wearing unique Mercury styling. Available with the same engine lineup as the Torino — including the 428 Cobra Jet and 429 Super Cobra Jet — the Montego MX Brougham and Cyclone-trim variants delivered genuine performance. The 1972 Montego is particularly well-regarded for its clean styling.",
+    history: [
+      "Mercury introduced the Montego as a replacement for the Comet in the mid-size segment for 1968, built on the Ford Torino platform. The MX and MX Brougham trims offered luxury, while the Cyclone (see separate entry) provided the performance halo. The 428 CJ engine was available through 1971, making the Montego a legitimate muscle car despite its luxury orientation. The 1972–76 Montego adopted the large, formal roofline styling that was fashionable for the era and sacrificed performance credentials for comfort.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '250 I6, 302–429 V8' },
+      { label: 'Horsepower', value: '155–375 hp' },
+      { label: 'Wheelbase', value: '117 in' },
+      { label: 'Transmission', value: '3/4-spd manual, C4/C6 automatic' },
+    ],
+    notableVersions: [
+      { name: '428 CJ Montego (1968–71)', description: 'Cobra Jet power in the mid-size Mercury body — undervalued performance.' },
+      { name: 'Montego MX (1972)', description: 'The best-styled year of the second generation — clean fastback roofline before the formal styling took over.' },
+    ],
+    buyingTips: [
+      { title: 'Ford Torino parts interchange directly', detail: 'Almost all mechanical and many body components are shared with the Ford Torino. Parts support is solid.' },
+      { title: 'Undervalued versus equivalent Torinos', detail: 'A 428 CJ Montego delivers the same performance as a 428 CJ Torino at a lower price. Good value proposition.' },
+      { title: 'Rear quarter rust is common', detail: 'The SportsRoof-style rear quarters on 1968–71 cars rust at the lower corners above the bumper.' },
+    ],
+    priceRange: { project: '$4,000–$12,000', driver: '$12,000–$30,000', show: '$30,000–$65,000' },
+  },
+
+  // === OLDSMOBILE (additions) ===
+  {
+    make: 'Oldsmobile',
+    model: 'Jetstar I',
+    years: '1964–1965',
+    tagline: "Oldsmobile's personal luxury rocket — the 330 V8 in a full-size two-seater.",
+    overview: "The Jetstar I was Oldsmobile's personal luxury performance coupe, positioned to offer sporty two-seat-style seating and a performance-tuned 330 V8 in Olds' full-size body. Built for just two model years and never produced in large numbers, it sits at the intersection of personal luxury and performance in a way that was unusual for its era and makes it a genuine collectible rarity today.",
+    history: [
+      "Oldsmobile introduced the Jetstar I in 1964 to fill the personal luxury coupe space that the Buick Riviera was dominating. The Jetstar I used a bucket-seat interior with a center console and the 330 V8 tuned to 325 hp — a healthy output for the time. Sales were modest; the car competed against the Riviera and the Pontiac Grand Prix without the name recognition of either. Production ended after 1965 with relatively few units built, making survivors genuinely scarce.",
+    ],
+    specs: [
+      { label: 'Engine', value: '330 V8, 325 hp' },
+      { label: 'Transmission', value: 'Jetaway automatic or 4-speed manual' },
+      { label: 'Wheelbase', value: '123 in' },
+      { label: 'Body style', value: 'Two-door hardtop' },
+    ],
+    notableVersions: [
+      { name: '1964 Jetstar I', description: 'First year — the cleaner of the two styling iterations.' },
+    ],
+    buyingTips: [
+      { title: 'Very low production — parts are scarce', detail: 'Olds-specific trim and body parts for the Jetstar I are difficult to source. Buy the best-condition car you can find.' },
+      { title: 'Oldsmobile engines require specific sourcing', detail: 'Olds V8 engines use different bolt patterns than Chevy or Buick — ensure correct components are present.' },
+      { title: 'Undervalued as a collectible', detail: 'The Jetstar I is significantly cheaper than a Riviera of the same era despite similar luxury credentials and rarer production. A sleeper buy.' },
+    ],
+    priceRange: { project: '$5,000–$12,000', driver: '$12,000–$28,000', show: '$28,000–$55,000' },
+  },
+  {
+    make: 'Oldsmobile',
+    model: 'Starfire',
+    years: '1961–1966',
+    tagline: "Oldsmobile's luxury sports coupe — bucket seats and a Rocket V8 in a full-size body.",
+    overview: "The Oldsmobile Starfire was a personal luxury performance coupe occupying the top of Oldsmobile's full-size lineup. Named after Oldsmobile's 1953 show car, the production Starfire offered genuine performance through Olds' powerful Rocket V8 in a lavishly trimmed two-door body with bucket seats and a center console — a configuration rare in full-size American cars of the early 1960s.",
+    history: [
+      "The Starfire debuted in 1961 as a convertible and added a hardtop for 1962. Its standard equipment included a 394 V8 with 345 hp, a Hydra-Matic automatic, bucket seats, full instrumentation, and extensive chrome trim. By 1964 the engine had grown to 425 cubic inches. The Starfire competed directly with the Buick Riviera and Pontiac Grand Prix but never achieved their sales volumes. Oldsmobile discontinued it after 1966 as the Toronado — with its radical front-wheel drive — took the spotlight.",
+    ],
+    specs: [
+      { label: 'Engine (1961–63)', value: '394 V8, 345 hp' },
+      { label: 'Engine (1964–66)', value: '425 V8, 370 hp' },
+      { label: 'Transmission', value: 'Jetaway Hydra-Matic (standard)' },
+      { label: 'Wheelbase', value: '123 in' },
+    ],
+    notableVersions: [
+      { name: '1962–63 Hardtop', description: 'The most producted body style — clean pillarless hardtop with full Starfire trim.' },
+      { name: '1964–66 425 V8', description: 'Larger displacement brought stronger torque output.' },
+    ],
+    buyingTips: [
+      { title: 'Chrome restoration is expensive', detail: 'The Starfire is heavily chromed. A full chrome restoration can cost $5,000–$12,000. Budget accordingly.' },
+      { title: 'Oldsmobile V8 parts require specialist sourcing', detail: 'The 394 and 425 engines use Olds-specific components. A good Olds supplier or club membership is essential.' },
+      { title: 'Undervalued versus Buick Riviera', detail: 'The Starfire offers similar luxury and performance to a 1963–65 Riviera at lower prices. A genuine value for the personal luxury collector.' },
+    ],
+    priceRange: { project: '$6,000–$16,000', driver: '$16,000–$38,000', show: '$38,000–$80,000' },
+  },
+  {
+    make: 'Oldsmobile',
+    model: 'Cutlass Ram-Rod 350',
+    years: '1968',
+    tagline: "One year only — Oldsmobile's high-winding small-block sleeper.",
+    overview: "The 1968 Oldsmobile Cutlass 'Ram-Rod 350' was a one-year performance package centered on a high-revving 350 cubic inch V8 that produced 325 hp — more than most 400-inch engines of the era. Offered as an alternative to the 4-4-2's 400 V8, it provided genuine performance in a slightly lighter package at a lower price. Its one-year availability makes it a genuine collector curiosity.",
+    history: [
+      "Oldsmobile offered the Ram-Rod 350 as a performance option on the 1968 Cutlass S. The engine featured a high-compression ratio, performance camshaft, and a four-barrel carburetor producing 325 hp from 350 cubic inches — a remarkable specific output for a street engine of the period. It was positioned as a budget-performance alternative to the 4-4-2 and proved popular enough to sell in reasonable numbers. Oldsmobile did not continue the specific package for 1969, making the Ram-Rod 350 a true one-year-only model.",
+    ],
+    specs: [
+      { label: 'Engine', value: 'Olds 350 V8, 325 hp' },
+      { label: 'Transmission', value: '4-speed manual or Turbo Hydra-Matic' },
+      { label: 'Wheelbase', value: '112 in' },
+    ],
+    notableVersions: [
+      { name: '1968 Ram-Rod 350', description: 'The only year offered — 325 hp from 350 ci in the Cutlass S body.' },
+    ],
+    buyingTips: [
+      { title: 'Documentation is essential for identification', detail: 'The Ram-Rod 350 was a one-year option package. Verify via the trim tag and engine codes — the engine stamp is on the block.' },
+      { title: 'A-body parts are widely available', detail: 'The Cutlass S body shares parts with the 4-4-2 and Chevelle/GTO A-body cars. Restoration is practical.' },
+      { title: 'Undervalued as a collectible', detail: 'The Ram-Rod 350 is less well-known than the 4-4-2 but offers comparable performance and genuine one-year rarity.' },
+    ],
+    priceRange: { project: '$6,000–$15,000', driver: '$15,000–$32,000', show: '$32,000–$65,000' },
+  },
+  {
+    make: 'Oldsmobile',
+    model: 'Cutlass W-31',
+    years: '1969–1970',
+    tagline: "The 4-4-2's overlooked sibling — a high-revving 350 that outran its displacement.",
+    overview: "The Oldsmobile Cutlass W-31 was a factory performance package centered on a specially tuned 350 cubic inch V8 with performance heads, a hot camshaft, and a cold-air induction system. In a lighter Cutlass S body, the W-31 delivered quarter-mile times comparable to much larger-engined cars of the era. It was offered only in 1969 and 1970 and is one of the least-known genuine factory performance packages from the muscle car era.",
+    history: [
+      "Oldsmobile engineering developed the W-31 as a small-block high-performance option for buyers who wanted 4-4-2 performance without a 4-4-2's insurance rates. The 350 engine was fitted with W-30-style components: special cylinder heads, a performance camshaft, functional cold-air induction through twin underbumper scoops, and a high-flow exhaust. The result was 325 hp that felt stronger than the rating — insurance companies rated it lower than the 4-4-2's 400 V8, making it a clever way to get performance at lower ownership cost.",
+    ],
+    specs: [
+      { label: 'Engine', value: 'Olds 350 V8, 325 hp' },
+      { label: 'Induction', value: 'Functional cold-air via twin underbumper scoops' },
+      { label: 'Transmission', value: '4-speed manual or Turbo Hydra-Matic' },
+      { label: 'Wheelbase', value: '112 in' },
+    ],
+    notableVersions: [
+      { name: 'W-31 (1969)', description: 'First year — same performance package, cleaner styling.' },
+      { name: 'W-31 (1970)', description: 'Final year — slightly detuned from emissions but still highly capable.' },
+    ],
+    buyingTips: [
+      { title: 'Cold-air induction system must be intact', detail: 'The twin underbumper cold-air scoops are unique to the W-31. Verify both are present and functional — missing pieces are hard to find.' },
+      { title: 'Engine codes confirm authenticity', detail: 'The W-31 block has specific casting codes. A replacement engine eliminates the performance premium.' },
+      { title: 'Genuinely undervalued', detail: 'The W-31 is one of the least-known factory performance packages of the era. Prices remain well below equivalent 4-4-2 or GTO values.' },
+    ],
+    priceRange: { project: '$8,000–$18,000', driver: '$18,000–$40,000', show: '$40,000–$75,000' },
+  },
+  {
+    make: 'Oldsmobile',
+    model: 'Rallye 350',
+    years: '1970',
+    tagline: "Bright yellow, bold graphics, and a 350 V8 — affordable muscle, Olds style.",
+    overview: "The 1970 Oldsmobile Rallye 350 was a budget muscle car built on a simple premise: take the Cutlass body, add the 350 V8, paint it Sebring Yellow with bold contrasting graphics, and sell it below the 4-4-2's price point. The result was a striking, capable performance car that appealed to younger buyers who wanted V8 excitement without the premium of the full 4-4-2 package. It was offered for one year only.",
+    history: [
+      "The Rallye 350 was conceived as Oldsmobile's answer to the Plymouth Road Runner — a low-cost muscle car built around maximum impact at minimum price. The Sebring Yellow paint was the only color option, paired with black hood and deck lid graphics, a blacked-out grille, and Rallye stripes. The W-45 350 V8 produced 310 hp with a four-barrel carburetor. Optional Rallye suspension and W-27 aluminum differential cover completed the package. Though only offered for 1970, the Rallye 350 sold well enough to validate the concept.",
+    ],
+    specs: [
+      { label: 'Engine', value: 'Olds 350 W-45 V8, 310 hp' },
+      { label: 'Transmission', value: '3-speed manual (standard), 4-speed or Turbo Hydra-Matic (optional)' },
+      { label: 'Color', value: 'Sebring Yellow only' },
+      { label: 'Wheelbase', value: '112 in' },
+    ],
+    notableVersions: [
+      { name: '1970 Rallye 350', description: 'The only year produced — Sebring Yellow with bold graphics and W-45 350 V8.' },
+    ],
+    buyingTips: [
+      { title: 'One-year-only car — document everything', detail: 'The Rallye 350 was only built in 1970. Verify the trim codes and engine stamps. The Sebring Yellow paint and graphics package must be present.' },
+      { title: 'A-body parts are widely available', detail: 'Mechanical components interchange with the Cutlass/4-4-2/Chevelle platform. Restoration support is solid.' },
+      { title: 'Graphics reproduction quality varies', detail: 'Reproduction Rallye 350 graphics are available but quality varies significantly. Original-paint cars are worth a meaningful premium.' },
+    ],
+    priceRange: { project: '$8,000–$18,000', driver: '$18,000–$40,000', show: '$40,000–$80,000' },
+  },
+
+  // === PLYMOUTH (additions) ===
+  {
+    make: 'Plymouth',
+    model: 'Belvedere',
+    years: '1965–1970',
+    tagline: "Plymouth's B-body muscle foundation — where the 426 HEMI lived before the Road Runner.",
+    overview: "The Plymouth Belvedere was the B-body intermediate that served as the foundation for Plymouth's entire muscle car lineup. The Belvedere II and Satellite trims offered the full engine range including the legendary 426 HEMI, making them genuine high-performance machines that are often overlooked in favor of the later Road Runner. The 1965–66 Belvedere with the 426 Hemi is one of the most important muscle cars of the era.",
+    history: [
+      "Introduced in 1965 on Plymouth's B-body platform, the Belvedere replaced the 1964 intermediate lineup and immediately offered the street version of the 426 HEMI — which had debuted in NASCAR the year before. The Belvedere II and Satellite models with the 426 were factory racing machines barely disguised for street use. By 1967, the GTX debuted as the premium Plymouth performance model on the Belvedere platform. The Road Runner arrived in 1968 as a budget performance alternative, both on the same B-body.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '225 Slant Six, 273–440 V8, 426 HEMI' },
+      { label: 'Horsepower', value: '145–425 hp' },
+      { label: 'Wheelbase', value: '116 in' },
+      { label: 'Transmission', value: '4-speed manual or TorqueFlite automatic' },
+    ],
+    notableVersions: [
+      { name: '426 HEMI Belvedere (1965–66)', description: 'The first street HEMI Plymouth — essentially a race car with license plates. Extraordinarily rare and valuable.' },
+      { name: 'Satellite (1965–70)', description: 'The sport-trim Belvedere — bucket seats, console, and access to the full performance engine lineup.' },
+      { name: 'GTX (1967–71)', description: 'The premium Belvedere performance model — standard 440 with HEMI optional.' },
+    ],
+    buyingTips: [
+      { title: 'HEMI authentication is essential', detail: 'The broadcast sheet and fender tag are the primary documents. A numbers-matching HEMI is worth multiples of a replacement-engine car.' },
+      { title: 'B-body rust is well-understood', detail: 'Lower quarters, trunk floor, and floor pans are the primary rust areas. All are well-supported by reproduction parts.' },
+      { title: 'The 1965–66 cars are especially rare', detail: 'First-year HEMI street cars were produced in very small numbers. Verify any claimed 1965–66 HEMI car through Chrysler registry services.' },
+    ],
+    priceRange: { project: '$10,000–$28,000', driver: '$28,000–$70,000', show: '$70,000–$500,000+' },
+  },
+
+  // === PONTIAC (additions) ===
+  {
+    make: 'Pontiac',
+    model: 'GT-37',
+    years: '1970–1971',
+    tagline: "Budget Pontiac muscle — the GTO's little brother at a fraction of the price.",
+    overview: "The Pontiac GT-37 was a budget performance package on the Tempest/LeMans platform designed to undercut the GTO's price while delivering genuine V8 muscle car performance. With the 350 or 400 V8 in a stripped-down body with a Hurst shifter and performance suspension, the GT-37 offered more performance per dollar than any other Pontiac of the era. It is one of the least-known and most undervalued GM muscle cars.",
+    history: [
+      "Pontiac created the T-37 in 1970 as a value-oriented performance model on the LeMans body. The GT-37 was the sport-suspension, Hurst-shifted upgrade package on the T-37, positioned as an entry-level GTO alternative. The 350 HO was the standard engine; the 400 was optional and brought performance comparable to the base GTO at significantly lower cost. With the Judge commanding a premium and insurance costs climbing, the GT-37 appealed to buyers who wanted performance without the badge tax.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '350 HO (255 hp), 400 V8 (265 hp)' },
+      { label: 'Transmission', value: 'Hurst 3-speed manual (standard), 4-speed or TH350/400 (optional)' },
+      { label: 'Wheelbase', value: '112 in' },
+    ],
+    notableVersions: [
+      { name: '400 GT-37', description: 'The 400 V8 option brought GTO-level performance at LeMans pricing.' },
+    ],
+    buyingTips: [
+      { title: 'Extremely undervalued', detail: 'GT-37s are priced far below equivalent GTOs with similar powertrains. One of the best performance values in the A-body GM market.' },
+      { title: 'Verify the GT-37 package', detail: 'The GT-37 was a specific package on the T-37 body. Verify via the trim tag and broadcast sheet — plain T-37s and LeMans are more common.' },
+      { title: 'A-body parts interchange with GTO', detail: 'The GT-37 shares the A-body platform with the GTO, Chevelle, and 4-4-2. Parts availability is excellent.' },
+    ],
+    priceRange: { project: '$6,000–$15,000', driver: '$15,000–$35,000', show: '$35,000–$65,000' },
+  },
+  {
+    make: 'Pontiac',
+    model: 'Grand Am',
+    years: '1973–1975',
+    tagline: "Pontiac's performance-luxury hybrid — the last gasp of muscle car DNA in a personal luxury coupe.",
+    overview: "The Pontiac Grand Am arrived just as the muscle car era was ending, attempting to combine performance-oriented handling with personal luxury coupe styling. Its radial-tuned suspension, padded Endura nose, and available 455 V8 made it the sportiest full-size GM car of the mid-1970s. While never a muscle car by the classic definition, it carried Pontiac's performance heritage into an era when outright power was no longer possible.",
+    history: [
+      "Pontiac engineers designed the Grand Am as a 'European-style' performance luxury car — tighter handling than any other full-size American car, a padded Endura nose, and a uniquely supportive interior with contoured seats. The 400 V8 was standard; the 455 optional. Despite critical praise for its handling, sales were modest: buyers who wanted luxury chose the Grand Prix, and buyers who wanted performance had fewer options than before. The Grand Am was discontinued after 1975 and briefly revived in 1978.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '400 V8 (standard), 455 V8 (optional)' },
+      { label: 'Horsepower', value: '170–250 hp (emissions-restricted)' },
+      { label: 'Wheelbase', value: '112 in' },
+      { label: 'Suspension', value: 'Radial-tuned — unique among GM A-body cars' },
+    ],
+    notableVersions: [
+      { name: '455 Grand Am', description: 'The optional 455 brought the most power available in the mid-1970s Pontiac lineup.' },
+    ],
+    buyingTips: [
+      { title: 'Handling is the story, not straight-line power', detail: 'The Grand Am\'s appeal is its European-influenced suspension, not its (detuned) V8 power. Drive one before buying.' },
+      { title: 'Interior quality was high — condition matters', detail: 'The Grand Am\'s distinctive bucket seats and padded dash are unique. Damaged interiors are expensive to restore correctly.' },
+      { title: 'Currently undervalued', detail: "Grand Ams are consistently underpriced relative to their design significance and Pontiac's engineering investment. A smart buy before the market catches up." },
+    ],
+    priceRange: { project: '$5,000–$12,000', driver: '$12,000–$28,000', show: '$28,000–$55,000' },
   },
 ];

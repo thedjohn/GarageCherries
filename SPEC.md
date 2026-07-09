@@ -1,6 +1,6 @@
 # GarageCherries — Master Specification
 
-> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-08 (seller emailed on first buyer message — `POST /api/conversations` fires Resend on new conversation only; sold listing UI hardened on both account page and dealer dashboard — Edit button, expiry text, Mark Sold/Renew all hidden when is_sold; dealer inventory export adds seat_material + seating_type; WatchlistButton/Verified/Mark Sold tooltips removed; tooltip align/side props; shared emailBranding helper + all emails rebranded; rejection email log.flush fix; expiring-listings Vercel Cron; conversation list buyer_id fix; MessengerWidget sender_name server-side; Warn User feedback banner with Dismiss; reported message full-thread view with Warn/Suspend actions; E2E suite updated + events spec added; community event submission + approval workflow; sitemap expanded to all pages; Axiom logging expanded to all high-value API routes; events calendar + admin Events tab; dealer watcher messaging UI; BETA_MODE documented; promo campaign, homepage hero copy, GA4, Vercel redeploy, custom domain, promo expiry enforcement, pricing page advertiser section, advertiser public pages, sitemap expansion, SEO structured data, GSC + Bing verified; Sentry error tracking + Axiom structured logging added; sell form contact section removed — seller identity sourced from profiles table; sticky sidebar/AdSlot overlap fixed; persistent "Post a Listing" button added to My Listings; client-side image resize + gallery photo preloading; Ram added to MAKES + dropdowns alphabetized + shared TRANSMISSIONS constant; sold listings excluded from homepage/`/listings`/`fetchCars`; SessionGuard added for forced logout on deleted/invalid accounts — commit `f098067`).
+> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-08 (seller emailed on first buyer message — `POST /api/conversations` fires Resend on new conversation only; sold listing UI hardened on both account page and dealer dashboard — Edit button, expiry text, Mark Sold/Renew all hidden when is_sold; dealer inventory export adds seat_material + seating_type; WatchlistButton/Verified/Mark Sold tooltips removed; tooltip align/side props; shared emailBranding helper + all emails rebranded; rejection email log.flush fix; expiring-listings Vercel Cron; conversation list buyer_id fix; MessengerWidget sender_name server-side; Warn User feedback banner with Dismiss; reported message full-thread view with Warn/Suspend actions; E2E suite updated + events spec added; community event submission + approval workflow; sitemap expanded to all pages; Axiom logging expanded to all high-value API routes; events calendar + admin Events tab; dealer watcher messaging UI; BETA_MODE documented; promo campaign, homepage hero copy, GA4, Vercel redeploy, custom domain, promo expiry enforcement, pricing page advertiser section, advertiser public pages, sitemap expansion, SEO structured data, GSC + Bing verified; Sentry error tracking + Axiom structured logging added; sell form contact section removed — seller identity sourced from profiles table; sticky sidebar/AdSlot overlap fixed; persistent "Post a Listing" button added to My Listings; client-side image resize + gallery photo preloading; Ram added to MAKES + dropdowns alphabetized + shared TRANSMISSIONS constant; sold listings excluded from homepage/`/listings`/`fetchCars`; SessionGuard added for forced logout on deleted/invalid accounts — commit `f098067`; CAPTCHA + rate limiting (3/hr/IP) added to `/api/advertiser/signup`; Turnstile CAPTCHA added to `/account/signup` (client-side guard); unit test suite expanded to 294 tests across 19 files — emailBranding, encyclopedia, adminRole, verifyTurnstile, notifyAdmin, logger coverage added; SPEC.md security table updated for advertiser signup rate limit; encyclopedia expanded 54 → 77 models — 23 new entries across AMC/Buick/Chevrolet/Chrysler/Ford/Mercury/Oldsmobile/Plymouth/Pontiac; Dodge Dart GT added to notable versions).
 > Stack: Next.js 16.2.9 · React 19 · Supabase (Auth + Postgres + Storage) · Resend (email) · Cloudflare Turnstile (CAPTCHA) · NHTSA VIN API · Tailwind CSS 4 · Vitest + Playwright
 
 ---
@@ -789,8 +789,9 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 
 ### `POST /api/advertiser/signup`
 - **Auth**: none
-- **Input**: `{ email, password, businessName, contactName?, phone?, address?, city?, state?, zip?, category?, tier? }`
-- **Validation**: email, password, businessName required
+- **Rate limit**: 3/hr/IP; first block fires `notifyAdmin` alert
+- **Input**: `{ email, password, businessName, contactName?, phone?, address?, city?, state?, zip?, category?, tier?, cfToken }`
+- **Validation**: email, password, businessName required; Cloudflare Turnstile CAPTCHA verified server-side via `TURNSTILE_SECRET_KEY` (skipped if key not set)
 - **Side effects**: creates auth user + advertisers row (trial 14 days); on DB error, rolls back auth user
 - **Returns**: `{ ok: true, advertiserId }`
 
@@ -1234,6 +1235,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `email` | required |
 | `password` | required |
 | `businessName` | required |
+| `cfToken` | Cloudflare Turnstile token; verified server-side; returns 400 if invalid |
 
 ---
 
@@ -1304,7 +1306,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Google Analytics 4 | **Complete** | GA4 Measurement ID `G-B36QB0J7TX` added to `app/layout.tsx` via Next.js `Script` component (`strategy="afterInteractive"`). |
 | Pricing page — advertiser tier | **Complete** | `/pricing` now includes advertiser section (banner ads, sponsored listings, newsletter sponsorships) with 250th promo callout and Stripe coming-soon note. |
 | Advertiser public pages | **Complete (2026-07-06)** | `/advertisers` — directory grouped by category; `/advertisers/[slug]` — profile page with business info, description, phone/website, active ads. `slug`, `description`, `website` columns added via `supabase/migrations/20260706_advertiser_public_profile.sql`. Slug auto-generated from `business_name` on signup. |
-| Sitemap expansion | **Complete (2026-07-07)** | `app/sitemap.ts` covers: all static pages (incl. `/events`, `/dealer/apply`, `/advertiser/signup`, `/privacy`, `/terms`), listings (individual + make + make/model combos), dealer pages, encyclopedia index + make + model pages (54 models), advertiser directory + individual profiles, guide articles (6). Revalidates every hour. |
+| Sitemap expansion | **Complete (2026-07-07)** | `app/sitemap.ts` covers: all static pages (incl. `/events`, `/dealer/apply`, `/advertiser/signup`, `/privacy`, `/terms`), listings (individual + make + make/model combos), dealer pages, encyclopedia index + make + model pages (77 models), advertiser directory + individual profiles, guide articles (6). Revalidates every hour. |
 | SEO — structured data (JSON-LD) | **Complete (2026-07-06)** | Organization (homepage, about, contact), AutoDealer + BreadcrumbList (dealer pages), Vehicle + BreadcrumbList (listing detail, pre-existing), Article + BreadcrumbList (encyclopedia model pages), LocalBusiness + BreadcrumbList (advertiser detail pages). |
 | SEO — OG image | **Complete (2026-07-06)** | `app/opengraph-image.tsx` — dynamic Next.js ImageResponse (1200×630, edge runtime); dark/red brand card with logo, tagline, category pills, domain. Served at `/opengraph-image`; referenced in `og:image` and Twitter card. |
 | SEO — sell page metadata | **Complete (2026-07-06)** | `app/sell/layout.tsx` wraps the `use client` page to export title, description, canonical. |
@@ -1410,7 +1412,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | `GET /api/dealer/export` | ✓ + dealer check | ✓ (format param) | ✗ | ✓ dealer.id = user.id | ✗ |
 | `GET /api/dealer/watcher-counts` | ✓ | ✓ (carIds split) | ✗ | ✓ (carIds filtered to seller_id = user.id) | ✗ |
 | `POST /api/dealer/message-watchers` | ✓ | ✓ (carId + message) | ✗ | ✓ car.seller_id = dealer.id | ✗ |
-| `POST /api/advertiser/signup` | None | ✓ | ✗ | N/A | N/A |
+| `POST /api/advertiser/signup` | None | ✓ (CAPTCHA + required fields) | ✓ 3/hr | N/A | N/A |
 | `GET /api/advertiser/ads` | ✓ + advertiser check | N/A | ✗ | ✓ advertiser.user_id = user.id | ✗ |
 | `POST /api/advertiser/ads` | ✓ + advertiser check + trial check | ✓ | ✗ | ✓ eq advertiser_id on update | ✗ |
 | `DELETE /api/advertiser/ads` | ✓ + advertiser check | ✓ (id required) | ✗ | ✓ eq advertiser_id | ✗ |

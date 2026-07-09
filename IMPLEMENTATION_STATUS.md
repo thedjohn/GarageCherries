@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-08 — tooltip alignment/side props; email branding standardized; expiring-listings cron; conversation list buyer/seller label fix; MessengerWidget sender_name fixed (server-side auth); admin Warn User feedback banner; Mark as Sold UI fix; WatchlistButton tooltip removed; seller new-message email; dealer inventory export seat_material/seating_type; sold listing UI cleanup (dealer dashboard + account page); Cloudflare Turnstile CAPTCHA added to advertiser signup + account signup; rate limiting (3/hr/IP) added to advertiser signup*
+*Last updated: 2026-07-08 — tooltip alignment/side props; email branding standardized; expiring-listings cron; conversation list buyer/seller label fix; MessengerWidget sender_name fixed (server-side auth); admin Warn User feedback banner; Mark as Sold UI fix; WatchlistButton tooltip removed; seller new-message email; dealer inventory export seat_material/seating_type; sold listing UI cleanup (dealer dashboard + account page); Cloudflare Turnstile CAPTCHA added to advertiser signup + account signup; rate limiting (3/hr/IP) added to advertiser signup; unit test suite expanded to 294 tests across 19 files; encyclopedia expanded from 54 → 77 models (added 23 missing muscle cars across AMC, Buick, Chevrolet, Chrysler, Ford, Mercury, Oldsmobile, Plymouth, Pontiac); Dodge Dart GT added to notable versions*
 
 **Note on data:** this site is pre-launch. As of 2026-07-07 the production database has a handful of manually-created test listings (private-seller and dealer) and no real buyers or advertisers yet. Empty tables (`advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -107,13 +107,13 @@
 - [x] `AdSlot` wired into the listing detail page sidebar
 
 ### Content & Marketing Pages
-- [x] Classic Car Encyclopedia (`/cars`) — 54 models across 12 makes
+- [x] Classic Car Encyclopedia (`/cars`) — 77 models across 12 makes (expanded 2026-07-08: added 23 muscle car models missing vs. musclecarsillustrated.com reference; Dodge Dart GT added to notable versions)
 - [x] Buyer's Guides index (`/guides`) — 6 articles
 - [x] Market Report (`/reports`) — live avg price by make, most-viewed listings, market commentary; active listing count correctly filters `approved + not expired + not sold` (fixed 2026-07-07)
 - [x] Pricing page (`/pricing`) — dealer plan tiers, private-seller pricing, advertiser tier grid ($79/$139/$219/$349/mo matching `/advertiser/signup`), 250th promo banner, Stripe coming-soon note (advertiser tiers added 2026-07-07)
 - [x] About (`/about`), Contact (`/contact`), Privacy Policy (`/privacy`), Terms of Service (`/terms`); `/about` "The Platform" stats now live from DB — active listings + event counts (fixed 2026-07-07)
 - [x] Cookie consent banner and Turnstile CAPTCHA on public forms
-- [x] XML Sitemap (`/sitemap.xml`) — dynamic, covers homepage, listings (individual + make + make/model), dealers, encyclopedia (54 models), advertisers, guides (6 articles), `/events`, individual event detail pages (`/events/[slug]`), `/sold`, `/dealer/apply`, `/advertiser/signup`, `/privacy`, `/terms`; revalidates every hour
+- [x] XML Sitemap (`/sitemap.xml`) — dynamic, covers homepage, listings (individual + make + make/model), dealers, encyclopedia (77 models), advertisers, guides (6 articles), `/events`, individual event detail pages (`/events/[slug]`), `/sold`, `/dealer/apply`, `/advertiser/signup`, `/privacy`, `/terms`; revalidates every hour
 - [x] Robots.txt (`/robots.txt`) — allows all crawlers, blocks `/admin`, `/api/`, `/dealer/dashboard`
 - [x] **Advertiser public directory** (`/advertisers`) — grouped by category (detail, insurance, finance, transport, storage, restoration, inspection); active + valid trial only
 - [x] **Advertiser public profile pages** (`/advertisers/[slug]`) — business info, description, phone/website CTAs, active ads as "Current Offers"; `slug`, `description`, `website` columns added via migration
@@ -184,6 +184,10 @@
 
 ### Testing
 
+- [x] **Unit test suite (Vitest)** — `tests/unit/` directory; 19 test files, **294 tests**, all passing (added/expanded 2026-07-08):
+  - Pure lib functions fully covered: `lib/emailBranding.ts`, `lib/encyclopedia.ts`, `lib/admin.ts` (hasRole + mocked Supabase for getAdminRole/requireAdmin), `lib/verifyTurnstile.ts` (fetch mock), `lib/notifyAdmin.ts` (Resend mock), `lib/logger.ts` (Axiom + Sentry mocks)
+  - Business logic: `lib/rateLimit.ts`, `lib/data.ts`, `lib/matchAlerts.ts` (via scoreMatch), listing limits, slug generation, auth guards, validation
+  - Vitest config: `tests/unit/**/*.test.ts`, coverage provider `v8`, includes `lib/**` and `app/api/**`
 - [x] **E2E test suite (Playwright)** — `tests/e2e/` directory; 6 spec files; all tests pass against production URL (`garagecherries.com`):
   - `auth-pages.spec.ts` — buyer login/signup, dealer login, forgot-password, `/sell` auth gate
   - `ui-flows.spec.ts` — homepage, listings browse, legal pages, sell page gate, dealer apply, 404
