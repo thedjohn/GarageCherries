@@ -20,11 +20,12 @@ export function getEntry(makeSlug: string, modelSlug: string): EncyclopediaEntry
 }
 
 export function getEntriesByMake(makeSlug: string): EncyclopediaEntry[] {
-  return ENCYCLOPEDIA.filter(e => slug(e.make) === makeSlug);
+  return ENCYCLOPEDIA.filter(e => slug(e.make) === makeSlug)
+    .sort((a, b) => a.model.localeCompare(b.model));
 }
 
 export function getMakeSlugs(): string[] {
-  return [...new Set(ENCYCLOPEDIA.map(e => slug(e.make)))];
+  return [...new Set(ENCYCLOPEDIA.map(e => slug(e.make)))].sort();
 }
 
 export function getMakeLabel(makeSlug: string): string | null {
