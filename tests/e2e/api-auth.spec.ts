@@ -5,15 +5,13 @@
  * without a valid session. This file acts as a permanent regression guard —
  * if a new endpoint is added without auth, this test suite catches it.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect, type APIRequestContext } from '@playwright/test';
 
 const UUID = '00000000-0000-0000-0000-000000000000';
 
 // Helper — verify a route is auth-protected
 async function expectAuth(
-  request: Parameters<typeof test>[1] extends (args: infer A) => unknown
-    ? A extends { request: infer R } ? R : never
-    : never,
+  request: APIRequestContext,
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   path: string,
   body?: Record<string, unknown>,

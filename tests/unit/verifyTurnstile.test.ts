@@ -84,7 +84,7 @@ describe('verifyTurnstile', () => {
     it('returns false when response.json throws', async () => {
       vi.spyOn(global, 'fetch').mockResolvedValue({
         json: async () => { throw new Error('bad json'); },
-      } as Response);
+      } as unknown as Response);
       const result = await verifyTurnstile('token');
       expect(result).toBe(false);
     });
