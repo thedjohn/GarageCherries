@@ -121,6 +121,7 @@
 
 ### Buyer Accounts
 - [x] Signup, Login, forgot/reset password flow
+- [x] **Sign in with Google** on `/account/login` and `/account/signup` (`components/GoogleSignInButton.tsx`) — buyer-only, scoped deliberately (dealers have no self-serve signup, so there's no friction to remove there); first-time Google sign-ins get a `profiles` row seeded from their Google name; `?promo=`/`?return=` params carried through to the post-auth redirect. Extends the existing `/auth/callback` route (shared with dealer password-reset links) rather than a separate route. **Currently in Google's "Testing" publish status** — only the allowlisted test user (`garagecherriesdealers@gmail.com`) can actually sign in until the app is published to production in Google Cloud Console (added 2026-07-09)
 - [x] Profile management (`/account/profile`)
 - [x] Watchlist — save listings, view at `/account?tab=watchlist` and standalone `/account/watchlist`
 - [x] Car Alerts — saved searches with automatic email notification on new matches, up to 10 per user, edit/pause/delete
