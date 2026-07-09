@@ -1,5 +1,5 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-07-08 — tooltip alignment/side props; email branding standardized; expiring-listings cron; conversation list buyer/seller label fix; MessengerWidget sender_name fixed (server-side auth); admin Warn User feedback banner; Mark as Sold UI fix; WatchlistButton tooltip removed; seller new-message email; dealer inventory export seat_material/seating_type; sold listing UI cleanup (dealer dashboard + account page); Cloudflare Turnstile CAPTCHA added to advertiser signup + account signup; rate limiting (3/hr/IP) added to advertiser signup; unit test suite expanded to 294 tests across 19 files; encyclopedia expanded from 54 → 77 models (added 23 missing muscle cars across AMC, Buick, Chevrolet, Chrysler, Ford, Mercury, Oldsmobile, Plymouth, Pontiac); Dodge Dart GT added to notable versions*
+*Last updated: 2026-07-09 — drag-and-drop image reorder fixed (stale index bug in sell form + missing drag handlers in edit form); edit listing form expanded to all vehicle fields (year, make, model, body style, condition, fuel type, engine, transmission, exterior color, interior color, seat material, city, state, price, mileage, description, photos); seller name/phone/email removed from edit form (managed in Settings); /api/listings/my SELECT updated to include fuel_type, interior_color, seat_material; encyclopedia expanded from 54 → 77 models; unit test suite 294 tests across 19 files*
 
 **Note on data:** this site is pre-launch. As of 2026-07-07 the production database has a handful of manually-created test listings (private-seller and dealer) and no real buyers or advertisers yet. Empty tables (`advertisers`, `ads`, etc.) reflect that, not a broken signup funnel or feature regression — don't read zero rows as a product problem without checking this note first.
 
@@ -85,7 +85,7 @@
 - [x] **Require at least one photo** — both `/sell` form and dealer Add/Edit Vehicle modal block submission if no images are attached (added 2026-07-06)
 - [x] CAPTCHA (Turnstile), rate limiting (5/hr/IP), 10-active-listing cap for non-dealers
 - [x] Admin review queue — pending listings approved/rejected at `/admin`; seller emailed either way
-- [x] Seller can edit/delete/resubmit their own listings at `/account?tab=listings`
+- [x] Seller can edit/delete/resubmit their own listings at `/account?tab=listings` — full vehicle fields editable (year, make, model, body style, condition, fuel type, engine, transmission, exterior/interior color, seat material, city, state, price, mileage, description, photos); drag-to-reorder photos
 - [x] **Condition validation** on submit — rejects invalid `condition` values server-side (added 2026-07-03)
 - [x] **Email format validation** on `/api/inquire` and `/api/offers` (added 2026-07-03)
 

@@ -64,7 +64,10 @@
 - [ ] Submit a complete listing — confirmation screen shown, CAPTCHA required
 - [ ] New listing shows as **pending** under `/account?tab=listings` (not publicly visible yet)
 - [ ] After admin approval (see §5), listing appears in public search
-- [ ] Edit your own approved listing (price/description/images) — status reverts to pending for re-review
+- [ ] Edit your own approved listing — all vehicle fields editable (year, make, model, body style, condition, fuel type, engine, transmission, color, interior color, seat material, city, state, price, mileage, description, photos); status reverts to pending for re-review
+- [ ] Drag photos to reorder in the edit form — numbers update live; new order saves correctly
+- [ ] Add new photos in edit form — upload completes before reorder, reorder after upload both work
+- [ ] Reopen edit form after saving — all changed values appear pre-populated (not reverted to old values)
 - [ ] Delete your own listing — removed from account and public listings
 - [ ] Listing shows a days-remaining countdown as it approaches 30-day expiry (amber warning at ≤7 days) — check on an older test listing if available
 - [ ] "Renew listing" button extends the expiry date

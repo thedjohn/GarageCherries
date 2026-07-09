@@ -117,7 +117,7 @@ support < moderator < admin < superadmin
 8. Admin reviews listing at `/admin` (Listings tab).
 9. On approval: `listed_at` set to now, seller emailed "Your listing is live", alert matching triggered via `POST /api/alerts/match`.
 10. On rejection: `rejection_reason` stored, seller emailed "Your listing needs attention" with reason.
-11. Seller can edit listing at `/account?tab=listings`: editable fields are price, mileage, description, seller contact info, images. Editing an approved listing sends it back to pending. Editing a rejected listing requires `resubmission_note`.
+11. Seller can edit listing at `/account?tab=listings`: editable fields are year, make, model, body style, condition, fuel type, engine, transmission, exterior color, interior color, seat material, city, state, price, mileage, description, and photos (drag-to-reorder). Seller name/phone/email are not editable per-listing — managed in Settings. Editing an approved listing sends it back to pending. Editing a rejected listing requires `resubmission_note`.
 
 ### 2.3 Dealer Applying and Managing Inventory
 
@@ -573,12 +573,22 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 
 | Field | Required | Type | Notes |
 |---|---|---|---|
+| `year` | no | number | |
+| `make` | no | string | |
+| `model` | no | string | Auto-regenerates `title` when year/make/model change |
+| `body_style` | no | string | |
+| `condition` | no | string | |
+| `fuel_type` | no | string \| null | |
+| `engine` | no | string \| null | |
+| `transmission` | no | string | |
+| `color` | no | string \| null | Exterior color |
+| `interior_color` | no | string \| null | |
+| `seat_material` | no | string \| null | |
+| `city` | no | string | Stored as `location` |
+| `state` | no | string | |
 | `price` | no | number | |
 | `mileage` | no | number \| null | Null if blank |
 | `description` | no | string | |
-| `seller_name` | no | string | |
-| `seller_phone` | no | string | |
-| `seller_email` | no | string | |
 | `images` | no | string[] | |
 | `resubmission_note` | conditional | string | Required if listing status is 'rejected' |
 
