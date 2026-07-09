@@ -244,6 +244,7 @@
 | **Featured Listing Toggle** | Toggle in dashboard, `featured` DB field, badge + homepage placement | No payment gate — free for all dealers currently |
 | **Import/Sync Inventory** | "Import JSON" and "Sync Now" buttons visible in dealer dashboard; sample file at `docs/dealer-import-sample.json` | Both are visually disabled (greyed out, `disabled` attr, "Coming soon" tooltip) — no API route or click handler yet |
 | ~~**Email preferences UI**~~ | ✅ Complete (2026-07-07) — Email Preferences card in `/account` Settings tab; three toggles; persisted to `user_metadata` | — |
+| **Facebook Page auto-posting** | GarageCherries Facebook Page created and linked to the Business Portfolio; posting code built (`lib/facebook/postToPage.ts`) and hooked into dealer listing creation, admin event creation, and listing/event approval flows (added 2026-07-09) | Inert — no-ops until `FACEBOOK_PAGE_ID`/`FACEBOOK_PAGE_ACCESS_TOKEN` env vars are set. Blocked on Meta Business Verification for GARAGE CHERRIES LLC (submitted 2026-07-09, ~2 business day review) — the Pages API use case isn't selectable in the Meta app until verification clears |
 
 ---
 
