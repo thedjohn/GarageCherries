@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'CAPTCHA verification failed. Please try again.' }, { status: 400 });
       }
     } catch {
-      return NextResponse.json({ error: 'CAPTCHA verification error. Please try again.' }, { status: 500 });
+      return NextResponse.json({ error: 'CAPTCHA verification error. Please try again.' }, { status: 400 });
     }
   }
 
