@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { NextRequest } from 'next/server';
 
 // ── Supabase mocks ────────────────────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ import { NextResponse } from 'next/server';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function makeRequest(body: Record<string, unknown>) {
-  return { json: async () => body } as Request;
+  return { json: async () => body } as unknown as NextRequest;
 }
 
 function makeParams(id: string) {
