@@ -43,7 +43,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const body = await req.json();
   const {
-    price, mileage, description, seller_name, seller_phone, seller_email, images, resubmission_note,
+    price, mileage, description, images, resubmission_note,
     year, make, model, body_style, condition, fuel_type, engine, transmission, color, interior_color, seat_material, city, state,
   } = body;
 
@@ -52,9 +52,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (price !== undefined) update.price = Number(price) || 0;
   if (mileage !== undefined) update.mileage = mileage !== '' && mileage != null ? Number(mileage) : null;
   if (description !== undefined) update.description = description;
-  if (seller_name !== undefined) update.seller_name = seller_name;
-  if (seller_phone !== undefined) update.seller_phone = seller_phone;
-  if (seller_email !== undefined) update.seller_email = seller_email;
   if (images !== undefined) update.images = images;
   if (year !== undefined) update.year = Number(year);
   if (make !== undefined) update.make = make;

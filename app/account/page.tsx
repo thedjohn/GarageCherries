@@ -152,7 +152,7 @@ function AccountPage() {
   const [myListings, setMyListings] = useState<MyListing[]>([]);
   const [myListingsLoading, setMyListingsLoading] = useState(false);
   const [editingListing, setEditingListing] = useState<MyListing | null>(null);
-  const [editForm, setEditForm] = useState({ year: '', make: '', model: '', body_style: '', condition: '', fuel_type: '', engine: '', transmission: '', color: '', interior_color: '', seat_material: '', city: '', state: '', price: '', mileage: '', description: '', seller_name: '', seller_phone: '', seller_email: '', resubmission_note: '' });
+  const [editForm, setEditForm] = useState({ year: '', make: '', model: '', body_style: '', condition: '', fuel_type: '', engine: '', transmission: '', color: '', interior_color: '', seat_material: '', city: '', state: '', price: '', mileage: '', description: '', resubmission_note: '' });
   const [editImages, setEditImages] = useState<{ preview: string; publicUrl: string | null; uploadState: 'done' | 'uploading' | 'error'; file?: File; progress: number }[]>([]);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
@@ -343,9 +343,6 @@ function AccountPage() {
       price: String(l.price),
       mileage: l.mileage != null ? String(l.mileage) : '',
       description: l.description,
-      seller_name: l.seller_name,
-      seller_phone: l.seller_phone,
-      seller_email: l.seller_email,
       resubmission_note: '',
     });
     setEditImages(l.images.map(url => ({ preview: url, publicUrl: url, uploadState: 'done' as const, progress: 100 })));
@@ -434,8 +431,7 @@ function AccountPage() {
           color: editForm.color || null, interior_color: editForm.interior_color || null,
           seat_material: editForm.seat_material || null, location: editForm.city, state: editForm.state,
           price: Number(editForm.price), mileage: editForm.mileage ? Number(editForm.mileage) : null,
-          description: editForm.description, seller_name: editForm.seller_name,
-          seller_phone: editForm.seller_phone, seller_email: editForm.seller_email,
+          description: editForm.description,
           images,
           status: l.status === 'rejected' || l.status === 'approved' ? 'pending' : l.status,
           resubmission_note: editForm.resubmission_note, rejection_reason: null,
@@ -1175,24 +1171,6 @@ function AccountPage() {
                           <input ref={editFileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleEditImageAdd} />
                         </label>
                       )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Your Name *</label>
-                      <input type="text" value={editForm.seller_name} onChange={e => setEditForm(f => ({ ...f, seller_name: e.target.value }))}
-                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Phone *</label>
-                      <input type="tel" value={editForm.seller_phone} onChange={e => setEditForm(f => ({ ...f, seller_phone: e.target.value }))}
-                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Email *</label>
-                      <input type="email" value={editForm.seller_email} onChange={e => setEditForm(f => ({ ...f, seller_email: e.target.value }))}
-                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
                     </div>
                   </div>
 
