@@ -58,7 +58,10 @@ export async function GET(request: NextRequest) {
 
   if (!eligible.length) return NextResponse.json({ ad: null });
 
-  // Pick a random eligible advertiser weighted toward those with fewer impressions
+  // Uniform random pick among eligible advertisers -- NOT weighted by impressions.
+  // Fairness across advertisers isn't implemented; only the ad-selection step
+  // below (within a single advertiser's own ads) is impression-weighted.
+  // See IMPLEMENTATION_STATUS.md backlog if this needs to become real fairness.
   const pick = eligible[Math.floor(Math.random() * eligible.length)];
 
   // Get their active ad
