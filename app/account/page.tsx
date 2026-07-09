@@ -15,8 +15,8 @@ type Tab = 'watchlist' | 'messages' | 'alerts' | 'listings' | 'settings';
 interface MyListing {
   id: string; slug: string; title: string; year: number; make: string; model: string;
   price: number; mileage: number | null; condition: string; body_style: string;
-  transmission: string; engine: string | null; color: string | null;
-  interior_color: string | null; seat_material: string | null;
+  transmission: string; engine: string | null; fuel_type: string | null;
+  color: string | null; interior_color: string | null; seat_material: string | null;
   location: string; state: string; images: string[]; description: string;
   seller_name: string; seller_phone: string; seller_email: string;
   status: string; is_sold: boolean; rejection_reason: string | null; resubmission_note: string | null;
@@ -332,7 +332,7 @@ function AccountPage() {
       model: l.model,
       body_style: l.body_style ?? '',
       condition: l.condition ?? '',
-      fuel_type: '',
+      fuel_type: l.fuel_type ?? '',
       engine: l.engine ?? '',
       transmission: l.transmission ?? '',
       color: l.color ?? '',
@@ -427,7 +427,7 @@ function AccountPage() {
           year: Number(editForm.year), make: editForm.make, model: editForm.model,
           title: `${editForm.year} ${editForm.make} ${editForm.model}`,
           body_style: editForm.body_style, condition: editForm.condition,
-          engine: editForm.engine || null, transmission: editForm.transmission,
+          fuel_type: editForm.fuel_type || null, engine: editForm.engine || null, transmission: editForm.transmission,
           color: editForm.color || null, interior_color: editForm.interior_color || null,
           seat_material: editForm.seat_material || null, location: editForm.city, state: editForm.state,
           price: Number(editForm.price), mileage: editForm.mileage ? Number(editForm.mileage) : null,

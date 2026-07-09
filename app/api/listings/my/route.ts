@@ -9,7 +9,7 @@ export async function GET() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('listings')
-    .select('id,slug,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,location,state,images,description,seller_name,seller_phone,seller_email,status,is_sold,rejection_reason,resubmission_note,resubmission_count,created_at,featured,expires_at')
+    .select('id,slug,title,year,make,model,price,mileage,condition,body_style,transmission,engine,fuel_type,color,interior_color,seat_material,location,state,images,description,seller_name,seller_phone,seller_email,status,is_sold,rejection_reason,resubmission_note,resubmission_count,created_at,featured,expires_at')
     .eq('seller_id', user.id)
     .order('created_at', { ascending: false });
 
