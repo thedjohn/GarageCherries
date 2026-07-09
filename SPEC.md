@@ -1300,7 +1300,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Price history + drop notifications | **Complete** | Inserted on price drop; immediate + weekly batch emails |
 | Mark as sold | **Complete** | Watcher notification email |
 | Account profile + password change | **Complete** | `profiles` table; Supabase Auth for password |
-| Admin panel | **Complete** | Full CRUD on listings, users, team, applications, reported messages |
+| Admin panel | **Complete** | Full CRUD on listings, users, team, applications, reported messages; Users tab has color-coded left border + type icon per primary role (dealer=blue/🏢, advertiser=purple/📢, seller=green/🧑, buyer=gray/👤, suspended=red override) |
 | Image cleanup (orphan removal) | **Complete** | Superadmin-triggered, 24h grace period |
 | Weekly email digest | **Complete** | Bearer-auth endpoint; uses watchlist users as subscriber list |
 | Listing renewal reminder email | **Complete** | `POST /api/email/expiring-listings`; sends 3 days before `expires_at`; idempotent via `renewal_reminder_sent_at`; triggerable from `/admin/email` |

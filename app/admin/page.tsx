@@ -1357,13 +1357,23 @@ export default function AdminPage() {
           )}
 
           {!usersLoading && (() => {
-            const roleBadgeStyle: Record<string, string> = {
-              dealer:     'bg-blue-100 text-blue-700',
-              advertiser: 'bg-purple-100 text-purple-700',
-              seller:     'bg-green-100 text-green-700',
-              buyer:      'bg-zinc-100 text-zinc-600',
-              new:        'bg-yellow-100 text-yellow-700',
-              inactive:   'bg-zinc-100 text-zinc-400',
+            // Primary type: first match in priority order
+            const primaryType = (u: SiteUser) => {
+              if (u.roles.includes('dealer'))     return 'dealer';
+              if (u.roles.includes('advertiser')) return 'advertiser';
+              if (u.roles.includes('seller'))     return 'seller';
+              return 'buyer';
+            };
+            const typeConfig: Record<string, { icon: string; border: string; badge: string; label: string }> = {
+              dealer:     { icon: '🏢', border: 'border-l-blue-400',   badge: 'bg-blue-100 text-blue-700',   label: 'Dealer' },
+              advertiser: { icon: '📢', border: 'border-l-purple-400', badge: 'bg-purple-100 text-purple-700', label: 'Advertiser' },
+              seller:     { icon: '🧑', border: 'border-l-green-400',  badge: 'bg-green-100 text-green-700',  label: 'Seller' },
+              buyer:      { icon: '👤', border: 'border-l-zinc-300',   badge: 'bg-zinc-100 text-zinc-600',    label: 'Buyer' },
+            };
+            const secondaryBadge: Record<string, string> = {
+              buyer:    'bg-zinc-100 text-zinc-400',
+              new:      'bg-yellow-100 text-yellow-600',
+              inactive: 'bg-zinc-100 text-zinc-400',
             };
             const q = userSearch.toLowerCase();
             const filtered = users.filter(u => {
@@ -1382,14 +1392,23 @@ export default function AdminPage() {
             return (
               <div className="space-y-3">
                 <p className="text-xs text-zinc-400 mb-3">{filtered.length} user{filtered.length !== 1 ? 's' : ''}</p>
-                {filtered.map(u => (
-                  <div key={u.id} className={`bg-white rounded-2xl border shadow-sm p-5 ${u.suspended ? 'border-red-200' : 'border-zinc-100'}`}>
+                {filtered.map(u => {
+                  const pt = primaryType(u);
+                  const cfg = typeConfig[pt];
+                  return (
+                  <div key={u.id} className={`bg-white rounded-2xl border-l-4 border border-zinc-100 shadow-sm p-5 ${u.suspended ? 'border-l-red-400 border-red-200' : cfg.border}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="text-base leading-none">{cfg.icon}</span>
                           <p className="font-bold text-zinc-900">{u.name || '(no name)'}</p>
-                          {u.roles.map(r => (
-                            <span key={r} className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${roleBadgeStyle[r] ?? 'bg-zinc-100 text-zinc-500'}`}>
+                          {/* Primary type badge — prominent */}
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${cfg.badge}`}>
+                            {cfg.label}
+                          </span>
+                          {/* Secondary roles — dimmer */}
+                          {u.roles.filter(r => r !== pt && r !== 'buyer' || (r === 'buyer' && pt !== 'buyer')).map(r => (
+                            <span key={r} className={`text-[10px] font-medium px-2 py-0.5 rounded-full uppercase tracking-wide ${secondaryBadge[r] ?? 'bg-zinc-100 text-zinc-400'}`}>
                               {r}
                             </span>
                           ))}
@@ -1454,7 +1473,8 @@ export default function AdminPage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                );
+                })}
               </div>
             );
           })()}
