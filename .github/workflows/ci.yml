@@ -25,3 +25,4 @@ jobs:
 
       - name: Unit tests
         run: npm test
+test
