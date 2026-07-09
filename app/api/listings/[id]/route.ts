@@ -44,7 +44,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json();
   const {
     price, mileage, description, seller_name, seller_phone, seller_email, images, resubmission_note,
-    year, make, model, body_style, condition, fuel_type, engine, transmission, color, city, state,
+    year, make, model, body_style, condition, fuel_type, engine, transmission, color, interior_color, seat_material, city, state,
   } = body;
 
   // Build update — only allowed fields
@@ -65,6 +65,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (engine !== undefined) update.engine = engine || null;
   if (transmission !== undefined) update.transmission = transmission;
   if (color !== undefined) update.color = color || null;
+  if (interior_color !== undefined) update.interior_color = interior_color || null;
+  if (seat_material !== undefined) update.seat_material = seat_material || null;
   if (city !== undefined) update.location = city;
   if (state !== undefined) update.state = state;
   if (make !== undefined || model !== undefined || year !== undefined) {

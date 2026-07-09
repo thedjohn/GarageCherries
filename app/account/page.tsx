@@ -16,6 +16,7 @@ interface MyListing {
   id: string; slug: string; title: string; year: number; make: string; model: string;
   price: number; mileage: number | null; condition: string; body_style: string;
   transmission: string; engine: string | null; color: string | null;
+  interior_color: string | null; seat_material: string | null;
   location: string; state: string; images: string[]; description: string;
   seller_name: string; seller_phone: string; seller_email: string;
   status: string; is_sold: boolean; rejection_reason: string | null; resubmission_note: string | null;
@@ -151,7 +152,7 @@ function AccountPage() {
   const [myListings, setMyListings] = useState<MyListing[]>([]);
   const [myListingsLoading, setMyListingsLoading] = useState(false);
   const [editingListing, setEditingListing] = useState<MyListing | null>(null);
-  const [editForm, setEditForm] = useState({ year: '', make: '', model: '', body_style: '', condition: '', fuel_type: '', engine: '', transmission: '', color: '', city: '', state: '', price: '', mileage: '', description: '', seller_name: '', seller_phone: '', seller_email: '', resubmission_note: '' });
+  const [editForm, setEditForm] = useState({ year: '', make: '', model: '', body_style: '', condition: '', fuel_type: '', engine: '', transmission: '', color: '', interior_color: '', seat_material: '', city: '', state: '', price: '', mileage: '', description: '', seller_name: '', seller_phone: '', seller_email: '', resubmission_note: '' });
   const [editImages, setEditImages] = useState<{ preview: string; publicUrl: string | null; uploadState: 'done' | 'uploading' | 'error'; file?: File; progress: number }[]>([]);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
@@ -335,6 +336,8 @@ function AccountPage() {
       engine: l.engine ?? '',
       transmission: l.transmission ?? '',
       color: l.color ?? '',
+      interior_color: l.interior_color ?? '',
+      seat_material: l.seat_material ?? '',
       city: l.location ?? '',
       state: l.state ?? '',
       price: String(l.price),
@@ -428,7 +431,8 @@ function AccountPage() {
           title: `${editForm.year} ${editForm.make} ${editForm.model}`,
           body_style: editForm.body_style, condition: editForm.condition,
           engine: editForm.engine || null, transmission: editForm.transmission,
-          color: editForm.color || null, location: editForm.city, state: editForm.state,
+          color: editForm.color || null, interior_color: editForm.interior_color || null,
+          seat_material: editForm.seat_material || null, location: editForm.city, state: editForm.state,
           price: Number(editForm.price), mileage: editForm.mileage ? Number(editForm.mileage) : null,
           description: editForm.description, seller_name: editForm.seller_name,
           seller_phone: editForm.seller_phone, seller_email: editForm.seller_email,
@@ -1076,6 +1080,24 @@ function AccountPage() {
                       <input type="text" value={editForm.color} onChange={e => setEditForm(f => ({ ...f, color: e.target.value }))}
                         placeholder="Rally Green"
                         className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Interior Color</label>
+                      <input type="text" value={editForm.interior_color} onChange={e => setEditForm(f => ({ ...f, interior_color: e.target.value }))}
+                        placeholder="Black"
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Seat Material</label>
+                      <select value={editForm.seat_material} onChange={e => setEditForm(f => ({ ...f, seat_material: e.target.value }))}
+                        className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-white">
+                        <option value="">Select…</option>
+                        <option>Leather</option>
+                        <option>Vinyl</option>
+                        <option>Cloth</option>
+                        <option>Suede</option>
+                        <option>Other</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Asking Price *</label>

@@ -101,8 +101,9 @@ export async function POST(req: NextRequest) {
   const model = String(formData.get('model'));
   const slug = `${year}-${make.toLowerCase().replace(/\s+/g, '-')}-${model.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
 
+  const newListingId = crypto.randomUUID();
   const { error } = await admin.rpc('insert_listing_with_limit', {
-    p_id: crypto.randomUUID(),
+    p_id: newListingId,
     p_slug: slug,
     p_title: `${year} ${make} ${model}`,
     p_year: year,
@@ -142,6 +143,16 @@ export async function POST(req: NextRequest) {
     log.error('Listing insert failed', new Error(error.message), { sellerId: sellerId ?? undefined, make, model, year, ip });
     await log.flush();
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Set optional fields not covered by the RPC
+  const interiorColor = formData.get('interiorColor') as string | null;
+  const seatMaterial = formData.get('seatMaterial') as string | null;
+  if (interiorColor || seatMaterial) {
+    await admin.from('listings').update({
+      ...(interiorColor ? { interior_color: interiorColor } : {}),
+      ...(seatMaterial ? { seat_material: seatMaterial } : {}),
+    }).eq('id', newListingId);
   }
 
   log.info('Listing submitted', { sellerId: sellerId ?? undefined, sellerEmail, make, model, year, imageCount: validImageUrls.length, ip });

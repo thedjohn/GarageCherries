@@ -281,6 +281,21 @@ export default function SellForm() {
               <input name="color" type="text" placeholder="Rally Green" className={inputCls} />
             </div>
             <div>
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Interior Color</label>
+              <input name="interiorColor" type="text" placeholder="Black" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Seat Material</label>
+              <select name="seatMaterial" className={inputCls}>
+                <option value="">Select…</option>
+                <option>Leather</option>
+                <option>Vinyl</option>
+                <option>Cloth</option>
+                <option>Suede</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Asking Price *</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
