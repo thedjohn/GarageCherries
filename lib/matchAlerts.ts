@@ -5,7 +5,7 @@ import { formatPrice, toSegment } from '@/lib/data';
 
 const BASE_URL = 'https://www.garagecherries.com';
 
-function scoreMatch(car: Car, s: any): number {
+export function scoreMatch(car: Car, s: any): number {
   // Hard criteria — if set, must match exactly
   if (s.make && s.make !== 'All Makes' && car.make.toLowerCase() !== s.make.toLowerCase()) return 0;
   if (s.model && !car.model.toLowerCase().includes(s.model.toLowerCase().trim())) return 0;
@@ -46,13 +46,13 @@ function scoreMatch(car: Car, s: any): number {
   return matched / possible;
 }
 
-function alertName(s: any): string {
+export function alertName(s: any): string {
   if (s.name) return s.name;
   const parts = [s.make, s.model].filter(Boolean);
   return parts.length ? parts.join(' ') + ' Alert' : 'Car Alert';
 }
 
-function matchBadges(car: Car, s: any): string {
+export function matchBadges(car: Car, s: any): string {
   const checks: string[] = [];
   if (s.make) checks.push(`✓ Make: ${car.make}`);
   if (s.model) checks.push(`✓ Model: ${car.model}`);

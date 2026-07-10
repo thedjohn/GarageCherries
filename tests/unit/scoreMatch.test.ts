@@ -1,47 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Car } from '@/lib/types';
-
-// scoreMatch is not exported — replicate it here so it can be unit-tested
-// independently of Supabase/Resend imports in matchAlerts.ts
-function scoreMatch(car: Car, s: Record<string, any>): number {
-  if (s.make && s.make !== 'All Makes' && car.make.toLowerCase() !== s.make.toLowerCase()) return 0;
-  if (s.model && !car.model.toLowerCase().includes(s.model.toLowerCase().trim())) return 0;
-
-  let possible = 0;
-  let matched = 0;
-
-  if (s.year_min || s.year_max) {
-    possible += 2;
-    if ((!s.year_min || car.year >= s.year_min) && (!s.year_max || car.year <= s.year_max)) matched += 2;
-  }
-  if (s.price_max) {
-    possible += 2;
-    if (car.price <= s.price_max) matched += 2;
-  }
-  if (s.mileage_max) {
-    possible += 1;
-    if (car.mileage != null && car.mileage <= s.mileage_max) matched += 1;
-  }
-  if (s.condition?.length) {
-    possible += 1;
-    if (s.condition.includes(car.condition)) matched += 1;
-  }
-  if (s.body_style) {
-    possible += 1;
-    if (car.bodyStyle === s.body_style) matched += 1;
-  }
-  if (s.transmission) {
-    possible += 1;
-    if (car.transmission === s.transmission) matched += 1;
-  }
-  if (s.state) {
-    possible += 1;
-    if (car.state === s.state) matched += 1;
-  }
-
-  if (possible === 0) return 1;
-  return matched / possible;
-}
+import { scoreMatch } from '@/lib/matchAlerts';
 
 const baseCar: Car = {
   id: 'c1', slug: '1969-dodge-charger-rt', title: '1969 Dodge Charger R/T',

@@ -1,188 +1,167 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Car } from '@/lib/types';
 
-// scoreMatch and alertName are not exported — test them indirectly via the
-// scoring logic by re-implementing just enough to verify the business rules.
-// The real exports are matchAndNotifyAlerts (requires Supabase) and buildEmail
-// (private). We test the pure scoring contract by extracting it here.
+const { mockFrom, mockGetUserById, mockSend } = vi.hoisted(() => ({
+  mockFrom:        vi.fn(),
+  mockGetUserById: vi.fn(),
+  mockSend:        vi.fn().mockResolvedValue({ id: 'email-1' }),
+}));
 
-function scoreMatch(car: Car, s: Record<string, any>): number {
-  if (s.make && s.make !== 'All Makes' && car.make.toLowerCase() !== s.make.toLowerCase()) return 0;
-  if (s.model && !car.model.toLowerCase().includes(s.model.toLowerCase().trim())) return 0;
+vi.mock('@/lib/supabase/server', () => ({
+  createAdminClient: vi.fn(() => ({ from: mockFrom, auth: { admin: { getUserById: mockGetUserById } } })),
+}));
+vi.mock('resend', () => ({ Resend: vi.fn(function (this: any) { return { emails: { send: mockSend } }; }) }));
 
-  let possible = 0;
-  let matched = 0;
+// scoreMatch itself is thoroughly covered in tests/unit/scoreMatch.test.ts —
+// this file covers alertName, matchBadges, and the matchAndNotifyAlerts
+// orchestrator (DB lookups, cooldown, dedup, opt-out, and email send).
+import { matchAndNotifyAlerts, alertName, matchBadges } from '@/lib/matchAlerts';
 
-  if (s.year_min || s.year_max) {
-    possible += 2;
-    if ((!s.year_min || car.year >= s.year_min) && (!s.year_max || car.year <= s.year_max)) matched += 2;
-  }
-  if (s.price_max) {
-    possible += 2;
-    if (car.price <= s.price_max) matched += 2;
-  }
-  if (s.mileage_max) {
-    possible += 1;
-    if (car.mileage != null && car.mileage <= s.mileage_max) matched += 1;
-  }
-  if (s.condition?.length) {
-    possible += 1;
-    if (s.condition.includes(car.condition)) matched += 1;
-  }
-  if (s.body_style) {
-    possible += 1;
-    if (car.bodyStyle === s.body_style) matched += 1;
-  }
-  if (s.transmission) {
-    possible += 1;
-    if (car.transmission === s.transmission) matched += 1;
-  }
-  if (s.state) {
-    possible += 1;
-    if (car.state === s.state) matched += 1;
-  }
-
-  if (possible === 0) return 1;
-  return matched / possible;
-}
-
-const baseCar: Car = {
-  id: 'test-1',
-  slug: '1969-dodge-charger',
-  title: '1969 Dodge Charger R/T',
-  year: 1969,
-  make: 'Dodge',
-  model: 'Charger',
-  price: 112000,
-  mileage: 31450,
-  location: 'Charlotte',
-  state: 'NC',
-  condition: 'Excellent',
-  bodyStyle: 'Hardtop',
-  transmission: 'Automatic',
-  engine: '440 Magnum V8',
-  color: 'Plum Crazy Purple',
-  images: [],
-  description: 'Numbers-matching Charger R/T',
-  sellerId: 'u1',
-  sellerName: 'Mopar Mikes',
-  sellerPhone: '(704) 555-0211',
-  featured: true,
-  listedAt: '2026-07-03',
+const car: Car = {
+  id: 'c1', slug: '1969-dodge-charger-rt', title: '1969 Dodge Charger R/T',
+  year: 1969, make: 'Dodge', model: 'Charger',
+  price: 112000, mileage: 31450,
+  location: 'Charlotte', state: 'NC',
+  condition: 'Excellent', bodyStyle: 'Hardtop',
+  transmission: 'Automatic', engine: '440 Magnum V8',
+  color: 'Plum Crazy Purple', images: ['https://x.com/a.jpg'],
+  description: 'Broadcast sheet documented 1969 Charger R/T.',
+  sellerId: 'u3', sellerName: "Mopar Mike's", sellerPhone: '(704) 555-0211',
+  featured: true, listedAt: '2025-05-08',
 };
 
-describe('scoreMatch — hard criteria (make/model)', () => {
-  it('returns 0 when make does not match', () => {
-    expect(scoreMatch(baseCar, { make: 'Ford' })).toBe(0);
+function matchingSearch(overrides: Record<string, unknown> = {}) {
+  return { id: 's1', user_id: 'buyer-1', active: true, paused: false, make: 'Dodge', ...overrides };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockGetUserById.mockResolvedValue({ data: { user: { email: 'buyer@x.com', user_metadata: {} } } });
+});
+
+describe('alertName', () => {
+  it('uses the custom name when set', () => {
+    expect(alertName({ name: 'My Dream Car' })).toBe('My Dream Car');
   });
 
-  it('returns 1 when make matches and no soft criteria set', () => {
-    expect(scoreMatch(baseCar, { make: 'Dodge' })).toBe(1);
+  it('builds a name from make + model when no custom name is set', () => {
+    expect(alertName({ make: 'Dodge', model: 'Charger' })).toBe('Dodge Charger Alert');
   });
 
-  it('is case-insensitive on make', () => {
-    expect(scoreMatch(baseCar, { make: 'dodge' })).toBe(1);
-  });
-
-  it('returns 0 when model does not match', () => {
-    expect(scoreMatch(baseCar, { make: 'Dodge', model: 'Challenger' })).toBe(0);
-  });
-
-  it('matches partial model name', () => {
-    expect(scoreMatch(baseCar, { make: 'Dodge', model: 'Char' })).toBe(1);
-  });
-
-  it('returns 1 when no criteria set at all (empty alert)', () => {
-    expect(scoreMatch(baseCar, {})).toBe(1);
+  it('falls back to a generic name with no make/model/name', () => {
+    expect(alertName({})).toBe('Car Alert');
   });
 });
 
-describe('scoreMatch — soft criteria scoring', () => {
-  it('returns 1 when year is within range', () => {
-    expect(scoreMatch(baseCar, { year_min: 1965, year_max: 1972 })).toBe(1);
+describe('matchBadges', () => {
+  it('includes only the criteria that were actually set and matched', () => {
+    const badges = matchBadges(car, { make: 'Dodge', price_max: 120000, mileage_max: 10000 });
+    expect(badges).toContain('Make: Dodge');
+    expect(badges).toContain('Price:');
+    expect(badges).not.toContain('Mileage:'); // 31450 > 10000, so not matched
   });
 
-  it('returns 0 when year is outside range', () => {
-    expect(scoreMatch(baseCar, { year_min: 1970, year_max: 1975 })).toBe(0);
-  });
-
-  it('returns 1 when price is within max', () => {
-    expect(scoreMatch(baseCar, { price_max: 120000 })).toBe(1);
-  });
-
-  it('returns 0 when price exceeds max', () => {
-    expect(scoreMatch(baseCar, { price_max: 100000 })).toBe(0);
-  });
-
-  it('returns 1 when mileage is within max', () => {
-    expect(scoreMatch(baseCar, { mileage_max: 40000 })).toBe(1);
-  });
-
-  it('returns 0 when mileage exceeds max', () => {
-    expect(scoreMatch(baseCar, { mileage_max: 20000 })).toBe(0);
-  });
-
-  it('returns 1 when condition matches', () => {
-    expect(scoreMatch(baseCar, { condition: ['Excellent'] })).toBe(1);
-  });
-
-  it('returns 0 when condition does not match', () => {
-    expect(scoreMatch(baseCar, { condition: ['Good', 'Fair'] })).toBe(0);
-  });
-
-  it('returns 1 when body style matches', () => {
-    expect(scoreMatch(baseCar, { body_style: 'Hardtop' })).toBe(1);
-  });
-
-  it('returns 0 when body style does not match', () => {
-    expect(scoreMatch(baseCar, { body_style: 'Convertible' })).toBe(0);
-  });
-
-  it('returns 1 when transmission matches', () => {
-    expect(scoreMatch(baseCar, { transmission: 'Automatic' })).toBe(1);
-  });
-
-  it('returns 0 when transmission does not match', () => {
-    expect(scoreMatch(baseCar, { transmission: 'Manual' })).toBe(0);
-  });
-
-  it('returns 1 when state matches', () => {
-    expect(scoreMatch(baseCar, { state: 'NC' })).toBe(1);
-  });
-
-  it('returns 0 when state does not match', () => {
-    expect(scoreMatch(baseCar, { state: 'TX' })).toBe(0);
+  it('returns an empty string when no criteria are set', () => {
+    expect(matchBadges(car, {})).toBe('');
   });
 });
 
-describe('scoreMatch — partial match scoring', () => {
-  it('returns 0.5 when half of soft criteria match', () => {
-    // price_max passes (2pts), mileage_max fails (1pt) — 2/3 ≈ 0.667
-    const score = scoreMatch(baseCar, { price_max: 120000, mileage_max: 20000 });
-    expect(score).toBeCloseTo(2 / 3);
+describe('matchAndNotifyAlerts', () => {
+  it('does nothing when there are no active/unpaused saved searches', async () => {
+    mockFrom.mockReturnValue({ select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [] }) }) }) });
+    await matchAndNotifyAlerts(car);
+    expect(mockSend).not.toHaveBeenCalled();
   });
 
-  it('scores at least 0.7 on a near-perfect alert', () => {
-    const score = scoreMatch(baseCar, {
-      make: 'Dodge',
-      year_min: 1965,
-      year_max: 1972,
-      price_max: 120000,
-      condition: ['Excellent'],
-      transmission: 'Automatic',
-      state: 'NC',
-    });
-    expect(score).toBeGreaterThanOrEqual(0.7);
+  it('skips a search that scores below the 0.7 threshold', async () => {
+    mockFrom.mockReturnValue({ select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [matchingSearch({ make: 'Ford' })] }) }) }) });
+    await matchAndNotifyAlerts(car);
+    expect(mockSend).not.toHaveBeenCalled();
   });
 
-  it('scores below 0.7 when most soft criteria miss', () => {
-    const score = scoreMatch(baseCar, {
-      make: 'Dodge',
-      year_min: 1970,
-      year_max: 1975,
-      price_max: 50000,
-      condition: ['Good'],
+  it('skips a search still within its 24h email cooldown', async () => {
+    mockFrom.mockReturnValue({ select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [matchingSearch({ last_emailed_at: new Date().toISOString() })] }) }) }) });
+    await matchAndNotifyAlerts(car);
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it('sends when the cooldown has expired', async () => {
+    const twoDaysAgo = new Date(Date.now() - 48 * 3600_000).toISOString();
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'saved_searches') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [matchingSearch({ last_emailed_at: twoDaysAgo })] }) }) }), update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({}) }) };
+      if (table === 'alert_matches') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null }) }) }) }), insert: vi.fn().mockResolvedValue({}) };
+      return {};
     });
-    expect(score).toBeLessThan(0.7);
+    await matchAndNotifyAlerts(car);
+    expect(mockSend).toHaveBeenCalledOnce();
+  });
+
+  it('skips a search that already has a match recorded for this car', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'saved_searches') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [matchingSearch()] }) }) }) };
+      if (table === 'alert_matches') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'existing-match' } }) }) }) }) };
+      return {};
+    });
+    await matchAndNotifyAlerts(car);
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it('skips when the user has no resolvable email', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'saved_searches') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [matchingSearch()] }) }) }) };
+      if (table === 'alert_matches') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null }) }) }) }) };
+      return {};
+    });
+    mockGetUserById.mockResolvedValue({ data: { user: null } });
+    await matchAndNotifyAlerts(car);
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it('skips a user who opted out of alert emails', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'saved_searches') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [matchingSearch()] }) }) }) };
+      if (table === 'alert_matches') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null }) }) }) }) };
+      return {};
+    });
+    mockGetUserById.mockResolvedValue({ data: { user: { email: 'buyer@x.com', user_metadata: { alerts_opt_out: true } } } });
+    await matchAndNotifyAlerts(car);
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it('records the match, updates the search cooldown, and emails on a fresh qualifying match', async () => {
+    const insert = vi.fn().mockResolvedValue({});
+    const update = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({}) });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'saved_searches') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [matchingSearch()] }) }) }), update };
+      if (table === 'alert_matches') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null }) }) }) }), insert };
+      return {};
+    });
+    await matchAndNotifyAlerts(car);
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ saved_search_id: 's1', car_id: 'c1' }));
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ last_emailed_at: expect.any(String) }));
+    expect(mockSend).toHaveBeenCalledOnce();
+    expect(mockSend.mock.calls[0][0].to).toBe('buyer@x.com');
+  });
+
+  it('continues past a per-search failure without throwing', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'saved_searches') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [matchingSearch(), matchingSearch({ id: 's2' })] }) }) }), update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({}) }) };
+      if (table === 'alert_matches') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null }) }) }) }), insert: vi.fn().mockResolvedValue({}) };
+      return {};
+    });
+    mockGetUserById.mockRejectedValueOnce(new Error('lookup failed')).mockResolvedValue({ data: { user: { email: 'buyer@x.com', user_metadata: {} } } });
+    await expect(matchAndNotifyAlerts(car)).resolves.not.toThrow();
+    expect(mockSend).toHaveBeenCalledOnce();
+  });
+
+  it('handles a car with no images (buildEmail image branch)', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'saved_searches') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [matchingSearch()] }) }) }), update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({}) }) };
+      if (table === 'alert_matches') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null }) }) }) }), insert: vi.fn().mockResolvedValue({}) };
+      return {};
+    });
+    await matchAndNotifyAlerts({ ...car, images: [] });
+    expect(mockSend).toHaveBeenCalledOnce();
+    expect(mockSend.mock.calls[0][0].html).not.toContain('<img src="" ');
   });
 });

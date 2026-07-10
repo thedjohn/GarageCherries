@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { rateLimit } from '@/lib/rateLimit';
+import type { NextRequest } from 'next/server';
+import { rateLimit, getClientIP } from '@/lib/rateLimit';
+
+function makeRequestWithHeaders(headers: Record<string, string>) {
+  return { headers: new Headers(headers) } as unknown as NextRequest;
+}
 
 // Each test gets a fresh module so the in-memory store is reset
 beforeEach(() => {
@@ -62,5 +67,22 @@ describe('rateLimit', () => {
     const results = Array.from({ length: max + 1 }, () => rateLimit(key, max, 60_000));
     expect(results.slice(0, max).every(r => r.allowed)).toBe(true);
     expect(results[max].allowed).toBe(false);
+  });
+});
+
+describe('getClientIP', () => {
+  it('prefers the first entry of x-forwarded-for', () => {
+    const req = makeRequestWithHeaders({ 'x-forwarded-for': ' 9.9.9.9 , 1.1.1.1' });
+    expect(getClientIP(req)).toBe('9.9.9.9');
+  });
+
+  it('falls back to x-real-ip when x-forwarded-for is absent', () => {
+    const req = makeRequestWithHeaders({ 'x-real-ip': '8.8.8.8' });
+    expect(getClientIP(req)).toBe('8.8.8.8');
+  });
+
+  it('falls back to "unknown" when neither header is present', () => {
+    const req = makeRequestWithHeaders({});
+    expect(getClientIP(req)).toBe('unknown');
   });
 });

@@ -14,6 +14,12 @@ export default defineConfig({
       reporter: ['text', 'html'],
       include: ['lib/**', 'app/api/**'],
       exclude: ['lib/supabase/**'],
+      thresholds: {
+        statements: 97,
+        branches: 88,
+        functions: 94,
+        lines: 97,
+      },
     },
   },
 });

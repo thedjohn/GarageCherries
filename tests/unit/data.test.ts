@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatPrice, formatMileage, formatPhone, toSegment, searchCars } from '@/lib/data';
+import { formatPrice, formatMileage, formatPhone, toSegment, searchCars, makeFromSegment, modelFromSegment, getDealer, getDealerById, getCar } from '@/lib/data';
 
 describe('formatPrice', () => {
   it('formats whole dollar amounts with no decimals', () => {
@@ -149,5 +149,59 @@ describe('searchCars', () => {
     expect(results.every(c =>
       c.make === 'Chevrolet' && c.condition === 'Excellent' && c.transmission === 'Manual'
     )).toBe(true);
+  });
+});
+
+describe('makeFromSegment', () => {
+  it('finds a make by its URL segment', () => {
+    expect(makeFromSegment('chevrolet')).toBe('Chevrolet');
+  });
+
+  it('returns undefined for an unknown segment', () => {
+    expect(makeFromSegment('not-a-real-make')).toBeUndefined();
+  });
+});
+
+describe('modelFromSegment', () => {
+  it('finds a model by make + URL segment', () => {
+    expect(modelFromSegment('Chevrolet', 'camaro')).toBe('Camaro');
+  });
+
+  it('returns undefined when the make has no matching model', () => {
+    expect(modelFromSegment('Chevrolet', 'not-a-real-model')).toBeUndefined();
+  });
+
+  it('returns undefined when the make does not match even if the model segment would', () => {
+    expect(modelFromSegment('Ford', 'camaro')).toBeUndefined();
+  });
+});
+
+describe('getDealer', () => {
+  it('finds a dealer by slug', () => {
+    expect(getDealer('classic-iron-nashville')?.name).toBe('Classic Iron Nashville');
+  });
+
+  it('returns undefined for an unknown slug', () => {
+    expect(getDealer('not-a-real-dealer')).toBeUndefined();
+  });
+});
+
+describe('getDealerById', () => {
+  it('finds a dealer by id', () => {
+    expect(getDealerById('u1')?.slug).toBe('classic-iron-nashville');
+  });
+
+  it('returns undefined for an unknown id', () => {
+    expect(getDealerById('not-a-real-id')).toBeUndefined();
+  });
+});
+
+describe('getCar', () => {
+  it('finds a car by slug', () => {
+    expect(getCar('1967-chevrolet-camaro-ss')?.make).toBe('Chevrolet');
+  });
+
+  it('returns undefined for an unknown slug', () => {
+    expect(getCar('not-a-real-car')).toBeUndefined();
   });
 });
