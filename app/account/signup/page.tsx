@@ -30,24 +30,14 @@ function SignupForm() {
     setLoading(true);
 
     const supabase = createClient();
-    const { data, error: authError } = await supabase.auth.signUp({
+    const { error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/account/watchlist`,
-        data: { ...(promo && { promo }) },
+        data: { full_name: fullName, ...(promo && { promo }) },
       },
     });
-
-    if (!authError && data.user) {
-      const promoExpiresAt = promo ? '2026-10-31T23:59:59Z' : null;
-      await supabase.from('profiles').upsert({
-        id: data.user.id,
-        full_name: fullName,
-        updated_at: new Date().toISOString(),
-        ...(promoExpiresAt && { promo_expires_at: promoExpiresAt }),
-      });
-    }
 
     setLoading(false);
     if (authError) { setError(authError.message); } else { setSent(true); }
@@ -86,7 +76,7 @@ function SignupForm() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Full Name</label>
-              <input type="text" value={fullName} onChange={e => setFullName(e.target.value)}
+              <input type="text" required value={fullName} onChange={e => setFullName(e.target.value)}
                 placeholder="Your name"
                 className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
             </div>
