@@ -2,6 +2,8 @@
 
 *Generated 2026-07-07 against `IMPLEMENTATION_STATUS.md` (commit `3d9a51c`+) and `SPEC.md`. Test against production (`garagecherries.com`) unless noted. Check off each item; note any failures with the URL and what happened.*
 
+*Updated 2026-07-10 (commit `022c1df`) — added items for the buyer signup Full Name fix and the password-reset redirect fix (both `/account/forgot-password` and the dealer self-serve flow on `/dealer/login`); the sign-off below predates these fixes and does not cover them.*
+
 ---
 
 ## 1. Public Browsing (no login required)
@@ -35,9 +37,10 @@
 
 ## 2. Buyer Account
 
-- [ ] Sign up for a new account (`/account/signup`)
+- [ ] Sign up for a new account (`/account/signup`) — **Full Name is now a required field**; submitting without it is blocked by the browser before the form submits
+- [ ] After signup, confirm the name entered appears in Supabase Auth (Display Name / `user_metadata.full_name`) and on `/account/profile` — previously silently failed to save for every signup (fixed 2026-07-10, commit `98fc3c8`)
 - [ ] Log in / log out
-- [ ] Forgot password → reset flow completes
+- [ ] Forgot password (`/account/forgot-password`) → click the emailed link → lands on the **"Set new password" form**, not the homepage (this was broken — Supabase's Redirect URLs allow-list was missing the reset-password path, fixed 2026-07-10 via `https://garagecherries.com/**` + `https://www.garagecherries.com/**` wildcard entries)
 - [ ] Profile management (`/account/profile`) — update name/phone, save succeeds
 - [ ] Watch a listing (heart/save icon) — appears under Watchlist tab
 - [ ] Unwatch a listing — disappears from Watchlist
@@ -80,6 +83,7 @@
 - [ ] Submit a dealer application (`/dealer/apply`) — CAPTCHA required, confirmation shown
 - [ ] After admin approval (see §5), receive password-reset email; reset link works (`/dealer/reset-password`)
 - [ ] Dealer login (`/dealer/login`) works with new password
+- [ ] Existing dealer clicks "Forgot password" on `/dealer/login` → emailed link lands on the password-set form at `/dealer/login`, not the homepage (same redirect-allow-list bug as the buyer flow above — fixed 2026-07-10)
 - [ ] Dashboard loads with tabs: Overview, Inventory, Inquiries, Settings
 - [ ] Overview tab shows real stats (active listings, views, inquiries, avg. days on market)
 - [ ] Add a vehicle via "+ Add vehicle" modal — appears **immediately** as approved (no review wait)
