@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { getSiteSettings } from '@/lib/siteSettings';
 
 export const metadata: Metadata = {
   title: 'Pricing — Dealer Plans & Private Seller Options',
@@ -77,7 +78,8 @@ const FAQS = [
   { q: 'Can private sellers list cars too?', a: 'Yes. Private sellers can post individual listings for a one-time fee. See our private seller options below.' },
 ];
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const settings = await getSiteSettings();
   return (
     <div className="bg-zinc-50 min-h-screen">
 
@@ -278,7 +280,7 @@ export default function PricingPage() {
               className="inline-block bg-zinc-900 hover:bg-zinc-800 text-white font-bold px-8 py-3 rounded-xl transition-colors">
               Start Free Trial
             </Link>
-            <p className="text-xs text-zinc-400 mt-3">14-day free trial · No credit card required · Geographic ad targeting included</p>
+            <p className="text-xs text-zinc-400 mt-3">{settings.advertiserTrialDays}-day free trial · No credit card required · Geographic ad targeting included</p>
           </div>
         </div>
       </section>

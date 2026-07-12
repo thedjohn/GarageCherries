@@ -1,6 +1,6 @@
 'use client';
 import Image from 'next/image';
-import { useState, useCallback, Suspense } from 'react';
+import { useState, useCallback, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -39,6 +39,14 @@ function SignupInner() {
   const onCaptchaVerify = useCallback((token: string) => setCfToken(token), []);
   const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
+  const [trialDays, setTrialDays] = useState(14);
+
+  useEffect(() => {
+    fetch('/api/public/trial-days')
+      .then(res => res.json())
+      .then(data => setTrialDays(data.advertiserTrialDays))
+      .catch(() => {});
+  }, []);
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
@@ -95,7 +103,7 @@ function SignupInner() {
             <Image src="https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/branding/cherries.png" alt="GarageCherries" width={32} height={32} unoptimized />
             <span className="text-xl font-bold">Garage<span className="text-red-600">Cherries</span></span>
           </Link>
-          <p className="text-zinc-500 text-sm mt-2">Create your advertiser account · 14-day free trial</p>
+          <p className="text-zinc-500 text-sm mt-2">Create your advertiser account · {trialDays}-day free trial</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-8">
@@ -152,7 +160,7 @@ function SignupInner() {
                   </label>
                 ))}
               </div>
-              <p className="text-xs text-zinc-400 mt-2">14-day free trial, then billed monthly. Cancel anytime.</p>
+              <p className="text-xs text-zinc-400 mt-2">{trialDays}-day free trial, then billed monthly. Cancel anytime.</p>
             </div>
 
             <Turnstile onVerify={onCaptchaVerify} />
