@@ -70,6 +70,79 @@ describe('GET /api/admin/dealer-applications', () => {
     const res: any = await GET();
     expect(res._status).toBe(500);
   });
+
+  it('enriches an approved application with the real beta_expires_at from the dealers table', async () => {
+    mockRequireAdmin.mockResolvedValue('support');
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'dealer_applications') {
+        return {
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({
+              data: [{ id: 'app-1', email: 'dealer@x.com', status: 'approved' }],
+              error: null,
+            }),
+          }),
+        };
+      }
+      if (table === 'dealers') {
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: [{ email: 'dealer@x.com', beta_expires_at: '2026-12-01T00:00:00Z' }] }),
+          }),
+        };
+      }
+      return {};
+    });
+    const res: any = await GET();
+    expect(res._status).toBe(200);
+    expect(res._data.applications[0].beta_expires_at).toBe('2026-12-01T00:00:00Z');
+  });
+
+  it('does not query dealers and sets beta_expires_at to null for pending/rejected applications', async () => {
+    mockRequireAdmin.mockResolvedValue('support');
+    const dealersSelect = vi.fn();
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'dealer_applications') {
+        return {
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({
+              data: [{ id: 'app-1', email: 'a@x.com', status: 'pending' }, { id: 'app-2', email: 'b@x.com', status: 'rejected' }],
+              error: null,
+            }),
+          }),
+        };
+      }
+      if (table === 'dealers') return { select: dealersSelect };
+      return {};
+    });
+    const res: any = await GET();
+    expect(res._status).toBe(200);
+    expect(res._data.applications.every((a: any) => a.beta_expires_at === null)).toBe(true);
+    expect(dealersSelect).not.toHaveBeenCalled();
+  });
+
+  it('gracefully sets beta_expires_at to null when no matching dealer row is found', async () => {
+    mockRequireAdmin.mockResolvedValue('support');
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'dealer_applications') {
+        return {
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({
+              data: [{ id: 'app-1', email: 'orphan@x.com', status: 'approved' }],
+              error: null,
+            }),
+          }),
+        };
+      }
+      if (table === 'dealers') {
+        return { select: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [] }) }) };
+      }
+      return {};
+    });
+    const res: any = await GET();
+    expect(res._status).toBe(200);
+    expect(res._data.applications[0].beta_expires_at).toBeNull();
+  });
 });
 
 const baseApp = {

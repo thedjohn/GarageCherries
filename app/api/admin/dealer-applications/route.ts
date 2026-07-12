@@ -20,7 +20,29 @@ export async function GET() {
     .order('created_at', { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ applications: applications ?? [] });
+
+  // dealer_applications has no foreign key to the dealer row it created — the
+  // only link is a matching email — so look up the real beta_expires_at for
+  // approved applications instead of leaving the frontend to guess at it.
+  const approvedEmails = (applications ?? [])
+    .filter(a => a.status === 'approved')
+    .map(a => a.email);
+
+  let betaExpiryByEmail: Record<string, string> = {};
+  if (approvedEmails.length > 0) {
+    const { data: dealers } = await admin
+      .from('dealers')
+      .select('email, beta_expires_at')
+      .in('email', approvedEmails);
+    betaExpiryByEmail = Object.fromEntries((dealers ?? []).map(d => [d.email, d.beta_expires_at]));
+  }
+
+  const enriched = (applications ?? []).map(a => ({
+    ...a,
+    beta_expires_at: a.status === 'approved' ? (betaExpiryByEmail[a.email] ?? null) : null,
+  }));
+
+  return NextResponse.json({ applications: enriched });
 }
 
 export async function PATCH(req: NextRequest) {

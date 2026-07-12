@@ -57,6 +57,7 @@ interface DealerApplication {
   zip: string | null; website: string | null; specialties: string[];
   description: string; status: 'pending' | 'approved' | 'rejected';
   rejection_note: string | null; created_at: string; reviewed_at: string | null;
+  beta_expires_at: string | null;
 }
 
 export default function AdminPage() {
@@ -1070,8 +1071,15 @@ export default function AdminPage() {
                 {app.status === 'approved' && (
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
                     <p className="text-xs text-green-600">
-                      Account created — beta expires {new Date(new Date(app.reviewed_at!).setMonth(new Date(app.reviewed_at!).getMonth() + 6)).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
+                      {app.beta_expires_at
+                        ? `Account created — beta expires ${new Date(app.beta_expires_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.`
+                        : 'Account created.'}
                     </p>
+                    <button
+                      onClick={() => { setUserSearch(app.email); setTab('users'); loadUsers(); }}
+                      className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 hover:underline">
+                      Edit in Users tab →
+                    </button>
                     <span className="inline-flex items-center gap-1">
                       <button
                         onClick={() => resendDealerSetup(app.id)}
