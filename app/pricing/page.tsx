@@ -207,15 +207,15 @@ export default async function PricingPage() {
       <section className="max-w-4xl mx-auto px-4 py-16">
         <div className="text-center mb-10">
           <h2 className="text-2xl font-extrabold text-zinc-900">Private Seller Listings</h2>
-          <p className="text-zinc-500 mt-2 text-sm">Not a dealer? Post your car with a one-time fee — no subscription needed.</p>
+          <p className="text-zinc-500 mt-2 text-sm">Not a dealer? Post your car with a one-time fee — listed until it sells, no subscription needed.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
           <div className="bg-white rounded-2xl border-2 border-zinc-100 p-8 text-center shadow-sm">
             <h3 className="font-extrabold text-zinc-900 text-lg mb-1">Basic Listing</h3>
             <p className="text-4xl font-extrabold text-zinc-900 my-4">$49</p>
-            <p className="text-zinc-400 text-sm mb-6">One-time fee · 30 days</p>
+            <p className="text-zinc-400 text-sm mb-6">One-time fee · listed until sold</p>
             <ul className="text-sm text-zinc-600 space-y-2 text-left mb-8">
-              {['Listed for 30 days', 'Up to 30 photos', 'Buyer inquiries direct to your email', 'Renew anytime'].map(f => (
+              {['Active for 30 days at a time', 'Up to 30 photos', 'Buyer inquiries direct to your email', 'Renew for free every 30 days until it sells'].map(f => (
                 <li key={f} className="flex items-center gap-2">
                   <svg className="w-4 h-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -235,7 +235,7 @@ export default async function PricingPage() {
             </div>
             <h3 className="font-extrabold text-zinc-900 text-lg mb-1">Featured Listing</h3>
             <p className="text-4xl font-extrabold text-zinc-900 my-4">$99</p>
-            <p className="text-zinc-400 text-sm mb-6">One-time fee · 30 days</p>
+            <p className="text-zinc-400 text-sm mb-6">One-time fee · listed until sold</p>
             <ul className="text-sm text-zinc-600 space-y-2 text-left mb-8">
               {['Everything in Basic', 'Featured badge on your listing', 'Top of search results', 'Homepage visibility', 'Sell faster'].map(f => (
                 <li key={f} className="flex items-center gap-2">
