@@ -78,7 +78,7 @@ describe('GET /api/admin/dealer-applications', () => {
         return {
           select: vi.fn().mockReturnValue({
             order: vi.fn().mockResolvedValue({
-              data: [{ id: 'app-1', email: 'dealer@x.com', status: 'approved' }],
+              data: [{ id: 'app-1', email: 'dealer@x.com', status: 'approved', dealer_id: 'user-1' }],
               error: null,
             }),
           }),
@@ -87,7 +87,7 @@ describe('GET /api/admin/dealer-applications', () => {
       if (table === 'dealers') {
         return {
           select: vi.fn().mockReturnValue({
-            in: vi.fn().mockResolvedValue({ data: [{ email: 'dealer@x.com', beta_expires_at: '2026-12-01T00:00:00Z' }] }),
+            in: vi.fn().mockResolvedValue({ data: [{ id: 'user-1', beta_expires_at: '2026-12-01T00:00:00Z' }] }),
           }),
         };
       }
@@ -106,7 +106,7 @@ describe('GET /api/admin/dealer-applications', () => {
         return {
           select: vi.fn().mockReturnValue({
             order: vi.fn().mockResolvedValue({
-              data: [{ id: 'app-1', email: 'a@x.com', status: 'pending' }, { id: 'app-2', email: 'b@x.com', status: 'rejected' }],
+              data: [{ id: 'app-1', email: 'a@x.com', status: 'pending', dealer_id: null }, { id: 'app-2', email: 'b@x.com', status: 'rejected', dealer_id: null }],
               error: null,
             }),
           }),
@@ -121,14 +121,37 @@ describe('GET /api/admin/dealer-applications', () => {
     expect(dealersSelect).not.toHaveBeenCalled();
   });
 
-  it('gracefully sets beta_expires_at to null when no matching dealer row is found', async () => {
+  it('sets beta_expires_at to null for an approved application whose dealer_id is null (e.g. the dealer account was later deleted)', async () => {
+    mockRequireAdmin.mockResolvedValue('support');
+    const dealersSelect = vi.fn();
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'dealer_applications') {
+        return {
+          select: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({
+              data: [{ id: 'app-1', email: 'stale@x.com', status: 'approved', dealer_id: null }],
+              error: null,
+            }),
+          }),
+        };
+      }
+      if (table === 'dealers') return { select: dealersSelect };
+      return {};
+    });
+    const res: any = await GET();
+    expect(res._status).toBe(200);
+    expect(res._data.applications[0].beta_expires_at).toBeNull();
+    expect(dealersSelect).not.toHaveBeenCalled();
+  });
+
+  it('gracefully sets beta_expires_at to null when dealer_id is set but no matching dealer row is found', async () => {
     mockRequireAdmin.mockResolvedValue('support');
     mockFrom.mockImplementation((table: string) => {
       if (table === 'dealer_applications') {
         return {
           select: vi.fn().mockReturnValue({
             order: vi.fn().mockResolvedValue({
-              data: [{ id: 'app-1', email: 'orphan@x.com', status: 'approved' }],
+              data: [{ id: 'app-1', email: 'orphan@x.com', status: 'approved', dealer_id: 'ghost-1' }],
               error: null,
             }),
           }),
@@ -288,6 +311,25 @@ describe('PATCH /api/admin/dealer-applications', () => {
       const res: any = await PATCH(makeRequest({ id: 'app-1', action: 'approve' }));
       expect(res._status).toBe(500);
       expect(mockDeleteUser).toHaveBeenCalledWith('new-user-1');
+    });
+
+    it('links the approved application to the newly created dealer via dealer_id', async () => {
+      mockRequireAdmin.mockResolvedValue('admin');
+      mockCreateUser.mockResolvedValue({ data: { user: { id: 'new-user-1' } }, error: null });
+      const update = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'dealer_applications') {
+          return {
+            select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: baseApp, error: null }) }) }),
+            update,
+          };
+        }
+        if (table === 'dealers') return { insert: vi.fn().mockResolvedValue({ error: null }) };
+        return {};
+      });
+      const res: any = await PATCH(makeRequest({ id: 'app-1', action: 'approve' }));
+      expect(res._status).toBe(200);
+      expect(update).toHaveBeenCalledWith(expect.objectContaining({ dealer_id: 'new-user-1' }));
     });
 
     it('approves with promo expiry for applications submitted before Aug 1 2026', async () => {

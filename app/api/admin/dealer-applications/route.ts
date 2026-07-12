@@ -21,25 +21,26 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // dealer_applications has no foreign key to the dealer row it created — the
-  // only link is a matching email — so look up the real beta_expires_at for
-  // approved applications instead of leaving the frontend to guess at it.
-  const approvedEmails = (applications ?? [])
-    .filter(a => a.status === 'approved')
-    .map(a => a.email);
+  // Look up the real beta_expires_at via dealer_id, not email — an application's
+  // email can be reused by a later account after the original dealer is deleted,
+  // so matching by email alone could attribute a stale application's card to a
+  // completely different (newer) dealer's expiry date.
+  const dealerIds = (applications ?? [])
+    .filter(a => a.status === 'approved' && a.dealer_id)
+    .map(a => a.dealer_id);
 
-  let betaExpiryByEmail: Record<string, string> = {};
-  if (approvedEmails.length > 0) {
+  let betaExpiryById: Record<string, string> = {};
+  if (dealerIds.length > 0) {
     const { data: dealers } = await admin
       .from('dealers')
-      .select('email, beta_expires_at')
-      .in('email', approvedEmails);
-    betaExpiryByEmail = Object.fromEntries((dealers ?? []).map(d => [d.email, d.beta_expires_at]));
+      .select('id, beta_expires_at')
+      .in('id', dealerIds);
+    betaExpiryById = Object.fromEntries((dealers ?? []).map(d => [d.id, d.beta_expires_at]));
   }
 
   const enriched = (applications ?? []).map(a => ({
     ...a,
-    beta_expires_at: a.status === 'approved' ? (betaExpiryByEmail[a.email] ?? null) : null,
+    beta_expires_at: a.status === 'approved' && a.dealer_id ? (betaExpiryById[a.dealer_id] ?? null) : null,
   }));
 
   return NextResponse.json({ applications: enriched });
@@ -208,11 +209,12 @@ export async function PATCH(req: NextRequest) {
     html: approveHtml,
   });
 
-  // Mark application as approved
+  // Mark application as approved, linked to the exact dealer row it created
   await admin.from('dealer_applications').update({
     status: 'approved',
     reviewed_at: new Date().toISOString(),
     reviewed_by: user!.id,
+    dealer_id: userId,
   }).eq('id', id);
 
   return NextResponse.json({ success: true, userId });

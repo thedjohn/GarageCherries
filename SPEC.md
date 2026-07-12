@@ -266,7 +266,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 
 | Field | Type | Notes |
 |---|---|---|
-| `id` | uuid | Same as auth.users.id |
+| `id` | text | Same value as auth.users.id (stored as text, not uuid, in the live schema — corrected 2026-07-12) |
 | `slug` | text | URL-safe name |
 | `name` | text | Dealership name |
 | `phone` | text \| null | |
@@ -306,6 +306,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `reviewed_at` | timestamptz \| null | |
 | `reviewed_by` | uuid \| null | FK to auth.users (admin) |
 | `created_at` | timestamptz | |
+| `dealer_id` | text \| null | FK to `dealers(id)`, `on delete set null`. Set on approval to the exact dealer row created — not matched by email, so a deleted dealer's account can't be confused with a later application that reuses the same email (added 2026-07-12) |
 
 ### `admin_users`
 
