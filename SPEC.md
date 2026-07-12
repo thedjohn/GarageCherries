@@ -1,6 +1,7 @@
 # GarageCherries — Master Specification
 
-> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-10, commit `c5aa783` (unit test coverage expanded from 8.67% to 99.19% statements / 90.61% branches / 96.26% functions / 99.78% lines across every API route and lib file — 831 tests across 49 files, up from 312/21; fixed a fake-coverage bug in `lib/matchAlerts.ts` where `scoreMatch`/`alertName`/`matchBadges` weren't exported and existing tests exercised local reimplementations instead of the real code, now exported and tested directly along with the full `matchAndNotifyAlerts` orchestrator; added coverage thresholds — 97/88/94/97 — to `vitest.config.ts` and switched CI to `npm run test:coverage` so coverage can't silently regress undetected again).
+> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-11 (configurable free-account durations added: new `site_settings` table + `GET/PATCH /api/admin/settings` route let a superadmin adjust the 250th-promo cutoff dates and the default advertiser/dealer trial lengths from `/admin` → Team tab, replacing four previously-hardcoded literals across `admin/dealer-applications`, `advertiser/signup`, `cron/promo-expiry`, and `email/promo-expiry`, all falling back to the original hardcoded values if the settings row is ever missing; a separate per-account override was also added to the existing Users tab Edit modal, letting any admin-role team member hand-adjust a specific dealer's `beta_expires_at` or advertiser's `trial_ends_at` independent of the global defaults — see §3 `site_settings`, §4 `admin/settings` and updated `admin/users` entries, and §5 for the updated business rules).
+> Prior update 2026-07-10, commit `c5aa783` (unit test coverage expanded from 8.67% to 99.19% statements / 90.61% branches / 96.26% functions / 99.78% lines across every API route and lib file — 831 tests across 49 files, up from 312/21; fixed a fake-coverage bug in `lib/matchAlerts.ts` where `scoreMatch`/`alertName`/`matchBadges` weren't exported and existing tests exercised local reimplementations instead of the real code, now exported and tested directly along with the full `matchAndNotifyAlerts` orchestrator; added coverage thresholds — 97/88/94/97 — to `vitest.config.ts` and switched CI to `npm run test:coverage` so coverage can't silently regress undetected again).
 > Prior update 2026-07-10, commit `98fc3c8` (buyer signup Full Name bug fixed — name field is now required, is passed into `auth.signUp()`'s `options.data` so it lands in Supabase Auth `user_metadata` immediately, and a `handle_new_user_profile()` trigger on `auth.users` insert now writes it to `profiles.full_name` server-side, replacing a client-side upsert that silently failed under RLS because it ran before the user had a session — this project requires email confirmation, so `auth.signUp()` returns no session until the confirmation link is clicked; trigger is scoped to `provider='email'` so it doesn't race the existing Google/Facebook profile-seeding + promo logic in `/auth/callback`; Supabase Auth Redirect URLs allow-list fixed — was missing `/account/reset-password` and `/dealer/login`, causing password-reset emails to silently fall back to the bare homepage instead of the reset form, fixed via `https://garagecherries.com/**` + `https://www.garagecherries.com/**` wildcard entries, dashboard-only change).
 > Prior update 2026-07-09 (Sign in with Google added and published to production; Sign in with Facebook added — working for app Admins/Testers, blocked from public use pending Meta Business Verification for GARAGE CHERRIES LLC; GarageCherries Facebook Page created and linked to its Business Portfolio; Facebook Page auto-posting code built for dealer listings, admin events, and listing/event approval flows — inert until Page access token is configured; site OG image swapped to a static 250th-anniversary promo graphic (`app/opengraph-image.jpg`, replacing the old dynamic `opengraph-image.tsx`) — this broke link previews in production same-day (layout.tsx metadata pointed at the old extensionless path) and was fixed same day; Detail 360 sponsor card + Lemon Squad inspection card removed from listing detail sidebar (accidentally restored earlier the same day; neither is a real live partner); GitHub Actions CI fixed — had been silently failing all day on a pre-existing `NextRequest` type mismatch in a test file, auto-bypassed by branch protection; seller emailed on first buyer message — `POST /api/conversations` fires Resend on new conversation only; sold listing UI hardened on both account page and dealer dashboard — Edit button, expiry text, Mark Sold/Renew all hidden when is_sold; dealer inventory export adds seat_material + seating_type; WatchlistButton/Verified/Mark Sold tooltips removed; tooltip align/side props; shared emailBranding helper + all emails rebranded; rejection email log.flush fix; expiring-listings Vercel Cron; conversation list buyer_id fix; MessengerWidget sender_name server-side; Warn User feedback banner with Dismiss; reported message full-thread view with Warn/Suspend actions; E2E suite updated + events spec added; community event submission + approval workflow; sitemap expanded to all pages; Axiom logging expanded to all high-value API routes; events calendar + admin Events tab; dealer watcher messaging UI; BETA_MODE documented; promo campaign, homepage hero copy, GA4, Vercel redeploy, custom domain, promo expiry enforcement, pricing page advertiser section, advertiser public pages, sitemap expansion, SEO structured data, GSC + Bing verified; Sentry error tracking + Axiom structured logging added; sell form contact section removed — seller identity sourced from profiles table; sticky sidebar/AdSlot overlap fixed; persistent "Post a Listing" button added to My Listings; client-side image resize + gallery photo preloading; Ram added to MAKES + dropdowns alphabetized + shared TRANSMISSIONS constant; sold listings excluded from homepage/`/listings`/`fetchCars`; SessionGuard added for forced logout on deleted/invalid accounts — commit `f098067`; CAPTCHA + rate limiting (3/hr/IP) added to `/api/advertiser/signup`; Turnstile CAPTCHA added to `/account/signup` (client-side guard); unit test suite expanded to 294 tests across 19 files — emailBranding, encyclopedia, adminRole, verifyTurnstile, notifyAdmin, logger coverage added; SPEC.md security table updated for advertiser signup rate limit; encyclopedia expanded 54 → 77 models — 23 new entries across AMC/Buick/Chevrolet/Chrysler/Ford/Mercury/Oldsmobile/Plymouth/Pontiac; Dodge Dart GT added to notable versions).
 > Stack: Next.js 16.2.9 · React 19 · Supabase (Auth + Postgres + Storage) · Resend (email) · Cloudflare Turnstile (CAPTCHA) · NHTSA VIN API · Tailwind CSS 4 · Vitest + Playwright
@@ -527,6 +528,22 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 
 **`handle_new_user_profile()` trigger** (added 2026-07-10): `AFTER INSERT ON auth.users`, `SECURITY DEFINER`. Inserts a `profiles` row from `NEW.raw_user_meta_data->>'full_name'` (and applies the same `promo` → `promo_expires_at` logic as the old client-side code), but only when `raw_app_meta_data->>'provider'` is `'email'` (or unset) — Google/Facebook signups are deliberately excluded so this trigger can't race the existing OAuth profile-seeding + promo logic in `/auth/callback`, which already handles those providers correctly. Replaced a client-side `profiles.upsert()` call in `app/account/signup/page.tsx` that ran immediately after `auth.signUp()` — since this project requires email confirmation, `signUp()` returns no session until the confirmation link is clicked, so that upsert always ran unauthenticated and was silently blocked by RLS. `full_name` is now also passed into `signUp()`'s `options.data`, which writes to `user_metadata` immediately (no session required) and is what the trigger reads.
 
+### `site_settings`
+
+Added 2026-07-11. Single-row singleton (`id` is always `1`), superadmin-editable from `/admin` → Team tab → "Trial & Promo Settings". Read via `lib/siteSettings.ts`'s `getSiteSettings()`, which falls back to the defaults below if the row/table is missing or the query errors — so nothing changes behaviorally until a superadmin actually edits a value. RLS enabled with no policies (service-role/admin-client access only).
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | int | PK, always `1` (`check (id = 1)` enforces singleton) |
+| `promo_application_cutoff` | timestamptz | Default `2026-08-01T00:00:00Z`. Dealer applications submitted before this instant qualify for the promo rate. |
+| `promo_expires_at` | timestamptz | Default `2026-10-31T23:59:59Z`. Free access ends on this date for promo dealers/sellers/advertisers; also drives the `cron/promo-expiry` send window (cutoff − 14 days through cutoff + 1 day). |
+| `advertiser_trial_days` | int | Default `14`. Applied to every new advertiser signup. |
+| `dealer_default_trial_days` | int | Default `180` (~6 months). Applied to dealer applications submitted on/after `promo_application_cutoff`. Replaces the old calendar-month math (`setMonth(+6)`, which varied 181-184 days depending on the month) with a fixed, precise day count. |
+| `updated_at` | timestamptz | |
+| `updated_by` | uuid \| null | FK to `auth.users`, the superadmin who last saved a change |
+
+**Per-account override:** these settings only affect *new* signups/approvals. To adjust an *existing* dealer's `beta_expires_at` or advertiser's `trial_ends_at` individually, any admin-role team member can use the Edit action in the Users tab (see `PATCH /api/admin/users` below) — independent of, and unaffected by, changes to `site_settings`.
+
 ---
 
 ## 4. API Contract
@@ -666,7 +683,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 |---|---|---|
 | `suspend` | moderator | `reason?` |
 | `unsuspend` | admin | — |
-| `edit` | admin | `name?`, `email?`, `dealer?` |
+| `edit` | admin | `name?`, `email?`, `dealer?` (raw partial update on `dealers` incl. `beta_expires_at`), `advertiser?` (added 2026-07-11 — raw partial update on `advertisers`, keyed by `user_id` not `id`, incl. `trial_ends_at`) |
 | `promote` | superadmin | `dealer: { name, location, state }` |
 
 ---
@@ -695,7 +712,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 ### `PATCH /api/admin/dealer-applications`
 - **Auth**: required, min role: admin
 - **Input**: `{ id, action: 'approve'|'reject', rejection_note? }`
-- **On approve**: creates auth user, inserts dealer row (plan='beta'); `beta_expires_at = 2026-10-31` if application submitted before Aug 1 2026, else `now + 6 months`; sends welcome email with password-reset link
+- **On approve**: creates auth user, inserts dealer row (plan='beta'); `beta_expires_at` sourced from `getSiteSettings()` (added 2026-07-11) — the configured `promo_expires_at` if application submitted before the configured `promo_application_cutoff`, else `now + dealer_default_trial_days`; falls back to the original `2026-10-31` / `now + 6 months` behavior if `site_settings` is unset; sends welcome email with password-reset link, copy reflects the actual configured values
 - **On reject**: updates status, sends rejection email with optional note
 
 ---
@@ -723,6 +740,21 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 - **Auth**: required, role: superadmin
 - **Input**: `{ user_id }`
 - **Validation**: cannot remove yourself
+
+---
+
+### `GET /api/admin/settings`
+- **Auth**: required, any admin role (same as `admin/team`'s GET — viewable, not just editable, by the whole team)
+- **Returns**: `{ settings: { promoApplicationCutoff, promoExpiresAt, advertiserTrialDays, dealerDefaultTrialDays } }` via `getSiteSettings()`
+
+---
+
+### `PATCH /api/admin/settings`
+- **Auth**: required, role: superadmin
+- **Input**: `{ promoApplicationCutoff, promoExpiresAt, advertiserTrialDays, dealerDefaultTrialDays }` — dates as plain `YYYY-MM-DD` (from `<input type="date">`)
+- **Validation**: both dates must parse; both day-counts must be positive integers
+- **Normalization**: `promoApplicationCutoff` → start-of-day UTC; `promoExpiresAt` → end-of-day UTC
+- **Side effects**: upserts the `site_settings` singleton row; records `updated_at`/`updated_by`
 
 ---
 
@@ -806,7 +838,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 - **Rate limit**: 3/hr/IP; first block fires `notifyAdmin` alert
 - **Input**: `{ email, password, businessName, contactName?, phone?, address?, city?, state?, zip?, category?, tier?, cfToken }`
 - **Validation**: email, password, businessName required; Cloudflare Turnstile CAPTCHA verified server-side via `TURNSTILE_SECRET_KEY` (skipped if key not set)
-- **Side effects**: creates auth user + advertisers row (trial 14 days); on DB error, rolls back auth user
+- **Side effects**: creates auth user + advertisers row (trial length from `getSiteSettings().advertiserTrialDays`, default 14 days, superadmin-configurable since 2026-07-11); on DB error, rolls back auth user
 - **Returns**: `{ ok: true, advertiserId }`
 
 ---
@@ -1101,7 +1133,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | Private seller listing limit | `app/api/listings/submit/route.ts:44` | Max 10 active (pending + approved) listings per private seller; dealers exempt |
 | Beta mode bypass | `app/api/listings/submit/route.ts:29` | `BETA_MODE=true` env var bypasses the 10-listing cap entirely — useful during pre-launch testing; set to `false` (or omit) in production |
 | Dealer beta expiry | `app/api/listings/submit/route.ts`, `app/api/listings/[id]/route.ts` | If dealer's `beta_expires_at < now`, 403 BETA_EXPIRED on listing submit and listing edit; dashboard access and metrics not blocked |
-| Dealer beta period duration | `app/api/admin/dealer-applications/route.ts:97` | Applications submitted before `2026-08-01` (250th promo period) → `beta_expires_at = 2026-10-31T23:59:59Z`; all others → `now + 6 months` |
+| Dealer beta period duration | `app/api/admin/dealer-applications/route.ts` | Superadmin-configurable since 2026-07-11 via `site_settings` (`/admin` → Team tab). Defaults unchanged: applications before `2026-08-01` → `beta_expires_at = 2026-10-31T23:59:59Z`; all others → `now + 180 days` |
 | Individual promo expiry | `app/account/signup/page.tsx` | Signup with `promo=250th` stores `promo_expires_at = 2026-10-31T23:59:59Z` on `profiles` row; enforced when paid plans launch |
 | Promo modal date gate | `components/PromoModal.tsx` | Modal stops displaying after `2026-07-31T23:59:59`; date check runs client-side on mount |
 | Advertiser trial period | `app/api/advertiser/signup/route.ts:28` | `trial_ends_at = now + 14 days`; ad creation AND editing blocked if expired |

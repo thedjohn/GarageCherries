@@ -4,6 +4,8 @@
 
 *Updated 2026-07-10 (commit `022c1df`) — added items for the buyer signup Full Name fix and the password-reset redirect fix (both `/account/forgot-password` and the dealer self-serve flow on `/dealer/login`); the sign-off below predates these fixes and does not cover them.*
 
+*Updated 2026-07-11 — added items for configurable free-account durations: the superadmin-only Trial & Promo Settings card (Team tab) and the per-account dealer/advertiser trial override (Users tab → Edit). The sign-off below predates this feature and does not cover it.*
+
 ---
 
 ## 1. Public Browsing (no login required)
@@ -38,9 +40,9 @@
 ## 2. Buyer Account
 
 - [ ] Sign up for a new account (`/account/signup`) — **Full Name is now a required field**; submitting without it is blocked by the browser before the form submits
-- [ ] After signup, confirm the name entered appears in Supabase Auth (Display Name / `user_metadata.full_name`) and on `/account/profile` — previously silently failed to save for every signup (fixed 2026-07-10, commit `98fc3c8`)
+- [x] After signup, confirm the name entered appears in Supabase Auth (Display Name / `user_metadata.full_name`) and on `/account/profile` — previously silently failed to save for every signup (fixed 2026-07-10, commit `98fc3c8`). Confirmed 2026-07-12: test signup "GC Test" (rhythmlibrarysystem@gmail.com) shows correct name in Admin → Users tab, proving it reached `profiles.full_name`.
 - [ ] Log in / log out
-- [ ] Forgot password (`/account/forgot-password`) → click the emailed link → lands on the **"Set new password" form**, not the homepage (this was broken — Supabase's Redirect URLs allow-list was missing the reset-password path, fixed 2026-07-10 via `https://garagecherries.com/**` + `https://www.garagecherries.com/**` wildcard entries)
+- [x] Forgot password (`/account/forgot-password`) → click the emailed link → lands on the **"Set new password" form**, not the homepage. Wildcard Redirect URLs did not actually work; fixed for real 2026-07-11 by using exact literal entries instead (see IMPLEMENTATION_STATUS.md). Confirmed working live by Derek 2026-07-11. Email is now a branded GarageCherries template rather than Supabase's generic default.
 - [ ] Profile management (`/account/profile`) — update name/phone, save succeeds
 - [ ] Watch a listing (heart/save icon) — appears under Watchlist tab
 - [ ] Unwatch a listing — disappears from Watchlist
@@ -83,7 +85,7 @@
 - [ ] Submit a dealer application (`/dealer/apply`) — CAPTCHA required, confirmation shown
 - [ ] After admin approval (see §5), receive password-reset email; reset link works (`/dealer/reset-password`)
 - [ ] Dealer login (`/dealer/login`) works with new password
-- [ ] Existing dealer clicks "Forgot password" on `/dealer/login` → emailed link lands on the password-set form at `/dealer/login`, not the homepage (same redirect-allow-list bug as the buyer flow above — fixed 2026-07-10)
+- [ ] Existing dealer clicks "Forgot password" on `/dealer/login` → emailed link lands on the password-set form at `/dealer/login`, not the homepage (same underlying bug as the buyer flow above; exact literal Redirect URL entries for `/dealer/login` were added 2026-07-11 alongside the buyer-flow fix, but this specific dealer path has not yet been re-tested live — only the buyer `/account/forgot-password` flow was confirmed)
 - [ ] Dashboard loads with tabs: Overview, Inventory, Inquiries, Settings
 - [ ] Overview tab shows real stats (active listings, views, inquiries, avg. days on market)
 - [ ] Add a vehicle via "+ Add vehicle" modal — appears **immediately** as approved (no review wait)
@@ -125,11 +127,14 @@
 - [ ] **Reported tab**: Suspend a user (with reason) — user can no longer submit listings or message
 - [ ] **Users tab**: search/filter users, view a seller's listings
 - [ ] **Users tab**: promote a seller to dealer
+- [ ] **Users tab → Edit**: on a dealer or advertiser account, confirm a "Dealer Beta Expires" or "Advertiser Trial Ends" date field appears (only for the role(s) that account actually has); change the date, save, reopen the same account's Edit modal and confirm it persisted
 - [ ] **Applications tab**: approve a dealer application — auth user + dealer row created, welcome email sent
 - [ ] **Applications tab**: reject an application with a note
 - [ ] **Events tab**: approve a pending community-submitted event — appears live on `/events`
 - [ ] **Events tab**: add/edit/delete an event directly — goes straight to approved
 - [ ] **Team tab**: add a team member by email + role, then remove them
+- [ ] **Team tab → Trial & Promo Settings** (superadmin only): change one value (e.g., Advertiser Trial Days), save, confirm it persists on reload; sign up a fresh test advertiser and confirm their `trial_ends_at` reflects the new value, not the old default
+- [ ] **Team tab → Trial & Promo Settings**: confirm a non-superadmin admin/moderator account does not see this card at all
 - [ ] **Team tab → Cleanup Orphan Images** button — runs, shows a deleted count
 - [ ] `/admin/email` — trigger the weekly digest, price-drop, dealer-report, and renewal-reminder jobs manually; confirm each returns a success response
 
