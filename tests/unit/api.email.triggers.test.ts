@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
-const { mockFrom, mockGetUserById, mockListUsers, mockSend } = vi.hoisted(() => ({
+const { mockFrom, mockGetUserById, mockListUsers, mockSend, mockGetSiteSettings } = vi.hoisted(() => ({
   mockFrom:        vi.fn(),
   mockGetUserById: vi.fn(),
   mockListUsers:   vi.fn(),
   mockSend:        vi.fn().mockResolvedValue({ id: 'email-1' }),
+  mockGetSiteSettings: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -19,6 +20,7 @@ vi.mock('@/lib/emailBranding', () => ({ emailWrap: (body: string) => `<wrap>${bo
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), flush: vi.fn(async () => {}) }),
 }));
+vi.mock('@/lib/siteSettings', () => ({ getSiteSettings: mockGetSiteSettings }));
 vi.mock('next/server', () => ({
   NextResponse: {
     json: vi.fn((data: unknown, init?: { status?: number }) => ({ _data: data, _status: init?.status ?? 200 })),
@@ -40,6 +42,12 @@ const AUTH = 'Bearer admin-secret';
 beforeEach(() => {
   vi.clearAllMocks();
   process.env.ADMIN_API_SECRET = 'admin-secret';
+  mockGetSiteSettings.mockResolvedValue({
+    promoApplicationCutoff: '2026-08-01T00:00:00Z',
+    promoExpiresAt: '2026-10-31T23:59:59Z',
+    advertiserTrialDays: 14,
+    dealerDefaultTrialDays: 180,
+  });
 });
 
 // ── POST /api/email/dealer-report ────────────────────────────────────────────
@@ -331,6 +339,31 @@ describe('POST /api/email/promo-expiry', () => {
     expect(res._data.sent).toBe(0);
     expect(res._data.errors).toHaveLength(1);
     expect(res._data.errors[0]).toContain('profile p1');
+  });
+
+  it('uses a custom promo_expires_at from site settings for the dealer match date and email copy', async () => {
+    mockGetSiteSettings.mockResolvedValue({
+      promoApplicationCutoff: '2026-08-01T00:00:00Z',
+      promoExpiresAt: '2026-12-25T23:59:59Z',
+      advertiserTrialDays: 14,
+      dealerDefaultTrialDays: 180,
+    });
+    let dealerEqArg: any;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'profiles') return { select: vi.fn().mockReturnValue({ not: vi.fn().mockReturnValue({ is: vi.fn().mockResolvedValue({ data: [] }) }) }) };
+      if (table === 'dealers') {
+        return {
+          select: vi.fn().mockReturnValue({ eq: vi.fn((_col: string, val: string) => { dealerEqArg = val; return { is: vi.fn().mockResolvedValue({ data: [{ id: 'd1', name: 'Dealer Co', email: 'dealer@x.com' }] }) }; }) }),
+          update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({}) }),
+        };
+      }
+      if (table === 'advertisers') return { select: vi.fn().mockReturnValue({ lte: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ is: vi.fn().mockResolvedValue({ data: [] }) }) }) }) };
+      return {};
+    });
+    const res: any = await promoExpiryPost(makeRequest(AUTH));
+    expect(res._status).toBe(200);
+    expect(dealerEqArg).toBe('2026-12-25');
+    expect(mockSend.mock.calls[0][0].subject).toContain('December 25, 2026');
   });
 
   it('collects dealer- and advertiser-send errors too', async () => {

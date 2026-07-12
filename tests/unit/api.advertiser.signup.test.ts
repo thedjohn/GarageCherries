@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
 const {
-  mockFrom, mockCreateUser, mockDeleteUser, mockRateLimit, mockGetClientIP, mockNotifyAdmin,
+  mockFrom, mockCreateUser, mockDeleteUser, mockRateLimit, mockGetClientIP, mockNotifyAdmin, mockGetSiteSettings,
 } = vi.hoisted(() => ({
   mockFrom:        vi.fn(),
   mockCreateUser:  vi.fn(),
@@ -10,6 +10,7 @@ const {
   mockRateLimit:   vi.fn(),
   mockGetClientIP: vi.fn(() => '1.2.3.4'),
   mockNotifyAdmin: vi.fn(),
+  mockGetSiteSettings: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -20,6 +21,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }));
 vi.mock('@/lib/rateLimit', () => ({ rateLimit: mockRateLimit, getClientIP: mockGetClientIP }));
 vi.mock('@/lib/notifyAdmin', () => ({ notifyAdmin: mockNotifyAdmin }));
+vi.mock('@/lib/siteSettings', () => ({ getSiteSettings: mockGetSiteSettings }));
 vi.mock('next/server', () => ({
   NextResponse: {
     json: vi.fn((data: unknown, init?: { status?: number }) => ({ _data: data, _status: init?.status ?? 200 })),
@@ -54,6 +56,12 @@ beforeEach(() => {
   delete process.env.TURNSTILE_SECRET_KEY;
   mockRateLimit.mockReturnValue({ allowed: true, firstBlock: false });
   mockCreateUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
+  mockGetSiteSettings.mockResolvedValue({
+    promoApplicationCutoff: '2026-08-01T00:00:00Z',
+    promoExpiresAt: '2026-10-31T23:59:59Z',
+    advertiserTrialDays: 14,
+    dealerDefaultTrialDays: 180,
+  });
   noExistingAdvertisers();
 });
 
@@ -179,6 +187,31 @@ describe('POST /api/advertiser/signup', () => {
       description: null, website: null,
     });
     expect(res._data).toEqual({ ok: true, advertiserId: 'adv-1' });
+  });
+
+  it('uses a custom advertiserTrialDays from site settings, not the old hardcoded 14', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+    mockGetSiteSettings.mockResolvedValue({
+      promoApplicationCutoff: '2026-08-01T00:00:00Z',
+      promoExpiresAt: '2026-10-31T23:59:59Z',
+      advertiserTrialDays: 30,
+      dealerDefaultTrialDays: 180,
+    });
+    let insertArg: any;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'advertisers') {
+        return {
+          select: vi.fn().mockReturnValue({ like: vi.fn().mockResolvedValue({ data: [] }) }),
+          insert: vi.fn((arg) => { insertArg = arg; return { select: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'adv-1' }, error: null }) }) }; }),
+        };
+      }
+      return {};
+    });
+    const res: any = await POST(makeRequest(validBody));
+    expect(res._status).toBe(200);
+    expect(insertArg.trial_ends_at).toBe(new Date('2026-01-31T00:00:00Z').toISOString());
+    vi.useRealTimers();
   });
 
   it('falls back to radius 15 for an unrecognized tier value', async () => {

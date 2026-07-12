@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { rateLimit, getClientIP } from '@/lib/rateLimit';
 import { notifyAdmin } from '@/lib/notifyAdmin';
+import { getSiteSettings } from '@/lib/siteSettings';
 
 export async function POST(request: NextRequest) {
   const ip = getClientIP(request);
@@ -59,7 +60,10 @@ export async function POST(request: NextRequest) {
   // Resolve tier → radius
   const radiusMap: Record<string, number> = { starter: 15, metro: 30, regional: 60, statewide: 9999 };
 
-  const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+  // Trial length is superadmin-editable in /admin (Team tab → Settings) via
+  // site_settings, falling back to 14 days if unset.
+  const { advertiserTrialDays } = await getSiteSettings();
+  const trialEndsAt = new Date(Date.now() + advertiserTrialDays * 24 * 60 * 60 * 1000).toISOString();
 
   // Insert advertiser record
   const { data, error } = await admin.from('advertisers').insert({

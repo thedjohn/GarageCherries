@@ -32,8 +32,8 @@ interface SiteUser {
   type: string;
   roles: string[];
   suspended: { reason: string | null; suspended_at: string } | null;
-  dealer: { name: string; location: string; state: string; since: string | null } | null;
-  advertiser: { company_name: string; website: string | null } | null;
+  dealer: { name: string; location: string; state: string; since: string | null; beta_expires_at: string | null } | null;
+  advertiser: { company_name: string; website: string | null; trial_ends_at: string | null } | null;
   listings: { approved: number; pending: number; rejected: number } | null;
   watchlist_count: number;
   conversation_count: number;
@@ -104,6 +104,13 @@ export default function AdminPage() {
   const [teamWorking, setTeamWorking] = useState(false);
   const [teamError, setTeamError] = useState('');
 
+  // Site settings (trial/promo durations) — superadmin only
+  const [siteSettings, setSiteSettings] = useState<{ promoApplicationCutoff: string; promoExpiresAt: string; advertiserTrialDays: number; dealerDefaultTrialDays: number } | null>(null);
+  const [settingsForm, setSettingsForm] = useState({ promoApplicationCutoff: '', promoExpiresAt: '', advertiserTrialDays: '', dealerDefaultTrialDays: '' });
+  const [settingsWorking, setSettingsWorking] = useState(false);
+  const [settingsError, setSettingsError] = useState('');
+  const [settingsSaved, setSettingsSaved] = useState(false);
+
   // Events
   const [events, setEvents] = useState<CarEvent[]>([]);
   const [pendingEvents, setPendingEvents] = useState<CarEvent[]>([]);
@@ -146,6 +153,8 @@ export default function AdminPage() {
   const [editingUser, setEditingUser] = useState<SiteUser | null>(null);
   const [editUserName, setEditUserName] = useState('');
   const [editUserEmail, setEditUserEmail] = useState('');
+  const [editDealerBetaExpires, setEditDealerBetaExpires] = useState('');
+  const [editAdvertiserTrialExpires, setEditAdvertiserTrialExpires] = useState('');
   const [editUserSaving, setEditUserSaving] = useState(false);
   const [promoteTarget, setPromoteTarget] = useState<SiteUser | null>(null);
   const [promoteName, setPromoteName] = useState('');
@@ -342,12 +351,28 @@ export default function AdminPage() {
   async function saveUserEdit() {
     if (!editingUser) return;
     setEditUserSaving(true);
+    const body: Record<string, unknown> = { id: editingUser.id, action: 'edit', name: editUserName, email: editUserEmail };
+    if (editingUser.roles.includes('dealer') && editDealerBetaExpires) {
+      body.dealer = { beta_expires_at: `${editDealerBetaExpires}T23:59:59.000Z` };
+    }
+    if (editingUser.roles.includes('advertiser') && editAdvertiserTrialExpires) {
+      body.advertiser = { trial_ends_at: `${editAdvertiserTrialExpires}T23:59:59.000Z` };
+    }
     await fetch('/api/admin/users', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: editingUser.id, action: 'edit', name: editUserName, email: editUserEmail }),
+      body: JSON.stringify(body),
     });
-    setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, name: editUserName, email: editUserEmail } : u));
+    setUsers(prev => prev.map(u => {
+      if (u.id !== editingUser.id) return u;
+      return {
+        ...u,
+        name: editUserName,
+        email: editUserEmail,
+        dealer: u.dealer && body.dealer ? { ...u.dealer, beta_expires_at: (body.dealer as { beta_expires_at: string }).beta_expires_at } : u.dealer,
+        advertiser: u.advertiser && body.advertiser ? { ...u.advertiser, trial_ends_at: (body.advertiser as { trial_ends_at: string }).trial_ends_at } : u.advertiser,
+      };
+    }));
     setEditingUser(null); setEditUserSaving(false);
   }
 
@@ -361,7 +386,7 @@ export default function AdminPage() {
     });
     if (res.ok) {
       setUsers(prev => prev.map(u => u.id === promoteTarget.id
-        ? { ...u, type: 'dealer', dealer: { name: promoteName, location: promoteLocation, state: promoteState, since: null } } : u));
+        ? { ...u, type: 'dealer', dealer: { name: promoteName, location: promoteLocation, state: promoteState, since: null, beta_expires_at: null } } : u));
     }
     setPromoteTarget(null); setPromoteName(''); setPromoteLocation(''); setPromoteState(''); setPromoteWorking(false);
   }
@@ -407,6 +432,8 @@ export default function AdminPage() {
 
   function openEditUser(u: SiteUser) {
     setEditingUser(u); setEditUserName(u.name); setEditUserEmail(u.email);
+    setEditDealerBetaExpires(u.dealer?.beta_expires_at ? u.dealer.beta_expires_at.slice(0, 10) : '');
+    setEditAdvertiserTrialExpires(u.advertiser?.trial_ends_at ? u.advertiser.trial_ends_at.slice(0, 10) : '');
   }
 
   function openPromote(u: SiteUser) {
@@ -547,6 +574,39 @@ export default function AdminPage() {
     if (res.ok) setTeam(prev => prev.filter(m => m.user_id !== user_id));
   }
 
+  async function loadSettings() {
+    const res = await fetch('/api/admin/settings');
+    if (!res.ok) return;
+    const { settings: s } = await res.json();
+    setSiteSettings(s);
+    setSettingsForm({
+      promoApplicationCutoff: s.promoApplicationCutoff.slice(0, 10),
+      promoExpiresAt: s.promoExpiresAt.slice(0, 10),
+      advertiserTrialDays: String(s.advertiserTrialDays),
+      dealerDefaultTrialDays: String(s.dealerDefaultTrialDays),
+    });
+  }
+
+  async function saveSettings() {
+    setSettingsWorking(true); setSettingsError(''); setSettingsSaved(false);
+    const res = await fetch('/api/admin/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        promoApplicationCutoff: settingsForm.promoApplicationCutoff,
+        promoExpiresAt: settingsForm.promoExpiresAt,
+        advertiserTrialDays: Number(settingsForm.advertiserTrialDays),
+        dealerDefaultTrialDays: Number(settingsForm.dealerDefaultTrialDays),
+      }),
+    });
+    const json = await res.json();
+    setSettingsWorking(false);
+    if (!res.ok) { setSettingsError(json.error ?? 'Failed to save'); return; }
+    setSettingsSaved(true);
+    await loadSettings();
+    setTimeout(() => setSettingsSaved(false), 3000);
+  }
+
   if (loading) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Loading…</div>;
   if (!adminRole) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Access denied.</div>;
 
@@ -603,7 +663,7 @@ export default function AdminPage() {
           </button>
         )}
         {(adminRole === 'superadmin' || adminRole === 'admin') && (
-          <button onClick={() => setTab('team')} className={tabCls('team')}>
+          <button onClick={() => { setTab('team'); if (!siteSettings) loadSettings(); }} className={tabCls('team')}>
             Team <span className="ml-1 text-xs text-zinc-400">{team.length}</span>
           </button>
         )}
@@ -1147,6 +1207,49 @@ export default function AdminPage() {
             </div>
           </div>
         )}
+
+        {/* Trial & promo settings — superadmin only */}
+        {adminRole === 'superadmin' && (
+          <div className="mt-4 bg-white border border-zinc-100 rounded-2xl p-6 shadow-sm">
+            <h3 className="font-bold text-zinc-900">Trial &amp; Promo Settings</h3>
+            <p className="text-sm text-zinc-500 mt-0.5 mb-4">Controls free-account durations for new dealer approvals and advertiser signups. Existing accounts aren't affected — use Users tab → Edit to override a specific account.</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Promo Application Cutoff</label>
+                <input type="date" value={settingsForm.promoApplicationCutoff}
+                  onChange={e => setSettingsForm(f => ({ ...f, promoApplicationCutoff: e.target.value }))}
+                  className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                <p className="text-xs text-zinc-400 mt-1">Dealer applications submitted before this date get the promo rate.</p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Promo Expires At</label>
+                <input type="date" value={settingsForm.promoExpiresAt}
+                  onChange={e => setSettingsForm(f => ({ ...f, promoExpiresAt: e.target.value }))}
+                  className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                <p className="text-xs text-zinc-400 mt-1">Free access ends for promo dealers/sellers/advertisers on this date.</p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Advertiser Trial (days)</label>
+                <input type="number" min={1} value={settingsForm.advertiserTrialDays}
+                  onChange={e => setSettingsForm(f => ({ ...f, advertiserTrialDays: e.target.value }))}
+                  className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Dealer Default Trial (days)</label>
+                <input type="number" min={1} value={settingsForm.dealerDefaultTrialDays}
+                  onChange={e => setSettingsForm(f => ({ ...f, dealerDefaultTrialDays: e.target.value }))}
+                  className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                <p className="text-xs text-zinc-400 mt-1">Applied to dealer applications submitted after the promo cutoff.</p>
+              </div>
+            </div>
+            {settingsError && <p className="text-sm text-red-600 mt-3">{settingsError}</p>}
+            {settingsSaved && <p className="text-sm text-green-700 mt-3 font-medium">Saved.</p>}
+            <button onClick={saveSettings} disabled={settingsWorking}
+              className="mt-4 bg-zinc-900 hover:bg-zinc-700 disabled:opacity-40 text-white font-bold text-sm px-5 py-2 rounded-xl transition-colors">
+              {settingsWorking ? 'Saving…' : 'Save Settings'}
+            </button>
+          </div>
+        )}
     </>)}
 
       {/* Email tab */}
@@ -1528,6 +1631,20 @@ export default function AdminPage() {
                 <input type="email" value={editUserEmail} onChange={e => setEditUserEmail(e.target.value)}
                   className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
               </div>
+              {editingUser.roles.includes('dealer') && (
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Dealer Beta Expires</label>
+                  <input type="date" value={editDealerBetaExpires} onChange={e => setEditDealerBetaExpires(e.target.value)}
+                    className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                </div>
+              )}
+              {editingUser.roles.includes('advertiser') && (
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Advertiser Trial Ends</label>
+                  <input type="date" value={editAdvertiserTrialExpires} onChange={e => setEditAdvertiserTrialExpires(e.target.value)}
+                    className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                </div>
+              )}
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setEditingUser(null)} className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2.5 rounded-xl hover:bg-zinc-50">Cancel</button>

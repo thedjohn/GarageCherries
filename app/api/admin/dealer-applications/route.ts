@@ -3,6 +3,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requireAdmin, hasRole } from '@/lib/admin';
 import { Resend } from 'resend';
 import { emailWrap } from '@/lib/emailBranding';
+import { getSiteSettings } from '@/lib/siteSettings';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -119,10 +120,16 @@ export async function PATCH(req: NextRequest) {
 
   const userId = newUser.user.id;
 
-  // Applications submitted during the 250th promo (before Aug 1 2026) expire Oct 31; otherwise 6 months
-  const promoCutoff = new Date('2026-08-01T00:00:00Z');
+  // Applications submitted during the 250th promo (before the configured cutoff) expire
+  // at the configured promo expiry date; otherwise get the configured default trial length.
+  // Values are superadmin-editable in /admin (Team tab → Settings) via site_settings,
+  // falling back to the original hardcoded dates/lengths if unset.
+  const settings = await getSiteSettings();
+  const promoCutoff = new Date(settings.promoApplicationCutoff);
   const isPromo = new Date(app.created_at) < promoCutoff;
-  const betaExpiresAt = isPromo ? new Date('2026-10-31T23:59:59Z') : (() => { const d = new Date(); d.setMonth(d.getMonth() + 6); return d; })();
+  const betaExpiresAt = isPromo
+    ? new Date(settings.promoExpiresAt)
+    : new Date(Date.now() + settings.dealerDefaultTrialDays * 24 * 60 * 60 * 1000);
 
   const { error: dealerErr } = await admin.from('dealers').insert({
     id: userId,
@@ -162,7 +169,7 @@ export async function PATCH(req: NextRequest) {
     <h1 style="font-size:22px;font-weight:800;color:#18181b;margin:0 0 16px">Welcome to GarageCherries, ${app.name}!</h1>
     <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 16px">
       Your dealer account for <strong>${app.dealer_name}</strong> has been approved.
-      You're on our ${isPromo ? 'free promo plan through October 31, 2026' : '6-month beta plan'} — no charges during that period.
+      You're on our ${isPromo ? `free promo plan through ${new Date(settings.promoExpiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : `${settings.dealerDefaultTrialDays}-day beta plan`} — no charges during that period.
     </p>
     <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 24px">
       Click below to set your password and access your dealer dashboard.

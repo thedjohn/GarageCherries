@@ -59,6 +59,39 @@ test.describe('Admin panel', () => {
     await expect(content).toBeVisible({ timeout: 5000 });
   });
 
+  test('team tab shows the Trial & Promo Settings card with current values (superadmin)', async ({ page }) => {
+    await page.getByRole('button', { name: /team/i }).click();
+    const heading = page.locator('text=/trial.*promo settings/i').first();
+    await expect(heading).toBeVisible({ timeout: 5000 });
+    // Only render further checks if the logged-in test account is actually superadmin —
+    // this card is hidden entirely for admin/moderator/support.
+    if (await heading.isVisible()) {
+      const inputs = page.locator('input[type="date"], input[type="number"]');
+      await expect(inputs.first()).toBeVisible();
+      const count = await inputs.count();
+      expect(count).toBeGreaterThanOrEqual(4);
+      for (let i = 0; i < count; i++) {
+        await expect(inputs.nth(i)).not.toHaveValue('');
+      }
+    }
+  });
+
+  test('users tab Edit modal shows the dealer/advertiser trial override field when applicable', async ({ page }) => {
+    await page.getByRole('button', { name: /users/i }).click();
+    await expect(page.locator('input[placeholder*="search" i]')).toBeVisible({ timeout: 5000 });
+    const dealerRow = page.locator('text=/dealer/i').first();
+    if (await dealerRow.isVisible().catch(() => false)) {
+      await dealerRow.locator('xpath=ancestor::*[.//button[contains(., "Edit")]][1]').getByRole('button', { name: /edit/i }).click().catch(() => {});
+    }
+    // Best-effort: this test only asserts the field appears when an Edit modal is actually open,
+    // since test data (a real dealer/advertiser account) isn't guaranteed to exist in every environment.
+    const editModal = page.locator('text=/edit user/i').first();
+    if (await editModal.isVisible().catch(() => false)) {
+      const dateField = page.locator('text=/dealer beta expires|advertiser trial ends/i').first();
+      await expect(dateField).toBeVisible({ timeout: 3000 });
+    }
+  });
+
   test('non-admin is denied access', async ({ page, context }) => {
     // Clear session and access /admin directly
     await context.clearCookies();

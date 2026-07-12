@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
+import { getSiteSettings } from '@/lib/siteSettings';
 
 // POST /api/email/promo-expiry
 // Emails all promo users (individual sellers, dealers, advertisers) warning
-// that their free period ends October 31, 2026.
+// that their free period ends on the configured promo cutoff date (superadmin-editable
+// in /admin, Team tab → Settings; falls back to October 31, 2026 if unset).
 // Idempotent — each recipient is only emailed once (tracked via promo_expiry_notified_at).
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -18,6 +20,10 @@ export async function POST(request: NextRequest) {
   let sent = 0;
   let skipped = 0;
   const errors: string[] = [];
+
+  const { promoExpiresAt } = await getSiteSettings();
+  const cutoffDate = new Date(promoExpiresAt);
+  const cutoffLabel = cutoffDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
   // ── 1. Individual sellers / buyers with promo_expires_at set ────────────────
   const { data: promoProfiles } = await admin
@@ -35,13 +41,14 @@ export async function POST(request: NextRequest) {
       userType: 'seller',
       ctaUrl: 'https://www.garagecherries.com/sell',
       ctaLabel: 'Post a Listing Before It Expires',
+      cutoffLabel,
     });
 
     try {
       await resend.emails.send({
         from: 'GarageCherries <no-reply@garagecherries.com>',
         to: user.email,
-        subject: 'Your free listing period ends October 31 — here\'s what\'s next',
+        subject: `Your free listing period ends ${cutoffLabel} — here's what's next`,
         html,
       });
       await admin.from('profiles').update({ promo_expiry_notified_at: now }).eq('id', profile.id);
@@ -51,11 +58,15 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // ── 2. Dealers with beta_expires_at = 2026-10-31 (promo dealers) ────────────
+  // ── 2. Dealers whose beta_expires_at matches the promo cutoff date (promo dealers) ──
+  // Matched by date only (not full timestamp), same as the original hardcoded
+  // '2026-10-31' literal this replaces — dealer-applications stores an end-of-day
+  // timestamp, so comparing just the date portion is intentional.
+  const cutoffDateOnly = promoExpiresAt.slice(0, 10);
   const { data: promoDealers } = await admin
     .from('dealers')
     .select('id, name, email, beta_expires_at, promo_expiry_notified_at')
-    .eq('beta_expires_at', '2026-10-31')
+    .eq('beta_expires_at', cutoffDateOnly)
     .is('promo_expiry_notified_at', null);
 
   for (const dealer of promoDealers ?? []) {
@@ -67,13 +78,14 @@ export async function POST(request: NextRequest) {
       userType: 'dealer',
       ctaUrl: 'https://www.garagecherries.com/pricing',
       ctaLabel: 'View Dealer Plans',
+      cutoffLabel,
     });
 
     try {
       await resend.emails.send({
         from: 'GarageCherries <no-reply@garagecherries.com>',
         to: email,
-        subject: 'Your free dealer plan ends October 31 — here\'s what\'s next',
+        subject: `Your free dealer plan ends ${cutoffLabel} — here's what's next`,
         html,
       });
       await admin.from('dealers').update({ promo_expiry_notified_at: now }).eq('id', dealer.id);
@@ -83,14 +95,16 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // ── 3. Advertisers with trial ending around Oct 31 ───────────────────────────
-  const oct31 = '2026-11-01T00:00:00Z';
-  const oct17 = '2026-10-17T00:00:00Z';
+  // ── 3. Advertisers with trial ending around the promo cutoff ─────────────────
+  // Window is [cutoff - 14 days, cutoff + 1 day] — same span as the cron trigger
+  // window in app/api/cron/promo-expiry/route.ts, kept in sync via the same setting.
+  const windowEnd = new Date(cutoffDate.getTime() + 24 * 60 * 60 * 1000).toISOString();
+  const windowStart = new Date(cutoffDate.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
   const { data: promoAdvertisers } = await admin
     .from('advertisers')
     .select('id, business_name, email, trial_ends_at, promo_expiry_notified_at')
-    .lte('trial_ends_at', oct31)
-    .gte('trial_ends_at', oct17)
+    .lte('trial_ends_at', windowEnd)
+    .gte('trial_ends_at', windowStart)
     .is('promo_expiry_notified_at', null);
 
   for (const advertiser of promoAdvertisers ?? []) {
@@ -102,13 +116,14 @@ export async function POST(request: NextRequest) {
       userType: 'advertiser',
       ctaUrl: 'https://www.garagecherries.com/pricing',
       ctaLabel: 'View Advertising Plans',
+      cutoffLabel,
     });
 
     try {
       await resend.emails.send({
         from: 'GarageCherries <no-reply@garagecherries.com>',
         to: email,
-        subject: 'Your free advertising trial ends October 31 — here\'s what\'s next',
+        subject: `Your free advertising trial ends ${cutoffLabel} — here's what's next`,
         html,
       });
       await admin.from('advertisers').update({ promo_expiry_notified_at: now }).eq('id', advertiser.id);
@@ -133,17 +148,19 @@ function promoExpiryHtml({
   userType,
   ctaUrl,
   ctaLabel,
+  cutoffLabel,
 }: {
   name: string;
   userType: 'seller' | 'dealer' | 'advertiser';
   ctaUrl: string;
   ctaLabel: string;
+  cutoffLabel: string;
 }) {
   const bodyByType: Record<typeof userType, string> = {
     seller: `
       <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 16px;">
         As part of our 250th birthday celebration, you've had <strong>free access to post listings</strong>
-        on GarageCherries. That promotion ends on <strong>October 31, 2026</strong>.
+        on GarageCherries. That promotion ends on <strong>${cutoffLabel}</strong>.
       </p>
       <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 24px;">
         After that date, listing fees will apply. We'll share pricing details soon —
@@ -155,7 +172,7 @@ function promoExpiryHtml({
       <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 16px;">
         As part of our 250th birthday celebration, your dealership has had
         <strong>free access to GarageCherries</strong> — unlimited listings, buyer inquiries,
-        and your dealer profile page. That promotion ends on <strong>October 31, 2026</strong>.
+        and your dealer profile page. That promotion ends on <strong>${cutoffLabel}</strong>.
       </p>
       <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 24px;">
         We're finalizing paid dealer plans and will be in touch with details before the cutoff.
@@ -165,7 +182,7 @@ function promoExpiryHtml({
     advertiser: `
       <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 16px;">
         As part of our 250th birthday celebration, your business has been advertising
-        on GarageCherries for free. That promotion ends on <strong>October 31, 2026</strong>.
+        on GarageCherries for free. That promotion ends on <strong>${cutoffLabel}</strong>.
       </p>
       <p style="color:#52525b;font-size:15px;line-height:1.6;margin:0 0 24px;">
         We're finalizing advertising plans and will share full pricing before the cutoff.
@@ -184,7 +201,7 @@ function promoExpiryHtml({
           🇺🇸 250th Birthday Promo — Ending Soon
         </div>
         <h1 style="font-size:22px;font-weight:800;color:#18181b;margin:0 0 8px;">
-          Hey ${name}, your free period ends October 31
+          Hey ${name}, your free period ends ${cutoffLabel}
         </h1>
         ${bodyByType[userType]}
         <a href="${ctaUrl}"

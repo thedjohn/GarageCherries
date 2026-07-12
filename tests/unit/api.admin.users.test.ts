@@ -180,6 +180,29 @@ describe('GET /api/admin/users', () => {
     // dealer-1 matches role but is suspended, so status=active excludes it too
     expect(res._data.users).toHaveLength(0);
   });
+
+  it('includes beta_expires_at and trial_ends_at in the dealer/advertiser objects', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'admin1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    mockListUsers.mockResolvedValue({
+      data: {
+        users: [
+          { id: 'dealer-1', email: 'd@x.com', created_at: new Date().toISOString(), last_sign_in_at: new Date().toISOString(), user_metadata: {} },
+          { id: 'advertiser-1', email: 'a@x.com', created_at: new Date().toISOString(), last_sign_in_at: new Date().toISOString(), user_metadata: {} },
+        ],
+      },
+    });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'dealers') return { select: vi.fn().mockResolvedValue({ data: [{ id: 'dealer-1', name: 'Dealer Co', beta_expires_at: '2026-10-31T23:59:59+00:00' }] }) };
+      if (table === 'advertisers') return { select: vi.fn().mockResolvedValue({ data: [{ id: 'ad-1', user_id: 'advertiser-1', business_name: 'Ads Co', trial_ends_at: '2026-08-01T00:00:00+00:00' }] }) };
+      return { select: vi.fn().mockResolvedValue({ data: [] }) };
+    });
+
+    const res: any = await GET(makeGetRequest());
+    const byId = Object.fromEntries(res._data.users.map((u: any) => [u.id, u]));
+    expect(byId['dealer-1'].dealer.beta_expires_at).toBe('2026-10-31T23:59:59+00:00');
+    expect(byId['advertiser-1'].advertiser.trial_ends_at).toBe('2026-08-01T00:00:00+00:00');
+  });
 });
 
 // ── PATCH /api/admin/users ───────────────────────────────────────────────────
@@ -322,6 +345,64 @@ describe('PATCH /api/admin/users', () => {
 
       const res: any = await PATCH(makeJsonRequest({ id: 'u1', action: 'edit', dealer: { name: 'X' } }));
       expect(res._status).toBe(500);
+    });
+
+    it('updates an advertiser field via the advertiser branch, keyed by user_id (not id)', async () => {
+      mockRequireAdmin.mockResolvedValue('admin');
+      const eqSpy = vi.fn().mockResolvedValue({ error: null });
+      const updateSpy = vi.fn().mockReturnValue({ eq: eqSpy });
+      mockFrom.mockImplementation((table: string) => table === 'advertisers' ? { update: updateSpy } : {});
+
+      const res: any = await PATCH(makeJsonRequest({ id: 'u1', action: 'edit', advertiser: { trial_ends_at: '2026-12-31T23:59:59.000Z' } }));
+      expect(updateSpy).toHaveBeenCalledWith({ trial_ends_at: '2026-12-31T23:59:59.000Z' });
+      expect(eqSpy).toHaveBeenCalledWith('user_id', 'u1');
+      expect(res._data.success).toBe(true);
+    });
+
+    it('returns 500 when the advertiser update fails', async () => {
+      mockRequireAdmin.mockResolvedValue('admin');
+      mockFrom.mockImplementation((table: string) => table === 'advertisers'
+        ? { update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: { message: 'db down' } }) }) }
+        : {});
+
+      const res: any = await PATCH(makeJsonRequest({ id: 'u1', action: 'edit', advertiser: { trial_ends_at: '2026-12-31T23:59:59.000Z' } }));
+      expect(res._status).toBe(500);
+    });
+
+    it('updates both dealer and advertiser fields in a single edit call (dual-role account)', async () => {
+      mockRequireAdmin.mockResolvedValue('admin');
+      const dealerEq = vi.fn().mockResolvedValue({ error: null });
+      const dealerUpdate = vi.fn().mockReturnValue({ eq: dealerEq });
+      const advertiserEq = vi.fn().mockResolvedValue({ error: null });
+      const advertiserUpdate = vi.fn().mockReturnValue({ eq: advertiserEq });
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'dealers') return { update: dealerUpdate };
+        if (table === 'advertisers') return { update: advertiserUpdate };
+        return {};
+      });
+
+      const res: any = await PATCH(makeJsonRequest({
+        id: 'u1', action: 'edit',
+        dealer: { beta_expires_at: '2027-01-01T23:59:59.000Z' },
+        advertiser: { trial_ends_at: '2026-12-31T23:59:59.000Z' },
+      }));
+      expect(dealerUpdate).toHaveBeenCalledWith({ beta_expires_at: '2027-01-01T23:59:59.000Z' });
+      expect(dealerEq).toHaveBeenCalledWith('id', 'u1');
+      expect(advertiserUpdate).toHaveBeenCalledWith({ trial_ends_at: '2026-12-31T23:59:59.000Z' });
+      expect(advertiserEq).toHaveBeenCalledWith('user_id', 'u1');
+      expect(res._data.success).toBe(true);
+    });
+
+    it('does not touch the advertisers table when advertiser is not provided', async () => {
+      mockRequireAdmin.mockResolvedValue('admin');
+      const advertisersFrom = vi.fn();
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'advertisers') { advertisersFrom(); return {}; }
+        if (table === 'dealers') return { update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }) };
+        return {};
+      });
+      await PATCH(makeJsonRequest({ id: 'u1', action: 'edit', dealer: { name: 'X' } }));
+      expect(advertisersFrom).not.toHaveBeenCalled();
     });
   });
 

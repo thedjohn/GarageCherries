@@ -35,8 +35,8 @@ export async function GET(req: NextRequest) {
     { data: conversations },
   ] = await Promise.all([
     admin.auth.admin.listUsers({ perPage: 1000 }),
-    admin.from('dealers').select('id, name, location, state, since, logo'),
-    admin.from('advertisers').select('id, user_id, business_name, contact_name, phone, city, state'),
+    admin.from('dealers').select('id, name, location, state, since, logo, beta_expires_at'),
+    admin.from('advertisers').select('id, user_id, business_name, contact_name, phone, city, state, trial_ends_at'),
     admin.from('listings').select('seller_id, status'),
     admin.from('suspended_users').select('user_id, reason, suspended_at'),
     admin.from('watchlists').select('user_id'),
@@ -128,7 +128,7 @@ export async function PATCH(req: NextRequest) {
   if (!role) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
-  const { id, action, reason, name, email, dealer } = body;
+  const { id, action, reason, name, email, dealer, advertiser } = body;
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
   const admin = createAdminClient();
@@ -222,6 +222,11 @@ export async function PATCH(req: NextRequest) {
     }
     if (dealer !== undefined) {
       const { error } = await admin.from('dealers').update(dealer).eq('id', id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    if (advertiser !== undefined) {
+      // Advertisers are keyed by user_id, not id
+      const { error } = await admin.from('advertisers').update(advertiser).eq('user_id', id);
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }
     return NextResponse.json({ success: true });

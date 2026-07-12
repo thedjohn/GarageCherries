@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
-const { mockGetUser, mockFrom, mockRequireAdmin, mockGenerateLink, mockCreateUser, mockDeleteUser, mockSend } = vi.hoisted(() => ({
+const { mockGetUser, mockFrom, mockRequireAdmin, mockGenerateLink, mockCreateUser, mockDeleteUser, mockSend, mockGetSiteSettings } = vi.hoisted(() => ({
   mockGetUser:      vi.fn(),
   mockFrom:         vi.fn(),
   mockRequireAdmin: vi.fn(),
@@ -9,6 +9,7 @@ const { mockGetUser, mockFrom, mockRequireAdmin, mockGenerateLink, mockCreateUse
   mockCreateUser:   vi.fn(),
   mockDeleteUser:   vi.fn(),
   mockSend:         vi.fn().mockResolvedValue({ id: 'email-1' }),
+  mockGetSiteSettings: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -23,6 +24,7 @@ vi.mock('@/lib/admin', () => ({ requireAdmin: mockRequireAdmin, hasRole: vi.fn((
   return order.indexOf(role) >= order.indexOf(min);
 }) }));
 vi.mock('resend', () => ({ Resend: vi.fn(function (this: any) { return { emails: { send: mockSend } }; }) }));
+vi.mock('@/lib/siteSettings', () => ({ getSiteSettings: mockGetSiteSettings }));
 vi.mock('next/server', () => ({
   NextResponse: {
     json: vi.fn((data: unknown, init?: { status?: number }) => ({ _data: data, _status: init?.status ?? 200 })),
@@ -39,6 +41,12 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockGetUser.mockResolvedValue({ data: { user: { id: 'admin-1' } } });
   mockGenerateLink.mockResolvedValue({ data: { properties: { action_link: 'https://x.com/reset' } } });
+  mockGetSiteSettings.mockResolvedValue({
+    promoApplicationCutoff: '2026-08-01T00:00:00Z',
+    promoExpiresAt: '2026-10-31T23:59:59Z',
+    advertiserTrialDays: 14,
+    dealerDefaultTrialDays: 180,
+  });
 });
 
 describe('GET /api/admin/dealer-applications', () => {
@@ -219,13 +227,43 @@ describe('PATCH /api/admin/dealer-applications', () => {
       expect(mockSend.mock.calls[0][0].html).toContain('free promo plan');
     });
 
-    it('approves with 6-month beta expiry for applications submitted after Aug 1 2026', async () => {
+    it('approves with the default 180-day beta expiry for applications submitted after Aug 1 2026', async () => {
       mockRequireAdmin.mockResolvedValue('admin');
       mockCreateUser.mockResolvedValue({ data: { user: { id: 'new-user-1' } }, error: null });
       setupAppFetch({ ...baseApp, created_at: '2026-09-01T00:00:00Z' });
       const res: any = await PATCH(makeRequest({ id: 'app-1', action: 'approve' }));
       expect(res._status).toBe(200);
-      expect(mockSend.mock.calls[0][0].html).toContain('6-month beta plan');
+      expect(mockSend.mock.calls[0][0].html).toContain('180-day beta plan');
+    });
+
+    it('uses a custom promo cutoff / expiry / trial length from site settings, proving the code reads them rather than the old hardcoded values', async () => {
+      mockRequireAdmin.mockResolvedValue('admin');
+      mockCreateUser.mockResolvedValue({ data: { user: { id: 'new-user-1' } }, error: null });
+      // Custom settings: promo window pushed to Sept 2026, expiring Dec 2026; standard trial 90 days
+      mockGetSiteSettings.mockResolvedValue({
+        promoApplicationCutoff: '2026-09-01T00:00:00Z',
+        promoExpiresAt: '2026-12-01T23:59:59Z',
+        advertiserTrialDays: 14,
+        dealerDefaultTrialDays: 90,
+      });
+      const insert = vi.fn().mockResolvedValue({ error: null });
+      mockFrom.mockImplementation((table: string) => {
+        if (table === 'dealer_applications') {
+          return {
+            select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { ...baseApp, created_at: '2026-08-15T00:00:00Z' }, error: null }) }) }),
+            update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
+          };
+        }
+        if (table === 'dealers') return { insert };
+        return {};
+      });
+      // Application submitted Aug 15 — would have qualified for the OLD hardcoded promo cutoff
+      // (before Aug 1) as "after" it, but under the new custom cutoff (Sept 1) it's still "before",
+      // so it should get the custom promo expiry (Dec 1), not a rolling trial.
+      const res: any = await PATCH(makeRequest({ id: 'app-1', action: 'approve' }));
+      expect(res._status).toBe(200);
+      expect(insert).toHaveBeenCalledWith(expect.objectContaining({ beta_expires_at: '2026-12-01T23:59:59.000Z' }));
+      expect(mockSend.mock.calls[0][0].html).toContain('free promo plan through December 1, 2026');
     });
 
     it('shows a contact-us fallback in the email when link generation fails', async () => {
