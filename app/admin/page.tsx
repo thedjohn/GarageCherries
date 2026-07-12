@@ -5,6 +5,7 @@ import Tooltip from '@/components/Tooltip';
 import { formatPhone } from '@/lib/data';
 import { MAKES, BODY_STYLES, CONDITIONS, TRANSMISSIONS } from '@/lib/types';
 import AdminEmailCampaigns from '@/components/AdminEmailCampaigns';
+import { resolveAdminRole, type TeamMember } from '@/lib/resolveAdminRole';
 
 interface Listing {
   id: string; slug: string; title: string; year: number; make: string; model: string;
@@ -18,7 +19,6 @@ interface Listing {
 // seller_id is intentionally excluded from EditFields — ownership cannot be reassigned via the admin UI
 type EditFields = Omit<Listing, 'id' | 'slug' | 'seller_id' | 'images' | 'created_at' | 'title' | 'rejection_reason' | 'resubmission_note' | 'resubmission_count'>;
 
-interface TeamMember { user_id: string; email: string; role: string; created_at: string; }
 interface ReportedMessage {
   id: string; body: string; sender_name: string; sender_id: string; created_at: string;
   conversation_id: string;
@@ -180,8 +180,7 @@ export default function AdminPage() {
         if (roleRes.ok) {
           const { team: teamData } = await roleRes.json();
           setTeam(teamData ?? []);
-          const me = (teamData ?? []).find((m: TeamMember) => m.email === user.email);
-          resolvedRole = me?.role ?? null;
+          resolvedRole = resolveAdminRole(teamData ?? [], user.email);
           setAdminRole(resolvedRole);
         }
 
