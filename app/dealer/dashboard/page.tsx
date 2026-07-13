@@ -321,7 +321,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
             )}
             <div>
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Transmission</label>
-              <select value={fields.transmission} onChange={e => set('transmission', e.target.value)} className={inp}>
+              <select required value={fields.transmission} onChange={e => set('transmission', e.target.value)} className={inp}>
                 <option value="">Select...</option>
                 {fields.fuelType === 'Electric'
                   ? <option>1-Speed</option>
