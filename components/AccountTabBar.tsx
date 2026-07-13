@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
@@ -9,7 +9,15 @@ interface Counts { watchlist: number; messages: number; alerts: number }
 function AccountTabBarInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [counts, setCounts] = useState<Counts>({ watchlist: 0, messages: 0, alerts: 0 });
+
+  const signOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push('/');
+    router.refresh();
+  };
 
   useEffect(() => {
     const supabase = createClient();
@@ -97,16 +105,21 @@ function AccountTabBarInner() {
     <div className="border-b border-zinc-200 bg-white">
       <div className="max-w-4xl mx-auto px-4">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-1.5 pt-4 pb-1 text-xs text-zinc-400">
-          <Link href="/" className="hover:text-zinc-600 transition-colors">Home</Link>
-          <span>/</span>
-          <Link href="/account?tab=watchlist" className="hover:text-zinc-600 transition-colors">My Account</Link>
-          {pathname.startsWith('/messages') && (
-            <>
-              <span>/</span>
-              <span className="text-zinc-600">Messages</span>
-            </>
-          )}
+        <div className="flex items-center justify-between gap-1.5 pt-4 pb-1 text-xs text-zinc-400">
+          <div className="flex items-center gap-1.5">
+            <Link href="/" className="hover:text-zinc-600 transition-colors">Home</Link>
+            <span>/</span>
+            <Link href="/account?tab=watchlist" className="hover:text-zinc-600 transition-colors">My Account</Link>
+            {pathname.startsWith('/messages') && (
+              <>
+                <span>/</span>
+                <span className="text-zinc-600">Messages</span>
+              </>
+            )}
+          </div>
+          <button onClick={signOut} className="hover:text-zinc-600 transition-colors font-semibold">
+            Sign out
+          </button>
         </div>
 
         {/* Tab bar */}
