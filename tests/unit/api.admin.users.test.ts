@@ -463,7 +463,10 @@ describe('DELETE /api/admin/users', () => {
           delete: vi.fn().mockReturnValue({ eq: deleteEq }),
         };
       }
-      return { delete: vi.fn().mockReturnValue({ eq: deleteEq }) };
+      return {
+        delete: vi.fn().mockReturnValue({ eq: deleteEq }),
+        update: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }) }),
+      };
     });
     mockDeleteUser.mockResolvedValue({ error: null });
 
@@ -483,7 +486,10 @@ describe('DELETE /api/admin/users', () => {
           delete: vi.fn().mockReturnValue({ eq: deleteEq }),
         };
       }
-      return { delete: vi.fn().mockReturnValue({ eq: deleteEq }) };
+      return {
+        delete: vi.fn().mockReturnValue({ eq: deleteEq }),
+        update: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }) }),
+      };
     });
     mockDeleteUser.mockResolvedValue({ error: null });
 
@@ -502,7 +508,10 @@ describe('DELETE /api/admin/users', () => {
           delete: vi.fn().mockReturnValue({ eq: deleteEq }),
         };
       }
-      return { delete: vi.fn().mockReturnValue({ eq: deleteEq }) };
+      return {
+        delete: vi.fn().mockReturnValue({ eq: deleteEq }),
+        update: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }) }),
+      };
     });
     mockDeleteUser.mockResolvedValue({ error: { message: 'boom' } });
 
