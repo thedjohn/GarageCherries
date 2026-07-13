@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: "Classic Car Buyer's Guides | GarageCherries",
+  title: "Classic Car Buyer's Guides",
   description: "How to buy a classic car online: what to inspect, questions to ask dealers, red flags to watch for, and how to negotiate. Free guides for first-time and experienced collectors.",
   alternates: { canonical: 'https://www.garagecherries.com/guides' },
 };

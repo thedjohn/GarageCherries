@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const entry = getEntry(makeSlug, modelSlug);
   if (!entry) return { title: 'Not Found' };
   return {
-    title: `${entry.make} ${entry.model} (${entry.years}) — Specs, History & Buyer's Guide | GarageCherries`,
+    title: `${entry.make} ${entry.model} (${entry.years}) — Specs, History & Buyer's Guide`,
     description: entry.overview,
     alternates: { canonical: `https://www.garagecherries.com/cars/${makeSlug}/${modelSlug}` },
     openGraph: {

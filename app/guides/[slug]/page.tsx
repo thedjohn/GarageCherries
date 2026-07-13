@@ -174,7 +174,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const guide = GUIDES[slug];
   if (!guide) return { title: 'Not Found' };
   return {
-    title: `${guide.title} | GarageCherries`,
+    title: guide.title,
     description: guide.subtitle,
     alternates: { canonical: `https://www.garagecherries.com/guides/${slug}` },
   };

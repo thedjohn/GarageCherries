@@ -7,7 +7,7 @@ export const revalidate = 0;
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: `Classic Car Shows & Events ${new Date().getFullYear()} | GarageCherries`,
+    title: `Classic Car Shows & Events ${new Date().getFullYear()}`,
     description: 'Upcoming classic car shows, swap meets, and cruise nights across the US. Find events near you.',
     alternates: { canonical: 'https://www.garagecherries.com/events' },
   };

@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Contact Us — GarageCherries',
+  title: 'Contact Us',
   description: 'Get in touch with the GarageCherries team. Questions about listings, dealer accounts, advertising, or the platform.',
   alternates: { canonical: 'https://www.garagecherries.com/contact' },
 };
