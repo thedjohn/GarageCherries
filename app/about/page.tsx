@@ -19,7 +19,7 @@ const orgJsonLd = {
     '@type': 'ContactPoint',
     email: 'hello@garagecherries.com',
     contactType: 'customer support',
-    areaServed: 'US',
+    areaServed: 'USA',
     availableLanguage: 'English',
   },
 };

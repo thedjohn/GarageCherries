@@ -8,7 +8,7 @@ export const revalidate = 0;
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `Classic Car Shows & Events ${new Date().getFullYear()}`,
-    description: 'Upcoming classic car shows, swap meets, and cruise nights across the US. Find events near you.',
+    description: 'Upcoming classic car shows, swap meets, and cruise nights across the USA. Find events near you.',
     alternates: { canonical: 'https://www.garagecherries.com/events' },
   };
 }
@@ -69,7 +69,7 @@ export default async function EventsPage() {
         <p className="text-xs font-semibold text-red-600 uppercase tracking-widest mb-3">GarageCherries</p>
         <h1 className="text-4xl md:text-5xl font-extrabold text-zinc-900 mb-4">Car Show Calendar</h1>
         <p className="text-lg text-zinc-500 max-w-2xl">
-          Major classic car shows, auctions, swap meets, and cruise nights across the US for {new Date().getFullYear()}.
+          Major classic car shows, auctions, swap meets, and cruise nights across the USA for {new Date().getFullYear()}.
         </p>
       </div>
 

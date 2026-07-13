@@ -165,7 +165,7 @@ export default async function ModelPage({ params }: Props) {
           {/* Price Guide */}
           <div className="bg-white border border-zinc-100 rounded-2xl p-5 shadow-sm">
             <h3 className="font-bold text-zinc-900 mb-1 text-sm uppercase tracking-wide">Market Price Guide</h3>
-            <p className="text-xs text-zinc-400 mb-4">Approximate US asking prices</p>
+            <p className="text-xs text-zinc-400 mb-4">Approximate USA asking prices</p>
             <div className="space-y-3">
               {[
                 { label: 'Project', range: entry.priceRange.project, color: 'bg-yellow-100 text-yellow-800' },

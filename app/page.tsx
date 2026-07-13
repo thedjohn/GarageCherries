@@ -56,7 +56,7 @@ export default async function HomePage() {
       '@type': 'ContactPoint',
       email: 'hello@garagecherries.com',
       contactType: 'customer support',
-      areaServed: 'US',
+      areaServed: 'USA',
       availableLanguage: 'English',
     },
     sameAs: ['https://www.garagecherries.com'],

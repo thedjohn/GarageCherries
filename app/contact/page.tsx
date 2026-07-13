@@ -13,7 +13,7 @@ const contactJsonLd = {
   name: 'GarageCherries',
   url: 'https://www.garagecherries.com',
   contactPoint: [
-    { '@type': 'ContactPoint', email: 'contact-us@garagecherries.com', contactType: 'customer support', areaServed: 'US' },
+    { '@type': 'ContactPoint', email: 'contact-us@garagecherries.com', contactType: 'customer support', areaServed: 'USA' },
   ],
 };
 

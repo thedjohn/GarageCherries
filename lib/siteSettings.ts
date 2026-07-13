@@ -11,8 +11,8 @@ export interface SiteSettings {
 // site_settings existed — used whenever the table/row isn't there yet or a
 // query fails, so behavior never regresses to an undefined state.
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
-  promoApplicationCutoff: '2026-08-01T00:00:00Z',
-  promoExpiresAt: '2026-10-31T23:59:59Z',
+  promoApplicationCutoff: '2026-12-31T00:00:00Z',
+  promoExpiresAt: '2026-12-31T23:59:59Z',
   advertiserTrialDays: 14,
   dealerDefaultTrialDays: 180,
 };

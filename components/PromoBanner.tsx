@@ -25,7 +25,7 @@ export default function PromoBanner() {
       <div className="flex items-center gap-2.5 flex-1 min-w-0">
         <span className="text-lg shrink-0">🇺🇸</span>
         <p className="text-sm leading-snug">
-          <span className="font-bold text-yellow-300">Free 3-month listing</span>
+          <span className="font-bold text-yellow-300">Free listing till end of year</span>
           {' '}— celebrating America&apos;s 250th birthday. Dealers &amp; private sellers.
         </p>
       </div>

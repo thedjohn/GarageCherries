@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 
         if (!existingProfile) {
           const fullName = data.user.user_metadata?.full_name ?? data.user.user_metadata?.name ?? '';
-          const promoExpiresAt = promo ? '2026-10-31T23:59:59Z' : null;
+          const promoExpiresAt = promo ? '2026-12-31T23:59:59Z' : null;
           await admin.from('profiles').upsert({
             id: data.user.id,
             full_name: fullName,

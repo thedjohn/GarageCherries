@@ -8,7 +8,7 @@ export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: 'Recently Sold Classic Cars | GarageCherries',
-  description: 'Browse classic cars recently sold on GarageCherries. See what muscle cars, collector vehicles, and vintage automobiles have sold for across the US.',
+  description: 'Browse classic cars recently sold on GarageCherries. See what muscle cars, collector vehicles, and vintage automobiles have sold for across the USA.',
   alternates: { canonical: 'https://www.garagecherries.com/sold' },
 };
 

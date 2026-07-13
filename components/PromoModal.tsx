@@ -11,7 +11,7 @@ export default function PromoModal() {
   const router = useRouter();
 
   useEffect(() => {
-    const promoExpired = new Date() > new Date('2026-07-31T23:59:59');
+    const promoExpired = new Date() > new Date('2026-12-31T23:59:59');
     if (!promoExpired && !localStorage.getItem(STORAGE_KEY)) {
       setOpen(true);
     }
@@ -40,7 +40,7 @@ export default function PromoModal() {
         <div className="relative w-full bg-zinc-900" style={{aspectRatio: '16/9'}}>
           <Image
             src={PROMO_IMG}
-            alt="Free 3-month listing — America's 250th Birthday"
+            alt="Free listing till end of year — America's 250th Birthday"
             fill
             className="object-contain"
             priority
@@ -62,7 +62,7 @@ export default function PromoModal() {
             🇺🇸 Limited time offer
           </span>
           <h2 className="text-2xl font-extrabold text-zinc-900 leading-tight mb-2">
-            Free 3-month listing<br />
+            Free listing till end of year<br />
             <span className="text-red-600">for dealers &amp; private sellers</span>
           </h2>
           <p className="text-zinc-500 text-sm mb-5 leading-relaxed">
@@ -83,7 +83,7 @@ export default function PromoModal() {
             </button>
           </div>
           <p className="text-xs text-zinc-400 mt-3 text-center">
-            No credit card required. Offer valid through July 31, 2026.
+            No credit card required. Offer valid through December 31, 2026.
           </p>
         </div>
       </div>

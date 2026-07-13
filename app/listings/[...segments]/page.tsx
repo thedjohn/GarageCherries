@@ -58,7 +58,7 @@ export async function generateMetadata({ params }: { params: Promise<{ segments:
     const count = CARS.filter(c => c.make === make && c.model === model).length;
     return {
       title,
-      description: `Browse ${count} ${make} ${model} classic cars for sale on GarageCherries. Find the best deals from trusted dealers across the US.`,
+      description: `Browse ${count} ${make} ${model} classic cars for sale on GarageCherries. Find the best deals from trusted dealers across the USA.`,
       alternates: { canonical: `${BASE_URL}/listings/${segments[0]}/${segments[1]}` },
     };
   }
