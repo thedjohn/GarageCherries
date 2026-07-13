@@ -77,18 +77,16 @@ Dealer accounts are currently created manually by the site owner. Contact the ad
 Once set up, log in at `/dealer/login`.
 
 ### Dealer Dashboard Overview
-The dashboard at `/dealer/dashboard` has four tabs:
-- **Inventory** — all your active and sold listings
+The dashboard at `/dealer/dashboard` has five tabs:
+- **Overview** — active listings, views/inquiries (30-day), avg. days on market, and a "Your listings" panel showing per-listing views/watching
+- **Inventory** — all your active and sold listings, with per-listing Views and Watchers columns
 - **Inquiries** — buyer messages and contact requests
-- **Analytics** — views, inquiries, and performance metrics
+- **Offers** — buyer offers on your listings (accept/decline)
 - **Settings** — update your dealer profile
 
 ### Adding a Listing
 1. From the Inventory tab, click **Add Vehicle**
-2. Fill in all fields:
-   - Year, Make, Model, Mileage, Condition
-   - Body Style, Engine, Transmission, Color
-   - Price, Description, Location, State
+2. Fill in the required fields (marked with *): Year, Make, Model, Condition, Body Style, Fuel Type, Transmission, Drive Type, Price, Description, and at least one photo. Mileage, Color, Engine, City, and State are optional. VIN is optional but recommended — buyers see it as a trust signal.
 3. Upload photos by clicking the photo upload area (supports multiple images; drag to reorder)
 4. Toggle **Featured** on to highlight the listing (premium feature)
 5. Click **Add Vehicle** — the listing goes live immediately on the public site
@@ -117,11 +115,13 @@ The dashboard at `/dealer/dashboard` has four tabs:
 - Use the **Message Watchers** feature to notify everyone watching a specific car about price drops or updates
 
 ### Viewing Analytics
-The **Analytics** tab shows:
+The **Overview** tab shows:
 - Total listing views over the past 30 days vs. the prior period
 - Total buyer inquiries over the past 30 days
 - Average days on market for your inventory
-- Watcher counts per listing (how many buyers have it saved)
+- A "Your listings" panel with each listing's all-time view count and current watcher count
+
+The **Inventory** tab table also shows per-listing Views and Watchers columns for every vehicle. Private sellers see the same per-listing views/watching data on their `/account` page's My Listings section.
 
 ### Updating Your Dealer Profile
 From the **Settings** tab you can update:

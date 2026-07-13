@@ -176,11 +176,11 @@ The ADA has been interpreted by courts to apply to websites. Plaintiffs' firms h
 
 ### 13. Cookie Consent / GDPR
 
-GDPR applies to any EU resident using the Site. If GarageCherries is US-only and has no EU marketing presence, risk is low — but not zero.
+GDPR applies to any EU resident using the Site. **The Site's listings and marketing copy are no longer US-only as of 2026-07-13 (homepage/promo copy now says "worldwide")** — the "US-only, low risk" framing this section previously relied on no longer holds, and EU-visitor exposure should be treated as a live possibility rather than a hypothetical.
 
 - [ ] Add a cookie consent banner for non-essential cookies (analytics, advertising)
-- [ ] Add a brief GDPR section to the Privacy Policy (or a note that the Site is intended for US residents only)
-- [ ] If EU visitors are significant in analytics, a full GDPR compliance review is warranted
+- [ ] Add a full GDPR section to the Privacy Policy — the "US residents only" note is no longer a viable alternative given worldwide-facing copy
+- [ ] Review analytics for EU visitor volume; a full GDPR compliance review is now warranted rather than optional
 
 ---
 

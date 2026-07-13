@@ -1,6 +1,6 @@
 # GarageCherries
 
-A classic and collector car marketplace connecting buyers with trusted dealers and private sellers across the United States. Built with Next.js 16, Supabase, and Resend.
+A classic and collector car marketplace connecting buyers with trusted dealers and private sellers worldwide. Built with Next.js 16, Supabase, and Resend.
 
 **Tagline:** *Find Your Cherry.*
 
@@ -225,7 +225,7 @@ All opt-out flags are stored in `user_metadata` (Supabase Auth) or on the `deale
 
 - **No seller commissions** — GarageCherries charges subscription/listing fees only. Do not add commission logic to any checkout or payment flow.
 - **Lazy image upload** — images are held as `File` objects on the client until the listing form is submitted; upload happens inside `onSubmit`, not on file select.
-- **Dealer beta** — new dealers get a 6-month beta period (`plan: 'beta'`, `beta_expires_at`). Expired dealers are redirected to `/dealer/expired` and blocked from submitting or editing listings.
+- **Dealer beta** — new dealers get a beta period (`plan: 'beta'`, `beta_expires_at`). Applications submitted before the configured promo cutoff (superadmin-editable in `/admin` → Team tab, `site_settings.promo_application_cutoff`) get `beta_expires_at` set to the promo expiry date instead of a flat day count — currently that means effectively all current signups run through the promo's end-of-year date, not a fixed 6 months. Applications after the cutoff fall back to `dealer_default_trial_days` (default 180). Expired dealers are redirected to `/dealer/expired` and blocked from submitting or editing listings.
 - **Listing expiry** — listings expire 30 days after approval. Feed-managed listings (`is_feed_managed: true`) are exempt from the renewal flow.
 - **Admin secret routes** — `/api/email/*` require `Authorization: Bearer <ADMIN_API_SECRET>`. Internal routes (`/api/alerts/match`, `/api/notify-watchers`) require `Authorization: Bearer <INTERNAL_API_SECRET>`.
 

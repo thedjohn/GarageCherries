@@ -32,7 +32,7 @@
 | Community commentary per listing | ❌ | ✅ | ❌ | ❌ | ❌ |
 | Mobile app | ❌ | ✅ | ❌ | ❌ | ✅ |
 | Financing integration | ❌ | ❌ | ❌ | Partial | ✅ |
-| Inspection marketplace | Phase 1 | ❌ | ❌ | ❌ | ❌ |
+| Inspection marketplace | Planned | ❌ | ❌ | ❌ | ❌ |
 | Modern mobile-first UI | ✅ | ✅ | ❌ | ❌ | Partial |
 | Fast server-side rendering | ✅ | Partial | ❌ | ❌ | Partial |
 | Structured data / SEO | ✅ | Partial | ❌ | ❌ | Partial |
@@ -151,7 +151,6 @@
 - **Encyclopedia & buyer's guides** keep buyers on-site during research phase
 - **Server-side rendering** delivers fast load times competitors can't match
 - **Structured SEO** — JSON-LD, canonical URLs, sitemap, OG images all configured correctly
-- **Inspection affiliate pathway** — early mover in listing credibility tooling
 
 ### Weaknesses
 - **Inventory volume** — all competitors have significantly more listings; chicken-and-egg problem

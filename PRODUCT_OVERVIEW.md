@@ -5,7 +5,7 @@
 
 ## What Is GarageCherries?
 
-GarageCherries is a classic and collector car marketplace connecting buyers with trusted dealers and private sellers across the United States. The name comes from "cherry" — enthusiast slang for a car in perfect, pristine condition. Every listing on GarageCherries represents a cherry find.
+GarageCherries is a classic and collector car marketplace connecting buyers with trusted dealers and private sellers worldwide. The name comes from "cherry" — enthusiast slang for a car in perfect, pristine condition. Every listing on GarageCherries represents a cherry find.
 
 **Target audience:**
 - Classic car dealers (primary revenue source)
