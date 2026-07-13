@@ -35,3 +35,11 @@ After implementation:
 - Run tests.
 - Verify no existing functionality was changed.
 - Report exactly what changed.
+
+## Auditing Requirements Against Code
+Whenever asked whether the code satisfies a requirement, feature claim, or prior "we fixed this" statement:
+1. Do not rely on memory or assumptions about what the code "probably" does. Read the actual files before making any claim.
+2. For every requirement, quote the specific line(s) or file(s) that satisfy it. If no matching code is found, say so explicitly — do not infer that it "likely exists elsewhere."
+3. If a requirement is ambiguous or the code is unclear, flag it as a question rather than guessing the intended behavior.
+4. Output as a table: | Requirement | Code location (file:line) | Status (Met/Not Met/Unclear) | Evidence |
+5. End with a "Verified vs Assumed" section listing anything not directly confirmed.
