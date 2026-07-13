@@ -1,5 +1,6 @@
 'use client';
 import { useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import * as Sentry from '@sentry/nextjs';
 
@@ -11,7 +12,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center">
-        <div className="text-6xl mb-6">🍒</div>
+        <Image src="https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/branding/cherries.png" alt="" width={64} height={64} unoptimized className="mb-6 inline-block" />
         <h1 className="text-2xl font-extrabold text-zinc-900 mb-3">Something went wrong</h1>
         <p className="text-zinc-500 text-sm mb-8">
           We hit an unexpected error. Our team has been notified. You can try again or head back to the homepage.

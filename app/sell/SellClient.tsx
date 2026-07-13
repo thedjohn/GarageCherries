@@ -1,4 +1,5 @@
 'use client';
+import Image from 'next/image';
 import { useState, useRef, useCallback } from 'react';
 import { MAKES, BODY_STYLES, CONDITIONS, TRANSMISSIONS } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
@@ -86,7 +87,7 @@ export default function SellClient() {
   if (submitted) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-24 text-center">
-        <div className="text-6xl mb-6">🍒</div>
+        <Image src="https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/branding/cherries.png" alt="" width={64} height={64} unoptimized className="mb-6 inline-block" />
         <h1 className="text-3xl font-extrabold text-zinc-900 mb-3">Listing Submitted!</h1>
         <p className="text-zinc-500 text-lg">We&apos;ll review your listing and have it live within 24 hours. Check your email for confirmation.</p>
       </div>

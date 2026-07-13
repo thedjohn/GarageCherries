@@ -38,7 +38,7 @@ export default function DealerApplyPage() {
   if (submitted) return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center">
-        <div className="text-5xl mb-4">🍒</div>
+        <Image src="https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/branding/cherries.png" alt="" width={48} height={48} unoptimized className="mb-4 inline-block" />
         <h1 className="text-2xl font-extrabold text-zinc-900 mb-3">Application Received</h1>
         <p className="text-zinc-500 text-sm mb-6">
           Thanks for applying to list on GarageCherries. We review all dealer applications manually

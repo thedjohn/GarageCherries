@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { Metadata } from 'next';
 
@@ -9,7 +10,7 @@ export default function NotFound() {
   return (
     <div className="min-h-[70vh] flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center">
-        <div className="text-6xl mb-6">🍒</div>
+        <Image src="https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/branding/cherries.png" alt="" width={64} height={64} unoptimized className="mb-6 inline-block" />
         <h1 className="text-2xl font-extrabold text-zinc-900 mb-3">Page not found</h1>
         <p className="text-zinc-500 text-sm mb-8">
           The page you're looking for doesn't exist or may have been moved.
