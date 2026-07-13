@@ -252,7 +252,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const { role } = await auth();
+  const { role, user } = await auth();
   if (role !== 'superadmin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await req.json();
@@ -281,6 +281,21 @@ export async function DELETE(req: NextRequest) {
   if ((userListings ?? []).length > 0) {
     await admin.from('listings').delete().eq('seller_id', id);
   }
+
+  // Reset any approved application(s) that created this dealer — otherwise they're left
+  // stuck at status='approved' forever (the FK only nulls dealer_id, it doesn't touch status),
+  // permanently blocking that email from re-applying. Must run before the dealers delete below,
+  // since ON DELETE SET NULL wipes dealer_id the moment the dealer row is gone.
+  await admin
+    .from('dealer_applications')
+    .update({
+      status: 'rejected',
+      rejection_note: 'Dealer account was deleted. Please reapply if you would like a new account.',
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: user?.id ?? null,
+    })
+    .eq('dealer_id', id)
+    .eq('status', 'approved');
 
   // Delete dealer profile if exists
   await admin.from('dealers').delete().eq('id', id);
