@@ -151,6 +151,8 @@ function AccountPage() {
   // My Listings
   const [myListings, setMyListings] = useState<MyListing[]>([]);
   const [myListingsLoading, setMyListingsLoading] = useState(false);
+  const [myListingViews, setMyListingViews] = useState<Record<string, number>>({});
+  const [myListingWatchers, setMyListingWatchers] = useState<Record<string, number>>({});
   const [editingListing, setEditingListing] = useState<MyListing | null>(null);
   const [editForm, setEditForm] = useState({ year: '', make: '', model: '', body_style: '', condition: '', fuel_type: '', engine: '', transmission: '', color: '', interior_color: '', seat_material: '', city: '', state: '', price: '', mileage: '', description: '', resubmission_note: '' });
   const [editImages, setEditImages] = useState<{ preview: string; publicUrl: string | null; uploadState: 'done' | 'uploading' | 'error'; file?: File; progress: number }[]>([]);
@@ -281,8 +283,20 @@ function AccountPage() {
     setMyListingsLoading(true);
     const res = await fetch('/api/listings/my');
     const json = await res.json();
-    setMyListings(json.listings ?? []);
+    const listings: MyListing[] = json.listings ?? [];
+    setMyListings(listings);
     setMyListingsLoading(false);
+
+    const ids = listings.map(l => l.id).join(',');
+    if (ids) {
+      fetch(`/api/dealer/watcher-counts?carIds=${ids}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.views) setMyListingViews(data.views);
+          if (data.totalWatchers) setMyListingWatchers(data.totalWatchers);
+        })
+        .catch(() => {});
+    }
   }, [myListings.length]);
 
   useEffect(() => {
@@ -1217,6 +1231,7 @@ function AccountPage() {
                         }`}>{l.is_sold ? 'Sold' : l.status === 'approved' ? 'Live' : l.status === 'removed' ? 'Removed' : l.status}</span>
                       </div>
                       <p className="text-xs text-zinc-500">${l.price.toLocaleString()} · {l.location}, {l.state}</p>
+                      <p className="text-xs text-zinc-400">{myListingViews[l.id] ?? 0} view{(myListingViews[l.id] ?? 0) !== 1 ? 's' : ''} · {myListingWatchers[l.id] ?? 0} watching</p>
 
                       {/* Expiry */}
                       {l.status === 'approved' && !l.is_sold && l.expires_at && (() => {

@@ -340,7 +340,7 @@ describe('GET /api/dealer/watcher-counts', () => {
   it('returns empty counts when carIds is missing', async () => {
     const res: any = await watcherCountsGet(makeGetRequest('https://x.com/api/dealer/watcher-counts'));
     expect(res._status).toBe(200);
-    expect(res._data).toEqual({ counts: {}, messaged: {} });
+    expect(res._data).toEqual({ counts: {}, messaged: {}, views: {}, totalWatchers: {} });
   });
 
   it('returns empty counts when none of the requested carIds are owned by the caller', async () => {
@@ -350,10 +350,10 @@ describe('GET /api/dealer/watcher-counts', () => {
     });
     const res: any = await watcherCountsGet(makeGetRequest('https://x.com/api/dealer/watcher-counts?carIds=c1,c2'));
     expect(res._status).toBe(200);
-    expect(res._data).toEqual({ counts: {}, messaged: {} });
+    expect(res._data).toEqual({ counts: {}, messaged: {}, views: {}, totalWatchers: {} });
   });
 
-  it('computes eligible-watcher counts and messaged flags, filtering to owned cars', async () => {
+  it('computes eligible-watcher counts, messaged flags, total watchers, and view counts, filtering to owned cars', async () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [{ id: 'c1' }] }) }) }) };
       if (table === 'watchlists') return {
@@ -363,12 +363,19 @@ describe('GET /api/dealer/watcher-counts', () => {
           { car_id: 'c1', dealer_messaged_at: null, allow_dealer_contact: false, dealer_contact_blocked: false },
         ] }) }),
       };
+      if (table === 'listing_views') return {
+        select: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [
+          { listing_id: 'c1' }, { listing_id: 'c1' }, { listing_id: 'c1' },
+        ] }) }),
+      };
       return {};
     });
     const res: any = await watcherCountsGet(makeGetRequest('https://x.com/api/dealer/watcher-counts?carIds=c1,c2-not-owned'));
     expect(res._status).toBe(200);
     expect(res._data.counts.c1).toBe(1);
     expect(res._data.messaged.c1).toBe(true);
+    expect(res._data.totalWatchers.c1).toBe(3);
+    expect(res._data.views.c1).toBe(3);
     expect(res._data.counts['c2-not-owned']).toBeUndefined();
   });
 });

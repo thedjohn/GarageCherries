@@ -415,6 +415,8 @@ export default function DealerDashboard() {
   const [soldConfirm, setSoldConfirm] = useState<string | null>(null);
   const [watcherCounts, setWatcherCounts] = useState<Record<string, number>>({});
   const [watcherMessaged, setWatcherMessaged] = useState<Record<string, boolean>>({});
+  const [listingViews, setListingViews] = useState<Record<string, number>>({});
+  const [totalWatchers, setTotalWatchers] = useState<Record<string, number>>({});
   const [messageWatchersFor, setMessageWatchersFor] = useState<DbCar | null>(null);
   const [watcherMessage, setWatcherMessage] = useState('');
   const [sendingWatcherMsg, setSendingWatcherMsg] = useState(false);
@@ -457,6 +459,8 @@ export default function DealerDashboard() {
           .then(data => {
             if (data.counts) setWatcherCounts(data.counts);
             if (data.messaged) setWatcherMessaged(data.messaged);
+            if (data.views) setListingViews(data.views);
+            if (data.totalWatchers) setTotalWatchers(data.totalWatchers);
           })
           .catch(() => {});
       }
@@ -800,6 +804,7 @@ export default function DealerDashboard() {
                           <Link href={`/listings/${toSlug(car.make)}/${toSlug(car.model)}/${car.id}/${car.slug}`} target="_blank"
                             className="font-semibold text-zinc-800 hover:text-red-600 transition-colors truncate block">{car.title}</Link>
                           <p className="text-xs text-zinc-400">{car.condition} · {car.price > 0 ? `$${car.price.toLocaleString()}` : 'Call for price'}</p>
+                          <p className="text-xs text-zinc-400">{listingViews[car.id] ?? 0} view{(listingViews[car.id] ?? 0) !== 1 ? 's' : ''} · {totalWatchers[car.id] ?? 0} watching</p>
                         </div>
                       </div>
                     ))}
@@ -840,6 +845,8 @@ export default function DealerDashboard() {
                     <th className="text-left px-4 py-3 font-semibold">Condition</th>
                     <th className="text-left px-4 py-3 font-semibold">Status</th>
                     <th className="text-left px-4 py-3 font-semibold">Listed</th>
+                    <th className="text-left px-4 py-3 font-semibold">Views</th>
+                    <th className="text-left px-4 py-3 font-semibold">Watchers</th>
                     <th className="px-4 py-3"></th>
                   </tr>
                 </thead>
@@ -884,6 +891,8 @@ export default function DealerDashboard() {
                         })()}
                       </td>
                       <td className="px-4 py-3 text-zinc-400 text-xs">{car.listed_at}</td>
+                      <td className="px-4 py-3 text-zinc-600">{listingViews[car.id] ?? 0}</td>
+                      <td className="px-4 py-3 text-zinc-600">{totalWatchers[car.id] ?? 0}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3 justify-end">
                           {!car.is_sold && (
