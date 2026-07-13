@@ -34,8 +34,13 @@ export default async function ListingsPage({ searchParams }: Props) {
   if (sp.q) query = query.or(`title.ilike.%${sp.q}%,description.ilike.%${sp.q}%`);
   if (sp.make && sp.make !== 'All Makes') query = query.eq('make', sp.make);
   if (sp.model) query = query.eq('model', sp.model);
-  if (sp.yearMin)      query = query.gte('year', Number(sp.yearMin));
-  if (sp.yearMax)      query = query.lte('year', Number(sp.yearMax));
+  const currentYear = new Date().getFullYear();
+  const clampYear = (v: string) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.min(Math.max(n, 1900), currentYear + 1) : null;
+  };
+  if (sp.yearMin) { const y = clampYear(sp.yearMin); if (y !== null) query = query.gte('year', y); }
+  if (sp.yearMax) { const y = clampYear(sp.yearMax); if (y !== null) query = query.lte('year', y); }
   if (sp.priceMin)     query = query.gte('price', Number(sp.priceMin));
   if (sp.priceMax)     query = query.lte('price', Number(sp.priceMax));
   if (sp.condition && sp.condition !== 'All')      query = query.eq('condition', sp.condition);

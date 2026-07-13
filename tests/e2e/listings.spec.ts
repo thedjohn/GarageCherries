@@ -58,4 +58,18 @@ test.describe('Listings page', () => {
     await page.goto('/listings?q=xyzzy1234notacar');
     await expect(page.getByText(/no listings found/i)).toBeVisible();
   });
+
+  test('clearing filters actually refreshes the results, not just the URL', async ({ page }) => {
+    await page.goto('/listings?q=xyzzy1234notacar');
+    await expect(page.getByText(/no listings found/i)).toBeVisible();
+    await page.getByRole('button', { name: /clear all/i }).click();
+    await expect(page).toHaveURL('/listings');
+    await expect(page.getByText(/no listings found/i)).not.toBeVisible();
+  });
+
+  test('an out-of-range yearMin is clamped server-side instead of erroring', async ({ page }) => {
+    await page.goto('/listings?yearMin=-500');
+    await expect(page.getByText(/Application error/i)).not.toBeVisible();
+    await expect(page.getByRole('heading', { name: /all cars|search results/i })).toBeVisible();
+  });
 });

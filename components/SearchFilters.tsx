@@ -41,6 +41,7 @@ export default function SearchFilters({ initialMakes }: { initialMakes?: string[
   const clear = () => {
     setFilters({ q:'', make:'', model:'', yearMin:'', yearMax:'', priceMin:'', priceMax:'', condition:'', bodyStyle:'', transmission:'', state:'' });
     router.push('/listings');
+    router.refresh();
   };
 
   const set = (k: string, v: string) => setFilters(f => ({ ...f, [k]: v }));
