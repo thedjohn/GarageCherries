@@ -692,7 +692,7 @@ Added 2026-07-11. Single-row singleton (`id` is always `1`), superadmin-editable
 ### `DELETE /api/admin/users`
 - **Auth**: required, role: superadmin
 - **Input**: `{ id }`
-- **Side effects**: deletes suspended_users, watchlists, saved_searches, conversations, inquiries; deletes listings + images; deletes dealer profile; deletes auth user
+- **Side effects**: deletes suspended_users, watchlists, saved_searches, conversations, inquiries; deletes listings + images; resets any `dealer_applications` row with `status='approved'` and `dealer_id=id` to `status='rejected'` (else that email is permanently blocked from re-applying — fixed 2026-07-13); deletes dealer profile; deletes auth user
 
 ---
 
