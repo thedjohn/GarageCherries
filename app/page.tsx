@@ -75,7 +75,7 @@ export default async function HomePage() {
             <span className="text-red-500">Car</span>
           </h1>
           <p className="text-zinc-300 text-lg md:text-xl max-w-xl mx-auto mb-10">
-            Thousands of classic, muscle, and collector cars from private sellers and dealers across the USA.
+            Classic, muscle, and collector cars from private sellers and dealers around the world.
           </p>
 
           {/* Quick search */}
