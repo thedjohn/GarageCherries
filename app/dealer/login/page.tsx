@@ -26,6 +26,10 @@ export default function DealerLoginPage() {
   const [setupDone, setSetupDone] = useState(false);
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('error') === 'no_dealer_account') {
+      setError('This login isn\'t associated with a dealer account. Sign in with your dealer email, or apply at /dealer/apply.');
+    }
+
     // Supabase ignores redirect_to and sends recovery tokens to this page.
     // Detect them and show the password setup form inline.
     const hash = window.location.hash.substring(1);

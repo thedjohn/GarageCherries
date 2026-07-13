@@ -466,6 +466,15 @@ export default function DealerDashboard() {
         .then(r => r.json())
         .then(data => { if (!data.error) setMetrics(data); })
         .catch(() => {});
+    } else {
+      // Authenticated, but no dealers row matches this account (id or email) —
+      // .single() returns no data here rather than throwing, so without this
+      // branch the dashboard silently rendered with dealer=null forever (blank
+      // "Your Dealership" fallback name, every dealer-data-dependent action
+      // like "+ Add vehicle" a no-op) instead of telling the user what's wrong.
+      await supabase.auth.signOut();
+      router.replace('/dealer/login?error=no_dealer_account');
+      return;
     }
     setLoading(false);
   }, [router]);
