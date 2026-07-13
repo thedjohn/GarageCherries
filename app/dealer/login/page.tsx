@@ -13,6 +13,7 @@ export default function DealerLoginPage() {
   const [loading, setLoading]   = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState('');
   const [showReset, setShowReset] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
 
@@ -87,11 +88,16 @@ export default function DealerLoginPage() {
     e.preventDefault();
     if (!resetEmail) return;
     setResetLoading(true);
+    setResetError('');
     const supabase = createClient();
-    await supabase.auth.resetPasswordForEmail(resetEmail, {
+    const { error: resetErr } = await supabase.auth.resetPasswordForEmail(resetEmail, {
       redirectTo: `${window.location.origin}/dealer/login`,
     });
     setResetLoading(false);
+    if (resetErr) {
+      setResetError(resetErr.message);
+      return;
+    }
     setResetSent(true);
   };
 
@@ -178,6 +184,7 @@ export default function DealerLoginPage() {
                   placeholder="you@dealership.com"
                   className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
               </div>
+              {resetError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{resetError}</p>}
               <button type="submit" disabled={resetLoading}
                 className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-colors text-sm">
                 {resetLoading ? 'Sending…' : 'Send reset link'}
