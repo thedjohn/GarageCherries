@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Tooltip from '@/components/Tooltip';
 import { formatPhone } from '@/lib/data';
-import { MAKES, BODY_STYLES, CONDITIONS, TRANSMISSIONS } from '@/lib/types';
+import VehicleFieldsForm from '@/components/VehicleFieldsForm';
 import AdminEmailCampaigns from '@/components/AdminEmailCampaigns';
 import { resolveAdminRole, type TeamMember } from '@/lib/resolveAdminRole';
 
@@ -11,6 +11,7 @@ interface Listing {
   id: string; slug: string; title: string; year: number; make: string; model: string;
   price: number; mileage: number | null; condition: string; body_style: string;
   transmission: string; engine: string | null; color: string | null;
+  fuel_type: string | null; drive_type: string | null; vin: string | null;
   location: string; state: string; seller_name: string; seller_phone: string;
   seller_email: string; seller_id: string; images: string[]; description: string;
   featured: boolean; status: string; created_at: string;
@@ -446,6 +447,7 @@ export default function AdminPage() {
       year: l.year, make: l.make, model: l.model, price: l.price,
       mileage: l.mileage, condition: l.condition, body_style: l.body_style,
       transmission: l.transmission, engine: l.engine, color: l.color,
+      fuel_type: l.fuel_type, drive_type: l.drive_type, vin: l.vin,
       location: l.location, state: l.state, description: l.description,
       seller_name: l.seller_name, seller_phone: l.seller_phone,
       seller_email: l.seller_email, featured: l.featured, status: l.status,
@@ -1860,37 +1862,35 @@ export default function AdminPage() {
               <button onClick={() => setEditing(null)} className="text-zinc-400 hover:text-zinc-700 text-xl font-bold">✕</button>
             </div>
             <div className="p-6 space-y-5">
+              <VehicleFieldsForm
+                inputClassName={inputCls}
+                labelClassName={labelCls}
+                values={{
+                  year: String(editFields.year), make: editFields.make, model: editFields.model,
+                  mileage: editFields.mileage != null ? String(editFields.mileage) : '',
+                  condition: editFields.condition, bodyStyle: editFields.body_style,
+                  fuelType: editFields.fuel_type ?? '', engine: editFields.engine ?? '',
+                  transmission: editFields.transmission, driveType: editFields.drive_type ?? '',
+                  color: editFields.color ?? '', price: String(editFields.price),
+                  description: editFields.description,
+                }}
+                onChange={(k, v) => {
+                  if (k === 'year' || k === 'price') return set(k, Number(v.replace(/,/g, '')) || 0);
+                  if (k === 'mileage') return set('mileage', v ? Number(v.replace(/,/g, '')) : null);
+                  if (k === 'bodyStyle') return set('body_style', v);
+                  if (k === 'fuelType') return set('fuel_type', v);
+                  if (k === 'driveType') return set('drive_type', v);
+                  return set(k, v);
+                }}
+              />
+              <div>
+                <label className={labelCls}>VIN <span className="normal-case font-normal text-zinc-400">(optional)</span></label>
+                <input value={editFields.vin ?? ''} maxLength={17} onChange={e => set('vin', e.target.value.toUpperCase())} className={inputCls + ' font-mono'} />
+              </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className={labelCls}>Year</label><input type="number" value={editFields.year} onChange={e => set('year', Number(e.target.value))} className={inputCls} /></div>
-                <div><label className={labelCls}>Make</label>
-                  <select value={editFields.make} onChange={e => set('make', e.target.value)} className={inputCls}>
-                    {MAKES.filter(m => m !== 'All Makes').map(m => <option key={m}>{m}</option>)}
-                  </select>
-                </div>
-                <div><label className={labelCls}>Model</label><input value={editFields.model} onChange={e => set('model', e.target.value)} className={inputCls} /></div>
-                <div><label className={labelCls}>Price ($)</label><input type="number" value={editFields.price} onChange={e => set('price', Number(e.target.value))} className={inputCls} /></div>
-                <div><label className={labelCls}>Mileage</label><input type="number" value={editFields.mileage ?? ''} onChange={e => set('mileage', e.target.value ? Number(e.target.value) : null)} placeholder="Leave blank if unknown" className={inputCls} /></div>
-                <div><label className={labelCls}>Condition</label>
-                  <select value={editFields.condition} onChange={e => set('condition', e.target.value)} className={inputCls}>
-                    {CONDITIONS.filter(c => c !== 'All').map(c => <option key={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div><label className={labelCls}>Body Style</label>
-                  <select value={editFields.body_style} onChange={e => set('body_style', e.target.value)} className={inputCls}>
-                    {BODY_STYLES.filter(b => b !== 'All Styles').map(b => <option key={b}>{b}</option>)}
-                  </select>
-                </div>
-                <div><label className={labelCls}>Transmission</label>
-                  <select value={editFields.transmission} onChange={e => set('transmission', e.target.value)} className={inputCls}>
-                    {TRANSMISSIONS.map(t => <option key={t}>{t}</option>)}
-                  </select>
-                </div>
-                <div><label className={labelCls}>Engine</label><input value={editFields.engine ?? ''} onChange={e => set('engine', e.target.value)} className={inputCls} /></div>
-                <div><label className={labelCls}>Color</label><input value={editFields.color ?? ''} onChange={e => set('color', e.target.value)} className={inputCls} /></div>
                 <div><label className={labelCls}>City</label><input value={editFields.location} onChange={e => set('location', e.target.value)} className={inputCls} /></div>
                 <div><label className={labelCls}>State</label><input value={editFields.state} maxLength={2} onChange={e => set('state', e.target.value.toUpperCase())} className={inputCls} /></div>
               </div>
-              <div><label className={labelCls}>Description</label><textarea rows={4} value={editFields.description} onChange={e => set('description', e.target.value)} className={inputCls + ' resize-none'} /></div>
               <div className="rounded-lg bg-zinc-50 border border-zinc-200 px-4 py-3 space-y-1">
                 <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-2">Seller (read-only — managed in seller profile)</p>
                 <p className="text-sm text-zinc-700"><span className="font-medium">Name:</span> {editFields.seller_name || '—'}</p>

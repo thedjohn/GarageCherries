@@ -62,6 +62,7 @@ const validFields = {
   city: 'St. Louis',
   bodyStyle: 'Coupe',
   transmission: 'Manual',
+  driveType: 'RWD',
   description: 'Great car',
   imageUrls: JSON.stringify(['https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/cars/private/a.jpg']),
 };

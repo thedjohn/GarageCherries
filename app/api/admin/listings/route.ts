@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
   let query = admin
     .from('listings')
-    .select('id,slug,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,location,state,seller_name,seller_phone,seller_email,seller_id,images,description,featured,status,rejection_reason,resubmission_note,resubmission_count,created_at', { count: 'exact' })
+    .select('id,slug,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,fuel_type,drive_type,vin,location,state,seller_name,seller_phone,seller_email,seller_id,images,description,featured,status,rejection_reason,resubmission_note,resubmission_count,created_at', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
   if (sellerId) query = query.eq('seller_id', sellerId);
@@ -57,8 +57,8 @@ export async function PATCH(req: NextRequest) {
   if (!action) {
     if (!hasRole(role, 'admin')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { year, make, model, price, mileage, condition, body_style, transmission,
-            engine, color, location, state, description, seller_name, seller_phone,
-            seller_email, featured, status } = body;
+            engine, color, fuel_type, drive_type, vin, location, state, description,
+            seller_name, seller_phone, seller_email, featured, status } = body;
     const slug = `${year}-${String(make).toLowerCase().replace(/\s+/g, '-')}-${String(model).toLowerCase().replace(/\s+/g, '-')}-${id.slice(0, 8)}`;
     const { error } = await admin.from('listings').update({
       slug, title: `${year} ${make} ${model}`, year: Number(year), make, model,
@@ -66,6 +66,7 @@ export async function PATCH(req: NextRequest) {
       mileage: mileage !== '' && mileage != null ? Number(mileage) : null,
       condition, body_style, transmission,
       engine: engine || null, color: color || null,
+      fuel_type: fuel_type || null, drive_type: drive_type || null, vin: vin || null,
       location, state, description,
       seller_name, seller_phone, seller_email,
       featured: !!featured, status,

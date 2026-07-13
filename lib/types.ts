@@ -87,6 +87,10 @@ export const CONDITIONS = ['All','Excellent','Good','Fair','Project'];
 
 export const TRANSMISSIONS = ['Automatic', 'Manual', '1-Speed'];
 
+export const FUEL_TYPES = ['Gasoline', 'Diesel', 'Electric', 'Hybrid', 'Flex Fuel'];
+
+export const DRIVE_TYPES = ['RWD', 'FWD', 'AWD', '4WD'];
+
 export const STATES = [
   'All States','AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA',
   'HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI',

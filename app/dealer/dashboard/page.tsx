@@ -4,10 +4,10 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import Tooltip from '@/components/Tooltip';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { MAKES, BODY_STYLES, CONDITIONS, TRANSMISSIONS } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
 import { formatPrice } from '@/lib/data';
 import { resizeImageFiles } from '@/lib/resizeImage';
+import VehicleFieldsForm, { type VehicleFieldsValues } from '@/components/VehicleFieldsForm';
 
 interface DbCar {
   id: string; slug: string; title: string; year: number;
@@ -16,6 +16,7 @@ interface DbCar {
   horsepower?: number; torque?: number; cylinders?: number; displacement?: string;
   forced_induction?: string; fuel_type?: string; drive_type?: string; num_speeds?: number;
   transmission: string; color: string; interior_color?: string; seat_material?: string; seating_type?: string; description: string;
+  vin?: string | null;
   location: string; state: string; featured: boolean;
   listed_at: string; images: string[]; seller_id: string;
   status?: string; rejection_reason?: string | null;
@@ -34,8 +35,9 @@ function toSlug(s: string) {
 }
 
 // ─── Vehicle Modal (Add + Edit) ───────────────────────────────────────────────
-function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
+function VehicleModal({ dealerId, dealerName, dealerLocation, dealerState, car, onClose, onSaved }: {
   dealerId: string; dealerName: string;
+  dealerLocation?: string; dealerState?: string;
   car?: DbCar;             // undefined = Add mode, defined = Edit mode
   onClose: () => void; onSaved: () => void;
 }) {
@@ -63,8 +65,9 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
     seatingType:   car?.seating_type             ?? '',
     price:        car && car.price > 0 ? car.price.toLocaleString() : '',
     description:  car?.description              ?? '',
-    location:     car?.location                 ?? '',
-    state:        car?.state                    ?? '',
+    vin:          car?.vin                       ?? '',
+    location:     car?.location                 ?? dealerLocation ?? '',
+    state:        car?.state                    ?? dealerState ?? '',
   });
   const [featured, setFeatured] = useState(car?.featured ?? false);
   // Existing images (URLs) + new file uploads
@@ -138,6 +141,7 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
       seating_type:   fields.seatingType,
       price:        parseInt(fields.price.replace(/,/g, '')) || 0,
       description:  fields.description,
+      vin:          fields.vin.trim() || null,
       location:     fields.location,
       state:        fields.state.toUpperCase().slice(0, 2),
       images:       allImages,
@@ -218,177 +222,106 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Year *</label>
-              <input type="number" required min="1900" max="2030" placeholder="Year" value={fields.year}
-                onChange={e => set('year', e.target.value)} className={inp} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Make *</label>
-              <select required value={fields.make} onChange={e => set('make', e.target.value)} className={inp}>
-                <option value="">Select...</option>
-                {MAKES.filter(m => m !== 'All Makes').map(m => <option key={m}>{m}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Model *</label>
-              <input type="text" required placeholder="Model" value={fields.model}
-                onChange={e => set('model', e.target.value)} className={inp} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Mileage *</label>
-              <input type="text" inputMode="numeric" required placeholder="Mileage (0 = Unknown)" value={fields.mileage}
-                onChange={e => {
-                  const raw = e.target.value.replace(/[^0-9]/g, '');
-                  set('mileage', raw ? Number(raw).toLocaleString() : '');
-                }} className={inp} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Condition *</label>
-              <select required value={fields.condition} onChange={e => set('condition', e.target.value)} className={inp}>
-                <option value="">Select...</option>
-                {CONDITIONS.filter(c => c !== 'All').map(c => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Body Style</label>
-              <select value={fields.bodyStyle} onChange={e => set('bodyStyle', e.target.value)} className={inp}>
-                <option value="">Select...</option>
-                {BODY_STYLES.filter(b => b !== 'All Styles').map(b => <option key={b}>{b}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Fuel Type</label>
-              <select value={fields.fuelType} onChange={e => set('fuelType', e.target.value)} className={inp}>
-                <option value="">Select...</option>
-                <option>Gasoline</option>
-                <option>Diesel</option>
-                <option>Electric</option>
-                <option>Hybrid</option>
-                <option>Flex Fuel</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Engine Description</label>
-              <input type="text" placeholder="Engine Description" value={fields.engine}
-                onChange={e => set('engine', e.target.value)} className={inp} />
-            </div>
-            {fields.fuelType !== 'Electric' && (
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Displacement</label>
-              <input type="text" placeholder="Displacement" value={fields.displacement}
-                onChange={e => set('displacement', e.target.value)} className={inp} />
-            </div>
-            )}
-            {fields.fuelType !== 'Electric' && (
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Cylinders</label>
-              <select value={fields.cylinders} onChange={e => set('cylinders', e.target.value)} className={inp}>
-                <option value="">Select...</option>
-                {[4,5,6,8,10,12,16].map(n => <option key={n} value={n}>{n}-cylinder</option>)}
-              </select>
-            </div>
-            )}
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Horsepower</label>
-              <input type="text" inputMode="numeric" placeholder="Horsepower" value={fields.horsepower}
-                onChange={e => {
-                  const raw = e.target.value.replace(/[^0-9]/g, '');
-                  set('horsepower', raw ? Number(raw).toLocaleString() : '');
-                }} className={inp} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Torque (lb-ft)</label>
-              <input type="text" inputMode="numeric" placeholder="Torque" value={fields.torque}
-                onChange={e => {
-                  const raw = e.target.value.replace(/[^0-9]/g, '');
-                  set('torque', raw ? Number(raw).toLocaleString() : '');
-                }} className={inp} />
-            </div>
-            {fields.fuelType !== 'Electric' && (
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Forced Induction</label>
-              <select value={fields.forcedInduction} onChange={e => set('forcedInduction', e.target.value)} className={inp}>
-                <option value="">Select...</option>
-                <option>None / N/A</option>
-                <option>Supercharged</option>
-                <option>Turbocharged</option>
-                <option>Twin-Turbocharged</option>
-                <option>Supercharged + Turbocharged</option>
-              </select>
-            </div>
-            )}
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Transmission</label>
-              <select required value={fields.transmission} onChange={e => set('transmission', e.target.value)} className={inp}>
-                <option value="">Select...</option>
-                {fields.fuelType === 'Electric'
-                  ? <option>1-Speed</option>
-                  : TRANSMISSIONS.map(t => <option key={t}>{t}</option>)
-                }
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5"># of Speeds</label>
-              <select value={fields.numSpeeds} onChange={e => set('numSpeeds', e.target.value)} className={inp}>
-                <option value="">Select...</option>
-                {fields.fuelType === 'Electric'
-                  ? <option value={1}>1-speed</option>
-                  : [3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}-speed</option>)
-                }
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Drive Type</label>
-              <select value={fields.driveType} onChange={e => set('driveType', e.target.value)} className={inp}>
-                <option value="">Select...</option>
-                <option>RWD</option>
-                <option>FWD</option>
-                <option>AWD</option>
-                <option>4WD</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Exterior Color</label>
-              <input type="text" placeholder="Exterior Color" value={fields.color}
-                onChange={e => set('color', e.target.value)} className={inp} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Interior Color</label>
-              <input type="text" placeholder="Interior Color" value={fields.interiorColor}
-                onChange={e => set('interiorColor', e.target.value)} className={inp} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Seat Material</label>
-              <select value={fields.seatMaterial} onChange={e => set('seatMaterial', e.target.value)} className={inp}>
-                <option value="">Select...</option>
-                <option>Leather</option>
-                <option>Cloth</option>
-                <option>Vinyl</option>
-                <option>Suede</option>
-                <option>Alcantara</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Seating Type</label>
-              <select value={fields.seatingType} onChange={e => set('seatingType', e.target.value)} className={inp}>
-                <option value="">Select...</option>
-                <option>Bucket</option>
-                <option>Bench</option>
-                <option>Sport Bucket</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Asking Price</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
-                <input type="text" inputMode="numeric" placeholder="Asking Price" value={fields.price}
+          <VehicleFieldsForm
+            inputClassName={inp}
+            values={{
+              year: fields.year, make: fields.make, model: fields.model, mileage: fields.mileage,
+              condition: fields.condition, bodyStyle: fields.bodyStyle, fuelType: fields.fuelType,
+              engine: fields.engine, transmission: fields.transmission, driveType: fields.driveType,
+              color: fields.color, price: fields.price, description: fields.description,
+            }}
+            onChange={(k, v) => set(k, v)}
+          />
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">VIN <span className="normal-case font-normal text-zinc-400">(optional)</span></label>
+            <input type="text" value={fields.vin} maxLength={17} placeholder="1G1FP22P7S2100001"
+              onChange={e => set('vin', e.target.value.toUpperCase())}
+              className={inp + ' font-mono placeholder:font-sans'} />
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">Additional Details <span className="normal-case font-normal text-zinc-400">(optional)</span></p>
+            <div className="grid grid-cols-2 gap-4">
+              {fields.fuelType !== 'Electric' && (
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Displacement</label>
+                <input type="text" placeholder="Displacement" value={fields.displacement}
+                  onChange={e => set('displacement', e.target.value)} className={inp} />
+              </div>
+              )}
+              {fields.fuelType !== 'Electric' && (
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Cylinders</label>
+                <select value={fields.cylinders} onChange={e => set('cylinders', e.target.value)} className={inp}>
+                  <option value="">Select...</option>
+                  {[4,5,6,8,10,12,16].map(n => <option key={n} value={n}>{n}-cylinder</option>)}
+                </select>
+              </div>
+              )}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Horsepower</label>
+                <input type="text" inputMode="numeric" placeholder="Horsepower" value={fields.horsepower}
                   onChange={e => {
                     const raw = e.target.value.replace(/[^0-9]/g, '');
-                    set('price', raw ? Number(raw).toLocaleString() : '');
-                  }}
-                  className="w-full border border-zinc-200 rounded-xl pl-6 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                    set('horsepower', raw ? Number(raw).toLocaleString() : '');
+                  }} className={inp} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Torque (lb-ft)</label>
+                <input type="text" inputMode="numeric" placeholder="Torque" value={fields.torque}
+                  onChange={e => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                    set('torque', raw ? Number(raw).toLocaleString() : '');
+                  }} className={inp} />
+              </div>
+              {fields.fuelType !== 'Electric' && (
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Forced Induction</label>
+                <select value={fields.forcedInduction} onChange={e => set('forcedInduction', e.target.value)} className={inp}>
+                  <option value="">Select...</option>
+                  <option>None / N/A</option>
+                  <option>Supercharged</option>
+                  <option>Turbocharged</option>
+                  <option>Twin-Turbocharged</option>
+                  <option>Supercharged + Turbocharged</option>
+                </select>
+              </div>
+              )}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5"># of Speeds</label>
+                <select value={fields.numSpeeds} onChange={e => set('numSpeeds', e.target.value)} className={inp}>
+                  <option value="">Select...</option>
+                  {fields.fuelType === 'Electric'
+                    ? <option value={1}>1-speed</option>
+                    : [3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}-speed</option>)
+                  }
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Interior Color</label>
+                <input type="text" placeholder="Interior Color" value={fields.interiorColor}
+                  onChange={e => set('interiorColor', e.target.value)} className={inp} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Seat Material</label>
+                <select value={fields.seatMaterial} onChange={e => set('seatMaterial', e.target.value)} className={inp}>
+                  <option value="">Select...</option>
+                  <option>Leather</option>
+                  <option>Cloth</option>
+                  <option>Vinyl</option>
+                  <option>Suede</option>
+                  <option>Alcantara</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Seating Type</label>
+                <select value={fields.seatingType} onChange={e => set('seatingType', e.target.value)} className={inp}>
+                  <option value="">Select...</option>
+                  <option>Bucket</option>
+                  <option>Bench</option>
+                  <option>Sport Bucket</option>
+                </select>
               </div>
             </div>
           </div>
@@ -404,13 +337,6 @@ function VehicleModal({ dealerId, dealerName, car, onClose, onSaved }: {
               <input type="text" placeholder="State" maxLength={2} value={fields.state}
                 onChange={e => set('state', e.target.value)} className={inp} />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Description *</label>
-            <textarea required rows={4} placeholder="Description"
-              value={fields.description} onChange={e => set('description', e.target.value)}
-              className="w-full border border-zinc-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none" />
           </div>
 
           {/* Photos */}
@@ -661,6 +587,8 @@ export default function DealerDashboard() {
       <VehicleModal
         dealerId={dealer.id}
         dealerName={dealerName}
+        dealerLocation={dealer.location}
+        dealerState={dealer.state}
         car={modalCar === 'new' ? undefined : modalCar}
         onClose={() => setModalCar(null)}
         onSaved={() => { loadData(); }}

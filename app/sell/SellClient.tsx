@@ -1,9 +1,9 @@
 'use client';
 import Image from 'next/image';
 import { useState, useRef, useCallback } from 'react';
-import { MAKES, BODY_STYLES, CONDITIONS, TRANSMISSIONS } from '@/lib/types';
 import { createClient } from '@/lib/supabase/client';
 import Turnstile from '@/components/Turnstile';
+import VehicleFieldsForm, { type VehicleFieldsValues } from '@/components/VehicleFieldsForm';
 
 type VinResult = {
   vinValid: boolean;
@@ -29,7 +29,11 @@ export default function SellClient() {
   const [vin, setVin] = useState('');
   const [vinResult, setVinResult] = useState<VinResult | null>(null);
   const [vinLoading, setVinLoading] = useState(false);
-  const [fuelType, setFuelType] = useState('');
+  const [fields, setFields] = useState<VehicleFieldsValues>({
+    year: '', make: '', model: '', mileage: '', condition: '', bodyStyle: '',
+    fuelType: '', engine: '', transmission: '', driveType: '', color: '', price: '', description: '',
+  });
+  const setField = (k: keyof VehicleFieldsValues, v: string) => setFields(f => ({ ...f, [k]: v }));
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragIndex = useRef<number | null>(null);
   const onCaptchaVerify = useCallback((token: string) => setCaptchaToken(token), []);
@@ -150,91 +154,11 @@ export default function SellClient() {
         {/* Vehicle info */}
         <section className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
           <h2 className="font-bold text-zinc-800 text-lg mb-5">Vehicle Information</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Year *</label>
-              <input type="number" name="year" required min="1900" max="2030" placeholder="1969"
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Make *</label>
-              <select name="make" required className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-                <option value="">Select make...</option>
-                {MAKES.filter(m => m !== 'All Makes').map(m => <option key={m}>{m}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Model *</label>
-              <input type="text" name="model" required placeholder="Camaro SS"
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Mileage</label>
-              <input type="text" inputMode="numeric" name="mileage" placeholder="Leave blank if unknown"
-                onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); e.target.value = raw ? Number(raw).toLocaleString() : ''; }}
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Body Style</label>
-              <select name="bodyStyle" className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-                {BODY_STYLES.filter(b => b !== 'All Styles').map(b => <option key={b}>{b}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Condition *</label>
-              <select name="condition" required className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-                <option value="">Select condition...</option>
-                {CONDITIONS.filter(c => c !== 'All').map(c => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Fuel Type</label>
-              <select name="fuelType" value={fuelType} onChange={e => setFuelType(e.target.value)}
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-                <option value="">Select...</option>
-                <option>Gasoline</option>
-                <option>Diesel</option>
-                <option>Electric</option>
-                <option>Hybrid</option>
-                <option>Flex Fuel</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Engine</label>
-              <input type="text" name="engine" placeholder="396 V8"
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Transmission</label>
-              <select name="transmission" className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
-                <option value="">Select...</option>
-                {fuelType === 'Electric'
-                  ? <option>1-Speed</option>
-                  : TRANSMISSIONS.map(t => <option key={t}>{t}</option>)
-                }
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Color</label>
-              <input type="text" name="color" placeholder="Rally Green"
-                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Asking Price *</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-sm">$</span>
-                <input type="text" inputMode="numeric" name="price" required placeholder="89,500"
-                  onChange={e => { const raw = e.target.value.replace(/[^0-9]/g, ''); e.target.value = raw ? Number(raw).toLocaleString() : ''; }}
-                  className="w-full border border-zinc-200 rounded-xl pl-7 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-5">
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Description *</label>
-            <textarea name="description" required rows={5} placeholder="Describe your car — history, restoration work, known issues, matching numbers, etc."
-              className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none placeholder:text-zinc-300" />
-          </div>
+          <VehicleFieldsForm
+            values={fields}
+            onChange={setField}
+            inputClassName="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300"
+          />
 
           <div className="mt-5">
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">VIN <span className="normal-case font-normal text-zinc-400">(optional — helps buyers verify the car)</span></label>
@@ -332,13 +256,13 @@ export default function SellClient() {
           <h2 className="font-bold text-zinc-800 text-lg mb-5">Location</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">City *</label>
-              <input type="text" name="city" required placeholder="Nashville"
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">City</label>
+              <input type="text" name="city" placeholder="Nashville"
                 className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">State *</label>
-              <input type="text" name="state" required maxLength={2} placeholder="TN"
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">State</label>
+              <input type="text" name="state" maxLength={2} placeholder="TN"
                 className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300" />
             </div>
           </div>

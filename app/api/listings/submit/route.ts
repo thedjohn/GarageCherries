@@ -4,7 +4,7 @@ import { rateLimit, getClientIP } from '@/lib/rateLimit';
 import { verifyTurnstile } from '@/lib/verifyTurnstile';
 import { notifyAdmin } from '@/lib/notifyAdmin';
 import { US_STATES } from '@/lib/constants';
-import { CONDITIONS } from '@/lib/types';
+import { CONDITIONS, TRANSMISSIONS, DRIVE_TYPES } from '@/lib/types';
 import { createLogger } from '@/lib/logger';
 
 export async function POST(req: NextRequest) {
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
   }).slice(0, 20); // cap at 20 images
 
   const stateVal = String(formData.get('state') ?? '').toUpperCase().trim();
-  if (!US_STATES.has(stateVal)) {
+  if (stateVal && !US_STATES.has(stateVal)) {
     return NextResponse.json({ error: 'Invalid state code.' }, { status: 400 });
   }
 
@@ -94,6 +94,16 @@ export async function POST(req: NextRequest) {
   const validConditions = CONDITIONS.filter(c => c !== 'All');
   if (!validConditions.includes(conditionVal)) {
     return NextResponse.json({ error: 'Invalid condition value.' }, { status: 400 });
+  }
+
+  const transmissionVal = String(formData.get('transmission') ?? '').trim();
+  if (!TRANSMISSIONS.includes(transmissionVal)) {
+    return NextResponse.json({ error: 'Invalid transmission value.' }, { status: 400 });
+  }
+
+  const driveTypeVal = String(formData.get('driveType') ?? '').trim();
+  if (!DRIVE_TYPES.includes(driveTypeVal)) {
+    return NextResponse.json({ error: 'Invalid drive type value.' }, { status: 400 });
   }
 
   const year = Number(formData.get('year'));
@@ -115,7 +125,8 @@ export async function POST(req: NextRequest) {
     p_state: stateVal,
     p_condition: formData.get('condition'),
     p_body_style: formData.get('bodyStyle'),
-    p_transmission: formData.get('transmission'),
+    p_transmission: transmissionVal,
+    p_drive_type: driveTypeVal,
     p_engine: formData.get('engine') || null,
     p_color: formData.get('color') || null,
     p_images: validImageUrls,
