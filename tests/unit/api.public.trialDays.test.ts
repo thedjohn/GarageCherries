@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const { mockGetSiteSettings } = vi.hoisted(() => ({
   mockGetSiteSettings: vi.fn(),
@@ -18,7 +18,11 @@ beforeEach(() => {
 });
 
 describe('GET /api/public/trial-days', () => {
-  it('returns the current advertiser trial day count', async () => {
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('returns isPromo true and the promo expiry when before promoApplicationCutoff', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-13T00:00:00.000Z'));
     mockGetSiteSettings.mockResolvedValue({
       promoApplicationCutoff: '2026-08-01T00:00:00.000Z',
       promoExpiresAt: '2026-10-31T23:59:59.000Z',
@@ -26,8 +30,27 @@ describe('GET /api/public/trial-days', () => {
       dealerDefaultTrialDays: 180,
     });
 
-    const res = (await GET()) as unknown as { _data: { advertiserTrialDays: number } };
+    const res = (await GET()) as unknown as { _data: { advertiserTrialDays: number; isPromo: boolean; promoExpiresAt: string } };
 
-    expect(res._data).toEqual({ advertiserTrialDays: 21 });
+    expect(res._data).toEqual({
+      advertiserTrialDays: 21,
+      isPromo: true,
+      promoExpiresAt: '2026-10-31T23:59:59.000Z',
+    });
+  });
+
+  it('returns isPromo false after promoApplicationCutoff', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-01T00:00:00.000Z'));
+    mockGetSiteSettings.mockResolvedValue({
+      promoApplicationCutoff: '2026-08-01T00:00:00.000Z',
+      promoExpiresAt: '2026-10-31T23:59:59.000Z',
+      advertiserTrialDays: 21,
+      dealerDefaultTrialDays: 180,
+    });
+
+    const res = (await GET()) as unknown as { _data: { isPromo: boolean } };
+
+    expect(res._data.isPromo).toBe(false);
   });
 });

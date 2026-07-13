@@ -40,13 +40,21 @@ function SignupInner() {
   const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
   const [trialDays, setTrialDays] = useState(14);
+  const [promoTrial, setPromoTrial] = useState<{ isPromo: boolean; expiresAt: string } | null>(null);
 
   useEffect(() => {
     fetch('/api/public/trial-days')
       .then(res => res.json())
-      .then(data => setTrialDays(data.advertiserTrialDays))
+      .then(data => {
+        setTrialDays(data.advertiserTrialDays);
+        if (data.isPromo) setPromoTrial({ isPromo: true, expiresAt: data.promoExpiresAt });
+      })
       .catch(() => {});
   }, []);
+
+  const trialLabel = promoTrial?.isPromo
+    ? `Free through ${new Date(promoTrial.expiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+    : `${trialDays}-day free trial`;
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
@@ -103,7 +111,7 @@ function SignupInner() {
             <Image src="https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/branding/cherries.png" alt="GarageCherries" width={32} height={32} unoptimized />
             <span className="text-xl font-bold">Garage<span className="text-red-600">Cherries</span></span>
           </Link>
-          <p className="text-zinc-500 text-sm mt-2">Create your advertiser account · {trialDays}-day free trial</p>
+          <p className="text-zinc-500 text-sm mt-2">Create your advertiser account · {trialLabel}</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-8">
@@ -160,7 +168,7 @@ function SignupInner() {
                   </label>
                 ))}
               </div>
-              <p className="text-xs text-zinc-400 mt-2">{trialDays}-day free trial, then billed monthly. Cancel anytime.</p>
+              <p className="text-xs text-zinc-400 mt-2">{trialLabel}, then billed monthly. Cancel anytime.</p>
             </div>
 
             <Turnstile onVerify={onCaptchaVerify} />

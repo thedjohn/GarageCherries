@@ -191,7 +191,9 @@ describe('POST /api/advertiser/signup', () => {
 
   it('uses a custom advertiserTrialDays from site settings, not the old hardcoded 14', async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+    // After promoApplicationCutoff, so this exercises the day-count fallback
+    // rather than the promo-window path (covered separately below).
+    vi.setSystemTime(new Date('2026-09-01T00:00:00Z'));
     mockGetSiteSettings.mockResolvedValue({
       promoApplicationCutoff: '2026-08-01T00:00:00Z',
       promoExpiresAt: '2026-10-31T23:59:59Z',
@@ -210,7 +212,32 @@ describe('POST /api/advertiser/signup', () => {
     });
     const res: any = await POST(makeRequest(validBody));
     expect(res._status).toBe(200);
-    expect(insertArg.trial_ends_at).toBe(new Date('2026-01-31T00:00:00Z').toISOString());
+    expect(insertArg.trial_ends_at).toBe(new Date('2026-10-01T00:00:00Z').toISOString());
+    vi.useRealTimers();
+  });
+
+  it('uses promoExpiresAt instead of advertiserTrialDays when signing up before promoApplicationCutoff', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-13T00:00:00Z'));
+    mockGetSiteSettings.mockResolvedValue({
+      promoApplicationCutoff: '2026-08-01T00:00:00Z',
+      promoExpiresAt: '2026-12-31T23:59:59Z',
+      advertiserTrialDays: 14,
+      dealerDefaultTrialDays: 180,
+    });
+    let insertArg: any;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'advertisers') {
+        return {
+          select: vi.fn().mockReturnValue({ like: vi.fn().mockResolvedValue({ data: [] }) }),
+          insert: vi.fn((arg) => { insertArg = arg; return { select: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'adv-1' }, error: null }) }) }; }),
+        };
+      }
+      return {};
+    });
+    const res: any = await POST(makeRequest(validBody));
+    expect(res._status).toBe(200);
+    expect(insertArg.trial_ends_at).toBe(new Date('2026-12-31T23:59:59Z').toISOString());
     vi.useRealTimers();
   });
 

@@ -61,9 +61,15 @@ export async function POST(request: NextRequest) {
   const radiusMap: Record<string, number> = { starter: 15, metro: 30, regional: 60, statewide: 9999 };
 
   // Trial length is superadmin-editable in /admin (Team tab → Settings) via
-  // site_settings, falling back to 14 days if unset.
-  const { advertiserTrialDays } = await getSiteSettings();
-  const trialEndsAt = new Date(Date.now() + advertiserTrialDays * 24 * 60 * 60 * 1000).toISOString();
+  // site_settings, falling back to 14 days if unset. Signups during the 250th
+  // promo window (before promoApplicationCutoff) get the extended promo trial
+  // instead — same pattern as the dealer beta signup flow.
+  const { advertiserTrialDays, promoApplicationCutoff, promoExpiresAt } = await getSiteSettings();
+  const isPromo = new Date() < new Date(promoApplicationCutoff);
+  const trialEndsAt = (isPromo
+    ? new Date(promoExpiresAt)
+    : new Date(Date.now() + advertiserTrialDays * 24 * 60 * 60 * 1000)
+  ).toISOString();
 
   // Insert advertiser record
   const { data, error } = await admin.from('advertisers').insert({

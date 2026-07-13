@@ -80,6 +80,10 @@ const FAQS = [
 
 export default async function PricingPage() {
   const settings = await getSiteSettings();
+  const isPromo = new Date() < new Date(settings.promoApplicationCutoff);
+  const trialLabel = isPromo
+    ? `Free through ${new Date(settings.promoExpiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+    : `${settings.advertiserTrialDays}-day free trial`;
   return (
     <div className="bg-zinc-50 min-h-screen">
 
@@ -280,7 +284,7 @@ export default async function PricingPage() {
               className="inline-block bg-zinc-900 hover:bg-zinc-800 text-white font-bold px-8 py-3 rounded-xl transition-colors">
               Start Free Trial
             </Link>
-            <p className="text-xs text-zinc-400 mt-3">{settings.advertiserTrialDays}-day free trial · No credit card required · Geographic ad targeting included</p>
+            <p className="text-xs text-zinc-400 mt-3">{trialLabel} · No credit card required · Geographic ad targeting included</p>
           </div>
         </div>
       </section>
