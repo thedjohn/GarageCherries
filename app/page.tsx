@@ -103,7 +103,7 @@ export default async function HomePage() {
           <div className="flex flex-wrap justify-center gap-6 mt-8 text-sm text-zinc-400">
             <span>Growing daily</span>
             <span>·</span>
-            <span>Nationwide</span>
+            <span>Worldwide</span>
             <span>·</span>
             <span>Classic, Muscle, Sport &amp; Supercar</span>
           </div>

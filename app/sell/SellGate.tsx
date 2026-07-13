@@ -11,7 +11,7 @@ export default function SellGate() {
           Ready to sell your classic?
         </h1>
         <p className="text-zinc-500 text-base leading-relaxed mb-8">
-          Listing on GarageCherries is free. Create an account in under a minute and your car will be in front of serious buyers nationwide.
+          Listing on GarageCherries is free. Create an account in under a minute and your car will be in front of serious buyers worldwide.
         </p>
 
         <div className="flex flex-col gap-3 mb-8">

@@ -66,7 +66,7 @@ export default function PromoModal() {
             <span className="text-red-600">for dealers &amp; private sellers</span>
           </h2>
           <p className="text-zinc-500 text-sm mb-5 leading-relaxed">
-            Celebrating America&apos;s 250th birthday — post your classic car for free and reach serious buyers nationwide.
+            Celebrating America&apos;s 250th birthday — post your classic car for free and reach serious buyers worldwide.
           </p>
           <div className="flex gap-3">
             <button

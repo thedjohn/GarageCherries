@@ -70,7 +70,7 @@ export async function generateMetadata({ params }: { params: Promise<{ segments:
     const count = CARS.filter(c => c.make === make).length;
     return {
       title: `${make} Cars For Sale`,
-      description: `Browse ${count} ${make} cars for sale on GarageCherries. Find ${make} muscle cars, sports cars, supercars, and collector vehicles from dealers nationwide.`,
+      description: `Browse ${count} ${make} cars for sale on GarageCherries. Find ${make} muscle cars, sports cars, supercars, and collector vehicles from dealers worldwide.`,
       alternates: { canonical: `${BASE_URL}/listings/${segments[0]}` },
     };
   }
