@@ -1,6 +1,7 @@
 # GarageCherries — Master Specification
 
-> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-14 (rewired three dealer-facing features off the orphaned `inquiries` table — `POST /api/inquire` has had no live caller since "Message Seller" moved to `conversations`/`messages`. `GET /api/dealer/metrics` and `POST /api/email/dealer-report` now read `conversations` instead, scoped by `listing_id IN (dealer's listing ids)` since `conversations` has no `dealer_id` column — same pattern `GET /api/conversations` already uses. Also fixed a second, independent dead-data bug in the dealer digest email: "Top Listings by Views" read a never-incremented `listings.views` column instead of the working `listing_views` table. Live-verified by inserting a real test conversation+message and confirming it appeared correctly in the dealer dashboard's Overview stat, "Recent inquiries" panel, and Inquiries tab, then deleting the test rows — see §4 `dealer/metrics`, `inquire`, and `email/dealer-report` entries).
+> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-14 (finished the `inquiries` cleanup from the prior entry below by deleting the table, `app/api/inquire/route.ts`, and its dead cascade-delete reference in `app/api/admin/users/route.ts` — that reference had been silently broken regardless, filtering on a `user_id` column `inquiries` never had. Requires `supabase/migrations/20260714_drop_inquiries.sql` to be run manually — no FK references point at the table).
+> Prior update 2026-07-14 (rewired three dealer-facing features off the orphaned `inquiries` table — `POST /api/inquire` has had no live caller since "Message Seller" moved to `conversations`/`messages`. `GET /api/dealer/metrics` and `POST /api/email/dealer-report` now read `conversations` instead, scoped by `listing_id IN (dealer's listing ids)` since `conversations` has no `dealer_id` column — same pattern `GET /api/conversations` already uses. Also fixed a second, independent dead-data bug in the dealer digest email: "Top Listings by Views" read a never-incremented `listings.views` column instead of the working `listing_views` table. Live-verified by inserting a real test conversation+message and confirming it appeared correctly in the dealer dashboard's Overview stat, "Recent inquiries" panel, and Inquiries tab, then deleting the test rows — see §4 `dealer/metrics`, `inquire`, and `email/dealer-report` entries).
 > Prior update 2026-07-14 (VIN moved above Year/Make/Model on `/sell` (`app/sell/SellClient.tsx`) so a clean NHTSA decode auto-fills any of those three still blank — never overwrites a field the user already typed, and Make is matched case-insensitively against `MAKES` since NHTSA returns e.g. "CHRYSLER" against the dropdown's "Chrysler". Fixed a real bug this reorder would have surfaced: `POST /api/cars/verify-vin`'s match logic requires at least one of make/model/year to explicitly agree before reporting `verified: true`, so checking a VIN before any field had content always fell through to "Partial Match" even for a clean decode — fixed client-side by detecting all three match fields `null` (nothing provided, as opposed to `false` — explicitly disagrees) and showing a distinct "VIN Decoded" message instead; the API route itself is unchanged, since it already returned the right signal, just nothing on the client was distinguishing it. Live-verified with VIN `3C3AY75S75T283365` — see §6 for the endpoint's null-vs-false semantics).
 > Prior update 2026-07-14 (dealer public profile (`app/dealers/[slug]/page.tsx`) and dashboard Overview "Your listings" panel now both filter `is_sold=false`, matching the homepage/`/listings`/`fetchCars()` pattern — "Mark as Sold" only sets `is_sold`, never changes `status`, so both surfaces kept showing sold cars as available inventory before this fix; the dashboard Inventory tab and private-seller "My Listings" section are unaffected — both intentionally still show sold listings with a status badge. Also added a "Sign out" link to `components/AccountTabBar.tsx`, shared by `/account` and `/messages` — previously no way to sign out from either page except clearing cookies manually).
 > Prior update 2026-07-13 (per-listing views and watcher counts now shown to both dealers and private sellers — `GET /api/dealer/watcher-counts` gained `views` and `totalWatchers` response fields alongside the pre-existing `counts`/`messaged`; displayed on the dealer dashboard's Overview "Your listings" panel, the Inventory tab table, and the private-seller account page's My Listings cards — see §4 `watcher-counts` for the full response shape. Also fixed a real bug found while manually verifying the dealer Add Vehicle flow live: `app/dealer/dashboard/page.tsx`'s `loadData()` only handled the case where a `dealers` row was found via `.single()`; an authenticated user with no matching row (e.g. a superadmin with no dealer profile) got a silently broken dashboard — `dealer` state stayed `null` forever while a fallback display name masked the problem, so every dealer-data-dependent action was a silent no-op. Now redirects to `/dealer/login?error=no_dealer_account`).
@@ -100,8 +101,8 @@ support < moderator < admin < superadmin
 3. Navigate `cars/[make]` or `cars/[make]/[model]` to browse by make/model.
 4. Click a listing → `/listings/[make]/[model]/[id]/[slug]`.
 5. Listing detail page fires `POST /api/track-view` (hashed IP deduplication per listing per day).
-6. Guest sees inquiry form; fills name, email, phone, message, solves Turnstile CAPTCHA.
-7. `POST /api/inquire` → stores inquiry in DB, emails seller directly with reply-to buyer.
+6. Buyer sees a "Message Seller" form (`components/ContactSellerForm.tsx`) — guests are redirected to `/account/login?return=/listings` first; login is required.
+7. `POST /api/conversations` → creates (or finds an existing) conversation for this buyer+listing, inserts the first `messages` row, emails the seller on first contact only (reply-to the buyer). Visible to the buyer afterward under `/account`'s Messages tab. (`POST /api/inquire`, a separate one-way contact-form path, was deleted 2026-07-14 — it had no live caller.)
 8. To make an offer, user submits `POST /api/offers` (auth optional) → emails dealer + buyer confirmation.
 9. To watchlist, user must be logged in → `POST /api/watchlist` toggles watch; sets `allow_dealer_contact = true` by default.
 10. Authenticated user can create a saved search alert from the filters on `/listings` — up to 10 per account.
@@ -405,19 +406,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `reported` | boolean | Default false |
 | `created_at` | timestamptz | |
 
-### `inquiries`
-
-| Field | Type | Notes |
-|---|---|---|
-| `id` | uuid | PK |
-| `listing_id` | uuid | FK to listings |
-| `dealer_id` | text | Seller's user ID or 'unknown' |
-| `buyer_name` | text | |
-| `buyer_email` | text | |
-| `buyer_phone` | text \| null | |
-| `message` | text | |
-| `read` | boolean | |
-| `created_at` | timestamptz | |
+~~### `inquiries`~~ — **deleted 2026-07-14** along with `POST /api/inquire`, its only writer. See §4's `inquire` entry for why.
 
 ### `offers`
 
@@ -697,7 +686,7 @@ Added 2026-07-11. Single-row singleton (`id` is always `1`), superadmin-editable
 ### `DELETE /api/admin/users`
 - **Auth**: required, role: superadmin
 - **Input**: `{ id }`
-- **Side effects**: deletes suspended_users, watchlists, saved_searches, conversations, inquiries; deletes listings + images; resets any `dealer_applications` row with `status='approved'` and `dealer_id=id` to `status='rejected'` (else that email is permanently blocked from re-applying — fixed 2026-07-13); deletes dealer profile; deletes auth user
+- **Side effects**: deletes suspended_users, watchlists, saved_searches, conversations; deletes listings + images; resets any `dealer_applications` row with `status='approved'` and `dealer_id=id` to `status='rejected'` (else that email is permanently blocked from re-applying — fixed 2026-07-13); deletes dealer profile; deletes auth user. (Previously also deleted from `inquiries`, filtered on a `user_id` column that table never had — a no-op that was quietly removed along with the table itself, 2026-07-14.)
 
 ---
 
@@ -1006,14 +995,7 @@ Added 2026-07-11. Single-row singleton (`id` is always `1`), superadmin-editable
 
 ---
 
-### `POST /api/inquire`
-- **Status: orphaned, no live caller as of 2026-07-14.** No frontend component calls this route — the "Message Seller" button on listing pages uses `POST /api/conversations` instead (`components/ContactSellerForm.tsx` → `MessengerWidget`, a two-way thread, visible to buyers on `/account`'s Messages tab). Confirmed via repo-wide search: the only references to `/api/inquire` outside this route are docs and `tests/unit/api.inquire.test.ts`. The dealer-facing consumers that used to read the `inquiries` table this route writes to (`GET /api/dealer/metrics`, `POST /api/email/dealer-report`) were rewired 2026-07-14 to read `conversations` instead, since nothing was populating `inquiries` in production. Route and table left in place, unused but harmless — not yet deleted, pending a decision on full removal (see Recommended Next Steps in `IMPLEMENTATION_STATUS.md`).
-- **Auth**: none (public)
-- **Rate limit**: 10 / IP / hour
-- **Input**: `{ carId, carTitle?, buyerName, buyerEmail, buyerPhone?, message, captchaToken }`
-- **Validation**: Turnstile; buyerName, buyerEmail, message required
-- **Side effects**: stores in `inquiries`; emails seller (resolves from dealer table first, falls back to listing `seller_email`, falls back to `INQUIRY_FALLBACK_EMAIL` env var)
-- **Returns**: `{ success: true }`
+~~### `POST /api/inquire`~~ — **deleted 2026-07-14**, along with the `inquiries` table it wrote to. Had no live caller since the "Message Seller" button moved to `POST /api/conversations` instead (`components/ContactSellerForm.tsx` → `MessengerWidget`, a two-way thread, visible to buyers on `/account`'s Messages tab). Confirmed orphaned via repo-wide search before removal. The dealer-facing consumers that used to read `inquiries` (`GET /api/dealer/metrics`, `POST /api/email/dealer-report`) were rewired to read `conversations` instead first — see those entries below.
 
 ---
 
@@ -1311,7 +1293,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | 5 | Alert match found (new listing) | `notifications@` | Alert owner's email | "New match for your "{alertName}" — {price}" | `lib/matchAlerts.ts:152` |
 | 6 | Price drop on watchlisted car (immediate) | `noreply@` | Watcher email (skipped if `price_drop_opt_out` in user_metadata) | "Price Drop: {title} is now {newPrice}" | `app/api/notify-watchers/route.ts:50` |
 | 7 | Car sold (watcher notification) | `noreply@` | All watcher emails | "{title} has sold" | `app/api/cars/sold/route.ts:47` |
-| 8 | New buyer inquiry | `noreply@` | Seller email | "New inquiry: {carTitle}" | `app/api/inquire/route.ts:90` |
+| 8 | New message on a listing (first contact only) | `no-reply@` | Seller email (dealer table first, falls back to listing `seller_email`) | "New message about your listing — {title}" | `app/api/conversations/route.ts:103-115`. (Replaces the old row 8, "New buyer inquiry" via `app/api/inquire/route.ts` — that route had no live caller and was deleted 2026-07-14; this is the trigger that's actually been live.) |
 | 9 | New offer placed — dealer notification | `offers@` | `dealer.email` | "New offer on {carTitle}: {amount}" | `app/api/offers/route.ts:47` |
 | 10 | New offer placed — buyer confirmation | `offers@` | `buyerEmail` | "Your offer on {carTitle} has been sent" | `app/api/offers/route.ts:73` |
 | 11 | Dealer message to watcher | `notifications@` | Watcher email | "Message from the seller — {car.title}" | `app/api/dealer/message-watchers/route.ts:45` |
@@ -1375,7 +1357,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Google Search Console | **Complete (2026-07-06)** | Property `https://www.garagecherries.com` verified via DNS (auto-detected from GoDaddy TXT records). Sitemap submitted; 81 pages discovered, status: Success. |
 | Bing Webmaster Tools | **Complete (2026-07-06)** | Imported from Google Search Console. Sitemap `https://www.garagecherries.com/sitemap.xml` submitted; status: Processing. |
 | Sentry error tracking | **Complete (2026-07-06)** | `@sentry/nextjs` installed. Client, server, and edge configs in `sentry.{client,server,edge}.config.ts`; loaded via `instrumentation.ts`. `app/error.tsx` captures unhandled errors via `Sentry.captureException`. Env vars: `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`. |
-| Axiom structured logging | **Complete (2026-07-07)** | `next-axiom` installed. `lib/logger.ts` exports `createLogger(source)` — a unified logger that writes structured logs to Axiom and forwards errors/warnings to Sentry as breadcrumbs/exceptions. Wired across all high-value API routes: `api/listings/submit`, `api/admin/listings`, `api/admin/events`, `api/inquire`, `api/dealer/apply`, `api/alerts/match`, `api/notify-watchers`, `api/conversations`, `api/conversations/[id]/messages`, `api/email/digest`, `api/email/dealer-report`, `api/email/expiring-listings`. Env vars: `AXIOM_TOKEN`, `AXIOM_DATASET=garagecherries`. |
+| Axiom structured logging | **Complete (2026-07-07)** | `next-axiom` installed. `lib/logger.ts` exports `createLogger(source)` — a unified logger that writes structured logs to Axiom and forwards errors/warnings to Sentry as breadcrumbs/exceptions. Wired across all high-value API routes: `api/listings/submit`, `api/admin/listings`, `api/admin/events`, `api/dealer/apply`, `api/alerts/match`, `api/notify-watchers`, `api/conversations`, `api/conversations/[id]/messages`, `api/email/digest`, `api/email/dealer-report`, `api/email/expiring-listings` (`api/inquire` was in this list until it was deleted 2026-07-14). Env vars: `AXIOM_TOKEN`, `AXIOM_DATASET=garagecherries`. |
 | Sell form — contact section removed | **Complete (2026-07-06)** | Seller name, phone, and email fields removed from `SellClient.tsx`. The submit API now reads `seller_name`/`seller_phone` from the `profiles` table and `seller_email` from the auth session. |
 | Homepage hero stats | **Updated 2026-07-13** | Replaced placeholder stats ("12,400+ listings · All 50 states") with honest copy: "Growing daily · Worldwide · Classic, Muscle, Sport & Supercar" (2026-07-06; "Nationwide" changed to "Worldwide" sitewide 2026-07-13). Hero subtext also reworded 2026-07-13 to drop an unearned "thousands of listings" claim and USA-only framing. |
 | Dedicated watchlist page (`/account/watchlist`) | **Complete** | Standalone URL for watchlist; price-change indicators; mirrors `/account?tab=watchlist` |
@@ -1493,7 +1475,6 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | `DELETE /api/messages/[id]/report` | ✓ any admin | ✓ | ✗ | N/A | N/A |
 | `POST /api/watchlist` | ✓ | ✓ (carId required) | ✓ 60/hr/IP | N/A | ✗ |
 | `DELETE /api/watchlist` | ✓ | ✓ (carId required) | ✗ | ✓ (filters by user.id) | ✗ |
-| `POST /api/inquire` | None | ✓ (CAPTCHA + fields) | ✓ 10/hr | N/A | ✗ |
 | `POST /api/offers` | Optional | ✓ (required fields, amount > 0) | ✓ 10/hr/IP | N/A | ✗ |
 | `GET /api/reviews` | None | ✓ (dealerId required) | ✗ | N/A | N/A |
 | `POST /api/reviews` | ✓ | ✓ (rating 1–5, 1/user/dealer) | ✓ 10/hr/IP | N/A | ✗ |
