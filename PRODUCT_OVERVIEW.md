@@ -47,16 +47,10 @@ GarageCherries is a classic and collector car marketplace connecting buyers with
 ### 🤖 AI Features
 > **Removed 2026-07-01** — all 5 AI routes (Smart Search, Listing Writer, Price Assessment, Inquiry Reply Assistant, Similar Cars) were removed and deferred to a future release. This section describes the planned implementation, not the current live product.
 
-### 📧 Buyer Inquiries
-- Contact form on every listing
-- Emails delivered instantly to seller via Resend
-- Inquiry stored in database for dealer dashboard
-- Buyer's email address never exposed publicly
-- Seller replies directly from their own email client
-
 ### 📊 Analytics & Metrics
-- Listing view tracking (deduplicated by IP per day)
-- Inquiry tracking with full buyer details
+- Listing view tracking (deduplicated by IP per day), both aggregate and per-listing
+- Per-listing watcher counts (how many buyers have a listing saved)
+- Buyer message tracking via the two-way conversations/messages system ("Message Seller") — dealer sees sender name, listing, and first message in their Inquiries tab
 - 30-day rolling metrics with month-over-month comparison
 - All data stored in Supabase, accessible only to the relevant dealer
 

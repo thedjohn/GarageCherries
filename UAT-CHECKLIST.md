@@ -63,9 +63,9 @@
 ## 3. Private Seller Flow
 
 - [ ] Visit `/sell` while logged out — see sign-in/sign-up gate, not the form
-- [ ] Log in, land on `/sell` — full form appears (vehicle info, VIN, location, photos)
+- [ ] Log in, land on `/sell` — full form appears, VIN field first, then vehicle info, location, photos
 - [ ] Try submitting with **zero photos** — blocked with a clear message
-- [ ] Enter a VIN and click "Verify VIN" — color-coded result badge appears (verified/partial/pre-1981/invalid)
+- [ ] Enter a VIN and click "Verify VIN" — with Year/Make/Model still blank, a clean decode shows "✓ VIN Decoded" and auto-fills those three fields; re-checking after editing them shows the color-coded match result instead (verified/partial/pre-1981/invalid)
 - [ ] Submit a complete listing — confirmation screen shown, CAPTCHA required
 - [ ] New listing shows as **pending** under `/account?tab=listings` (not publicly visible yet)
 - [ ] After admin approval (see §5), listing appears in public search
@@ -146,7 +146,6 @@
 
 - [ ] Buyer sends first message on a listing → seller receives email with buyer name, listing title, message preview, and "Reply to Message" link
 - [ ] Buyer sends a second message in the same conversation → seller does NOT receive a second email (first contact only)
-- [ ] Buyer inquiry → seller/dealer receives email with buyer's message
 - [ ] Listing approved → seller gets "your listing is live" email
 - [ ] Listing rejected → seller gets email with rejection reason
 - [ ] Dealer application approved → applicant gets password-reset email
@@ -164,7 +163,7 @@
 - [ ] A suspended test user cannot submit a listing or send a message (clear error shown)
 - [ ] Submitting the sell form, dealer apply form, advertiser signup, or contact-seller form without solving the CAPTCHA is blocked with a 400 error
 - [ ] `/account/signup` — submitting before CAPTCHA completes shows inline "Please complete the CAPTCHA." error
-- [ ] Rapidly submitting the same form many times in a row eventually gets rate-limited with a 429 — verified on `/dealer/apply` (3/hr), `/api/listings/submit` (5/hr), `/api/inquire` (10/hr), `/advertiser/signup` (3/hr)
+- [ ] Rapidly submitting the same form many times in a row eventually gets rate-limited with a 429 — verified on `/dealer/apply` (3/hr), `/api/listings/submit` (5/hr), `/api/conversations` (20/hr), `/advertiser/signup` (3/hr)
 
 ---
 

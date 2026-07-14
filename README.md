@@ -33,7 +33,7 @@ GarageCherries is a modern alternative to platforms like Hemmings and ClassicCar
 | Database | Supabase (PostgreSQL) | Row Level Security on all tables |
 | Auth | Supabase Auth | Buyer, private seller, dealer, advertiser, and admin sessions |
 | Storage | Supabase Storage | `listing-images` bucket for listing photos |
-| Email | Resend | All transactional email — inquiries, alerts, digests, reports |
+| Email | Resend | All transactional email — messages, alerts, digests, reports |
 | CAPTCHA | Cloudflare Turnstile | On all public-facing submission forms |
 | Error tracking | Sentry (`@sentry/nextjs`) | Client + server + edge; wired via `instrumentation.ts` |
 | Structured logging | Axiom (`next-axiom`) | Server-side structured logs from API routes |
@@ -132,7 +132,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | Route | Purpose |
 |---|---|
 | `POST /api/listings/submit` | Submit a new listing (private seller) |
-| `POST /api/inquire` | Buyer contact form → Resend email + DB insert |
+| `POST /api/conversations` | Buyer messages a seller ("Message Seller") — creates/finds a conversation, emails seller on first contact |
 | `POST /api/offers` | Submit offer to dealer |
 | `POST /api/track-view` | Record a deduplicated listing view |
 | `GET /api/dealer/metrics` | Dashboard metrics for the authenticated dealer |
@@ -166,7 +166,6 @@ All tables have Row Level Security enabled. Public data is readable by anyone; w
 | `offers` | Buyer offers to dealers |
 | `dealer_reviews` | Buyer reviews of dealers |
 | `listing_views` | Deduplicated view tracking |
-| `inquiries` | Buyer contact form submissions |
 | `profiles` | Buyer profile data |
 | `admin_team` | Admin role assignments |
 | `dealer_applications` | Pending/approved/rejected dealer applications |
@@ -266,7 +265,6 @@ app/
     email/                         # Digest, dealer-report, expiring-listings
     admin/                         # Team, listings, cleanup-images
     notify-watchers/               # Price drop notifications
-    inquire/                       # Buyer contact form
     offers/                        # Buyer offers
     track-view/                    # View tracking
     cars/verify-vin/               # NHTSA VIN decode

@@ -109,9 +109,8 @@ The dashboard at `/dealer/dashboard` has five tabs:
 3. The listing is permanently removed — this cannot be undone
 
 ### Responding to Inquiries
-- Buyer messages appear in the **Inquiries** tab
-- Click any inquiry to view the full message and buyer contact details
-- Reply directly to the buyer via email — the dashboard shows their email address
+- Buyer messages appear in the **Inquiries** tab, showing the buyer's name, the vehicle, and their message
+- Reply in-app on the **Messages** page — the buyer's email address is never shown in the dashboard
 - Use the **Message Watchers** feature to notify everyone watching a specific car about price drops or updates
 
 ### Viewing Analytics
