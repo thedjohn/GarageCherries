@@ -99,19 +99,19 @@ describe('orphaned image detection logic', () => {
   });
 });
 
-// C6 — Inquiries cleanup on delete
+// C6 — cleanup on delete
 describe('user delete cleanup coverage', () => {
-  it('delete payload includes inquiries table', () => {
-    // Documents which tables must be cleaned on user delete
+  it('delete payload includes all live user-data tables', () => {
+    // Documents which tables must be cleaned on user delete. `inquiries` was
+    // removed 2026-07-14 — the table (and its API route) were deleted, since
+    // it had no live writer once "Message Seller" moved to conversations.
     const requiredCleanupTables = [
       'suspended_users',
       'watchlists',
       'saved_searches',
       'conversations',
-      'inquiries',
     ];
     // Verify the list is complete — if this test fails, a table was removed from cleanup
-    expect(requiredCleanupTables).toContain('inquiries');
-    expect(requiredCleanupTables).toHaveLength(5);
+    expect(requiredCleanupTables).toHaveLength(4);
   });
 });

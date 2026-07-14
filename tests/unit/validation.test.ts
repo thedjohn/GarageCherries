@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CONDITIONS } from '@/lib/types';
 
-// ── Email regex (same pattern used in /api/inquire and /api/offers) ──────────
+// ── Email regex (same pattern used in /api/offers) ──────────
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 describe('Email validation regex', () => {
