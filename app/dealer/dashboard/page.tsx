@@ -791,11 +791,11 @@ export default function DealerDashboard() {
               </div>
               <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
                 <h2 className="font-bold text-zinc-800 mb-4 text-sm">Your listings</h2>
-                {listings.length === 0 ? (
+                {listings.filter(c => !c.is_sold).length === 0 ? (
                   <p className="text-sm text-zinc-400 py-4 text-center">No listings yet.</p>
                 ) : (
                   <div className="space-y-3">
-                    {listings.slice(0, 5).map(car => (
+                    {listings.filter(c => !c.is_sold).slice(0, 5).map(car => (
                       <div key={car.id} className="flex items-center gap-3 text-sm">
                         <div className="w-10 h-10 rounded-lg bg-zinc-100 overflow-hidden shrink-0">
                           {car.images?.[0] && <img src={car.images[0]} alt="" className="w-full h-full object-cover" />}
