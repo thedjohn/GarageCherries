@@ -34,30 +34,49 @@ export async function POST(request: NextRequest) {
     // Get their listings
     const { data: cars } = await admin
       .from('listings')
-      .select('id, title, price, views, is_sold')
+      .select('id, title, price, is_sold')
       .eq('seller_id', dealer.id);
 
     const activeCars = (cars ?? []).filter((c: any) => !c.is_sold);
     const soldThisMonth = (cars ?? []).filter((c: any) => c.is_sold);
-    const totalViews = activeCars.reduce((s: number, c: any) => s + (c.views ?? 0), 0);
 
-    // Get inquiries this month
-    const { count: inquiryCount } = await admin
-      .from('inquiries')
-      .select('id', { count: 'exact', head: true })
+    // Views this month — from listing_views, the table the dealer dashboard and
+    // per-listing views feature actually read. The old `listings.views` column
+    // is never incremented anywhere and was always reporting 0.
+    const { data: viewRows } = await admin
+      .from('listing_views')
+      .select('listing_id')
       .eq('dealer_id', dealer.id)
-      .gte('created_at', thirtyDaysAgo);
+      .gte('viewed_at', thirtyDaysAgo);
+    const viewsByListing: Record<string, number> = {};
+    (viewRows ?? []).forEach((r: any) => { viewsByListing[r.listing_id] = (viewsByListing[r.listing_id] ?? 0) + 1; });
+    const totalViews = Object.values(viewsByListing).reduce((s, n) => s + n, 0);
+
+    // Buyer inquiries this month — from conversations, the live buyer-contact
+    // system (Message Seller). The old `inquiries` table has had no live writer
+    // since that button switched to conversations/messages, so this was always 0.
+    const listingIds = (cars ?? []).map((c: any) => c.id);
+    let inquiryCount = 0;
+    if (listingIds.length > 0) {
+      const { count } = await admin
+        .from('conversations')
+        .select('id', { count: 'exact', head: true })
+        .in('listing_id', listingIds)
+        .gte('created_at', thirtyDaysAgo);
+      inquiryCount = count ?? 0;
+    }
 
     // Top performing listings by views
     const topListings = [...activeCars]
-      .sort((a: any, b: any) => (b.views ?? 0) - (a.views ?? 0))
+      .map((c: any) => ({ ...c, views: viewsByListing[c.id] ?? 0 }))
+      .sort((a: any, b: any) => b.views - a.views)
       .slice(0, 3);
 
     const topHtml = topListings.map((car: any) => `
       <tr>
         <td style="padding:6px 0;border-bottom:1px solid #f4f4f5;">
           <span style="font-weight:600;color:#18181b;">${car.title}</span>
-          <span style="color:#71717a;font-size:13px;margin-left:8px;">${(car.views ?? 0).toLocaleString()} views</span>
+          <span style="color:#71717a;font-size:13px;margin-left:8px;">${car.views.toLocaleString()} views</span>
         </td>
       </tr>
     `).join('');
@@ -76,7 +95,7 @@ export async function POST(request: NextRequest) {
             <p style="color:#71717a;font-size:13px;margin:4px 0 0;">Total Views</p>
           </div>
           <div style="background:#f9fafb;border-radius:12px;padding:16px;text-align:center;">
-            <p style="font-size:28px;font-weight:800;color:#18181b;margin:0;">${inquiryCount ?? 0}</p>
+            <p style="font-size:28px;font-weight:800;color:#18181b;margin:0;">${inquiryCount}</p>
             <p style="color:#71717a;font-size:13px;margin:4px 0 0;">Buyer Inquiries</p>
           </div>
         </div>

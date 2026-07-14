@@ -72,10 +72,13 @@ describe('POST /api/email/dealer-report', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'dealers') return { select: vi.fn().mockReturnValue({ not: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [{ id: 'd1', name: 'Dealer One', email: 'd1@x.com' }] }) }) }) };
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [
-        { id: 'l1', title: 'Car A', price: 10000, views: 50, is_sold: false },
-        { id: 'l2', title: 'Car B', price: 20000, views: 10, is_sold: true },
+        { id: 'l1', title: 'Car A', price: 10000, is_sold: false },
+        { id: 'l2', title: 'Car B', price: 20000, is_sold: true },
       ] }) }) };
-      if (table === 'inquiries') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 3 }) }) }) };
+      if (table === 'listing_views') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ data: [
+        { listing_id: 'l1' }, { listing_id: 'l1' },
+      ] }) }) }) };
+      if (table === 'conversations') return { select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 3 }) }) }) };
       return {};
     });
     const res: any = await dealerReportPost(makeRequest(AUTH));
@@ -91,7 +94,8 @@ describe('POST /api/email/dealer-report', () => {
         { id: 'd2', name: 'Fails', email: 'd2@x.com' },
       ] }) }) }) };
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [] }) }) };
-      if (table === 'inquiries') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 0 }) }) }) };
+      if (table === 'listing_views') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ data: [] }) }) }) };
+      if (table === 'conversations') return { select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 0 }) }) }) };
       return {};
     });
     mockSend.mockRejectedValueOnce(new Error('resend down'));

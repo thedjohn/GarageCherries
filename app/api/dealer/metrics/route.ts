@@ -38,20 +38,71 @@ export async function GET(request: NextRequest) {
     .gte('viewed_at', sixtyDaysAgo)
     .lt('viewed_at', thirtyDaysAgo);
 
-  // Inquiries last 30d
-  const { count: inquiries30d } = await admin
-    .from('inquiries')
-    .select('id', { count: 'exact', head: true })
-    .eq('dealer_id', dealerId)
-    .gte('created_at', thirtyDaysAgo);
+  // Dealer's own listing ids — conversations has no dealer_id column, only
+  // listing_id, so buyer-contact activity is scoped the same way GET
+  // /api/conversations already scopes seller conversations.
+  const { data: dealerListings } = await admin
+    .from('listings')
+    .select('id, title')
+    .eq('seller_id', dealerId);
+  const dealerListingIds = (dealerListings ?? []).map(l => l.id);
+  const listingTitles: Record<string, string> = Object.fromEntries((dealerListings ?? []).map(l => [l.id, l.title]));
 
-  // Inquiries 30-60d ago
-  const { count: inquiriesPrev30d } = await admin
-    .from('inquiries')
-    .select('id', { count: 'exact', head: true })
-    .eq('dealer_id', dealerId)
-    .gte('created_at', sixtyDaysAgo)
-    .lt('created_at', thirtyDaysAgo);
+  // Inquiries last 30d — sourced from conversations (the live Message Seller
+  // system). The old `inquiries` table has had no live writer since that
+  // button switched to conversations/messages, so it always reported 0.
+  let inquiries30d = 0;
+  let inquiriesPrev30d = 0;
+  let recentInquiries: { id: string; listing_id: string; buyer_name: string; buyer_email: string; message: string; created_at: string; carTitle: string }[] = [];
+
+  if (dealerListingIds.length > 0) {
+    const { count: c30 } = await admin
+      .from('conversations')
+      .select('id', { count: 'exact', head: true })
+      .in('listing_id', dealerListingIds)
+      .gte('created_at', thirtyDaysAgo);
+    inquiries30d = c30 ?? 0;
+
+    const { count: cPrev30 } = await admin
+      .from('conversations')
+      .select('id', { count: 'exact', head: true })
+      .in('listing_id', dealerListingIds)
+      .gte('created_at', sixtyDaysAgo)
+      .lt('created_at', thirtyDaysAgo);
+    inquiriesPrev30d = cPrev30 ?? 0;
+
+    // Recent conversations for the tab, enriched with each thread's first
+    // message (conversations don't store body text — messages does)
+    const { data: recentConvs } = await admin
+      .from('conversations')
+      .select('id, listing_id, buyer_name, buyer_email, created_at')
+      .in('listing_id', dealerListingIds)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    const convIds = (recentConvs ?? []).map(c => c.id);
+    const firstMessageByConv: Record<string, string> = {};
+    if (convIds.length > 0) {
+      const { data: msgs } = await admin
+        .from('messages')
+        .select('conversation_id, body, created_at')
+        .in('conversation_id', convIds)
+        .order('created_at', { ascending: true });
+      (msgs ?? []).forEach(m => {
+        if (!firstMessageByConv[m.conversation_id]) firstMessageByConv[m.conversation_id] = m.body;
+      });
+    }
+
+    recentInquiries = (recentConvs ?? []).map(c => ({
+      id: c.id,
+      listing_id: c.listing_id,
+      buyer_name: c.buyer_name,
+      buyer_email: c.buyer_email,
+      message: firstMessageByConv[c.id] ?? '',
+      created_at: c.created_at,
+      carTitle: listingTitles[c.listing_id] ?? 'Unknown listing',
+    }));
+  }
 
   // Active approved unsold listings + avg days on market
   const { data: cars } = await admin
@@ -71,37 +122,15 @@ export async function GET(request: NextRequest) {
       )
     : 0;
 
-  // Recent inquiries for the tab
-  const { data: recentInquiries } = await admin
-    .from('inquiries')
-    .select('id, listing_id, buyer_name, buyer_email, buyer_phone, message, created_at, read')
-    .eq('dealer_id', dealerId)
-    .order('created_at', { ascending: false })
-    .limit(20);
-
-  // Enrich inquiries with listing titles
-  const listingIds = [...new Set((recentInquiries ?? []).map(i => i.listing_id))];
-  let listingTitles: Record<string, string> = {};
-  if (listingIds.length > 0) {
-    const { data: titles } = await admin
-      .from('listings')
-      .select('id, title')
-      .in('id', listingIds);
-    listingTitles = Object.fromEntries((titles ?? []).map(t => [t.id, t.title]));
-  }
-
   const viewsDelta = viewsPrev30d ? Math.round(((views30d ?? 0) - viewsPrev30d) / viewsPrev30d * 100) : null;
-  const inquiriesDelta = inquiriesPrev30d ? Math.round(((inquiries30d ?? 0) - inquiriesPrev30d) / inquiriesPrev30d * 100) : null;
+  const inquiriesDelta = inquiriesPrev30d ? Math.round((inquiries30d - inquiriesPrev30d) / inquiriesPrev30d * 100) : null;
 
   return NextResponse.json({
     views30d: views30d ?? 0,
     viewsDelta,
-    inquiries30d: inquiries30d ?? 0,
+    inquiries30d,
     inquiriesDelta,
     avgDaysOnMarket,
-    recentInquiries: (recentInquiries ?? []).map(i => ({
-      ...i,
-      carTitle: listingTitles[i.listing_id] ?? 'Unknown listing',
-    })),
+    recentInquiries,
   });
 }

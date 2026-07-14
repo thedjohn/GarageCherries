@@ -209,8 +209,8 @@ describe('GET /api/dealer/metrics', () => {
 
   it('computes views/inquiries deltas, avg days on market, and enriches recent inquiries', async () => {
     let listingViewsCall = 0;
-    let inquiriesCall = 0;
     let listingsCall = 0;
+    let conversationsCall = 0;
     mockFrom.mockImplementation((table: string) => {
       if (table === 'dealers') return { select: vi.fn().mockReturnValue({ or: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'dealer-1' } }) }) }) };
       if (table === 'listing_views') {
@@ -222,16 +222,26 @@ describe('GET /api/dealer/metrics', () => {
         }
         return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ lt: vi.fn().mockResolvedValue({ count: 10 }) }) }) }) };
       }
-      if (table === 'inquiries') {
-        inquiriesCall++;
-        if (inquiriesCall === 1) return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ count: 5 }) }) }) };
-        if (inquiriesCall === 2) return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ lt: vi.fn().mockResolvedValue({ count: 2 }) }) }) }) };
-        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue({ data: [{ id: 'inq-1', listing_id: 'l1', created_at: '2026-01-01' }, { id: 'inq-2', listing_id: 'l2', created_at: '2026-01-02' }] }) }) }) }) };
-      }
       if (table === 'listings') {
         listingsCall++;
-        if (listingsCall === 1) return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [{ listed_at: new Date(Date.now() - 5 * 86400000).toISOString() }, { listed_at: 'invalid-date' }] }) }) }) }) };
-        return { select: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [{ id: 'l1', title: 'Nice Car' }] }) }) };
+        // Call 1: dealerListings — select('id, title').eq('seller_id', dealerId), awaited directly.
+        if (listingsCall === 1) return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [{ id: 'l1', title: 'Nice Car' }] }) }) };
+        // Call 2: cars for avgDaysOnMarket — triple .eq() chain.
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [{ listed_at: new Date(Date.now() - 5 * 86400000).toISOString() }, { listed_at: 'invalid-date' }] }) }) }) }) };
+      }
+      if (table === 'conversations') {
+        conversationsCall++;
+        if (conversationsCall === 1) return { select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 5 }) }) }) };
+        if (conversationsCall === 2) return { select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ lt: vi.fn().mockResolvedValue({ count: 2 }) }) }) }) };
+        return { select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue({ data: [
+          { id: 'c1', listing_id: 'l1', buyer_name: 'Buyer One', buyer_email: 'b1@x.com', created_at: '2026-01-01' },
+          { id: 'c2', listing_id: 'l2', buyer_name: 'Buyer Two', buyer_email: 'b2@x.com', created_at: '2026-01-02' },
+        ] }) }) }) }) };
+      }
+      if (table === 'messages') {
+        return { select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({ data: [
+          { conversation_id: 'c1', body: 'Hi is this still available?', created_at: '2026-01-01T00:00:00Z' },
+        ] }) }) }) };
       }
       return {};
     });
@@ -243,30 +253,29 @@ describe('GET /api/dealer/metrics', () => {
     expect(res._data.inquiries30d).toBe(5);
     expect(res._data.recentInquiries).toHaveLength(2);
     expect(res._data.recentInquiries[0].carTitle).toBe('Nice Car');
+    expect(res._data.recentInquiries[0].message).toBe('Hi is this still available?');
     expect(res._data.recentInquiries[1].carTitle).toBe('Unknown listing');
   });
 
   it('returns null deltas and zero avgDaysOnMarket when there is no prior-period or listing data', async () => {
+    let listingsCall = 0;
     mockFrom.mockImplementation((table: string) => {
       if (table === 'dealers') return { select: vi.fn().mockReturnValue({ or: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'dealer-1' } }) }) }) };
       if (table === 'listing_views') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ lt: vi.fn().mockResolvedValue({ count: 0 }) }) }) }) };
-      if (table === 'inquiries') {
-        return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              gte: vi.fn().mockReturnValue({ lt: vi.fn().mockResolvedValue({ count: 0 }), }),
-              order: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue({ data: [] }) }),
-            }),
-          }),
-        };
+      if (table === 'listings') {
+        listingsCall++;
+        // Call 1: dealerListings — empty, so inquiries/conversations logic short-circuits entirely.
+        if (listingsCall === 1) return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [] }) }) };
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [] }) }) }) }) };
       }
-      if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [] }) }) }) }) };
       return {};
     });
     const res: any = await metricsGet(makeGetRequest('https://x.com/api/dealer/metrics'));
     expect(res._status).toBe(200);
     expect(res._data.viewsDelta).toBeNull();
     expect(res._data.inquiriesDelta).toBeNull();
+    expect(res._data.inquiries30d).toBe(0);
+    expect(res._data.recentInquiries).toEqual([]);
     expect(res._data.avgDaysOnMarket).toBe(0);
   });
 });
