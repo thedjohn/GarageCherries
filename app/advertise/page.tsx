@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Advertise — GarageCherries',
+  title: 'Advertise',
   description: 'Reach classic car buyers in your city the moment they\'re shopping. Show your ad to serious buyers browsing real listings.',
 };
 

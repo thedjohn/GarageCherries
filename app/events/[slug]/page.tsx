@@ -56,10 +56,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const admin = createAdminClient();
   const { data } = await admin.from('events').select('name, description, date, location, state').eq('slug', slug).eq('status', 'approved').single();
-  if (!data) return { title: 'Event Not Found | GarageCherries' };
+  if (!data) return { title: 'Event Not Found' };
   const dateStr = new Date(data.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   return {
-    title: `${data.name} — ${dateStr} | GarageCherries`,
+    title: `${data.name} — ${dateStr}`,
     description: `${data.name} on ${dateStr} in ${data.location}, ${data.state}. ${data.description?.slice(0, 120)}`,
     alternates: { canonical: `https://www.garagecherries.com/events/${slug}` },
     openGraph: {

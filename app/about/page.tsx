@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
-  title: 'About Us — GarageCherries',
+  title: 'About Us',
   description: 'GarageCherries is the premier online marketplace for classic, muscle, and collector cars. Learn about our mission and the team behind the platform.',
   alternates: { canonical: 'https://www.garagecherries.com/about' },
 };

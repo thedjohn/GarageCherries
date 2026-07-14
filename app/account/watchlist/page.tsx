@@ -8,7 +8,7 @@ import RemoveWatchButton from '@/components/RemoveWatchButton';
 import SignOutButton from '@/components/SignOutButton';
 
 export const metadata: Metadata = {
-  title: 'My Watchlist — GarageCherries',
+  title: 'My Watchlist',
 };
 
 export default async function WatchlistPage() {

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import AlertActions from '@/components/AlertActions';
 
-export const metadata = { title: 'Car Alerts — GarageCherries' };
+export const metadata = { title: 'Car Alerts' };
 
 function describeSearch(s: any): string {
   const parts: string[] = [];

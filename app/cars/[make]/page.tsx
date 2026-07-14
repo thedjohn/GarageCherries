@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const makeLabel = getMakeLabel(makeSlug);
   if (!makeLabel) return { title: 'Not Found' };
   return {
-    title: `${makeLabel} Classic Cars — Encyclopedia & Buyer's Guides | GarageCherries`,
+    title: `${makeLabel} Classic Cars — Encyclopedia & Buyer's Guides`,
     description: `Research ${makeLabel} classic cars. Specs, history, buying tips, and market values for every collectible ${makeLabel} model.`,
     alternates: { canonical: `https://www.garagecherries.com/cars/${makeSlug}` },
   };
