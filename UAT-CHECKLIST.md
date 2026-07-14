@@ -6,6 +6,8 @@
 
 *Updated 2026-07-11 — added items for configurable free-account durations: the superadmin-only Trial & Promo Settings card (Team tab) and the per-account dealer/advertiser trial override (Users tab → Edit). The sign-off below predates this feature and does not cover it.*
 
+*Updated 2026-07-14 — added items for: the sign-out button (§2), My Listings views/watching counts (§3), dealer Overview per-listing views/watching and Inventory tab Views/Watchers columns (§4), sold listings correctly excluded from a dealer's public profile grid (§1) and dashboard Overview panel (§4), VIN-first field order (§3, already present), and the `inquiries`→`conversations` rewire (§2/§4/§7/§8, already present). The sign-off below (2026-07-09) predates all of this session's work and does not cover any of it.*
+
 ---
 
 ## 1. Public Browsing (no login required)
@@ -23,6 +25,7 @@
 - [ ] Sold listing shows a "This vehicle has sold" banner + "View Similar Listings" link
 - [ ] Dealer directory (`/dealers`) lists all dealers with listing counts
 - [ ] Dealer profile page (`/dealers/[slug]`) shows logo, description, specialties, map, **tier badge** (Bronze/Silver/Gold), and **reviews** section
+- [ ] Dealer profile page inventory grid does NOT show a listing the dealer has marked Sold (mark one sold via dashboard, refresh the public profile page)
 - [ ] Classic Car Encyclopedia (`/cars`) — browse index, open a model page, confirm history/specs/live listings render
 - [ ] Buyer's Guides (`/guides`) — index and at least one article open
 - [ ] Market Report (`/reports`) loads with live data
@@ -42,6 +45,7 @@
 - [ ] Sign up for a new account (`/account/signup`) — **Full Name is now a required field**; submitting without it is blocked by the browser before the form submits
 - [x] After signup, confirm the name entered appears in Supabase Auth (Display Name / `user_metadata.full_name`) and on `/account/profile` — previously silently failed to save for every signup (fixed 2026-07-10, commit `98fc3c8`). Confirmed 2026-07-12: test signup "GC Test" (rhythmlibrarysystem@gmail.com) shows correct name in Admin → Users tab, proving it reached `profiles.full_name`.
 - [ ] Log in / log out
+- [ ] "Sign out" button in the breadcrumb bar on `/account` and `/messages` — signs out and returns to the homepage
 - [x] Forgot password (`/account/forgot-password`) → click the emailed link → lands on the **"Set new password" form**, not the homepage. Wildcard Redirect URLs did not actually work; fixed for real 2026-07-11 by using exact literal entries instead (see IMPLEMENTATION_STATUS.md). Confirmed working live by Derek 2026-07-11. Email is now a branded GarageCherries template rather than Supabase's generic default.
 - [ ] Profile management (`/account/profile`) — update name/phone, save succeeds
 - [ ] Watch a listing (heart/save icon) — appears under Watchlist tab
@@ -77,6 +81,7 @@
 - [ ] Listing shows a days-remaining countdown as it approaches 30-day expiry (amber warning at ≤7 days) — check on an older test listing if available
 - [ ] "Renew listing" button extends the expiry date
 - [ ] Mark listing as Sold — badge immediately changes to "Sold", Mark as Sold and Renew buttons disappear; badge still shows "Sold" after page refresh
+- [ ] Each card under `/account?tab=listings` shows a "N views · N watching" line with real counts
 
 ---
 
@@ -88,11 +93,13 @@
 - [ ] Existing dealer clicks "Forgot password" on `/dealer/login` → emailed link lands on the password-set form at `/dealer/login`, not the homepage (same underlying bug as the buyer flow above; exact literal Redirect URL entries for `/dealer/login` were added 2026-07-11 alongside the buyer-flow fix, but this specific dealer path has not yet been re-tested live — only the buyer `/account/forgot-password` flow was confirmed)
 - [ ] Dashboard loads with tabs: Overview, Inventory, Inquiries, Settings
 - [ ] Overview tab shows real stats (active listings, views, inquiries, avg. days on market)
+- [ ] Overview tab "Your listings" panel shows a "N views · N watching" line per card, and does NOT include any listing marked Sold
 - [ ] Add a vehicle via "+ Add vehicle" modal — appears **immediately** as approved (no review wait)
 - [ ] Edit a vehicle's price — price history updates, watcher notification fires (spot-check via a watching test account/email)
 - [ ] Mark a listing as **Sold** — confirmation modal, badge changes to "Sold", Mark Sold/Renew buttons disappear
 - [ ] Toggle "Featured" on a listing — badge appears on the listing card
 - [ ] Export inventory as CSV and as JSON — both downloads work and contain real data including seat_material and seating_type columns
+- [ ] Inventory tab table has Views and Watchers columns showing real counts per listing
 - [ ] Mark a listing as Sold in dealer dashboard — Edit button and "Expires in Xd" text disappear; only View remains
 - [ ] Settings tab — update dealer profile fields, upload a logo (JPG/PNG/WebP), preview updates immediately
 - [ ] "Message watchers" on a listing with watchers — compose modal sends, "Messaged" label appears after
@@ -172,3 +179,5 @@
 | Tester | Date | Sections Covered | Result |
 |---|---|---|---|
 | Derek Johnson | 2026-07-09 | All sections (1–8) | ✅ Pass — 181/196 E2E automated; 15 credential-gated tests verified manually |
+
+*This sign-off predates all work shipped 2026-07-13/14 — see the "Updated 2026-07-14" note above for the list of items still needing a first pass.*
