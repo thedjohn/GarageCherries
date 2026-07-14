@@ -1,6 +1,7 @@
 # GarageCherries — Master Specification
 
-> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-14 (finished the `inquiries` cleanup from the prior entry below by deleting the table, `app/api/inquire/route.ts`, and its dead cascade-delete reference in `app/api/admin/users/route.ts` — that reference had been silently broken regardless, filtering on a `user_id` column `inquiries` never had. Requires `supabase/migrations/20260714_drop_inquiries.sql` to be run manually — no FK references point at the table).
+> Generated 2026-07-02 from a full read of every route, page, and library file. Last updated 2026-07-14 (deleted `app/sell/SellForm.tsx`, dead code never imported anywhere — `/sell` renders `SellClient.tsx` exclusively; confirmed unused via a fresh repo-wide grep immediately before deletion. Rewrote §2.2's client-side validation table, which had been describing this dead file's field list and predated the 2026-07-13 unified-form work — now documents the real `VehicleFieldsForm`-based required fields).
+> Prior update 2026-07-14 (finished the `inquiries` cleanup from the prior entry below by deleting the table, `app/api/inquire/route.ts`, and its dead cascade-delete reference in `app/api/admin/users/route.ts` — that reference had been silently broken regardless, filtering on a `user_id` column `inquiries` never had. Requires `supabase/migrations/20260714_drop_inquiries.sql` to be run manually — no FK references point at the table).
 > Prior update 2026-07-14 (rewired three dealer-facing features off the orphaned `inquiries` table — `POST /api/inquire` has had no live caller since "Message Seller" moved to `conversations`/`messages`. `GET /api/dealer/metrics` and `POST /api/email/dealer-report` now read `conversations` instead, scoped by `listing_id IN (dealer's listing ids)` since `conversations` has no `dealer_id` column — same pattern `GET /api/conversations` already uses. Also fixed a second, independent dead-data bug in the dealer digest email: "Top Listings by Views" read a never-incremented `listings.views` column instead of the working `listing_views` table. Live-verified by inserting a real test conversation+message and confirming it appeared correctly in the dealer dashboard's Overview stat, "Recent inquiries" panel, and Inquiries tab, then deleting the test rows — see §4 `dealer/metrics`, `inquire`, and `email/dealer-report` entries).
 > Prior update 2026-07-14 (VIN moved above Year/Make/Model on `/sell` (`app/sell/SellClient.tsx`) so a clean NHTSA decode auto-fills any of those three still blank — never overwrites a field the user already typed, and Make is matched case-insensitively against `MAKES` since NHTSA returns e.g. "CHRYSLER" against the dropdown's "Chrysler". Fixed a real bug this reorder would have surfaced: `POST /api/cars/verify-vin`'s match logic requires at least one of make/model/year to explicitly agree before reporting `verified: true`, so checking a VIN before any field had content always fell through to "Partial Match" even for a clean decode — fixed client-side by detecting all three match fields `null` (nothing provided, as opposed to `false` — explicitly disagrees) and showing a distinct "VIN Decoded" message instead; the API route itself is unchanged, since it already returned the right signal, just nothing on the client was distinguishing it. Live-verified with VIN `3C3AY75S75T283365` — see §6 for the endpoint's null-vs-false semantics).
 > Prior update 2026-07-14 (dealer public profile (`app/dealers/[slug]/page.tsx`) and dashboard Overview "Your listings" panel now both filter `is_sold=false`, matching the homepage/`/listings`/`fetchCars()` pattern — "Mark as Sold" only sets `is_sold`, never changes `status`, so both surfaces kept showing sold cars as available inventory before this fix; the dashboard Inventory tab and private-seller "My Listings" section are unaffected — both intentionally still show sold listings with a status badge. Also added a "Sign out" link to `components/AccountTabBar.tsx`, shared by `/account` and `/messages` — previously no way to sign out from either page except clearing cookies manually).
@@ -113,7 +114,7 @@ support < moderator < admin < superadmin
 
 1. Navigate to `/sell`.
 2. If not logged in, `SellGate` component shown — redirects to `/account/signup?return=/sell` or `/account/login?return=/sell`.
-3. Authenticated user sees `SellClient` (`app/sell/SellClient.tsx` — `SellForm.tsx` is dead code, never imported):
+3. Authenticated user sees `SellClient` (`app/sell/SellClient.tsx` — `SellForm.tsx`, dead code never imported, was deleted 2026-07-14):
    a0. VIN field is first, above the rest of Vehicle Information (moved 2026-07-14). Optionally enters VIN and clicks "Verify VIN" — calls `POST /api/cars/verify-vin` inline. On a clean decode, Year/Make/Model are auto-filled if still blank (never overwrites a field already typed into); result shown as a color-coded message (green=verified, blue="VIN Decoded"=clean decode with nothing yet to compare, blue=pre-1981, yellow=partial mismatch, red=invalid). VIN and verification status stored with listing on submit.
    a. Fills vehicle info via the shared `VehicleFieldsForm` component (`components/VehicleFieldsForm.tsx`, also used by the dealer and admin forms as of 2026-07-13): required — year (1900–2030), make (dropdown), model, condition, body style, fuel type, transmission, drive type, price, description; optional — mileage, engine, color.
    b. Fills location: city (optional, as of 2026-07-13), state (optional as of 2026-07-13; if provided, still validated against US state codes).
@@ -1188,19 +1189,26 @@ Added 2026-07-11. Single-row singleton (`id` is always `1`), superadmin-editable
 
 **Note:** `sellerName`, `sellerPhone`, and `sellerEmail` are not form fields — the API reads them server-side from `profiles` and `auth.users`.
 
-### Client-side form validation (SellForm)
+### Client-side form validation (`SellClient.tsx`, via the shared `VehicleFieldsForm` component)
+
+Rewritten 2026-07-14 — this table previously described the dead `SellForm.tsx` (deleted 2026-07-14) and predated the 2026-07-13 field unification across `/sell`/dealer/admin.
 
 | Field | Rule |
 |---|---|
 | `year` | type=number, required, min=1900, max=2030 |
 | `make` | required dropdown |
 | `model` | required text |
-| `price` | required, type=number, min=0 |
 | `condition` | required dropdown |
+| `bodyStyle` | required dropdown |
+| `fuelType` | required dropdown |
+| `transmission` | required dropdown (Electric fuelType restricts to "1-Speed" only) |
+| `driveType` | required dropdown |
+| `price` | required text (numeric, comma-formatted) |
 | `description` | required textarea |
-| `city` | required text |
-| `state` | required text, maxLength=2 |
-| `vin` | optional; uppercased; max 17 chars; "Verify VIN" button triggers inline NHTSA check |
+| `mileage`, `engine`, `color` | optional |
+| `city`, `state` | optional as of 2026-07-13 (previously both required); `state` is still validated against US state codes server-side if provided |
+| `vin` | optional; uppercased; max 17 chars; positioned above Year/Make/Model as of 2026-07-14 — "Verify VIN" auto-fills any of those three still blank from a clean NHTSA decode |
+| photos | required, ≥1, up to 30 |
 
 **Removed (2026-07-06):** `sellerName`, `sellerPhone`, `sellerEmail` fields — seller identity now sourced from `profiles` table server-side.
 
