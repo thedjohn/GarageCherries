@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Turnstile from '@/components/Turnstile';
 import VehicleFieldsForm, { type VehicleFieldsValues } from '@/components/VehicleFieldsForm';
+import { MAKES } from '@/lib/types';
 
 type VinResult = {
   vinValid: boolean;
@@ -39,22 +40,39 @@ export default function SellClient() {
   const onCaptchaVerify = useCallback((token: string) => setCaptchaToken(token), []);
   const onCaptchaExpire = useCallback(() => setCaptchaToken(null), []);
 
-  const verifyVin = async (form: HTMLFormElement) => {
+  const verifyVin = async () => {
     if (!vin.trim()) return;
     setVinLoading(true);
     setVinResult(null);
-    const make = (form.elements.namedItem('make') as HTMLSelectElement)?.value;
-    const model = (form.elements.namedItem('model') as HTMLInputElement)?.value;
-    const year = (form.elements.namedItem('year') as HTMLInputElement)?.value;
     const res = await fetch('/api/cars/verify-vin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ vin: vin.trim(), make, model, year }),
+      body: JSON.stringify({ vin: vin.trim(), make: fields.make, model: fields.model, year: fields.year }),
     });
     const data = await res.json();
     setVinResult(data);
     setVinLoading(false);
+
+    // Clean decode — fill in any Year/Make/Model fields that are still blank.
+    // Never overwrites a field the user already filled in.
+    if (data.vinValid && data.nhtsaYear && data.nhtsaMake) {
+      setFields(f => {
+        const next = { ...f };
+        if (!next.year) next.year = data.nhtsaYear;
+        if (!next.make) {
+          const matched = MAKES.find(m => m.toLowerCase() === String(data.nhtsaMake).toLowerCase());
+          if (matched) next.make = matched;
+        }
+        if (!next.model && data.nhtsaModel) next.model = data.nhtsaModel;
+        return next;
+      });
+    }
   };
+
+  // True when the VIN was checked before Year/Make/Model had anything typed in —
+  // there was nothing to compare, so "Partial Match" would be misleading here.
+  const vinFreshDecode = !!vinResult && vinResult.vinValid && !vinResult.preStandard
+    && vinResult.makeMatch === null && vinResult.modelMatch === null && vinResult.yearMatch === null;
 
   const handleImageAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -154,14 +172,9 @@ export default function SellClient() {
         {/* Vehicle info */}
         <section className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
           <h2 className="font-bold text-zinc-800 text-lg mb-5">Vehicle Information</h2>
-          <VehicleFieldsForm
-            values={fields}
-            onChange={setField}
-            inputClassName="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300"
-          />
 
-          <div className="mt-5">
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">VIN <span className="normal-case font-normal text-zinc-400">(optional — helps buyers verify the car)</span></label>
+          <div className="mb-5">
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">VIN <span className="normal-case font-normal text-zinc-400">(optional — enter first to auto-fill Year, Make &amp; Model below)</span></label>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -174,7 +187,7 @@ export default function SellClient() {
               <button
                 type="button"
                 disabled={!vin.trim() || vinLoading}
-                onClick={e => verifyVin((e.currentTarget.closest('form') as HTMLFormElement))}
+                onClick={() => verifyVin()}
                 className="text-sm font-semibold px-4 py-2.5 rounded-xl border border-zinc-200 hover:bg-zinc-50 disabled:opacity-40 transition-colors whitespace-nowrap"
               >
                 {vinLoading ? 'Checking…' : 'Verify VIN'}
@@ -182,18 +195,22 @@ export default function SellClient() {
             </div>
             {vinResult && (
               <div className={`mt-2 rounded-xl px-4 py-3 text-sm ${
+                vinFreshDecode ? 'bg-blue-50 border border-blue-200 text-blue-800' :
                 vinResult.verified ? 'bg-green-50 border border-green-200 text-green-800' :
                 vinResult.preStandard ? 'bg-blue-50 border border-blue-200 text-blue-800' :
                 vinResult.vinValid === false ? 'bg-red-50 border border-red-200 text-red-800' :
                 'bg-yellow-50 border border-yellow-200 text-yellow-800'
               }`}>
                 <p className="font-semibold mb-0.5">
-                  {vinResult.verified ? '✓ VIN Verified' :
+                  {vinFreshDecode ? '✓ VIN Decoded' :
+                   vinResult.verified ? '✓ VIN Verified' :
                    vinResult.preStandard ? 'ℹ Pre-1981 VIN' :
                    vinResult.vinValid === false ? '✕ Invalid VIN' :
                    '⚠ VIN Decoded — Partial Match'}
                 </p>
-                <p className="text-xs opacity-80">{vinResult.message}</p>
+                <p className="text-xs opacity-80">
+                  {vinFreshDecode ? 'Year, Make, and Model filled in below from NHTSA records — please review before continuing.' : vinResult.message}
+                </p>
                 {vinResult.nhtsaMake && (
                   <p className="text-xs mt-1 opacity-70">
                     NHTSA: {[vinResult.nhtsaYear, vinResult.nhtsaMake, vinResult.nhtsaModel].filter(Boolean).join(' ')}
@@ -202,6 +219,12 @@ export default function SellClient() {
               </div>
             )}
           </div>
+
+          <VehicleFieldsForm
+            values={fields}
+            onChange={setField}
+            inputClassName="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder:text-zinc-300"
+          />
         </section>
 
         {/* Photos */}
