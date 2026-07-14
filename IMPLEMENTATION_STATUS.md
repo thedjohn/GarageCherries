@@ -77,7 +77,7 @@
 - [x] **Renewal reminder email** — `POST /api/email/expiring-listings` emails sellers 3 days before expiry; idempotent via `renewal_reminder_sent_at`; triggerable from `/admin/email` (added 2026-07-03)
 
 ### VIN Verification
-- [x] VIN field + inline "Verify VIN" button, positioned first on the `/sell` form so a clean decode auto-fills Year/Make/Model below it (moved 2026-07-14; fields already filled in by the user are never overwritten); a plain (non-verifying) VIN field is now also shown on the dealer Add/Edit Vehicle modal and the admin Edit Listing modal (added 2026-07-13)
+- [x] VIN field + inline "Verify VIN" button, positioned first on the `/sell` form so a clean decode auto-fills Year/Make/Model below it (moved 2026-07-14; fields already filled in by the user are never overwritten). **Pre-1981 VINs never auto-fill** — NHTSA has no decode data for that era (`nhtsaMake`/`nhtsaModel`/`nhtsaYear` aren't even returned by the API for `preStandard` VINs), so the user still fills those fields in manually, same as before this feature; confirmed working as intended, not a gap. A plain (non-verifying) VIN field is now also shown on the dealer Add/Edit Vehicle modal and the admin Edit Listing modal (added 2026-07-13)
 - [x] NHTSA VIN decoder API integration (24h cache), fuzzy make/model/year matching
 - [x] Color-coded result badge: verified / partial match / pre-1981 / invalid
 - [x] `vin`, `vin_verified`, `vin_make`, `vin_model`, `vin_year` stored on the listing at submit time
