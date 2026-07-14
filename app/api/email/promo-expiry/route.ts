@@ -6,7 +6,7 @@ import { getSiteSettings } from '@/lib/siteSettings';
 // POST /api/email/promo-expiry
 // Emails all promo users (individual sellers, dealers, advertisers) warning
 // that their free period ends on the configured promo cutoff date (superadmin-editable
-// in /admin, Team tab → Settings; falls back to October 31, 2026 if unset).
+// in /admin, Team tab → Settings; falls back to December 31, 2026 if unset).
 // Idempotent — each recipient is only emailed once (tracked via promo_expiry_notified_at).
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
