@@ -371,8 +371,9 @@
 1. **Wire Stripe** — featured listing upgrades are the fastest first product to charge for; pricing page already shows plan tiers; `promo_expires_at` column already tracking who needs to pay post-promo *(on hold)*
 2. **Decide on dealer self-serve signup** — current apply-and-wait model may be intentional (vetting quality), but if faster growth is the goal, self-serve + Stripe removes the bottleneck
 3. **Restore inspection-affiliate button** — once Lemon Squad agreement is confirmed
-4. **Submit event pages to Google** — use URL Inspection in Search Console to request indexing for individual `/events/[slug]` pages; rich Event results will appear once Google crawls the JSON-LD
-5. **Add actual sale price to `/sold`** — optional "Sold for $X" field on Mark as Sold flow; deferred until enough sold listings accumulate to make it worthwhile
+4. **Add actual sale price to `/sold`** — optional "Sold for $X" field on Mark as Sold flow; deferred until enough sold listings accumulate to make it worthwhile
+
+*("Submit event pages to Google" removed 2026-07-14 — done. All 3 currently-approved events (`caffeine-chrome-2026-07-25`, `1st-phorm-cars-caffeine-2026-07-19`, `sticky-s-friday-night-car-cruise-in-2026-07-17`) submitted via Search Console URL Inspection. Verified all three have correct indexing signals first (robots meta `index, follow`, HTTP 200 for Googlebot UA, present in sitemap.xml, valid JSON-LD) — no code issue on our end. The first submission was rejected with a generic "issues detected during live testing" error, which is a known GSC quirk on a URL Google has never crawled before; the other two succeeded on the first try, and the first one will just need a retry from `/admin` or Search Console directly whenever — not urgent, since it's already discoverable via the sitemap regardless.)*
 
 *("Delete `app/sell/SellForm.tsx`" removed 2026-07-14 — done. Dead file deleted, confirmed unused via repo-wide grep first.)*
 
