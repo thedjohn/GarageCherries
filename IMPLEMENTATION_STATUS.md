@@ -365,14 +365,15 @@
 
 ## Recommended Next Steps (Priority Order)
 
-1. **Promo expiry notification email** — automated email to all users (dealers, individuals, advertisers) warning that free period ends December 31, 2026; send ~2 weeks before cutoff
-2. **Wire Stripe** — featured listing upgrades are the fastest first product to charge for; pricing page already shows plan tiers; `promo_expires_at` column already tracking who needs to pay post-promo *(on hold)*
-3. **Build `/account/inquiries`** — completes the buyer account experience; last remaining "small win" item
-4. **Delete `app/sell/SellForm.tsx`** — dead file, never imported; `/sell` renders `SellClient.tsx` exclusively
-5. **Decide on dealer self-serve signup** — current apply-and-wait model may be intentional (vetting quality), but if faster growth is the goal, self-serve + Stripe removes the bottleneck
-6. **Restore inspection-affiliate button** — once Lemon Squad agreement is confirmed
-7. **Submit event pages to Google** — use URL Inspection in Search Console to request indexing for individual `/events/[slug]` pages; rich Event results will appear once Google crawls the JSON-LD
-8. **Add actual sale price to `/sold`** — optional "Sold for $X" field on Mark as Sold flow; deferred until enough sold listings accumulate to make it worthwhile
+1. **Wire Stripe** — featured listing upgrades are the fastest first product to charge for; pricing page already shows plan tiers; `promo_expires_at` column already tracking who needs to pay post-promo *(on hold)*
+2. **Build `/account/inquiries`** — completes the buyer account experience; last remaining "small win" item
+3. **Delete `app/sell/SellForm.tsx`** — dead file, never imported; `/sell` renders `SellClient.tsx` exclusively
+4. **Decide on dealer self-serve signup** — current apply-and-wait model may be intentional (vetting quality), but if faster growth is the goal, self-serve + Stripe removes the bottleneck
+5. **Restore inspection-affiliate button** — once Lemon Squad agreement is confirmed
+6. **Submit event pages to Google** — use URL Inspection in Search Console to request indexing for individual `/events/[slug]` pages; rich Event results will appear once Google crawls the JSON-LD
+7. **Add actual sale price to `/sold`** — optional "Sold for $X" field on Mark as Sold flow; deferred until enough sold listings accumulate to make it worthwhile
+
+*(Promo expiry notification email was already fully built and cron-registered — confirmed 2026-07-14, see `app/api/email/promo-expiry/route.ts` and `vercel.json`'s daily 14:00 UTC cron. It's just dormant until its send window opens ~Dec 17, 2026, 14 days before the Dec 31 cutoff. Previously listed here as a TODO in error.)*
 
 ---
 
