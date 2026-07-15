@@ -59,7 +59,7 @@ export default async function HomePage() {
       areaServed: 'USA',
       availableLanguage: 'English',
     },
-    sameAs: ['https://www.garagecherries.com'],
+    sameAs: ['https://www.facebook.com/profile.php?id=61591983653597'],
   };
 
   return (
