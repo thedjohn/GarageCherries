@@ -51,6 +51,20 @@ export default async function ListingsPage({ searchParams }: Props) {
   const { data: dbRows, error: listingsError } = await query;
   if (listingsError) console.error('Listings query error:', listingsError.message, listingsError.details);
 
+  const activeListingsFilter = () => supabase
+    .from('listings')
+    .select('year')
+    .eq('status', 'approved')
+    .eq('is_sold', false)
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
+
+  const [{ data: minYearRow }, { data: maxYearRow }] = await Promise.all([
+    activeListingsFilter().order('year', { ascending: true }).limit(1),
+    activeListingsFilter().order('year', { ascending: false }).limit(1),
+  ]);
+  const minYear = minYearRow?.[0]?.year ?? null;
+  const maxYear = maxYearRow?.[0]?.year ?? null;
+
   const cars: Car[] = (dbRows ?? []).map(r => ({
     id: r.id, slug: r.slug, title: r.title,
     year: r.year, make: r.make, model: r.model,
@@ -76,7 +90,7 @@ export default async function ListingsPage({ searchParams }: Props) {
 
       <div className="flex flex-col lg:flex-row gap-8">
         <Suspense>
-          <SearchFilters />
+          <SearchFilters minYear={minYear} maxYear={maxYear} />
         </Suspense>
 
         <div className="flex-1">

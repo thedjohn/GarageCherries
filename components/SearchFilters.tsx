@@ -3,11 +3,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useCallback, useEffect } from 'react';
 import { MAKES, BODY_STYLES, CONDITIONS, STATES, TRANSMISSIONS } from '@/lib/types';
 
-export default function SearchFilters({ initialMakes }: { initialMakes?: string[] }) {
+export default function SearchFilters({ initialMakes, minYear, maxYear }: { initialMakes?: string[]; minYear?: number | null; maxYear?: number | null }) {
   const router = useRouter();
   const params = useSearchParams();
 
   const makes = initialMakes ?? MAKES.filter(m => m !== 'All Makes');
+
+  const yearFrom = minYear ?? 1900;
+  const yearTo = maxYear ?? new Date().getFullYear() + 1;
+  const years = Array.from({ length: yearTo - yearFrom + 1 }, (_, i) => yearTo - i);
 
   const [filters, setFilters] = useState({
     q:            params.get('q')           || '',
@@ -94,10 +98,16 @@ export default function SearchFilters({ initialMakes }: { initialMakes?: string[
           <div>
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Year</label>
             <div className="flex gap-2">
-              <input type="number" placeholder="Min" value={filters.yearMin} min={1900} max={2030} onChange={e => set('yearMin', e.target.value)}
-                className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
-              <input type="number" placeholder="Max" value={filters.yearMax} min={1900} max={2030} onChange={e => set('yearMax', e.target.value)}
-                className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+              <select value={filters.yearMin} onChange={e => set('yearMin', e.target.value)}
+                className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                <option value="">Min</option>
+                {years.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+              <select value={filters.yearMax} onChange={e => set('yearMax', e.target.value)}
+                className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                <option value="">Max</option>
+                {years.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
             </div>
           </div>
 
