@@ -23,6 +23,18 @@ export async function GET(req: NextRequest) {
   const admin = createAdminClient();
   const params = req.nextUrl.searchParams;
   const sellerId = params.get('seller_id');
+  const make = params.get('make');
+  const model = params.get('model');
+  const yearMin = params.get('yearMin');
+  const yearMax = params.get('yearMax');
+  const priceMin = params.get('priceMin');
+  const priceMax = params.get('priceMax');
+  const status = params.get('status');
+  const resubmissionsOnly = params.get('resubmissionsOnly') === 'true';
+  const featuredOnly = params.get('featuredOnly') === 'true';
+  const sellerType = params.get('sellerType'); // 'dealer' | 'private'
+  const fbPosted = params.get('fbPosted'); // 'posted' | 'not_posted'
+  const expiringSoon = params.get('expiringSoon') === 'true';
   const page  = Math.max(1, parseInt(params.get('page')  ?? '1',  10));
   const limit = Math.min(100, Math.max(1, parseInt(params.get('limit') ?? '50', 10)));
   const from = (page - 1) * limit;
@@ -30,12 +42,56 @@ export async function GET(req: NextRequest) {
 
   let query = admin
     .from('listings')
-    .select('id,slug,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,fuel_type,drive_type,vin,location,state,seller_name,seller_phone,seller_email,seller_id,images,description,featured,status,rejection_reason,resubmission_note,resubmission_count,created_at,fb_posted_at', { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range(from, to);
+    .select('id,slug,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,fuel_type,drive_type,vin,location,state,seller_name,seller_phone,seller_email,seller_id,images,description,featured,status,rejection_reason,resubmission_note,resubmission_count,created_at,fb_posted_at,expires_at', { count: 'exact' })
+    .order('year', { ascending: false })
+    .order('make', { ascending: true })
+    .order('model', { ascending: true });
+
   if (sellerId) query = query.eq('seller_id', sellerId);
+  if (make) query = query.eq('make', make);
+  if (model) query = query.ilike('model', `%${model}%`);
+  if (yearMin) query = query.gte('year', Number(yearMin));
+  if (yearMax) query = query.lte('year', Number(yearMax));
+  if (priceMin) query = query.gte('price', Number(priceMin));
+  if (priceMax) query = query.lte('price', Number(priceMax));
+  if (status && status !== 'all') query = query.eq('status', status);
+  if (resubmissionsOnly) query = query.gt('resubmission_count', 0);
+  if (featuredOnly) query = query.eq('featured', true);
+  if (fbPosted === 'posted') query = query.not('fb_posted_at', 'is', null);
+  if (fbPosted === 'not_posted') query = query.is('fb_posted_at', null);
+  if (expiringSoon) {
+    const now = new Date().toISOString();
+    const weekFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    query = query.gte('expires_at', now).lte('expires_at', weekFromNow);
+  }
+
+  // Dealer vs private-seller split requires knowing which seller_ids are
+  // dealers — there's no boolean column on listings for this, so it's
+  // resolved via a lightweight lookup against the (small) dealers table.
+  if (sellerType === 'dealer' || sellerType === 'private') {
+    const { data: allDealers } = await admin.from('dealers').select('id');
+    const dealerIds = (allDealers ?? []).map(d => d.id);
+    if (sellerType === 'dealer') {
+      query = dealerIds.length ? query.in('seller_id', dealerIds) : query.eq('id', '00000000-0000-0000-0000-000000000000');
+    } else if (dealerIds.length) {
+      query = query.not('seller_id', 'in', `(${dealerIds.join(',')})`);
+    }
+  }
+
+  query = query.range(from, to);
   const { data: listings, error, count } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Always-unfiltered totals for the "X pending · Y approved · Z rejected" summary —
+  // computed separately from the filtered/paginated query above so applying a
+  // filter doesn't make these counts misleadingly drop to whatever's on the
+  // current filtered page.
+  const [{ count: pendingCount }, { count: approvedCount }, { count: rejectedCount }] = await Promise.all([
+    admin.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    admin.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+    admin.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
+  ]);
+  const statusCounts = { pending: pendingCount ?? 0, approved: approvedCount ?? 0, rejected: rejectedCount ?? 0 };
 
   // listings.seller_name/seller_phone are a snapshot taken when the listing was
   // created and never updated again, so they go stale the moment a dealer
@@ -55,7 +111,7 @@ export async function GET(req: NextRequest) {
     return { ...l, seller_name: dealer.name ?? l.seller_name, seller_phone: dealer.phone ?? l.seller_phone };
   });
 
-  return NextResponse.json({ listings: listingsWithLiveSellerInfo, total: count ?? 0, page, limit });
+  return NextResponse.json({ listings: listingsWithLiveSellerInfo, total: count ?? 0, page, limit, statusCounts });
 }
 
 export async function PATCH(req: NextRequest) {

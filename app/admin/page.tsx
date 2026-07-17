@@ -6,6 +6,7 @@ import { formatPhone } from '@/lib/data';
 import VehicleFieldsForm from '@/components/VehicleFieldsForm';
 import AdminEmailCampaigns from '@/components/AdminEmailCampaigns';
 import { resolveAdminRole, type TeamMember } from '@/lib/resolveAdminRole';
+import { MAKES } from '@/lib/types';
 
 interface Listing {
   id: string; slug: string; title: string; year: number; make: string; model: string;
@@ -71,6 +72,25 @@ export default function AdminPage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [listingViews, setListingViews] = useState<Record<string, number>>({});
   const [listingWatchers, setListingWatchers] = useState<Record<string, number>>({});
+  const [listingsTotal, setListingsTotal] = useState(0);
+  const [listingPage, setListingPage] = useState(1);
+  const [statusCounts, setStatusCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
+  const LISTING_PAGE_SIZE = 20;
+
+  // Listing filters
+  const [filterMake, setFilterMake] = useState('');
+  const [filterModel, setFilterModel] = useState('');
+  const [filterYearMin, setFilterYearMin] = useState('');
+  const [filterYearMax, setFilterYearMax] = useState('');
+  const [filterPriceMin, setFilterPriceMin] = useState('');
+  const [filterPriceMax, setFilterPriceMax] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterResubmissionsOnly, setFilterResubmissionsOnly] = useState(false);
+  const [filterFeaturedOnly, setFilterFeaturedOnly] = useState(false);
+  const [filterSellerType, setFilterSellerType] = useState('');
+  const [filterFbPosted, setFilterFbPosted] = useState('');
+  const [filterExpiringSoon, setFilterExpiringSoon] = useState(false);
+
   const [working, setWorking] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Listing | null>(null);
@@ -202,21 +222,8 @@ export default function AdminPage() {
         }
 
         // Moderator+ : load listings and conversations
-        const res = await fetch('/api/admin/listings');
-        if (!res.ok) { setLoading(false); return; }
-        const { listings: listingData } = await res.json();
-        setListings((listingData ?? []) as Listing[]);
-
-        const ids = (listingData ?? []).map((l: Listing) => l.id);
-        if (ids.length) {
-          fetch(`/api/admin/watcher-counts?carIds=${ids.join(',')}`)
-            .then(r => r.json())
-            .then(data => {
-              if (data.views) setListingViews(data.views);
-              if (data.totalWatchers) setListingWatchers(data.totalWatchers);
-            })
-            .catch(() => {});
-        }
+        const listingsOk = await loadListings(1);
+        if (!listingsOk) { setLoading(false); return; }
 
         const [reportedRes] = await Promise.all([
           fetch('/api/admin/reported'),
@@ -239,6 +246,68 @@ export default function AdminPage() {
     const res = await fetch(`/api/admin/users?${p}`);
     if (res.ok) { const { users: u, total } = await res.json(); setUsers(u ?? []); setUsersTotal(total ?? 0); }
     setUsersLoading(false);
+  }
+
+  async function loadListings(page = 1, overrides: Record<string, string | boolean> = {}): Promise<boolean> {
+    const f = {
+      make: filterMake, model: filterModel, yearMin: filterYearMin, yearMax: filterYearMax,
+      priceMin: filterPriceMin, priceMax: filterPriceMax, status: filterStatus,
+      resubmissionsOnly: filterResubmissionsOnly, featuredOnly: filterFeaturedOnly,
+      sellerType: filterSellerType, fbPosted: filterFbPosted, expiringSoon: filterExpiringSoon,
+      ...overrides,
+    };
+    const p = new URLSearchParams({ page: String(page), limit: String(LISTING_PAGE_SIZE) });
+    if (f.make) p.set('make', String(f.make));
+    if (f.model) p.set('model', String(f.model));
+    if (f.yearMin) p.set('yearMin', String(f.yearMin));
+    if (f.yearMax) p.set('yearMax', String(f.yearMax));
+    if (f.priceMin) p.set('priceMin', String(f.priceMin));
+    if (f.priceMax) p.set('priceMax', String(f.priceMax));
+    if (f.status !== 'all') p.set('status', String(f.status));
+    if (f.resubmissionsOnly) p.set('resubmissionsOnly', 'true');
+    if (f.featuredOnly) p.set('featuredOnly', 'true');
+    if (f.sellerType) p.set('sellerType', String(f.sellerType));
+    if (f.fbPosted) p.set('fbPosted', String(f.fbPosted));
+    if (f.expiringSoon) p.set('expiringSoon', 'true');
+
+    const res = await fetch(`/api/admin/listings?${p}`);
+    if (!res.ok) return false;
+    const { listings: listingData, total, statusCounts: sc } = await res.json();
+    setListings((listingData ?? []) as Listing[]);
+    setListingsTotal(total ?? 0);
+    setListingPage(page);
+    if (sc) setStatusCounts(sc);
+
+    const ids = (listingData ?? []).map((l: Listing) => l.id);
+    if (ids.length) {
+      fetch(`/api/admin/watcher-counts?carIds=${ids.join(',')}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.views) setListingViews(data.views);
+          if (data.totalWatchers) setListingWatchers(data.totalWatchers);
+        })
+        .catch(() => {});
+    }
+    return true;
+  }
+
+  function bumpStatusCount(status: string, delta: number) {
+    if (status !== 'pending' && status !== 'approved' && status !== 'rejected') return;
+    setStatusCounts(prev => ({ ...prev, [status]: Math.max(0, prev[status] + delta) }));
+  }
+
+  function clearListingFilters() {
+    setFilterMake(''); setFilterModel(''); setFilterYearMin(''); setFilterYearMax('');
+    setFilterPriceMin(''); setFilterPriceMax(''); setFilterStatus('all');
+    setFilterResubmissionsOnly(false); setFilterFeaturedOnly(false);
+    setFilterSellerType(''); setFilterFbPosted(''); setFilterExpiringSoon(false);
+    // State setters above are async — pass explicit reset values so this reload
+    // doesn't read stale filter state from the current closure.
+    loadListings(1, {
+      make: '', model: '', yearMin: '', yearMax: '', priceMin: '', priceMax: '',
+      status: 'all', resubmissionsOnly: false, featuredOnly: false,
+      sellerType: '', fbPosted: '', expiringSoon: false,
+    });
   }
 
   async function loadApplications() {
@@ -482,6 +551,12 @@ export default function AdminPage() {
     if (!res.ok) { setSaveError(json.error ?? 'Save failed'); return; }
     setListings(prev => prev.map(l => l.id === editing.id
       ? { ...l, ...editFields, title: `${editFields.year} ${editFields.make} ${editFields.model}` } : l));
+    // The status dropdown in this form can move a listing between any two
+    // statuses (not just out of pending), so adjust both buckets by the delta.
+    if (editFields.status !== editing.status) {
+      bumpStatusCount(editing.status, -1);
+      bumpStatusCount(editFields.status, 1);
+    }
     setEditing(null);
   }
 
@@ -495,6 +570,10 @@ export default function AdminPage() {
     if (res.ok) {
       setListings(prev => prev.map(l => l.id === id
         ? { ...l, status: action === 'approve' ? 'approved' : 'rejected', rejection_reason: action === 'reject' ? (reason ?? null) : null } : l));
+      // These listings always come from the pending queue, so the summary
+      // counts move from pending into whichever bucket the action landed in.
+      bumpStatusCount('pending', -1);
+      bumpStatusCount(action === 'approve' ? 'approved' : 'rejected', 1);
     }
     setRejectingId(null);
     setRejectionReason('');
@@ -532,8 +611,12 @@ export default function AdminPage() {
       body: JSON.stringify({ id }),
     });
     setDeleting(null);
+    if (res.ok) {
+      setListings(prev => prev.filter(l => l.id !== id));
+      if (confirmDelete) bumpStatusCount(confirmDelete.status, -1);
+      setListingsTotal(prev => Math.max(0, prev - 1));
+    }
     setConfirmDelete(null);
-    if (res.ok) setListings(prev => prev.filter(l => l.id !== id));
   }
 
   async function dismissReport(msgId: string) {
@@ -643,9 +726,6 @@ export default function AdminPage() {
   if (loading) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Loading…</div>;
   if (!adminRole) return <div className="flex items-center justify-center min-h-screen text-zinc-400">Access denied.</div>;
 
-  const pending = listings.filter(l => l.status === 'pending');
-  const approved = listings.filter(l => l.status === 'approved');
-  const rejected = listings.filter(l => l.status === 'rejected');
   const set = (k: keyof EditFields, v: string | number | boolean | null) =>
     setEditFields(f => f ? { ...f, [k]: v } : f);
   const inputCls = 'w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500';
@@ -665,7 +745,7 @@ export default function AdminPage() {
       <div className="flex gap-1 mb-6 bg-zinc-100 rounded-xl p-1 w-fit flex-wrap">
         {adminRole !== 'support' && (
           <button onClick={() => setTab('listings')} className={tabCls('listings')}>
-            Listings <span className="ml-1 text-xs text-zinc-400">{pending.length} pending</span>
+            Listings <span className="ml-1 text-xs text-zinc-400">{statusCounts.pending} pending</span>
           </button>
         )}
 
@@ -709,8 +789,74 @@ export default function AdminPage() {
 
       {/* Listings tab */}
       {tab === 'listings' && <>
-        <p className="text-zinc-400 text-sm mb-6">{pending.length} pending · {approved.length} approved · {rejected.length} rejected</p>
-        {listings.length === 0 && <div className="text-center py-20 text-zinc-400">No listings submitted yet.</div>}
+        <p className="text-zinc-400 text-sm mb-4">{statusCounts.pending} pending · {statusCounts.approved} approved · {statusCounts.rejected} rejected</p>
+
+        {/* Filter bar */}
+        <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 mb-6 space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <select value={filterMake} onChange={e => setFilterMake(e.target.value)}
+              className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+              <option value="">All Makes</option>
+              {MAKES.filter(m => m !== 'All Makes').map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            <input value={filterModel} onChange={e => setFilterModel(e.target.value)} placeholder="Model"
+              className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+            <input value={filterYearMin} onChange={e => setFilterYearMin(e.target.value)} type="number" placeholder="Year min"
+              className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+            <input value={filterYearMax} onChange={e => setFilterYearMax(e.target.value)} type="number" placeholder="Year max"
+              className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+            <input value={filterPriceMin} onChange={e => setFilterPriceMin(e.target.value)} type="number" placeholder="Price min"
+              className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+            <input value={filterPriceMax} onChange={e => setFilterPriceMax(e.target.value)} type="number" placeholder="Price max"
+              className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+              className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+              <option value="all">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <select value={filterSellerType} onChange={e => setFilterSellerType(e.target.value)}
+              className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+              <option value="">Dealer or Private</option>
+              <option value="dealer">Dealer only</option>
+              <option value="private">Private seller only</option>
+            </select>
+            <select value={filterFbPosted} onChange={e => setFilterFbPosted(e.target.value)}
+              className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+              <option value="">Facebook: Any</option>
+              <option value="posted">Posted to Facebook</option>
+              <option value="not_posted">Not posted to Facebook</option>
+            </select>
+          </div>
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-1.5 text-sm text-zinc-600">
+              <input type="checkbox" checked={filterResubmissionsOnly} onChange={e => setFilterResubmissionsOnly(e.target.checked)} />
+              Resubmissions only
+            </label>
+            <label className="flex items-center gap-1.5 text-sm text-zinc-600">
+              <input type="checkbox" checked={filterFeaturedOnly} onChange={e => setFilterFeaturedOnly(e.target.checked)} />
+              Featured only
+            </label>
+            <label className="flex items-center gap-1.5 text-sm text-zinc-600">
+              <input type="checkbox" checked={filterExpiringSoon} onChange={e => setFilterExpiringSoon(e.target.checked)} />
+              Expiring within 7 days
+            </label>
+            <div className="flex-1" />
+            <button onClick={() => loadListings(1)}
+              className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg">
+              Apply Filters
+            </button>
+            <button onClick={clearListingFilters}
+              className="px-4 py-1.5 border border-zinc-200 text-zinc-600 text-sm font-semibold rounded-lg hover:bg-zinc-50">
+              Clear all
+            </button>
+          </div>
+        </div>
+
+        {listings.length === 0 && <div className="text-center py-20 text-zinc-400">No listings match the current filters.</div>}
         <div className="space-y-4">
           {listings.map(l => (
             <div key={l.id} className={`bg-white rounded-2xl border shadow-sm p-5 flex gap-4 ${l.resubmission_count > 0 && l.status === 'pending' ? 'border-blue-200' : 'border-zinc-100'}`}>
@@ -837,6 +983,25 @@ export default function AdminPage() {
             </div>
           ))}
         </div>
+        {listingsTotal > LISTING_PAGE_SIZE && (
+          <div className="flex items-center justify-between pt-6 mt-2 border-t border-zinc-100">
+            <button
+              onClick={() => loadListings(listingPage - 1)}
+              disabled={listingPage <= 1}
+              className="px-4 py-2 text-sm font-semibold border border-zinc-200 rounded-xl text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed">
+              ← Previous
+            </button>
+            <span className="text-xs text-zinc-400">
+              {listingPage} / {Math.max(1, Math.ceil(listingsTotal / LISTING_PAGE_SIZE))} · {listingsTotal} listing{listingsTotal !== 1 ? 's' : ''}
+            </span>
+            <button
+              onClick={() => loadListings(listingPage + 1)}
+              disabled={listingPage >= Math.ceil(listingsTotal / LISTING_PAGE_SIZE)}
+              className="px-4 py-2 text-sm font-semibold border border-zinc-200 rounded-xl text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed">
+              Next →
+            </button>
+          </div>
+        )}
       </>}
 
 

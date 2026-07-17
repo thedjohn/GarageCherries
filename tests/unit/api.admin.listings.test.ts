@@ -64,6 +64,46 @@ function makeJsonRequest(body: Record<string, unknown>) {
   } as unknown as NextRequest;
 }
 
+// A chainable + thenable query-builder mock: every filter/order method returns
+// `this`, and the object itself resolves like a promise (mirrors Supabase's
+// real query builder, which is thenable at any point in the chain). Used for
+// GET /api/admin/listings, whose query now chains multiple .order() calls and
+// an arbitrary set of optional filters before terminating on .range().
+function makeListingsBuilder(result: { data?: any; error?: any; count?: number | null }) {
+  const builder: any = {
+    select: vi.fn(() => builder),
+    eq: vi.fn(() => builder),
+    ilike: vi.fn(() => builder),
+    gte: vi.fn(() => builder),
+    lte: vi.fn(() => builder),
+    gt: vi.fn(() => builder),
+    not: vi.fn(() => builder),
+    is: vi.fn(() => builder),
+    in: vi.fn(() => builder),
+    order: vi.fn(() => builder),
+    range: vi.fn(() => builder),
+    then: (resolve: any) => Promise.resolve(result).then(resolve),
+  };
+  return builder;
+}
+
+// Sets up mockFrom for a full GET /api/admin/listings call: the first
+// 'listings' call is the main paginated query, the next 3 are the always-on
+// pending/approved/rejected status-count queries (in that order).
+function setupListingsGet(mainResult: { data?: any; error?: any; count?: number | null }, statusCounts = { pending: 0, approved: 0, rejected: 0 }) {
+  let listingsCalls = 0;
+  mockFrom.mockImplementation((table: string) => {
+    if (table === 'listings') {
+      listingsCalls++;
+      if (listingsCalls === 1) return makeListingsBuilder(mainResult);
+      const countByCall = [statusCounts.pending, statusCounts.approved, statusCounts.rejected];
+      return makeListingsBuilder({ count: countByCall[listingsCalls - 2] ?? 0 });
+    }
+    if (table === 'dealers') return { select: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [] }) }) };
+    return {};
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }));
@@ -89,35 +129,215 @@ describe('GET /api/admin/listings', () => {
   it('returns paginated listings for moderator+', async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
     mockRequireAdmin.mockResolvedValue('moderator');
-    const range = vi.fn().mockResolvedValue({ data: [{ id: 'l1' }], error: null, count: 1 });
-    const order = vi.fn().mockReturnValue({ range });
-    mockFrom.mockReturnValue({ select: vi.fn().mockReturnValue({ order }) });
+    setupListingsGet({ data: [{ id: 'l1' }], error: null, count: 1 });
 
     const res: any = await GET(makeGetRequest({ page: '2', limit: '10' }));
     expect(res._status).toBe(200);
     expect(res._data.total).toBe(1);
     expect(res._data.page).toBe(2);
+    expect(res._data.statusCounts).toEqual({ pending: 0, approved: 0, rejected: 0 });
   });
 
   it('filters by seller_id when provided', async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
     mockRequireAdmin.mockResolvedValue('admin');
-    const eq = vi.fn().mockResolvedValue({ data: [], error: null, count: 0 });
-    const range = vi.fn().mockReturnValue({ eq });
-    const order = vi.fn().mockReturnValue({ range });
-    mockFrom.mockReturnValue({ select: vi.fn().mockReturnValue({ order }) });
+    let capturedEq: [string, string] | null = null;
+    let listingsCalls = 0;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        listingsCalls++;
+        if (listingsCalls > 1) return makeListingsBuilder({ count: 0 });
+        const builder = makeListingsBuilder({ data: [], error: null, count: 0 });
+        const originalEq = builder.eq;
+        builder.eq = vi.fn((...args: [string, string]) => { capturedEq = args; return originalEq(...args); });
+        return builder;
+      }
+      return {};
+    });
 
     const res: any = await GET(makeGetRequest({ seller_id: 'seller-1' }));
-    expect(eq).toHaveBeenCalledWith('seller_id', 'seller-1');
+    expect(capturedEq).toEqual(['seller_id', 'seller-1']);
     expect(res._status).toBe(200);
+  });
+
+  it('sorts by year descending, then make, then model ascending', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    let capturedOrders: any[] = [];
+    let listingsCalls = 0;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        listingsCalls++;
+        if (listingsCalls > 1) return makeListingsBuilder({ count: 0 });
+        const builder = makeListingsBuilder({ data: [], error: null, count: 0 });
+        const originalOrder = builder.order;
+        builder.order = vi.fn((...args: any[]) => { capturedOrders.push(args); return originalOrder(...args); });
+        return builder;
+      }
+      return {};
+    });
+
+    await GET(makeGetRequest());
+    expect(capturedOrders).toEqual([
+      ['year', { ascending: false }],
+      ['make', { ascending: true }],
+      ['model', { ascending: true }],
+    ]);
+  });
+
+  it('applies make/model/year/price/status/resubmission/featured filters', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    let listingsCalls = 0;
+    let builder: any;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        listingsCalls++;
+        if (listingsCalls > 1) return makeListingsBuilder({ count: 0 });
+        builder = makeListingsBuilder({ data: [], error: null, count: 0 });
+        return builder;
+      }
+      return {};
+    });
+
+    await GET(makeGetRequest({
+      make: 'Dodge', model: 'Challenger', yearMin: '1970', yearMax: '1974',
+      priceMin: '10000', priceMax: '50000', status: 'approved',
+      resubmissionsOnly: 'true', featuredOnly: 'true',
+    }));
+    expect(builder.eq).toHaveBeenCalledWith('make', 'Dodge');
+    expect(builder.ilike).toHaveBeenCalledWith('model', '%Challenger%');
+    expect(builder.gte).toHaveBeenCalledWith('year', 1970);
+    expect(builder.lte).toHaveBeenCalledWith('year', 1974);
+    expect(builder.gte).toHaveBeenCalledWith('price', 10000);
+    expect(builder.lte).toHaveBeenCalledWith('price', 50000);
+    expect(builder.eq).toHaveBeenCalledWith('status', 'approved');
+    expect(builder.gt).toHaveBeenCalledWith('resubmission_count', 0);
+    expect(builder.eq).toHaveBeenCalledWith('featured', true);
+  });
+
+  it('ignores a status of "all" (no filter applied)', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    let listingsCalls = 0;
+    let builder: any;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        listingsCalls++;
+        if (listingsCalls > 1) return makeListingsBuilder({ count: 0 });
+        builder = makeListingsBuilder({ data: [], error: null, count: 0 });
+        return builder;
+      }
+      return {};
+    });
+
+    await GET(makeGetRequest({ status: 'all' }));
+    expect(builder.eq).not.toHaveBeenCalledWith('status', expect.anything());
+  });
+
+  it('applies the Facebook-posted filter both ways', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    let listingsCalls = 0;
+    let builder: any;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        listingsCalls++;
+        if (listingsCalls > 1) return makeListingsBuilder({ count: 0 });
+        builder = makeListingsBuilder({ data: [], error: null, count: 0 });
+        return builder;
+      }
+      return {};
+    });
+
+    await GET(makeGetRequest({ fbPosted: 'posted' }));
+    expect(builder.not).toHaveBeenCalledWith('fb_posted_at', 'is', null);
+
+    listingsCalls = 0;
+    await GET(makeGetRequest({ fbPosted: 'not_posted' }));
+    expect(builder.is).toHaveBeenCalledWith('fb_posted_at', null);
+  });
+
+  it('applies the expiringSoon filter as a 7-day window from now', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    let listingsCalls = 0;
+    let builder: any;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        listingsCalls++;
+        if (listingsCalls > 1) return makeListingsBuilder({ count: 0 });
+        builder = makeListingsBuilder({ data: [], error: null, count: 0 });
+        return builder;
+      }
+      return {};
+    });
+
+    await GET(makeGetRequest({ expiringSoon: 'true' }));
+    expect(builder.gte).toHaveBeenCalledWith('expires_at', expect.any(String));
+    expect(builder.lte).toHaveBeenCalledWith('expires_at', expect.any(String));
+  });
+
+  it('filters to dealer-only listings via an in() clause built from all dealer ids', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    let listingsCalls = 0;
+    let builder: any;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        listingsCalls++;
+        if (listingsCalls > 1) return makeListingsBuilder({ count: 0 });
+        builder = makeListingsBuilder({ data: [], error: null, count: 0 });
+        return builder;
+      }
+      if (table === 'dealers') {
+        return { select: vi.fn().mockReturnValue(Promise.resolve({ data: [{ id: 'dealer-1' }, { id: 'dealer-2' }] })) };
+      }
+      return {};
+    });
+
+    await GET(makeGetRequest({ sellerType: 'dealer' }));
+    expect(builder.in).toHaveBeenCalledWith('seller_id', ['dealer-1', 'dealer-2']);
+  });
+
+  it('filters to private-seller listings via a not-in clause, and no-ops when there are zero dealers', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    let listingsCalls = 0;
+    let builder: any;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        listingsCalls++;
+        if (listingsCalls > 1) return makeListingsBuilder({ count: 0 });
+        builder = makeListingsBuilder({ data: [], error: null, count: 0 });
+        return builder;
+      }
+      if (table === 'dealers') {
+        return { select: vi.fn().mockReturnValue(Promise.resolve({ data: [] })) };
+      }
+      return {};
+    });
+
+    await GET(makeGetRequest({ sellerType: 'private' }));
+    // Zero dealers exist, so the not-in clause would be meaningless — skipped entirely.
+    expect(builder.not).not.toHaveBeenCalled();
+  });
+
+  it('computes statusCounts from three independent unfiltered counts', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    // Apply an unrelated filter (make=Dodge) to prove statusCounts stays
+    // unaffected by whatever filters are applied to the main query.
+    setupListingsGet({ data: [], error: null, count: 0 }, { pending: 3, approved: 8, rejected: 1 });
+
+    const res: any = await GET(makeGetRequest({ make: 'Dodge' }));
+    expect(res._data.statusCounts).toEqual({ pending: 3, approved: 8, rejected: 1 });
   });
 
   it('returns 500 on a query error', async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
     mockRequireAdmin.mockResolvedValue('moderator');
-    const range = vi.fn().mockResolvedValue({ data: null, error: { message: 'db down' }, count: null });
-    const order = vi.fn().mockReturnValue({ range });
-    mockFrom.mockReturnValue({ select: vi.fn().mockReturnValue({ order }) });
+    setupListingsGet({ data: null, error: { message: 'db down' }, count: null });
 
     const res: any = await GET(makeGetRequest());
     expect(res._status).toBe(500);
@@ -126,17 +346,20 @@ describe('GET /api/admin/listings', () => {
   it('overlays the live dealer name/phone onto listings whose seller_id matches a dealer', async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
     mockRequireAdmin.mockResolvedValue('moderator');
+    let listingsCalls = 0;
     mockFrom.mockImplementation((table: string) => {
       if (table === 'listings') {
-        const range = vi.fn().mockResolvedValue({
-          data: [
-            { id: 'l1', seller_id: 'dealer-1', seller_name: 'STALE NAME', seller_phone: '111' },
-            { id: 'l2', seller_id: 'private-seller-1', seller_name: 'Jane Private', seller_phone: '222' },
-          ],
-          error: null, count: 2,
-        });
-        const order = vi.fn().mockReturnValue({ range });
-        return { select: vi.fn().mockReturnValue({ order }) };
+        listingsCalls++;
+        if (listingsCalls === 1) {
+          return makeListingsBuilder({
+            data: [
+              { id: 'l1', seller_id: 'dealer-1', seller_name: 'STALE NAME', seller_phone: '111' },
+              { id: 'l2', seller_id: 'private-seller-1', seller_name: 'Jane Private', seller_phone: '222' },
+            ],
+            error: null, count: 2,
+          });
+        }
+        return makeListingsBuilder({ count: 0 });
       }
       if (table === 'dealers') {
         const inFn = vi.fn().mockResolvedValue({ data: [{ id: 'dealer-1', name: 'AutoArcheologist', phone: '860-398-1732' }] });
