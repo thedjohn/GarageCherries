@@ -36,7 +36,26 @@ export async function GET(req: NextRequest) {
   if (sellerId) query = query.eq('seller_id', sellerId);
   const { data: listings, error, count } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ listings: listings ?? [], total: count ?? 0, page, limit });
+
+  // listings.seller_name/seller_phone are a snapshot taken when the listing was
+  // created and never updated again, so they go stale the moment a dealer
+  // renames their business (same staleness this fixed for the public listing
+  // detail page). Overlay the live dealer name/phone here too, for any
+  // seller_id that matches a dealer — private-seller listings have no
+  // matching dealer row and keep their stored value unchanged.
+  const dealerIds = [...new Set((listings ?? []).map(l => l.seller_id).filter(Boolean))];
+  let dealersById: Record<string, { name: string; phone: string | null }> = {};
+  if (dealerIds.length) {
+    const { data: dealerRows } = await admin.from('dealers').select('id, name, phone').in('id', dealerIds);
+    dealersById = Object.fromEntries((dealerRows ?? []).map(d => [d.id, { name: d.name, phone: d.phone }]));
+  }
+  const listingsWithLiveSellerInfo = (listings ?? []).map(l => {
+    const dealer = dealersById[l.seller_id];
+    if (!dealer) return l;
+    return { ...l, seller_name: dealer.name ?? l.seller_name, seller_phone: dealer.phone ?? l.seller_phone };
+  });
+
+  return NextResponse.json({ listings: listingsWithLiveSellerInfo, total: count ?? 0, page, limit });
 }
 
 export async function PATCH(req: NextRequest) {

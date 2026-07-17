@@ -122,6 +122,39 @@ describe('GET /api/admin/listings', () => {
     const res: any = await GET(makeGetRequest());
     expect(res._status).toBe(500);
   });
+
+  it('overlays the live dealer name/phone onto listings whose seller_id matches a dealer', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        const range = vi.fn().mockResolvedValue({
+          data: [
+            { id: 'l1', seller_id: 'dealer-1', seller_name: 'STALE NAME', seller_phone: '111' },
+            { id: 'l2', seller_id: 'private-seller-1', seller_name: 'Jane Private', seller_phone: '222' },
+          ],
+          error: null, count: 2,
+        });
+        const order = vi.fn().mockReturnValue({ range });
+        return { select: vi.fn().mockReturnValue({ order }) };
+      }
+      if (table === 'dealers') {
+        const inFn = vi.fn().mockResolvedValue({ data: [{ id: 'dealer-1', name: 'AutoArcheologist', phone: '860-398-1732' }] });
+        return { select: vi.fn().mockReturnValue({ in: inFn }) };
+      }
+      return {};
+    });
+
+    const res: any = await GET(makeGetRequest());
+    expect(res._status).toBe(200);
+    const l1 = res._data.listings.find((l: any) => l.id === 'l1');
+    const l2 = res._data.listings.find((l: any) => l.id === 'l2');
+    expect(l1.seller_name).toBe('AutoArcheologist');
+    expect(l1.seller_phone).toBe('860-398-1732');
+    // Private-seller listing has no matching dealer row — stays untouched
+    expect(l2.seller_name).toBe('Jane Private');
+    expect(l2.seller_phone).toBe('222');
+  });
 });
 
 // ── PATCH /api/admin/listings — edit (no action) ────────────────────────────
