@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
   let query = admin
     .from('listings')
-    .select('id,slug,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,fuel_type,drive_type,vin,location,state,seller_name,seller_phone,seller_email,seller_id,images,description,featured,status,rejection_reason,resubmission_note,resubmission_count,created_at', { count: 'exact' })
+    .select('id,slug,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,fuel_type,drive_type,vin,location,state,seller_name,seller_phone,seller_email,seller_id,images,description,featured,status,rejection_reason,resubmission_note,resubmission_count,created_at,fb_posted_at', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
   if (sellerId) query = query.eq('seller_id', sellerId);
@@ -81,6 +81,29 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true });
   }
 
+  // Manual repost to Facebook — requires admin or above. Awaited (not fire-and-forget)
+  // so the UI can show the admin whether it actually succeeded.
+  if (action === 'repost_facebook') {
+    if (!hasRole(role, 'admin')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { data: listing } = await admin
+      .from('listings')
+      .select('id, title, make, model, year, price, images, slug')
+      .eq('id', id)
+      .single();
+    if (!listing) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
+
+    const success = await postListingToFacebook(listing);
+    if (success) {
+      await admin.from('listings').update({ fb_posted_at: new Date().toISOString() }).eq('id', id);
+      log.info('Listing manually reposted to Facebook', { listingId: id, adminEmail: user?.email });
+    } else {
+      log.warn('Manual Facebook repost failed', { listingId: id, adminEmail: user?.email });
+    }
+    await log.flush();
+    return NextResponse.json({ success });
+  }
+
   // Approve / reject — requires moderator or above
   if (!hasRole(role, 'moderator')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!['approve', 'reject'].includes(action)) {
@@ -124,7 +147,9 @@ export async function PATCH(req: NextRequest) {
 
   // Post to the Facebook Page now that this listing is publicly live — fire and forget
   if (listing && action === 'approve') {
-    postListingToFacebook(listing).catch(() => {});
+    postListingToFacebook(listing)
+      .then(success => { if (success) admin.from('listings').update({ fb_posted_at: new Date().toISOString() }).eq('id', id); })
+      .catch(() => {});
   }
 
   // Send seller notification email — fire and forget

@@ -29,7 +29,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  postListingToFacebook(listing).catch(() => {});
+  postListingToFacebook(listing)
+    .then(success => { if (success) admin.from('listings').update({ fb_posted_at: new Date().toISOString() }).eq('id', carId); })
+    .catch(() => {});
 
   return NextResponse.json({ ok: true });
 }

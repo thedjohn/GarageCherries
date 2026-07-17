@@ -14,12 +14,12 @@ function fmtPrice(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 }
 
-async function postToPage(path: string, params: Record<string, string>) {
+async function postToPage(path: string, params: Record<string, string>): Promise<boolean> {
   const pageId = process.env.FACEBOOK_PAGE_ID;
   const token = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
   if (!pageId || !token) {
     log.info('Facebook Page post skipped — FACEBOOK_PAGE_ID/FACEBOOK_PAGE_ACCESS_TOKEN not configured');
-    return;
+    return false;
   }
 
   const url = `https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/${path}`;
@@ -29,9 +29,10 @@ async function postToPage(path: string, params: Record<string, string>) {
   const data = await res.json();
   if (!res.ok || data.error) {
     log.error('Facebook Page post failed', new Error(data.error?.message ?? `HTTP ${res.status}`), { path });
-    return;
+    return false;
   }
   log.info('Facebook Page post succeeded', { path, postId: data.post_id ?? data.id ?? '' });
+  return true;
 }
 
 interface ListingPostInput {
@@ -45,19 +46,21 @@ interface ListingPostInput {
   images: string[] | null;
 }
 
-// Fire-and-forget by design: a Facebook API failure must never break listing/event creation.
-export async function postListingToFacebook(listing: ListingPostInput) {
+// Designed to never throw: a Facebook API failure must never break listing/event creation.
+// Returns whether the post actually succeeded, so callers can record it (e.g. fb_posted_at).
+export async function postListingToFacebook(listing: ListingPostInput): Promise<boolean> {
   const url = `https://www.garagecherries.com/listings/${toSegment(listing.make)}/${toSegment(listing.model)}/${listing.id}/${listing.slug}`;
   const caption = `${listing.year} ${listing.make} ${listing.model} — ${fmtPrice(listing.price)}\n\nView details: ${url}`;
 
   try {
     if (listing.images?.[0]) {
-      await postToPage('photos', { url: listing.images[0], caption });
+      return await postToPage('photos', { url: listing.images[0], caption });
     } else {
-      await postToPage('feed', { message: caption, link: url });
+      return await postToPage('feed', { message: caption, link: url });
     }
   } catch (err) {
     log.error('postListingToFacebook threw', err instanceof Error ? err : new Error(String(err)), { listingId: listing.id });
+    return false;
   }
 }
 

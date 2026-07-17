@@ -145,6 +145,24 @@ describe('POST /api/facebook/post-listing', () => {
     expect(res._status).toBe(200);
     expect(mockPostListingToFacebook).toHaveBeenCalledOnce();
   });
+
+  it('records fb_posted_at once the fire-and-forget Facebook post succeeds', async () => {
+    const updateEq = vi.fn().mockResolvedValue({ error: null });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        return {
+          select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'c1', seller_id: 'user-1', title: 'Nice Car' } }) }) }),
+          update: vi.fn().mockReturnValue({ eq: updateEq }),
+        };
+      }
+      return {};
+    });
+    mockPostListingToFacebook.mockResolvedValueOnce(true);
+    const res: any = await postListingPost(makeRequest({ carId: 'c1' }));
+    expect(res._status).toBe(200);
+    await new Promise(process.nextTick);
+    expect(updateEq).toHaveBeenCalledWith('id', 'c1');
+  });
 });
 
 // ── POST /api/feedback ───────────────────────────────────────────────────────

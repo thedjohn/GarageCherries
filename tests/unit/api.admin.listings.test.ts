@@ -311,6 +311,81 @@ describe('PATCH /api/admin/listings — approve/reject', () => {
   });
 });
 
+// ── PATCH /api/admin/listings — repost_facebook ─────────────────────────────
+
+describe('PATCH /api/admin/listings — repost_facebook', () => {
+  it('returns 401 when role is below admin (moderator)', async () => {
+    mockRequireAdmin.mockResolvedValue('moderator');
+    const res: any = await PATCH(makeJsonRequest({ id: 'l1', action: 'repost_facebook' }));
+    expect(res._status).toBe(401);
+    expect(mockPostToFacebook).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when the listing does not exist', async () => {
+    mockRequireAdmin.mockResolvedValue('admin');
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'admin1', email: 'admin@x.com' } } });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      }
+      return {};
+    });
+
+    const res: any = await PATCH(makeJsonRequest({ id: 'l1', action: 'repost_facebook' }));
+    expect(res._status).toBe(404);
+    expect(mockPostToFacebook).not.toHaveBeenCalled();
+  });
+
+  it('posts to Facebook and records fb_posted_at on success', async () => {
+    mockRequireAdmin.mockResolvedValue('admin');
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'admin1', email: 'admin@x.com' } } });
+    mockPostToFacebook.mockResolvedValueOnce(true);
+    const updateEq = vi.fn().mockResolvedValue({ error: null });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        return {
+          select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({
+            data: { id: 'l1', title: '1941 Cadillac', make: 'Cadillac', model: 'Series 62', year: 1941, price: 88000, images: ['a.jpg'], slug: '1941-cadillac' },
+          }) }) }),
+          update: vi.fn().mockReturnValue({ eq: updateEq }),
+        };
+      }
+      return {};
+    });
+
+    const res: any = await PATCH(makeJsonRequest({ id: 'l1', action: 'repost_facebook' }));
+    expect(res._status).toBe(200);
+    expect(res._data.success).toBe(true);
+    expect(mockPostToFacebook).toHaveBeenCalledOnce();
+    expect(updateEq).toHaveBeenCalledWith('id', 'l1');
+    expect(mockLoggerInfo).toHaveBeenCalledWith('Listing manually reposted to Facebook', expect.anything());
+  });
+
+  it('does not record fb_posted_at when the Facebook post fails', async () => {
+    mockRequireAdmin.mockResolvedValue('superadmin');
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'admin1', email: 'admin@x.com' } } });
+    mockPostToFacebook.mockResolvedValueOnce(false);
+    const updateEq = vi.fn().mockResolvedValue({ error: null });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        return {
+          select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({
+            data: { id: 'l1', title: '1941 Cadillac', make: 'Cadillac', model: 'Series 62', year: 1941, price: 88000, images: ['a.jpg'], slug: '1941-cadillac' },
+          }) }) }),
+          update: vi.fn().mockReturnValue({ eq: updateEq }),
+        };
+      }
+      return {};
+    });
+
+    const res: any = await PATCH(makeJsonRequest({ id: 'l1', action: 'repost_facebook' }));
+    expect(res._status).toBe(200);
+    expect(res._data.success).toBe(false);
+    expect(updateEq).not.toHaveBeenCalled();
+    expect(mockLoggerWarn).toHaveBeenCalledWith('Manual Facebook repost failed', expect.anything());
+  });
+});
+
 // ── DELETE /api/admin/listings ──────────────────────────────────────────────
 
 describe('DELETE /api/admin/listings', () => {

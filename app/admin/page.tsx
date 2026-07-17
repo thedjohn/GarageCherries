@@ -16,9 +16,10 @@ interface Listing {
   seller_email: string; seller_id: string; images: string[]; description: string;
   featured: boolean; status: string; created_at: string;
   rejection_reason: string | null; resubmission_note: string | null; resubmission_count: number;
+  fb_posted_at: string | null;
 }
 // seller_id is intentionally excluded from EditFields — ownership cannot be reassigned via the admin UI
-type EditFields = Omit<Listing, 'id' | 'slug' | 'seller_id' | 'images' | 'created_at' | 'title' | 'rejection_reason' | 'resubmission_note' | 'resubmission_count'>;
+type EditFields = Omit<Listing, 'id' | 'slug' | 'seller_id' | 'images' | 'created_at' | 'title' | 'rejection_reason' | 'resubmission_note' | 'resubmission_count' | 'fb_posted_at'>;
 
 interface ReportedMessage {
   id: string; body: string; sender_name: string; sender_id: string; created_at: string;
@@ -487,6 +488,23 @@ export default function AdminPage() {
     setWorking(null);
   }
 
+  async function handleRepostFacebook(l: Listing) {
+    if (l.fb_posted_at) {
+      const postedDate = new Date(l.fb_posted_at).toLocaleString();
+      if (!window.confirm(`This listing already posted to Facebook on ${postedDate}. Posting again will create a duplicate post on the Page. Continue anyway?`)) return;
+    }
+    setWorking(l.id + 'repost_facebook');
+    const res = await fetch('/api/admin/listings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: l.id, action: 'repost_facebook' }),
+    });
+    const json = await res.json();
+    setWorking(null);
+    if (!res.ok || !json.success) { alert('Facebook post failed. Check Sentry/Axiom for the exact error.'); return; }
+    setListings(prev => prev.map(x => x.id === l.id ? { ...x, fb_posted_at: new Date().toISOString() } : x));
+  }
+
   function startReject(id: string) {
     setRejectingId(id);
     setRejectionReason('');
@@ -782,6 +800,17 @@ export default function AdminPage() {
                       className="px-4 py-1.5 border border-zinc-200 text-zinc-600 text-sm font-semibold rounded-lg hover:bg-zinc-50">
                       Edit
                     </button>
+                  )}
+                  {(adminRole === 'admin' || adminRole === 'superadmin') && l.status === 'approved' && (
+                    <span className="inline-flex items-center gap-1">
+                      <button onClick={() => handleRepostFacebook(l)} disabled={!!working}
+                        className="px-4 py-1.5 border border-blue-200 text-blue-600 text-sm font-semibold rounded-lg hover:bg-blue-50 disabled:opacity-50">
+                        {working === l.id + 'repost_facebook' ? 'Posting…' : l.fb_posted_at ? 'Repost to Facebook' : 'Post to Facebook'}
+                      </button>
+                      <Tooltip text={l.fb_posted_at
+                        ? `Already posted to the Facebook Page on ${new Date(l.fb_posted_at).toLocaleString()}. Reposting will create a duplicate.`
+                        : 'Manually post this listing to the GarageCherries Facebook Page.'} />
+                    </span>
                   )}
                   {adminRole === 'superadmin' && (
                     <button onClick={() => setConfirmDelete(l)}
