@@ -45,6 +45,11 @@ export default async function HomePage() {
   const featured = allCars.filter(c => c.featured);
   const recent = allCars.slice(0, 8);
 
+  const carYears = allCars.map(c => c.year).filter(y => Number.isFinite(y));
+  const yearFrom = carYears.length ? Math.min(...carYears) : 1900;
+  const yearTo = carYears.length ? Math.max(...carYears) : new Date().getFullYear() + 1;
+  const years = Array.from({ length: yearTo - yearFrom + 1 }, (_, i) => yearTo - i);
+
   const orgJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -87,10 +92,16 @@ export default async function HomePage() {
                   {MAKES.map(m => <option key={m}>{m}</option>)}
                 </select>
                 <div className="flex gap-3 flex-1">
-                  <input name="yearMin" type="number" placeholder="Year Min"
-                    className="w-full border border-zinc-200 rounded-xl px-4 py-3 text-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
-                  <input name="yearMax" type="number" placeholder="Year Max"
-                    className="w-full border border-zinc-200 rounded-xl px-4 py-3 text-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+                  <select name="yearMin" defaultValue=""
+                    className="w-full border border-zinc-200 rounded-xl px-4 py-3 text-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                    <option value="">Year Min</option>
+                    {years.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                  <select name="yearMax" defaultValue=""
+                    className="w-full border border-zinc-200 rounded-xl px-4 py-3 text-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                    <option value="">Year Max</option>
+                    {years.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
                 </div>
                 <button type="submit"
                   className="bg-red-600 hover:bg-red-700 text-white font-bold px-8 py-3 rounded-xl transition-colors whitespace-nowrap">
