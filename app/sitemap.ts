@@ -7,7 +7,7 @@ function encyclopediaSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
-export const revalidate = 3600;
+export const revalidate = 300;
 
 const BASE_URL = 'https://www.garagecherries.com';
 
@@ -15,7 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createAdminClient();
 
   const [{ data: cars }, { data: dealers }, { data: advertisers }, { data: events }] = await Promise.all([
-    supabase.from('listings').select('id, slug, make, model, featured, listed_at, created_at'),
+    supabase.from('listings').select('id, slug, make, model, featured, listed_at, created_at').eq('status', 'approved'),
     supabase.from('dealers').select('slug, created_at'),
     supabase.from('advertisers').select('slug, created_at').eq('active', true).gt('trial_ends_at', new Date().toISOString()),
     supabase.from('events').select('slug, date').eq('status', 'approved').not('slug', 'is', null),
