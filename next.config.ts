@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
         destination: '/dealers/fast-lane-classic-cars',
         permanent: true,
       },
+      {
+        source: '/dealers/david-brill',
+        destination: '/dealers/autoarcheologist',
+        permanent: true,
+      },
     ];
   },
 };
