@@ -69,6 +69,8 @@ export default function AdminPage() {
 
   // Listings
   const [listings, setListings] = useState<Listing[]>([]);
+  const [listingViews, setListingViews] = useState<Record<string, number>>({});
+  const [listingWatchers, setListingWatchers] = useState<Record<string, number>>({});
   const [working, setWorking] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Listing | null>(null);
@@ -204,6 +206,17 @@ export default function AdminPage() {
         if (!res.ok) { setLoading(false); return; }
         const { listings: listingData } = await res.json();
         setListings((listingData ?? []) as Listing[]);
+
+        const ids = (listingData ?? []).map((l: Listing) => l.id);
+        if (ids.length) {
+          fetch(`/api/admin/watcher-counts?carIds=${ids.join(',')}`)
+            .then(r => r.json())
+            .then(data => {
+              if (data.views) setListingViews(data.views);
+              if (data.totalWatchers) setListingWatchers(data.totalWatchers);
+            })
+            .catch(() => {});
+        }
 
         const [reportedRes] = await Promise.all([
           fetch('/api/admin/reported'),
@@ -719,6 +732,7 @@ export default function AdminPage() {
                 </div>
                 <p className="text-sm text-zinc-500">{l.condition} · {l.location}, {l.state} · ${l.price?.toLocaleString()}</p>
                 <p className="text-sm text-zinc-500">{l.seller_name} · {formatPhone(l.seller_phone)} · {l.seller_email}</p>
+                <p className="text-xs text-zinc-400">{listingViews[l.id] ?? 0} view{(listingViews[l.id] ?? 0) !== 1 ? 's' : ''} · {listingWatchers[l.id] ?? 0} watching</p>
                 <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{l.description}</p>
 
                 {/* Resubmission details */}
