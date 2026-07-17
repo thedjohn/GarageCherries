@@ -17,6 +17,7 @@ function makeQueryBuilder(result: { data?: any; error?: any; count?: number }) {
   const builder: any = {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
+    ilike: vi.fn(() => builder),
     or: vi.fn(() => builder),
     order: vi.fn(() => builder),
     gte: vi.fn(() => builder),
@@ -57,10 +58,21 @@ describe('fetchCars', () => {
     expect(builder.gte).toHaveBeenCalledWith('year', 1900);
     expect(builder.lte).toHaveBeenCalledWith('year', 2030);
     expect(builder.eq).toHaveBeenCalledWith('make', 'Dodge');
-    expect(builder.eq).toHaveBeenCalledWith('model', 'Charger');
+    expect(builder.ilike).toHaveBeenCalledWith('model', 'Charger%');
     expect(builder.eq).toHaveBeenCalledWith('featured', true);
     expect(builder.eq).toHaveBeenCalledWith('seller_id', 's1');
     expect(builder.limit).toHaveBeenCalledWith(10);
+  });
+
+  it('matches model on the first word only, so a more specific listing model still matches a general model family', async () => {
+    const builder = makeQueryBuilder({ data: [] });
+    mockFrom.mockReturnValue(builder);
+    await fetchCars({ model: 'Challenger' });
+    expect(builder.ilike).toHaveBeenCalledWith('model', 'Challenger%');
+
+    builder.ilike.mockClear();
+    await fetchCars({ model: 'Miata / MX-5' });
+    expect(builder.ilike).toHaveBeenCalledWith('model', 'Miata%');
   });
 
   it('skips make/condition/bodyStyle/state filters when set to their "All" sentinel', async () => {

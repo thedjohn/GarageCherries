@@ -91,8 +91,15 @@ export async function fetchCars(filters: FetchCarsFilters = {}): Promise<Car[]> 
 
   if (filters.make && filters.make !== 'All Makes')
     query = query.eq('make', filters.make);
-  if (filters.model)
-    query = query.eq('model', filters.model);
+  if (filters.model) {
+    // Match on the model family's first word rather than the full string — real listing
+    // titles are almost always more specific than a general model name (e.g. a listing's
+    // model might be "Challenger SRT Hellcat" while the model family is just "Challenger"),
+    // so an exact match misses nearly everything. Prefix match on the first word catches
+    // that case while still being reasonably precise.
+    const firstWord = filters.model.trim().split(/\s+/)[0];
+    query = query.ilike('model', `${firstWord}%`);
+  }
   if (filters.yearMin)
     query = query.gte('year', Math.max(1900, Math.min(2030, filters.yearMin)));
   if (filters.yearMax)
