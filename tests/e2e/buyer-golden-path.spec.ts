@@ -41,7 +41,11 @@ test.describe('Browse and filter', () => {
 
   test('body style filter applies correctly', async ({ page }) => {
     await page.goto('/listings');
-    const styleSelect = page.locator('select').nth(1);
+    // The "Body Style" <label> and its <select> are siblings with no for/id
+    // association, so getByLabel() won't find it — locate via the label text
+    // instead of a brittle positional index (which broke once before, when an
+    // earlier filter's layout changed and shifted every select's index).
+    const styleSelect = page.locator('label', { hasText: 'Body Style' }).locator('xpath=following-sibling::select');
     await styleSelect.selectOption('Coupe');
     await page.getByRole('button', { name: /apply filters/i }).click();
     await expect(page).toHaveURL(/bodyStyle=Coupe/i);
