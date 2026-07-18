@@ -11,7 +11,7 @@ import MakeOfferButton from '@/components/MakeOfferButton';
 import FinancingCalculator from '@/components/FinancingCalculator';
 import {
   getCar, getDealerById, formatPrice, formatMileage, formatPhone,
-  toSegment, makeFromSegment, modelFromSegment, CARS,
+  toSegment, makeFromSegment, CARS,
 } from '@/lib/data';
 
 const BASE_URL = 'https://www.garagecherries.com';
@@ -52,13 +52,20 @@ export async function generateMetadata({ params }: { params: Promise<{ segments:
   // Model page
   if (segments.length === 2) {
     const make = makeFromSegment(segments[0]);
-    const model = modelFromSegment(make ?? '', segments[1]);
-    if (!make || !model) return {};
+    if (!make) return {};
+
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = await createClient();
+    const { data: modelNames } = await supabase.from('listings').select('model').eq('status', 'approved').eq('make', make);
+    const model = (modelNames ?? []).find(r => toSegment(r.model) === segments[1])?.model;
+    if (!model) return {};
+
+    const { count } = await supabase.from('listings').select('id', { count: 'exact', head: true })
+      .eq('status', 'approved').eq('make', make).eq('model', model);
     const title = `${make} ${model} For Sale`;
-    const count = CARS.filter(c => c.make === make && c.model === model).length;
     return {
       title,
-      description: `Browse ${count} ${make} ${model} classic cars for sale on GarageCherries. Find the best deals from trusted dealers across the USA.`,
+      description: `Browse ${count ?? 0} ${make} ${model} classic cars for sale on GarageCherries. Find the best deals from trusted dealers across the USA.`,
       alternates: { canonical: `${BASE_URL}/listings/${segments[0]}/${segments[1]}` },
     };
   }
@@ -548,11 +555,16 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
   if (segments.length === 2) {
     const make = makeFromSegment(segments[0]);
     if (!make) notFound();
-    const model = modelFromSegment(make, segments[1]);
-    if (!model) notFound();
 
     const { createClient: createForModel } = await import('@/lib/supabase/server');
     const supabaseForModel = await createForModel();
+
+    // Resolve the real, canonically-cased model name for this URL segment against
+    // live listings — real inventory models don't come from the mock CARS array.
+    const { data: modelNames } = await supabaseForModel.from('listings').select('model').eq('status', 'approved').eq('make', make);
+    const model = (modelNames ?? []).find(r => toSegment(r.model) === segments[1])?.model;
+    if (!model) notFound();
+
     const { data: modelRows } = await supabaseForModel
       .from('listings')
       .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,images,featured,listed_at,transmission,engine,color,description,seller_name,seller_phone')
