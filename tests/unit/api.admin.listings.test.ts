@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server';
 const {
   mockGetUser, mockRequireAdmin, mockFrom, mockStorageRemove,
   mockSend, mockPostToFacebook, mockLoggerInfo, mockLoggerWarn, mockLoggerError, mockLoggerFlush,
+  mockRevalidatePath,
 } = vi.hoisted(() => ({
   mockGetUser:        vi.fn(),
   mockRequireAdmin:   vi.fn(),
@@ -15,6 +16,7 @@ const {
   mockLoggerWarn:     vi.fn(),
   mockLoggerError:    vi.fn(),
   mockLoggerFlush:    vi.fn().mockResolvedValue(undefined),
+  mockRevalidatePath: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -41,6 +43,8 @@ vi.mock('@/lib/logger', () => ({
 vi.mock('@/lib/facebook/postToPage', () => ({
   postListingToFacebook: mockPostToFacebook,
 }));
+
+vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
 
 vi.mock('next/server', () => ({
   NextResponse: {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requireAdmin, hasRole } from '@/lib/admin';
 import { Resend } from 'resend';
@@ -219,6 +220,10 @@ export async function PATCH(req: NextRequest) {
   }
   log.info('Listing action', { listingId: id, action, adminEmail: user?.email, sellerEmail: listing?.seller_email });
   await log.flush();
+
+  // Force the sitemap to pick up the newly-approved listing immediately,
+  // instead of waiting on its passive 5-minute revalidate window.
+  if (action === 'approve') revalidatePath('/sitemap.xml');
 
   // Post to the Facebook Page now that this listing is publicly live — fire and forget
   if (listing && action === 'approve') {
