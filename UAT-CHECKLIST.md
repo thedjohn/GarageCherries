@@ -8,6 +8,8 @@
 
 *Updated 2026-07-14 — added items for: the sign-out button (§2), My Listings views/watching counts (§3), dealer Overview per-listing views/watching and Inventory tab Views/Watchers columns (§4), sold listings correctly excluded from a dealer's public profile grid (§1) and dashboard Overview panel (§4), VIN-first field order (§3, already present), and the `inquiries`→`conversations` rewire (§2/§4/§7/§8, already present). The sign-off below (2026-07-09) predates all of this session's work and does not cover any of it.*
 
+*Updated 2026-07-17 — added items for: the Car Guide "Live Inventory" model-matching fix and the new Dodge SRT brand-overview page (§1); admin Listings tab filtering/sorting/pagination, per-listing view/watcher counts, and the manual "Post to Facebook"/"Repost to Facebook" action (§6). The sign-off below predates all of this session's work and does not cover any of it.*
+
 ---
 
 ## 1. Public Browsing (no login required)
@@ -27,6 +29,8 @@
 - [ ] Dealer profile page (`/dealers/[slug]`) shows logo, description, specialties, map, **tier badge** (Bronze/Silver/Gold), and **reviews** section
 - [ ] Dealer profile page inventory grid does NOT show a listing the dealer has marked Sold (mark one sold via dashboard, refresh the public profile page)
 - [ ] Classic Car Encyclopedia (`/cars`) — browse index, open a model page, confirm history/specs/live listings render
+- [x] A Car Guide model page's "Live Inventory" section shows a matching live listing whose actual model name is more specific than the page's general model family (e.g. `/cars/dodge/challenger` showing a listing titled "...Challenger SRT Hellcat") — was exact-matching and silently showed "No listings currently available" for almost every page; fixed 2026-07-17, confirmed live for Dodge Challenger and Mazda Miata
+- [ ] Dodge SRT brand-overview page (`/cars/srt`) loads — history, model lineup, notable special editions, buying tips, and a working "View SRT Listings" CTA; also check the "Featured Guide" card appears on `/cars` and on `/cars/dodge` specifically (confirm absent on another make's page, e.g. `/cars/ford`)
 - [ ] Buyer's Guides (`/guides`) — index and at least one article open
 - [ ] Market Report (`/reports`) loads with live data
 - [ ] Pricing page (`/pricing`) loads — plan tiers, advertiser section, promo banner
@@ -128,6 +132,11 @@
 - [ ] **Listings tab**: approve a pending listing — goes live, seller gets an email
 - [ ] **Listings tab**: reject a pending listing with a reason — seller gets an email with the reason
 - [ ] Reject → seller resubmits with a note → listing returns to pending
+- [ ] **Listings tab**: each listing card shows a "X views · Y watching" line (added 2026-07-17, mirrors the seller-facing count on `/account`)
+- [ ] **Listings tab**: filter bar — make, model, year range, price range, status, resubmissions-only, featured-only, dealer-vs-private-seller, and Facebook posted/not-posted all narrow the list correctly; "Clear all" resets every filter and reloads the full list (added 2026-07-17)
+- [ ] **Listings tab**: default sort is Year (newest first) → Make → Model; pagination controls (Previous/Next) appear and work once there are more listings than one page (page size 20) (added 2026-07-17)
+- [ ] **Listings tab**: the "X pending · Y approved · Z rejected" summary stays accurate after approving/rejecting/editing/deleting a listing, and after applying a filter — it should never reflect just the current filtered/paginated page (added 2026-07-17)
+- [ ] **Listings tab**: click "Post to Facebook" on a never-posted approved listing — posts immediately, button changes to "Repost to Facebook"; clicking it again prompts a confirmation warning about creating a duplicate post before proceeding (added 2026-07-17)
 - [ ] **Reported tab**: open a reported message — full conversation thread expands, reported message highlighted
 - [ ] **Reported tab**: Dismiss a report — clears the flag
 - [ ] **Reported tab**: Warn a user — warning email sends; amber "⚠️ Warning sent to [name]" banner appears on the card; banner persists until admin clicks the Dismiss link

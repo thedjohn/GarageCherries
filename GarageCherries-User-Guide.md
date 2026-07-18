@@ -16,7 +16,7 @@ Buyers are anyone browsing the site looking to purchase a classic car. No accoun
 - Visit `/listings` to browse all available cars
 - Use the filter bar to narrow by make, model, year range, price range, condition, body style, transmission, and state
 - Click any listing card to view the full detail page with photos, specs, description, and dealer info
-- Visit `/cars` to browse the Classic Car Encyclopedia — detailed guides on 20 popular models including history, specs, buying tips, and price ranges
+- Visit `/cars` to browse the Classic Car Encyclopedia — detailed guides on nearly 100 models across 20 makes, including history, specs, buying tips, and price ranges
 - Visit `/guides` to read buyer's guides covering inspection, negotiation, red flags, shipping, and more
 - Visit `/events` to browse the 2026 classic car show calendar
 - Visit `/reports` to view live market data — average prices by make, condition breakdown, and market commentary

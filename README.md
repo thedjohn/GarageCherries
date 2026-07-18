@@ -105,7 +105,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `/` | Homepage — featured listings, browse by style/make |
 | `/listings` | Browse all listings with filter sidebar + keyword search |
 | `/listings/[make]/[model]/[id]/[slug]` | Listing detail page |
-| `/cars` | Classic Car Encyclopedia (54 models, 12 makes) |
+| `/cars` | Classic Car Encyclopedia (99 models, 20 makes) + Dodge SRT brand-overview page |
 | `/dealers` | Dealer directory |
 | `/dealers/[slug]` | Dealer profile + live inventory |
 | `/sell` | Private seller listing form (auth required) |
