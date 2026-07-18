@@ -32,6 +32,20 @@ export default function EncyclopediaPage() {
         </p>
       </div>
 
+      {/* Featured Guide */}
+      <div className="mb-14">
+        <Link
+          href="/cars/srt"
+          className="block bg-zinc-900 rounded-2xl p-6 md:p-8 hover:bg-zinc-800 transition-colors group"
+        >
+          <p className="text-xs font-bold text-red-500 uppercase tracking-widest mb-2">Featured Guide</p>
+          <p className="text-2xl font-extrabold text-white mb-2 group-hover:text-red-400 transition-colors">Dodge SRT</p>
+          <p className="text-zinc-400 max-w-xl">
+            The complete history of Dodge's performance sub-brand — from the Neon SRT-4 to the 1,025-hp Demon 170 — plus the full lineup and what to know before buying one used.
+          </p>
+        </Link>
+      </div>
+
       {/* Browse by Make */}
       <div className="mb-14">
         <h2 className="text-xl font-bold text-zinc-800 mb-5">Browse by Make</h2>

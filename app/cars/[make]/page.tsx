@@ -59,6 +59,19 @@ export default async function MakePage({ params }: Props) {
       <h1 className="text-3xl font-extrabold text-zinc-900 mb-2">{makeLabel} Classic Cars</h1>
       <p className="text-zinc-500 mb-10">Specs, history, and buyer's guides for every collectible {makeLabel}.</p>
 
+      {makeSlug === 'dodge' && (
+        <Link
+          href="/cars/srt"
+          className="block bg-zinc-900 rounded-2xl p-6 mb-8 hover:bg-zinc-800 transition-colors group"
+        >
+          <p className="text-xs font-bold text-red-500 uppercase tracking-widest mb-2">Featured Guide</p>
+          <p className="text-xl font-extrabold text-white mb-1.5 group-hover:text-red-400 transition-colors">Dodge SRT</p>
+          <p className="text-zinc-400 text-sm">
+            The complete history of Dodge's performance sub-brand — from the Neon SRT-4 to the 1,025-hp Demon 170.
+          </p>
+        </Link>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {entries.map(entry => {
           const modelSlug = slugify(entry.model);

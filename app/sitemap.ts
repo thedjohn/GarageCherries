@@ -76,6 +76,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Classic Car Encyclopedia — /cars index + make pages + model pages
   const encyclopediaIndex: MetadataRoute.Sitemap = [
     { url: `${BASE_URL}/cars`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${BASE_URL}/cars/srt`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
   ];
 
   const encyclopediaMakePages: MetadataRoute.Sitemap = getMakeSlugs().map(makeSlug => ({
