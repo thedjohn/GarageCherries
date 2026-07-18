@@ -70,9 +70,9 @@ export interface SearchFilters {
 
 export const MAKES = [
   'All Makes',
-  'AMC','BMW','Buick','Cadillac','Chevrolet','Chrysler','DeSoto','Dodge','Ford',
-  'Hudson','International','Jaguar','Kaiser','Land Rover','Lincoln','Mazda',
-  'Mercedes','Mercury','Nash','Nissan','Oldsmobile','Packard',
+  'AMC','BMW','Buick','Cadillac','Chevrolet','Chrysler','DeSoto','Dodge','Fiberfab','Ford',
+  'Hudson','International','Jaguar','Kaiser','Land Rover','Lincoln','Lotus','Mazda',
+  'Mercedes','Mercury','MG','Nash','Nissan','Oldsmobile','Packard',
   'Plymouth','Pontiac','Ram','Studebaker','Tucker','Volkswagen','Willys',
 ];
 
