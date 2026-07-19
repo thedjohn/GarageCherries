@@ -14,12 +14,12 @@ function fmtPrice(n: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 }
 
-async function postToPage(path: string, params: Record<string, string>): Promise<boolean> {
+async function postToPage(path: string, params: Record<string, string>): Promise<{ success: boolean; data?: any }> {
   const pageId = process.env.FACEBOOK_PAGE_ID;
   const token = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
   if (!pageId || !token) {
     log.info('Facebook Page post skipped — FACEBOOK_PAGE_ID/FACEBOOK_PAGE_ACCESS_TOKEN not configured');
-    return false;
+    return { success: false };
   }
 
   const url = `https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/${path}`;
@@ -29,10 +29,10 @@ async function postToPage(path: string, params: Record<string, string>): Promise
   const data = await res.json();
   if (!res.ok || data.error) {
     log.error('Facebook Page post failed', new Error(data.error?.message ?? `HTTP ${res.status}`), { path });
-    return false;
+    return { success: false };
   }
   log.info('Facebook Page post succeeded', { path, postId: data.post_id ?? data.id ?? '' });
-  return true;
+  return { success: true, data };
 }
 
 interface ListingPostInput {
@@ -54,9 +54,18 @@ export async function postListingToFacebook(listing: ListingPostInput): Promise<
 
   try {
     if (listing.images?.[0]) {
-      return await postToPage('photos', { url: listing.images[0], caption });
+      // Upload the photo unpublished first, then create a proper feed post with it
+      // attached via attached_media. A plain /photos post still creates a story by
+      // default, but Facebook's mobile app surfaces it primarily under the Photos
+      // tab rather than the main Posts tab; a /feed post with attached_media shows
+      // as a normal post consistently across clients.
+      const upload = await postToPage('photos', { url: listing.images[0], published: 'false' });
+      if (!upload.success || !upload.data?.id) return false;
+      const post = await postToPage('feed', { message: caption, attached_media: JSON.stringify([{ media_fbid: upload.data.id }]) });
+      return post.success;
     } else {
-      return await postToPage('feed', { message: caption, link: url });
+      const post = await postToPage('feed', { message: caption, link: url });
+      return post.success;
     }
   } catch (err) {
     log.error('postListingToFacebook threw', err instanceof Error ? err : new Error(String(err)), { listingId: listing.id });

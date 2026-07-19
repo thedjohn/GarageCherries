@@ -34,15 +34,29 @@ describe('postListingToFacebook', () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
-  it('posts a photo when the listing has an image and returns true', async () => {
+  it('uploads the photo unpublished, then creates a /feed post with it attached, and returns true', async () => {
     process.env.FACEBOOK_PAGE_ID = 'page1';
     process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ post_id: 'fb-post-1' }) }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'fb-photo-1' }) }));
     await expect(postListingToFacebook(listing)).resolves.toBe(true);
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/photos'),
-      expect.objectContaining({ method: 'POST' }),
-    );
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+
+    const [uploadUrl, uploadInit] = (global.fetch as any).mock.calls[0];
+    expect(uploadUrl).toContain('/photos');
+    expect(uploadInit.body.toString()).toContain('published=false');
+
+    const [feedUrl, feedInit] = (global.fetch as any).mock.calls[1];
+    expect(feedUrl).toContain('/feed');
+    expect(feedInit.body.toString()).toContain(encodeURIComponent('media_fbid'));
+    expect(feedInit.body.toString()).toContain(encodeURIComponent('fb-photo-1'));
+  });
+
+  it('returns false and never calls /feed if the photo upload succeeds but returns no id', async () => {
+    process.env.FACEBOOK_PAGE_ID = 'page1';
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }));
+    await expect(postListingToFacebook(listing)).resolves.toBe(false);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
   it('posts to /feed when the listing has no images and returns true', async () => {
