@@ -64,6 +64,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Footer />
           <MessengerWidget />
         </MessengerProvider>
+        {/* Cookie consent managers are Next.js's own documented example use case
+            for beforeInteractive — it must genuinely run before the Google tag
+            below (afterInteractive), not just appear earlier in the DOM, which
+            a same-strategy reorder doesn't actually guarantee. */}
+        <Script
+          src="https://app.enzuzo.com/scripts/cookiebar/f896c694-7593-11f1-be29-f74875305e25"
+          strategy="beforeInteractive"
+        />
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-B36QB0J7TX"
           strategy="afterInteractive"
@@ -74,10 +82,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           gtag('js', new Date());
           gtag('config', 'G-B36QB0J7TX');
         `}</Script>
-        <Script
-          src="https://app.enzuzo.com/scripts/cookiebar/f896c694-7593-11f1-be29-f74875305e25"
-          strategy="afterInteractive"
-        />
       </body>
     </html>
   );
