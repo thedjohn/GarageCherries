@@ -283,6 +283,8 @@ export default function AdminPage() {
       fetch(`/api/admin/watcher-counts?carIds=${ids.join(',')}`)
         .then(r => r.json())
         .then(data => {
+          // TEMP DEBUG — investigating a views-count discrepancy, remove after.
+          console.log('[DEBUG watcher-counts]', JSON.stringify(data));
           if (data.views) setListingViews(data.views);
           if (data.totalWatchers) setListingWatchers(data.totalWatchers);
         })
