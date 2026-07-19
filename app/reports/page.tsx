@@ -25,13 +25,26 @@ export default async function MarketReportPage() {
   // Pull all active listings
   const { data: cars } = await admin
     .from('listings')
-    .select('make, model, price, condition, listed_at, is_sold, sold_at, views')
+    .select('id, make, model, price, condition, listed_at, is_sold, sold_at')
     .eq('is_sold', false)
     .eq('status', 'approved')
     .or(`expires_at.is.null,expires_at.gt.${now.toISOString()}`)
     .order('listed_at', { ascending: false });
 
   const allCars = cars ?? [];
+
+  // Views this month — from listing_views, the table the dealer dashboard and
+  // per-listing views feature actually read. `listings.views` doesn't exist as
+  // a column on the table (selecting it previously errored the whole query
+  // silently, zeroing out every stat on this page).
+  const thisMonthStart = `${now.toISOString().slice(0, 7)}-01T00:00:00Z`;
+  const { data: viewRows } = await admin
+    .from('listing_views')
+    .select('listing_id')
+    .gte('viewed_at', thisMonthStart);
+  const viewsByListing: Record<string, number> = {};
+  (viewRows ?? []).forEach(r => { viewsByListing[r.listing_id] = (viewsByListing[r.listing_id] ?? 0) + 1; });
+  const carsWithViews = allCars.map(c => ({ ...c, views: viewsByListing[c.id] ?? 0 }));
 
   // Average price by make
   const makeMap: Record<string, { total: number; count: number }> = {};
@@ -48,9 +61,9 @@ export default async function MarketReportPage() {
     .slice(0, 10);
 
   // Most viewed listings
-  const mostViewed = [...allCars]
+  const mostViewed = [...carsWithViews]
     .filter(c => c.views > 0)
-    .sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
+    .sort((a, b) => b.views - a.views)
     .slice(0, 5);
 
   // Condition breakdown

@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     default: 'GarageCherries — Classic, Muscle, Sport & Collector Cars',
     template: '%s | GarageCherries',
   },
-  description: 'Buy and sell classic cars, muscle cars, sports cars, supercars, and collector vehicles. Browse thousands of listings from trusted dealers across the United States.',
+  description: 'Buy and sell classic cars, muscle cars, sports cars, supercars, and collector vehicles from private sellers and trusted dealers worldwide.',
   keywords: ['classic cars for sale', 'muscle cars', 'sports cars', 'supercars', 'collector cars', 'vintage cars', 'specialty car dealers'],
   authors: [{ name: 'GarageCherries' }],
   openGraph: {
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     locale: 'en_US',
     siteName: 'GarageCherries',
     title: 'GarageCherries — Classic, Muscle, Sport & Collector Cars',
-    description: 'Buy and sell classic cars, muscle cars, and collector vehicles. Browse thousands of listings from trusted dealers across the United States.',
+    description: 'Buy and sell classic cars, muscle cars, and collector vehicles from private sellers and trusted dealers worldwide.',
     url: BASE_URL,
     images: [{ url: '/opengraph-image.jpg', width: 1200, height: 630, alt: 'GarageCherries — Specialty Cars For Sale' }],
   },

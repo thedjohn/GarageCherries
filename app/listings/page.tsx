@@ -7,7 +7,7 @@ import type { Car } from '@/lib/types';
 
 export const metadata: Metadata = {
   title: 'Cars For Sale — Classic, Muscle, Sport & Collector',
-  description: 'Browse thousands of classic, muscle, sport, supercar, and collector vehicles for sale from trusted dealers across the United States. Filter by make, year, price, and condition.',
+  description: 'Browse classic, muscle, sport, supercar, and collector vehicles for sale from private sellers and trusted dealers worldwide. Filter by make, year, price, and condition.',
   alternates: { canonical: 'https://www.garagecherries.com/listings' },
 };
 

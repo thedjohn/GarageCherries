@@ -8,6 +8,13 @@ import DealerBadge from '@/components/DealerBadge';
 import { formatPhone } from '@/lib/data';
 import { createClient } from '@/lib/supabase/server';
 
+function truncateAtWord(s: string, max: number): string {
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd() + '…';
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const supabase = await createClient();
@@ -16,7 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!dealer) return {};
   const title = `${dealer.name} — Classic Car Dealer`;
   const desc = dealer.description
-    ? dealer.description.slice(0, 160)
+    ? truncateAtWord(dealer.description, 160)
     : `Browse classic cars for sale from ${dealer.name}${dealer.location ? ` in ${dealer.location}` : ''}${dealer.state ? `, ${dealer.state}` : ''}. View inventory and contact the dealer on GarageCherries.`;
   return {
     title,

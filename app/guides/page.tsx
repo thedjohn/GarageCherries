@@ -111,7 +111,7 @@ export default function GuidesPage() {
       {/* CTA */}
       <div className="mt-12 bg-red-600 rounded-2xl p-8 text-white text-center">
         <h2 className="text-2xl font-bold mb-2">Ready to start looking?</h2>
-        <p className="text-red-100 mb-6">Browse thousands of classic cars for sale from vetted dealers across the USA.</p>
+        <p className="text-red-100 mb-6">Browse classic cars for sale from private sellers and vetted dealers worldwide.</p>
         <Link href="/listings" className="inline-block bg-white text-red-600 font-bold px-8 py-3 rounded-xl hover:bg-red-50 transition-colors">
           Browse Listings
         </Link>

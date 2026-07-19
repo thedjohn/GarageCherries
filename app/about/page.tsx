@@ -125,7 +125,7 @@ export default async function AboutPage() {
       {/* CTA */}
       <div className="text-center">
         <h2 className="text-2xl font-bold text-zinc-900 mb-3">Ready to find your car?</h2>
-        <p className="text-zinc-500 mb-6">Browse thousands of classic cars from trusted dealers across the country.</p>
+        <p className="text-zinc-500 mb-6">Browse classic cars from private sellers and trusted dealers worldwide.</p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link href="/listings" className="bg-red-600 hover:bg-red-700 text-white font-bold px-8 py-3 rounded-xl transition-colors">
             Browse Listings
