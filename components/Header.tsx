@@ -29,8 +29,8 @@ export default function Header() {
     async function resolveAuth(userId: string | null, email: string | null, name: string | null) {
       if (!userId) { setAuth({ status: 'none' }); return; }
       const [{ data: dealer }, { data: advertiser }] = await Promise.all([
-        supabase.from('dealers').select('id').eq('id', userId).single(),
-        supabase.from('advertisers').select('id').eq('user_id', userId).single(),
+        supabase.from('dealers').select('id').eq('id', userId).maybeSingle(),
+        supabase.from('advertisers').select('id').eq('user_id', userId).maybeSingle(),
       ]);
       if (dealer) { setAuth({ status: 'dealer' }); return; }
       if (advertiser) { setAuth({ status: 'advertiser' }); return; }
