@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/expiring-listings",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/sitemap-health",
+      "schedule": "0 12 * * *"
     }
   ]
 }
