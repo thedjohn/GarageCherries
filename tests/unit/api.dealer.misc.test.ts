@@ -1,17 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
-const { mockGetUser, mockFrom, mockGetUserById, mockSend } = vi.hoisted(() => ({
+const { mockGetUser, mockFrom, mockGetUserById, mockSend, mockRpc } = vi.hoisted(() => ({
   mockGetUser:     vi.fn(),
   mockFrom:        vi.fn(),
   mockGetUserById: vi.fn(),
   mockSend:        vi.fn().mockResolvedValue({ id: 'email-1' }),
+  mockRpc:         vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({ auth: { getUser: mockGetUser } })),
   createAdminClient: vi.fn(() => ({
     from: mockFrom,
+    rpc: mockRpc,
     auth: { admin: { getUserById: mockGetUserById } },
   })),
 }));
@@ -372,13 +374,9 @@ describe('GET /api/dealer/watcher-counts', () => {
           { car_id: 'c1', dealer_messaged_at: null, allow_dealer_contact: false, dealer_contact_blocked: false },
         ] }) }),
       };
-      if (table === 'listing_views') return {
-        select: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [
-          { listing_id: 'c1' }, { listing_id: 'c1' }, { listing_id: 'c1' },
-        ] }) }),
-      };
       return {};
     });
+    mockRpc.mockResolvedValue({ data: [{ listing_id: 'c1', view_count: 3 }] });
     const res: any = await watcherCountsGet(makeGetRequest('https://x.com/api/dealer/watcher-counts?carIds=c1,c2-not-owned'));
     expect(res._status).toBe(200);
     expect(res._data.counts.c1).toBe(1);
@@ -386,5 +384,6 @@ describe('GET /api/dealer/watcher-counts', () => {
     expect(res._data.totalWatchers.c1).toBe(3);
     expect(res._data.views.c1).toBe(3);
     expect(res._data.counts['c2-not-owned']).toBeUndefined();
+    expect(mockRpc).toHaveBeenCalledWith('count_listing_views', { p_listing_ids: ['c1'] });
   });
 });

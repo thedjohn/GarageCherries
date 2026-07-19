@@ -1,15 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
-const { mockGetUser, mockRequireAdmin, mockFrom } = vi.hoisted(() => ({
+const { mockGetUser, mockRequireAdmin, mockFrom, mockRpc } = vi.hoisted(() => ({
   mockGetUser:      vi.fn(),
   mockRequireAdmin: vi.fn(),
   mockFrom:         vi.fn(),
+  mockRpc:          vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({ auth: { getUser: mockGetUser } })),
-  createAdminClient: vi.fn(() => ({ from: mockFrom })),
+  createAdminClient: vi.fn(() => ({ from: mockFrom, rpc: mockRpc })),
 }));
 
 vi.mock('@/lib/admin', async () => {
@@ -62,16 +63,26 @@ describe('GET /api/admin/watcher-counts', () => {
           { car_id: 'c1' }, { car_id: 'c1' }, { car_id: 'c2' },
         ] }) }),
       };
-      if (table === 'listing_views') return {
-        select: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [
-          { listing_id: 'c1' }, { listing_id: 'c1' }, { listing_id: 'c1' },
-        ] }) }),
-      };
       return {};
     });
+    mockRpc.mockResolvedValue({ data: [{ listing_id: 'c1', view_count: 3 }] });
     const res: any = await GET(makeGetRequest('https://x.com/api/admin/watcher-counts?carIds=c1,c2,c3'));
     expect(res._status).toBe(200);
     expect(res._data.totalWatchers).toEqual({ c1: 2, c2: 1, c3: 0 });
     expect(res._data.views).toEqual({ c1: 3, c2: 0, c3: 0 });
+    expect(mockRpc).toHaveBeenCalledWith('count_listing_views', { p_listing_ids: ['c1', 'c2', 'c3'] });
+  });
+
+  it('correctly counts views beyond what a raw 1000-row select would return (regression guard)', async () => {
+    mockRequireAdmin.mockResolvedValue('moderator');
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'watchlists') return { select: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [] }) }) };
+      return {};
+    });
+    // The whole point of the RPC is that Postgres aggregates server-side, so a
+    // count larger than Supabase's 1000-row default select cap is returned correctly.
+    mockRpc.mockResolvedValue({ data: [{ listing_id: 'c1', view_count: 1293 }] });
+    const res: any = await GET(makeGetRequest('https://x.com/api/admin/watcher-counts?carIds=c1'));
+    expect(res._data.views).toEqual({ c1: 1293 });
   });
 });

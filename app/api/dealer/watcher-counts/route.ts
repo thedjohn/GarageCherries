@@ -28,10 +28,10 @@ export async function GET(request: NextRequest) {
     .select('car_id, dealer_messaged_at, allow_dealer_contact, dealer_contact_blocked')
     .in('car_id', safeCarIds);
 
-  const { data: viewRows } = await admin
-    .from('listing_views')
-    .select('listing_id')
-    .in('listing_id', safeCarIds);
+  // Counted via a GROUP BY RPC, not a raw select+forEach — Supabase caps any
+  // unbounded .select() at 1000 rows, which was silently undercounting views
+  // once a batch of listings' combined view rows crossed that threshold.
+  const { data: viewCounts } = await admin.rpc('count_listing_views', { p_listing_ids: safeCarIds });
 
   const counts: Record<string, number>  = {};
   const messaged: Record<string, boolean> = {};
@@ -48,8 +48,8 @@ export async function GET(request: NextRequest) {
     totalWatchers[r.car_id] = (totalWatchers[r.car_id] ?? 0) + 1;
   });
 
-  (viewRows ?? []).forEach((r: any) => {
-    views[r.listing_id] = (views[r.listing_id] ?? 0) + 1;
+  (viewCounts ?? []).forEach((r: any) => {
+    views[r.listing_id] = Number(r.view_count);
   });
 
   return NextResponse.json({ counts, messaged, views, totalWatchers });
