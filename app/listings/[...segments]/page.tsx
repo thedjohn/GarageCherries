@@ -13,6 +13,8 @@ import {
   getCar, getDealerById, formatPrice, formatMileage, formatPhone,
   toSegment, makeFromSegment, CARS,
 } from '@/lib/data';
+import { getListingsIntro } from '@/lib/listingsMakeContent';
+import { getMakeSlugs } from '@/lib/encyclopedia';
 
 const BASE_URL = 'https://www.garagecherries.com';
 
@@ -525,6 +527,17 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold text-zinc-900">{make} Cars For Sale</h1>
           <p className="text-zinc-500 mt-1">{cars.length} listing{cars.length !== 1 ? 's' : ''}</p>
+          <p className="text-zinc-600 mt-3 max-w-2xl">
+            {getListingsIntro(segments[0], make)}
+            {getMakeSlugs().includes(segments[0]) && (
+              <>
+                {' '}
+                <Link href={`/cars/${segments[0]}`} className="text-red-600 hover:underline font-medium">
+                  See our {make} guide →
+                </Link>
+              </>
+            )}
+          </p>
         </div>
 
         {models.length > 1 && (
