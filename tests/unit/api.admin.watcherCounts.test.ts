@@ -57,32 +57,32 @@ describe('GET /api/admin/watcher-counts', () => {
 
   it('computes view and watcher counts for any listing, without an ownership check', async () => {
     mockRequireAdmin.mockResolvedValue('moderator');
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'watchlists') return {
-        select: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [
-          { car_id: 'c1' }, { car_id: 'c1' }, { car_id: 'c2' },
-        ] }) }),
-      };
-      return {};
+    mockRpc.mockImplementation((fn: string) => {
+      if (fn === 'count_watchlists') return Promise.resolve({ data: [
+        { car_id: 'c1', watcher_count: 2 }, { car_id: 'c2', watcher_count: 1 },
+      ] });
+      if (fn === 'count_listing_views') return Promise.resolve({ data: [{ listing_id: 'c1', view_count: 3 }] });
+      return Promise.resolve({ data: [] });
     });
-    mockRpc.mockResolvedValue({ data: [{ listing_id: 'c1', view_count: 3 }] });
     const res: any = await GET(makeGetRequest('https://x.com/api/admin/watcher-counts?carIds=c1,c2,c3'));
     expect(res._status).toBe(200);
     expect(res._data.totalWatchers).toEqual({ c1: 2, c2: 1, c3: 0 });
     expect(res._data.views).toEqual({ c1: 3, c2: 0, c3: 0 });
+    expect(mockRpc).toHaveBeenCalledWith('count_watchlists', { p_listing_ids: ['c1', 'c2', 'c3'] });
     expect(mockRpc).toHaveBeenCalledWith('count_listing_views', { p_listing_ids: ['c1', 'c2', 'c3'] });
   });
 
-  it('correctly counts views beyond what a raw 1000-row select would return (regression guard)', async () => {
+  it('correctly counts views and watchers beyond what a raw 1000-row select would return (regression guard)', async () => {
     mockRequireAdmin.mockResolvedValue('moderator');
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'watchlists') return { select: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [] }) }) };
-      return {};
-    });
-    // The whole point of the RPC is that Postgres aggregates server-side, so a
+    // The whole point of the RPCs is that Postgres aggregates server-side, so a
     // count larger than Supabase's 1000-row default select cap is returned correctly.
-    mockRpc.mockResolvedValue({ data: [{ listing_id: 'c1', view_count: 1293 }] });
+    mockRpc.mockImplementation((fn: string) => {
+      if (fn === 'count_watchlists') return Promise.resolve({ data: [{ car_id: 'c1', watcher_count: 1500 }] });
+      if (fn === 'count_listing_views') return Promise.resolve({ data: [{ listing_id: 'c1', view_count: 1293 }] });
+      return Promise.resolve({ data: [] });
+    });
     const res: any = await GET(makeGetRequest('https://x.com/api/admin/watcher-counts?carIds=c1'));
     expect(res._data.views).toEqual({ c1: 1293 });
+    expect(res._data.totalWatchers).toEqual({ c1: 1500 });
   });
 });

@@ -23,14 +23,13 @@ export async function GET(request: NextRequest) {
   const safeCarIds = carIds.filter(id => ownedIds.has(id));
   if (!safeCarIds.length) return NextResponse.json({ counts: {}, messaged: {}, views: {}, totalWatchers: {} });
 
-  const { data: rows } = await admin
-    .from('watchlists')
-    .select('car_id, dealer_messaged_at, allow_dealer_contact, dealer_contact_blocked')
-    .in('car_id', safeCarIds);
-
-  // Counted via a GROUP BY RPC, not a raw select+forEach — Supabase caps any
-  // unbounded .select() at 1000 rows, which was silently undercounting views
-  // once a batch of listings' combined view rows crossed that threshold.
+  // Counted via GROUP BY RPCs, not raw select+forEach — Supabase caps any
+  // unbounded .select() at 1000 rows. The old raw select here fed counts/
+  // messaged/totalWatchers all from the same row set, so hitting the cap
+  // would've silently corrupted the "Message watchers" eligibility list and
+  // messaged flags too, not just the displayed total — aggregating all three
+  // server-side fixes them all at once regardless of row volume.
+  const { data: watcherCounts } = await admin.rpc('count_dealer_watchers', { p_listing_ids: safeCarIds });
   const { data: viewCounts } = await admin.rpc('count_listing_views', { p_listing_ids: safeCarIds });
 
   const counts: Record<string, number>  = {};
@@ -40,12 +39,10 @@ export async function GET(request: NextRequest) {
 
   safeCarIds.forEach(id => { counts[id] = 0; messaged[id] = false; totalWatchers[id] = 0; views[id] = 0; });
 
-  (rows ?? []).forEach((r: any) => {
-    if (r.allow_dealer_contact && !r.dealer_contact_blocked && !r.dealer_messaged_at) {
-      counts[r.car_id] = (counts[r.car_id] ?? 0) + 1;
-    }
-    if (r.dealer_messaged_at) messaged[r.car_id] = true;
-    totalWatchers[r.car_id] = (totalWatchers[r.car_id] ?? 0) + 1;
+  (watcherCounts ?? []).forEach((r: any) => {
+    counts[r.car_id] = Number(r.eligible_count);
+    messaged[r.car_id] = Boolean(r.messaged);
+    totalWatchers[r.car_id] = Number(r.total_watchers);
   });
 
   (viewCounts ?? []).forEach((r: any) => {

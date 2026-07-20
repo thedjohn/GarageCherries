@@ -367,16 +367,15 @@ describe('GET /api/dealer/watcher-counts', () => {
   it('computes eligible-watcher counts, messaged flags, total watchers, and view counts, filtering to owned cars', async () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [{ id: 'c1' }] }) }) }) };
-      if (table === 'watchlists') return {
-        select: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [
-          { car_id: 'c1', dealer_messaged_at: null, allow_dealer_contact: true, dealer_contact_blocked: false },
-          { car_id: 'c1', dealer_messaged_at: '2026-01-01', allow_dealer_contact: true, dealer_contact_blocked: false },
-          { car_id: 'c1', dealer_messaged_at: null, allow_dealer_contact: false, dealer_contact_blocked: false },
-        ] }) }),
-      };
       return {};
     });
-    mockRpc.mockResolvedValue({ data: [{ listing_id: 'c1', view_count: 3 }] });
+    mockRpc.mockImplementation((fn: string) => {
+      if (fn === 'count_dealer_watchers') return Promise.resolve({ data: [
+        { car_id: 'c1', total_watchers: 3, eligible_count: 1, messaged: true },
+      ] });
+      if (fn === 'count_listing_views') return Promise.resolve({ data: [{ listing_id: 'c1', view_count: 3 }] });
+      return Promise.resolve({ data: [] });
+    });
     const res: any = await watcherCountsGet(makeGetRequest('https://x.com/api/dealer/watcher-counts?carIds=c1,c2-not-owned'));
     expect(res._status).toBe(200);
     expect(res._data.counts.c1).toBe(1);
@@ -384,6 +383,28 @@ describe('GET /api/dealer/watcher-counts', () => {
     expect(res._data.totalWatchers.c1).toBe(3);
     expect(res._data.views.c1).toBe(3);
     expect(res._data.counts['c2-not-owned']).toBeUndefined();
+    expect(mockRpc).toHaveBeenCalledWith('count_dealer_watchers', { p_listing_ids: ['c1'] });
     expect(mockRpc).toHaveBeenCalledWith('count_listing_views', { p_listing_ids: ['c1'] });
+  });
+
+  it('correctly reflects eligible counts and messaged flags beyond what a raw 1000-row select would return (regression guard)', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [{ id: 'c1' }] }) }) }) };
+      return {};
+    });
+    // Unlike a plain count, this RPC also carries eligible_count/messaged — the old
+    // raw-row fetch fed all three from the same select, so hitting the 1000-row cap
+    // would've silently corrupted eligibility/messaged status, not just the total.
+    mockRpc.mockImplementation((fn: string) => {
+      if (fn === 'count_dealer_watchers') return Promise.resolve({ data: [
+        { car_id: 'c1', total_watchers: 1500, eligible_count: 400, messaged: true },
+      ] });
+      if (fn === 'count_listing_views') return Promise.resolve({ data: [] });
+      return Promise.resolve({ data: [] });
+    });
+    const res: any = await watcherCountsGet(makeGetRequest('https://x.com/api/dealer/watcher-counts?carIds=c1'));
+    expect(res._data.totalWatchers.c1).toBe(1500);
+    expect(res._data.counts.c1).toBe(400);
+    expect(res._data.messaged.c1).toBe(true);
   });
 });
