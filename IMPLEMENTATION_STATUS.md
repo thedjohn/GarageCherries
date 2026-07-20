@@ -407,6 +407,12 @@
 2. **Decide on dealer self-serve signup** — current apply-and-wait model may be intentional (vetting quality), but if faster growth is the goal, self-serve + Stripe removes the bottleneck
 3. **Restore inspection-affiliate button** — once Lemon Squad agreement is confirmed
 4. **Add actual sale price to `/sold`** — optional "Sold for $X" field on Mark as Sold flow; deferred until enough sold listings accumulate to make it worthwhile
+5. **Facebook Page improvements** (non-code, manual Facebook UI work) — started 2026-07-20:
+   - Address/phone number: address wasn't saving in the Page editor (city/ZIP-only, no street address, likely needs the "Service Area Business" toggle switched on to allow saving without a full street address) — deferred, needs revisiting; phone number decision still open
+   - Highlights: 3 ideas drafted (free-listings promo, "How It Works," Veteran-Owned badge) — not yet added to the Page
+   - Reviews: Page has 0 reviews; a non-pushy, genuine-reviews-only outreach message drafted for dealers/UAT testers/personal contacts — not yet sent
+   - Content: post copy drafted from real existing site content (3 of 6 `/guides` articles, 2 Encyclopedia trivia facts) to post manually, since the Page currently only auto-posts raw listings with no other content — not yet posted; remaining 3 guides not yet drafted
+   - Instagram: Page has "Boost Instagram post" available, meaning it's linked — whether it's actively used is unconfirmed, worth checking since classic car photography tends to perform well there
 
 *("Submit event pages to Google" removed 2026-07-14 — done. All 3 currently-approved events (`caffeine-chrome-2026-07-25`, `1st-phorm-cars-caffeine-2026-07-19`, `sticky-s-friday-night-car-cruise-in-2026-07-17`) submitted via Search Console URL Inspection. Verified all three have correct indexing signals first (robots meta `index, follow`, HTTP 200 for Googlebot UA, present in sitemap.xml, valid JSON-LD) — no code issue on our end. The first submission was rejected with a generic "issues detected during live testing" error, which is a known GSC quirk on a URL Google has never crawled before; the other two succeeded on the first try, and the first one will just need a retry from `/admin` or Search Console directly whenever — not urgent, since it's already discoverable via the sitemap regardless.)*
 
