@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'GarageCherries — Classic, Muscle, Sport & Collector Cars',
-    description: 'Buy and sell classic cars, muscle cars, and collector vehicles.',
+    description: 'Buy and sell classic cars, muscle cars, sports cars, supercars, and collector vehicles from private sellers and trusted dealers worldwide on GarageCherries.',
     images: ['/opengraph-image.jpg'],
   },
   robots: {
