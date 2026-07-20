@@ -28,6 +28,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     'classic-car-red-flags',
     'how-to-negotiate-classic-car-price',
     'classic-car-shipping-guide',
+    'classic-car-financing',
+    'auction-vs-private-sale',
+    'how-to-value-a-muscle-car',
+    'classic-car-insurance-guide',
   ];
 
   const staticPages: MetadataRoute.Sitemap = [

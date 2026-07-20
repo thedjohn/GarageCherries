@@ -165,6 +165,109 @@ const GUIDES: Record<string, {
       ]},
     ],
   },
+  'classic-car-financing': {
+    title: 'Classic Car Financing: How It Works',
+    subtitle: 'Why collector car loans are different from a regular auto loan',
+    category: 'Financing', readTime: '6 min read',
+    sections: [
+      { heading: 'How collector car lenders think differently', body: [
+        'A regular auto lender values a car off a depreciation curve — the car is worth less every year, and the loan is underwritten accordingly. Specialty collector car lenders (J.J. Best Banc, Woodside Credit, and similar) instead evaluate collector value, which can hold steady or appreciate over time for desirable models.',
+        'This changes what the lender looks at: documentation, originality, and condition matter more than mileage or model year in isolation. A well-documented, numbers-matching example will qualify for better terms than a modified or undocumented car of the same age.',
+      ]},
+      { heading: 'What lenders typically require', body: [
+        'Expect a down payment in the 10–20% range, though it varies by lender and the car\'s value. Many specialty lenders require the vehicle to be a certain age (often 20+ years) and may ask for a professional appraisal on higher-value cars.',
+        'Garaging and usage restrictions are common — lenders want to know the car is stored securely and not used as a daily driver, since that protects the collateral value they\'re lending against.',
+      ]},
+      { heading: 'Rates and terms', body: [
+        'Classic car loan terms often run longer than a typical auto loan — 60 to 144 months is common — which keeps monthly payments manageable on a car that isn\'t depreciating the way a new car does. Rates are typically fixed, and vary based on credit, down payment, and the lender\'s assessment of the car itself.',
+        'Use a financing calculator (available on every GarageCherries listing) to model payments before you commit to an offer — the estimate updates with your down payment and term length.',
+      ]},
+      { heading: 'Getting pre-approved before you shop', body: [
+        'Pre-approval tells you your real budget before you fall in love with a car outside it, and it signals to a seller that you\'re a serious, ready buyer — which can help in negotiation.',
+        'Have photos, a general description, and (if available) documentation ready when you apply; specialty lenders often want to know what you\'re buying, not just your credit profile.',
+      ]},
+      { heading: 'When other financing makes more sense', body: [
+        'Cash remains the simplest option when available, with no interest cost and no restrictions on usage. A HELOC or personal loan can also work, particularly for lower-value cars where a specialty lender\'s minimums or a lengthy approval process aren\'t worth it.',
+        'Compare the total cost of financing against the flexibility you\'re giving up — usage restrictions from a specialty lender may not fit if you plan to drive the car regularly.',
+      ]},
+    ],
+  },
+  'auction-vs-private-sale': {
+    title: 'Auction vs. Private Sale: Which Is Right for You?',
+    subtitle: 'How live auctions, online auctions, and private sales actually differ for a buyer',
+    category: 'Buying Method', readTime: '7 min read',
+    sections: [
+      { heading: 'Live auctions', body: [
+        'At in-person auctions (Barrett-Jackson, Mecum, and similar), cars typically sell "as-is" with no negotiation and no guaranteed inspection window before you bid — you\'re often working from a brief walk-around and whatever documentation is provided. Expect a buyer\'s premium on top of the hammer price, commonly in the 5–10% range.',
+        'The competitive, in-the-room energy of a live auction can drive prices above what the same car might bring in a private sale — exciting if you\'re selling, a real risk if you\'re bidding and get caught up in the moment.',
+      ]},
+      { heading: 'Online auctions', body: [
+        'Sites like Bring a Trailer and Cars & Bids combine an auction format with detailed photos, videos, and an active comment section where knowledgeable buyers often surface issues with a listing before bidding closes — genuinely useful due diligence you don\'t get at a live auction.',
+        'A buyer\'s premium still applies, and unless you arrange your own inspection, you\'re still bidding without having put hands on the car. Comments are a starting point, not a substitute for your own inspection on anything you\'re seriously considering.',
+      ]},
+      { heading: 'Private sales', body: [
+        'Buying directly from an owner or dealer — the model GarageCherries listings use — gives you room to negotiate, time to arrange a proper pre-purchase inspection before committing, and no buyer\'s premium added to the price.',
+        'The tradeoff is that due diligence is entirely on you: there\'s no comment section of other enthusiasts flagging concerns, and the seller\'s description is the primary source of information until you inspect the car yourself.',
+      ]},
+      { heading: 'Which fits your situation', body: [
+        'Auctions (live or online) tend to suit rare or highly desirable cars where competitive bidding reflects real demand, and buyers comfortable with as-is terms and doing their homework on the listing beforehand.',
+        'Private sales tend to suit buyers who want to negotiate, who want a real pre-purchase inspection before money changes hands, and who are buying a car to drive and enjoy rather than as a speculative purchase.',
+      ]},
+      { heading: 'Red flags differ by channel', body: [
+        'At auction, watch for vague condition reports, "no reserve" listings with suspiciously high starting bids, and sellers who won\'t answer pre-bid questions in the comments. In a private sale, the red flags are the same ones covered in our Red Flags guide — vague descriptions, sparse photos, and pressure to skip an inspection.',
+      ]},
+    ],
+  },
+  'how-to-value-a-muscle-car': {
+    title: 'How to Value a Muscle Car',
+    subtitle: 'What actually drives price — and where sellers and buyers overvalue',
+    category: 'Valuation', readTime: '7 min read',
+    sections: [
+      { heading: 'Condition tier is the starting point', body: [
+        'Value conversations start with condition: Excellent (show-quality, minimal flaws), Good (solid driver, minor cosmetic issues), Fair (needs work but functional), and Project (needs significant investment before it\'s usable). The same model and year can vary by tens of thousands of dollars purely based on which tier it falls into.',
+        'Be honest about which tier a car actually falls into — sellers who list a Good driver as Excellent, or buyers who assume a Fair car is really a Good one, are the most common source of valuation disputes.',
+      ]},
+      { heading: 'Documentation and originality drive value more than most buyers expect', body: [
+        'A numbers-matching drivetrain (the engine and transmission original to that specific car) is worth significantly more than a correctly-optioned but replaced drivetrain — but "numbers matching" is a claim, not a fact, until it\'s backed by documentation like a broadcast sheet, Marti Report, or equivalent factory build record.',
+        'Rare factory options, desirable color combinations, and low production numbers for a specific configuration all add value — but only when they\'re documented. An undocumented claim of rarity should be priced (and negotiated) as if it isn\'t verified.',
+      ]},
+      { heading: 'Where to research real comps', body: [
+        'Hagerty\'s valuation tools and NADA Guides both publish price ranges by condition tier for most collectible models. Bring a Trailer\'s completed-auction archive shows actual recent sale prices, not asking prices — a more realistic signal than any listing.',
+        'GarageCherries\' own active listings for the same make and model are useful for understanding current asking prices in the market, though remember asking price and sale price aren\'t the same thing.',
+      ]},
+      { heading: 'How modifications affect value', body: [
+        'Period-correct modifications done to a high standard — the kind of upgrades an original buyer might have made at a dealership in period — can add value for some buyers. Restomods with modern drivetrains or suspension can command strong prices, but appeal to a different (often smaller) buyer pool than numbers-matching originals.',
+        'Poorly executed or non-period modifications typically subtract value, since a future buyer will likely need to spend money either finishing the work properly or returning the car closer to stock.',
+      ]},
+      { heading: 'Common overvaluation mistakes', body: [
+        'Assuming "numbers matching" or a rare package without documentation. Pricing a car at the top of its condition tier when it\'s realistically a tier lower. Adding the cost of past restoration work dollar-for-dollar to the asking price — the market pays for the result, not for what was spent to get there.',
+      ]},
+    ],
+  },
+  'classic-car-insurance-guide': {
+    title: 'Classic Car Insurance: What You Need to Know',
+    subtitle: 'Agreed value vs. actual cash value, and why standard auto insurance falls short',
+    category: 'Insurance', readTime: '5 min read',
+    sections: [
+      { heading: 'Why a standard auto policy is the wrong tool', body: [
+        'A regular auto insurance policy pays out actual cash value (ACV) after a total loss — essentially depreciated market value, calculated the same way it would be for a daily driver. For a collector car that\'s appreciating or holding steady in value, ACV coverage can leave you badly underpaid relative to what the car was actually worth.',
+      ]},
+      { heading: 'Agreed value coverage', body: [
+        'Specialty collector car insurers (Hagerty, Grundy, American Collectors Insurance, and similar) offer agreed value policies — you and the insurer agree on the car\'s value upfront, and that\'s what you\'re paid in a total loss, no depreciation calculation involved.',
+        'This typically requires photos and, for higher-value cars, a professional appraisal to establish the agreed value at the time the policy is written.',
+      ]},
+      { heading: 'Usage restrictions to expect', body: [
+        'Most classic car policies cap annual mileage — often somewhere in the 2,500 to 5,000 mile range — and require the car to be garage-kept rather than parked on the street. Some also restrict use to shows, club events, and pleasure driving rather than commuting.',
+        'These restrictions are part of why premiums are typically lower than standard auto insurance for a comparably valued car — the insurer is taking on less risk from daily use and exposure.',
+      ]},
+      { heading: 'Getting a policy set up', body: [
+        'Be ready to provide photos of the car, details on how and where it\'s stored, and your driving history. High-value cars typically need a professional appraisal to support the agreed value being requested.',
+      ]},
+      { heading: 'Keeping premiums reasonable', body: [
+        'Accurate, conservative mileage estimates, secure storage (a locked garage, ideally with an alarm or tracking device), and club membership (many insurers offer discounts for verified club affiliation) can all help keep premiums down without reducing coverage.',
+      ]},
+    ],
+  },
 };
 
 interface Props { params: Promise<{ slug: string }> }
@@ -193,6 +296,8 @@ export default async function GuidePage({ params }: Props) {
     'Getting Started': 'bg-blue-100 text-blue-700', 'Inspection': 'bg-amber-100 text-amber-700',
     'Due Diligence': 'bg-green-100 text-green-700', 'Safety': 'bg-red-100 text-red-700',
     'Negotiation': 'bg-purple-100 text-purple-700', 'Logistics': 'bg-zinc-100 text-zinc-600',
+    'Financing': 'bg-teal-100 text-teal-700', 'Buying Method': 'bg-indigo-100 text-indigo-700',
+    'Valuation': 'bg-orange-100 text-orange-700', 'Insurance': 'bg-rose-100 text-rose-700',
   };
 
   return (

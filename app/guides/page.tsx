@@ -56,6 +56,38 @@ const GUIDES = [
     category: 'Logistics',
     intro: 'Most classic car transactions today involve shipping the vehicle across state lines. This guide covers how to choose a transporter, what to inspect on arrival, and how to file a claim if damage occurs.',
   },
+  {
+    slug: 'classic-car-financing',
+    title: 'Classic Car Financing: How It Works',
+    subtitle: 'Why collector car loans are different from a regular auto loan',
+    readTime: '6 min read',
+    category: 'Financing',
+    intro: 'Classic car loans are underwritten differently than a loan on a daily driver — lenders look at collector value, not depreciation curves. This guide covers how specialty lenders evaluate a car, what to expect on rates and terms, and when other financing options make more sense.',
+  },
+  {
+    slug: 'auction-vs-private-sale',
+    title: 'Auction vs. Private Sale: Which Is Right for You?',
+    subtitle: 'How live auctions, online auctions, and private sales actually differ for a buyer',
+    readTime: '7 min read',
+    category: 'Buying Method',
+    intro: "Barrett-Jackson, Bring a Trailer, and a private listing on GarageCherries are three very different buying experiences — different costs, different due diligence burden, and different negotiating leverage. Here's how each actually works.",
+  },
+  {
+    slug: 'how-to-value-a-muscle-car',
+    title: 'How to Value a Muscle Car',
+    subtitle: "What actually drives price — and where sellers and buyers overvalue",
+    readTime: '7 min read',
+    category: 'Valuation',
+    intro: "Two seemingly identical muscle cars can be worth wildly different amounts. Condition, documentation, and originality drive value far more than most buyers realize. This guide walks through how to research comps and value a car realistically.",
+  },
+  {
+    slug: 'classic-car-insurance-guide',
+    title: 'Classic Car Insurance: What You Need to Know',
+    subtitle: 'Agreed value vs. actual cash value, and why standard auto insurance falls short',
+    readTime: '5 min read',
+    category: 'Insurance',
+    intro: "Insuring a classic car on a standard policy can leave you badly underpaid after a total loss. This guide explains agreed-value coverage, the usage restrictions specialty insurers require, and how to keep premiums reasonable.",
+  },
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -65,6 +97,10 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Safety': 'bg-red-100 text-red-700',
   'Negotiation': 'bg-purple-100 text-purple-700',
   'Logistics': 'bg-zinc-100 text-zinc-600',
+  'Financing': 'bg-teal-100 text-teal-700',
+  'Buying Method': 'bg-indigo-100 text-indigo-700',
+  'Valuation': 'bg-orange-100 text-orange-700',
+  'Insurance': 'bg-rose-100 text-rose-700',
 };
 
 export default function GuidesPage() {
