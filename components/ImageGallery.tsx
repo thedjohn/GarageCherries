@@ -181,7 +181,7 @@ export default function ImageGallery({ images, title }: { images: string[]; titl
                     i === active ? 'border-red-500' : 'border-white/20 hover:border-white/50'
                   }`}
                 >
-                  <Image src={img} alt="" fill className="object-cover" sizes="64px" />
+                  <Image src={img} alt={`${title} thumbnail ${i + 1}`} fill className="object-cover" sizes="64px" />
                 </button>
               ))}
             </div>

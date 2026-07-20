@@ -89,7 +89,7 @@ export default async function AdvertisersPage() {
 
       <div className="mt-12 bg-red-50 border border-red-100 rounded-2xl px-8 py-6 text-center">
         <h2 className="text-lg font-bold text-zinc-900 mb-1">Advertise Your Business</h2>
-        <p className="text-zinc-500 text-sm mb-4">Reach thousands of classic car enthusiasts across the USA.</p>
+        <p className="text-zinc-500 text-sm mb-4">Reach classic car enthusiasts worldwide.</p>
         <Link href="/advertise" className="inline-block bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
           Get started
         </Link>
