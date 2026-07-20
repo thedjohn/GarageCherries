@@ -118,8 +118,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }));
 
-  // Make + model combo pages derived from live listings (e.g. /listings/ford/mustang)
-  const makeModelCombos = [...new Set((cars ?? []).map(c => `${toSegment(c.make)}/${toSegment(c.model)}`))];
+  // Make + model combo pages derived from live listings (e.g. /listings/ford/mustang).
+  // Combos with 2 or fewer listings are set to noindex on the page itself (see
+  // generateMetadata in app/listings/[...segments]/page.tsx) -- excluded here too
+  // so the sitemap doesn't advertise pages we're telling Google not to index.
+  const comboCounts = new Map<string, number>();
+  (cars ?? []).forEach(c => {
+    const combo = `${toSegment(c.make)}/${toSegment(c.model)}`;
+    comboCounts.set(combo, (comboCounts.get(combo) ?? 0) + 1);
+  });
+  const makeModelCombos = [...comboCounts.entries()].filter(([, count]) => count > 2).map(([combo]) => combo);
   const makeModelPages: MetadataRoute.Sitemap = makeModelCombos.map(combo => ({
     url: `${BASE_URL}/listings/${combo}`,
     lastModified: new Date(),

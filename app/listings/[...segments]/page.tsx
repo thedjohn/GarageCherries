@@ -67,8 +67,14 @@ export async function generateMetadata({ params }: { params: Promise<{ segments:
     const title = `${make} ${model} For Sale`;
     return {
       title,
-      description: `Browse ${count ?? 0} ${make} ${model} classic cars for sale on GarageCherries. Find the best deals from trusted dealers across the USA.`,
+      description: `Browse ${count ?? 0} ${make} ${model} classic cars for sale on GarageCherries. Find the best deals from trusted dealers worldwide.`,
       alternates: { canonical: `${BASE_URL}/listings/${segments[0]}/${segments[1]}` },
+      // Make+model combos are unbounded (the model comes from free-text seller
+      // input, not a fixed taxonomy), so most only ever have 1-2 listings --
+      // near-duplicate thin pages that dilute crawl budget and site quality
+      // signals. Keep them reachable via internal links, just out of search
+      // results, until there's enough real inventory to be worth ranking.
+      ...((count ?? 0) <= 2 ? { robots: { index: false, follow: true } } : {}),
     };
   }
 
