@@ -4,6 +4,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requireAdmin, hasRole } from '@/lib/admin';
 import { createLogger } from '@/lib/logger';
 import { postEventToFacebook } from '@/lib/facebook/postToPage';
+import { submitToIndexNow } from '@/lib/indexNow';
 
 const VALID_TYPES = ['show', 'swap-meet', 'cruise', 'auction'] as const;
 
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
   log.info('Event created', { eventId: data.id, name: data.name, adminEmail: user?.email });
   await log.flush();
   postEventToFacebook(data).catch(() => {});
+  submitToIndexNow([`https://www.garagecherries.com/events/${data.slug}`]).catch(() => {});
   revalidatePath('/events');
   return NextResponse.json({ event: data });
 }
@@ -99,6 +101,7 @@ export async function PATCH(req: NextRequest) {
     await log.flush();
     if (action === 'approve' && updated) {
       postEventToFacebook(updated).catch(() => {});
+      submitToIndexNow([`https://www.garagecherries.com/events/${updated.slug}`]).catch(() => {});
     }
     revalidatePath('/events');
     return NextResponse.json({ success: true });

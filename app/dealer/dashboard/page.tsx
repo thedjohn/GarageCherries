@@ -191,6 +191,11 @@ function VehicleModal({ dealerId, dealerName, dealerLocation, dealerState, car, 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ carId: newId }),
         }).catch(() => {});
+        fetch('/api/indexnow/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ carId: newId }),
+        }).catch(() => {});
       }
     }
 

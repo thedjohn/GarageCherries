@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
-const { mockGetUser, mockFrom, mockRequireAdmin, mockPostEventToFacebook, mockRevalidatePath } = vi.hoisted(() => ({
+const { mockGetUser, mockFrom, mockRequireAdmin, mockPostEventToFacebook, mockRevalidatePath, mockSubmitToIndexNow } = vi.hoisted(() => ({
   mockGetUser:              vi.fn(),
   mockFrom:                 vi.fn(),
   mockRequireAdmin:         vi.fn(),
   mockPostEventToFacebook:  vi.fn().mockResolvedValue(undefined),
   mockRevalidatePath:       vi.fn(),
+  mockSubmitToIndexNow:     vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -21,6 +22,7 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), flush: vi.fn(async () => {}) }),
 }));
 vi.mock('@/lib/facebook/postToPage', () => ({ postEventToFacebook: mockPostEventToFacebook }));
+vi.mock('@/lib/indexNow', () => ({ submitToIndexNow: mockSubmitToIndexNow }));
 vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
 vi.mock('next/server', () => ({
   NextResponse: {

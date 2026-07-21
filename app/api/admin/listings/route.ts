@@ -6,6 +6,7 @@ import { Resend } from 'resend';
 import { emailHeader } from '@/lib/emailBranding';
 import { createLogger } from '@/lib/logger';
 import { postListingToFacebook } from '@/lib/facebook/postToPage';
+import { submitToIndexNow } from '@/lib/indexNow';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -230,6 +231,8 @@ export async function PATCH(req: NextRequest) {
     postListingToFacebook(listing)
       .then(success => { if (success) admin.from('listings').update({ fb_posted_at: new Date().toISOString() }).eq('id', id); })
       .catch(() => {});
+    const indexNowUrl = `https://www.garagecherries.com/listings/${toSegment(listing.make)}/${toSegment(listing.model)}/${id}/${listing.slug}`;
+    submitToIndexNow([indexNowUrl]).catch(() => {});
   }
 
   // Send seller notification email — fire and forget
