@@ -232,6 +232,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
           priceCurrency: 'USD',
           availability: 'https://schema.org/InStock',
           url: canonicalUrl,
+          hasMerchantReturnPolicy: { '@type': 'MerchantReturnPolicy', returnPolicyCategory: 'https://schema.org/MerchantReturnNotPermitted' },
           seller: dealer
             ? { '@type': 'AutoDealer', name: car.sellerName, url: `${BASE_URL}/dealers/${(dealer as any).slug}` }
             : { '@type': 'Person', name: car.sellerName },
