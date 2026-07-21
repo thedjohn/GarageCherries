@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import Turnstile from '@/components/Turnstile';
+import { formatPhone } from '@/lib/data';
 
 export default function DealerApplyPage() {
   const [fields, setFields] = useState({
@@ -81,7 +82,7 @@ export default function DealerApplyPage() {
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Phone *</label>
-              <input type="tel" required value={fields.phone} onChange={e => set('phone', e.target.value)} placeholder="Phone number" className={inp} />
+              <input type="tel" required value={fields.phone} onChange={e => set('phone', formatPhone(e.target.value))} placeholder="Phone number" className={inp} />
             </div>
           </div>
         </div>

@@ -271,6 +271,13 @@ export function formatPhone(raw: string | null | undefined): string {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
+// Repairs a common applicant typo -- a single slash after the scheme
+// (e.g. "https:/plattmotors.com") -- which some browsers fail to resolve
+// as an absolute URL, breaking the link entirely.
+export function normalizeUrl(raw: string): string {
+  return raw.replace(/^(https?):\/*/i, '$1://');
+}
+
 export const DEALERS: Dealer[] = [
   {
     id: 'u1', slug: 'classic-iron-nashville',

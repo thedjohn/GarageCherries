@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Tooltip from '@/components/Tooltip';
-import { formatPhone } from '@/lib/data';
+import { formatPhone, normalizeUrl } from '@/lib/data';
 import VehicleFieldsForm from '@/components/VehicleFieldsForm';
 import AdminEmailCampaigns from '@/components/AdminEmailCampaigns';
 import { resolveAdminRole, type TeamMember } from '@/lib/resolveAdminRole';
@@ -1220,8 +1220,8 @@ export default function AdminPage() {
                 <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm mb-3">
                   <div><span className="text-zinc-400">Contact: </span><span className="text-zinc-700">{app.name}</span></div>
                   <div><span className="text-zinc-400">Email: </span><span className="text-zinc-700">{app.email}</span></div>
-                  <div><span className="text-zinc-400">Phone: </span><span className="text-zinc-700">{app.phone}</span></div>
-                  {app.website && <div><span className="text-zinc-400">Website: </span><a href={app.website} target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">{app.website}</a></div>}
+                  <div><span className="text-zinc-400">Phone: </span><span className="text-zinc-700">{formatPhone(app.phone)}</span></div>
+                  {app.website && <div><span className="text-zinc-400">Website: </span><a href={normalizeUrl(app.website)} target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">{normalizeUrl(app.website)}</a></div>}
                   {app.specialties?.length > 0 && (
                     <div className="col-span-2"><span className="text-zinc-400">Specialties: </span><span className="text-zinc-700">{app.specialties.join(', ')}</span></div>
                   )}
