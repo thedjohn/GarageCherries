@@ -2,6 +2,7 @@ import { MetadataRoute } from 'next';
 import { createAdminClient } from '@/lib/supabase/server';
 import { toSegment } from '@/lib/data';
 import { ENCYCLOPEDIA, getMakeSlugs } from '@/lib/encyclopedia';
+import { getBodyStyleSlugs } from '@/lib/bodyStyles';
 
 function encyclopediaSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -97,6 +98,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
+  const bodyStylePages: MetadataRoute.Sitemap = getBodyStyleSlugs().map(slug => ({
+    url: `${BASE_URL}/cars/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.6,
+  }));
+
   const encyclopediaModelPages: MetadataRoute.Sitemap = ENCYCLOPEDIA.map(entry => ({
     url: `${BASE_URL}/cars/${encyclopediaSlug(entry.make)}/${encyclopediaSlug(entry.model)}`,
     lastModified: new Date(),
@@ -154,6 +162,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...dealerPages,
     ...encyclopediaIndex,
     ...encyclopediaMakePages,
+    ...bodyStylePages,
     ...encyclopediaModelPages,
     ...advertiserPages,
     ...guidePages,
