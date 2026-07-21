@@ -4,6 +4,7 @@ import { toSegment } from '@/lib/data';
 import { ENCYCLOPEDIA, getMakeSlugs } from '@/lib/encyclopedia';
 import { getBodyStyleSlugs } from '@/lib/bodyStyles';
 import { getDecadeSlugs } from '@/lib/decades';
+import { getPriceTierSlugs } from '@/lib/priceTiers';
 
 function encyclopediaSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -113,6 +114,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
+  const priceTierPages: MetadataRoute.Sitemap = getPriceTierSlugs().map(slug => ({
+    url: `${BASE_URL}/cars/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.6,
+  }));
+
   const encyclopediaModelPages: MetadataRoute.Sitemap = ENCYCLOPEDIA.map(entry => ({
     url: `${BASE_URL}/cars/${encyclopediaSlug(entry.make)}/${encyclopediaSlug(entry.model)}`,
     lastModified: new Date(),
@@ -172,6 +180,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...encyclopediaMakePages,
     ...bodyStylePages,
     ...decadePages,
+    ...priceTierPages,
     ...encyclopediaModelPages,
     ...advertiserPages,
     ...guidePages,

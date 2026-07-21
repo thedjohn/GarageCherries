@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import { ENCYCLOPEDIA } from '@/lib/encyclopedia';
 import { BODY_STYLES_CONTENT } from '@/lib/bodyStyles';
 import { DECADES_CONTENT } from '@/lib/decades';
+import { PRICE_TIERS_CONTENT } from '@/lib/priceTiers';
 
 export const metadata: Metadata = {
   title: "Classic Car Encyclopedia — Specs, History & Buyer's Guides",
@@ -46,6 +47,23 @@ export default function EncyclopediaPage() {
             The complete history of Dodge's performance sub-brand — from the Neon SRT-4 to the 1,025-hp Demon 170 — plus the full lineup and what to know before buying one used.
           </p>
         </Link>
+      </div>
+
+      {/* Browse by Price */}
+      <div className="mb-14">
+        <h2 className="text-xl font-bold text-zinc-800 mb-5">Browse by Price</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {PRICE_TIERS_CONTENT.map(tier => (
+            <Link
+              key={tier.slug}
+              href={`/cars/${tier.slug}`}
+              className="bg-white border border-zinc-100 rounded-2xl p-5 hover:border-red-200 hover:shadow-md transition-all group"
+            >
+              <p className="font-bold text-zinc-900 group-hover:text-red-600 transition-colors">{tier.label}</p>
+              <p className="text-sm text-zinc-400 mt-1">Guide &amp; listings</p>
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Browse by Decade */}
