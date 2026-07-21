@@ -30,33 +30,32 @@ export default function DealerLoginPage() {
       setError('This login isn\'t associated with a dealer account. Sign in with your dealer email, or apply at /dealer/apply.');
     }
 
-    // Supabase ignores redirect_to and sends recovery tokens to this page.
-    // Detect them and show the password setup form inline.
-    const hash = window.location.hash.substring(1);
-    const params = new URLSearchParams(hash);
-
-    if (params.get('error')) {
-      setError(params.get('error_description')?.replace(/\+/g, ' ') ?? 'This link is invalid or has expired.');
-      return;
+    // Check both query string and hash for an expired/invalid recovery link --
+    // Supabase can report this either way depending on flow type.
+    const searchParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const linkError = searchParams.get('error_description') ?? hashParams.get('error_description');
+    if (linkError) {
+      setError(linkError.replace(/\+/g, ' '));
     }
 
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token') ?? '';
-    const type = params.get('type');
-
-    if (accessToken && type === 'recovery') {
-      setSetupMode(true);
-      const supabase = createClient();
-      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
-        .then(({ data, error: sessionError }) => {
-          if (data.session) {
-            setSetupReady(true);
-          } else {
-            setSetupMode(false);
-            setError(sessionError?.message ?? 'This setup link is invalid or has expired. Please contact support for a new one.');
-          }
-        });
-    }
+    // Supabase ignores redirect_to and sends recovery links to this page --
+    // rely on the SDK's own PASSWORD_RECOVERY event (same pattern already
+    // proven working on app/account/reset-password/page.tsx) instead of
+    // manually parsing hash params for access_token/type. That manual parsing
+    // broke once the browser client (createBrowserClient from @supabase/ssr,
+    // which defaults to the PKCE flow) stopped sending those hash params at
+    // all -- recovery links landed here but were never detected, so the page
+    // silently fell through to the normal sign-in view instead of the
+    // password-setup form.
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setSetupMode(true);
+        setSetupReady(true);
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleSetupSubmit = async (e: React.FormEvent) => {
