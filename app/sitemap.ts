@@ -7,7 +7,14 @@ function encyclopediaSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
-export const revalidate = 300;
+// Was 300 (5-minute ISR cache), but Vercel's edge was observed serving a
+// stale response well past that window (x-vercel-cache: HIT, age > 1200s)
+// without triggering a background regeneration -- newly-approved events were
+// missing from the live sitemap for 20+ minutes. Always-fresh matches the
+// same tradeoff app/events/[slug]/page.tsx already makes (revalidate = 0)
+// for the same reason: this data needs to be correct more than it needs to
+// be cached, and sitemap.xml's low request volume makes that cheap.
+export const revalidate = 0;
 
 const BASE_URL = 'https://www.garagecherries.com';
 
