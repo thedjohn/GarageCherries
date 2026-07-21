@@ -155,13 +155,30 @@ function parseYearRange(years: string): [number, number] {
   return [0, 0];
 }
 
+// Decade history text (especially 1960s/1970s) is written around the American
+// muscle car story specifically -- sorting notable models purely alphabetically
+// let makes like Alfa Romeo outrank AMC by accident, leading with international
+// sports cars on a page about domestic muscle. International classics are still
+// genuinely relevant and still shown, just after the domestic makes that match
+// the narrative rather than ahead of them by coincidence of the alphabet.
+const AMERICAN_MAKES = new Set([
+  'AMC', 'Buick', 'Cadillac', 'Chevrolet', 'Chrysler', 'DeSoto', 'Dodge', 'Ford',
+  'GMC', 'Hudson', 'International', 'Jeep', 'Kaiser', 'Lincoln', 'Mercury', 'Nash',
+  'Oldsmobile', 'Packard', 'Plymouth', 'Pontiac', 'Studebaker', 'Tucker', 'Willys',
+]);
+
 export function getNotableModelsForDecade(decade: DecadeContent, limit = 6): EncyclopediaEntry[] {
   return ENCYCLOPEDIA
     .filter(entry => {
       const [start, end] = parseYearRange(entry.years);
       return start <= decade.endYear && end >= decade.startYear;
     })
-    .sort((a, b) => a.make.localeCompare(b.make) || a.model.localeCompare(b.model))
+    .sort((a, b) => {
+      const aUS = AMERICAN_MAKES.has(a.make) ? 0 : 1;
+      const bUS = AMERICAN_MAKES.has(b.make) ? 0 : 1;
+      if (aUS !== bUS) return aUS - bUS;
+      return a.make.localeCompare(b.make) || a.model.localeCompare(b.model);
+    })
     .slice(0, limit);
 }
 
