@@ -9,18 +9,6 @@ import { MAKES } from '@/lib/types';
 const log = createLogger('cron/dealer-feed-sync');
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.garagecherries.com';
 
-// Feed-specific config. Each entry is one dealer's data feed -- add more here
-// if additional dealers get their own feed integrations later. Read inside a
-// function (not at module scope) so env vars are resolved per-request.
-function getFeeds() {
-  return [
-    {
-      dealerEmail: 'info@survivor-cars.com',
-      feedUrl: process.env.SURVIVOR_FEED_URL,
-    },
-  ];
-}
-
 function toSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
@@ -101,10 +89,178 @@ function selectRepresentativeImages(images: string[], max = 30): string[] {
   return Array.from({ length: max }, (_, i) => images[Math.floor(i * step)]);
 }
 
+export interface FeedSyncResult {
+  inserted: number; updated: number; markedSold: number; skipped: number;
+  errors: string[]; unrecognizedMakes: string[];
+}
+
+type FeedDealer = { id: string; name: string; phone: string | null; email: string; location: string | null; state: string | null };
+
+// Fetches one dealer's CSV feed and syncs it: inserts new vehicles (matched by
+// VIN, falling back to Stock Number), updates existing ones, and marks as sold
+// any previously-synced VIN/Stock Number no longer present in the feed. Shared
+// by both the scheduled cron below and the dealer-triggered on-demand sync.
+export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>, dealer: FeedDealer, feedUrl: string, knownMakes: Set<string>): Promise<FeedSyncResult> {
+  const result: FeedSyncResult = { inserted: 0, updated: 0, markedSold: 0, skipped: 0, errors: [], unrecognizedMakes: [] };
+
+  let csvText: string;
+  try {
+    const res = await fetch(feedUrl);
+    if (!res.ok) throw new Error(`Feed fetch failed: ${res.status}`);
+    csvText = await res.text();
+  } catch (e) {
+    result.errors.push(`Could not fetch feed: ${(e as Error).message}`);
+    return result;
+  }
+
+  const rows = parseCSV(csvText.replace(/^﻿/, ''));
+  const header = rows[0];
+  const idx = (name: string) => header.indexOf(name);
+  const dataRows = rows.slice(1);
+
+  const { data: existingListings } = await admin
+    .from('listings')
+    .select('id, vin, stock_number')
+    .eq('seller_id', dealer.id);
+  // VIN is the primary match key (globally unique). Stock number is a fallback --
+  // only unique *within* this dealer's own inventory, which is fine here since
+  // this map is already scoped to a single dealer (.eq('seller_id', dealer.id)
+  // above), but it must never be used to match across different dealers.
+  const existingByVin = new Map<string, string>();
+  const existingByStock = new Map<string, string>();
+  for (const l of existingListings ?? []) {
+    if (l.vin) existingByVin.set(l.vin, l.id);
+    if (l.stock_number) existingByStock.set(l.stock_number, l.id);
+  }
+  const seenIds = new Set<string>();
+
+  for (const r of dataRows) {
+    const bodyStyleRaw = r[idx('BodyStyle')]?.trim();
+    if (SKIP_BODY_STYLES.has(bodyStyleRaw)) { result.skipped++; continue; }
+
+    const vin = r[idx('VIN')]?.trim() || null;
+    const stockNumber = r[idx('Stock Number')]?.trim() || null;
+    if (!vin && !stockNumber) { result.skipped++; continue; }
+
+    const year = parseInt(r[idx('Year')], 10);
+    const make = r[idx('Make')]?.trim();
+    // Import the car regardless -- a make not yet in our official MAKES list is a
+    // real data-review item, not a reason to drop otherwise-sellable inventory.
+    // Flagged here so it surfaces for a deliberate add/reject decision.
+    if (make && !knownMakes.has(make.toLowerCase()) && !result.unrecognizedMakes.includes(make)) {
+      result.unrecognizedMakes.push(make);
+    }
+    const model = r[idx('Model')]?.trim();
+    const subModel = r[idx('Sub-Model')]?.trim();
+    const price = parseInt(r[idx('List Price')], 10) || 0;
+    const mileage = parseInt(r[idx('Mileage')], 10) || null;
+    const bodyStyle = BODY_STYLE_MAP[bodyStyleRaw] ?? bodyStyleRaw;
+    const transmission = mapTransmission(r[idx('Transmission')] ?? '');
+    const engine = r[idx('Engine Size')]?.trim() || null;
+    const color = r[idx('Basic Exterior Color')]?.trim() || r[idx('Factory Exterior Color')]?.trim() || null;
+    const rawImages = (r[idx('Images Urls')] ?? '').split(',').map(s => s.trim()).filter(Boolean);
+    const images = selectRepresentativeImages(rawImages, 30);
+    const description = r[idx('Long Description')]?.trim() ?? '';
+    const title = `${year} ${make} ${model}${subModel ? ` ${subModel}` : ''}`;
+
+    // Multi-location dealers (e.g. Survivor: Tampa/Chicago/Atlanta) have genuinely
+    // different city/state/phone/email per row. The City/State columns are blank
+    // on every row for this vendor, but "Dealer Name" is really a "City, State"
+    // location label (e.g. "Tampa, Florida") -- parse that first. Seller *name*
+    // is always the dealer's real business name (dealer.name), never this column.
+    const dealerNameLoc = parseDealerNameLocation(r[idx('Dealer Name')] ?? '');
+    const listingLocation = r[idx('City')]?.trim() || dealerNameLoc?.city || dealer.location;
+    const listingState = r[idx('State')]?.trim() || dealerNameLoc?.state || dealer.state;
+    const listingPhone = r[idx('Dealer Phone Number')]?.trim() || dealer.phone;
+    const listingEmail = r[idx('Dealer Email Address')]?.trim() || dealer.email;
+
+    const existingId = (vin && existingByVin.get(vin)) || (stockNumber && existingByStock.get(stockNumber)) || undefined;
+
+    if (existingId) {
+      seenIds.add(existingId);
+      const { error } = await admin.from('listings').update({
+        title, year, make, model, price, mileage,
+        location: listingLocation, state: listingState,
+        condition: 'Good',
+        body_style: bodyStyle,
+        transmission, engine, color, images, description,
+        seller_phone: listingPhone,
+        vin, stock_number: stockNumber,
+        is_sold: false,
+        is_feed_managed: true,
+      }).eq('id', existingId);
+      if (error) result.errors.push(`Update failed for ${vin ?? stockNumber}: ${error.message}`);
+      else result.updated++;
+    } else {
+      const newId = crypto.randomUUID();
+      const slug = `${toSlug(title)}-${Date.now()}`;
+      const { error } = await admin.rpc('insert_listing_with_limit', {
+        p_id: newId,
+        p_slug: slug,
+        p_title: title,
+        p_year: year,
+        p_make: make,
+        p_model: model,
+        p_price: price,
+        p_mileage: mileage,
+        p_location: listingLocation,
+        p_state: listingState,
+        p_condition: 'Good',
+        p_body_style: bodyStyle,
+        p_transmission: transmission,
+        p_engine: engine,
+        p_color: color,
+        p_images: images,
+        p_description: description,
+        p_seller_name: dealer.name,
+        p_seller_phone: listingPhone,
+        p_seller_email: listingEmail,
+        p_vin: vin,
+        p_vin_verified: false,
+        p_featured: false,
+        p_status: 'approved',
+        p_seller_id: dealer.id,
+        p_enforce_limit: false,
+      });
+      if (error) {
+        result.errors.push(`Insert failed for ${vin ?? stockNumber}: ${error.message}`);
+      } else {
+        seenIds.add(newId);
+        // insert_listing_with_limit has no stock-number/is_feed_managed parameters --
+        // set them with a small follow-up write rather than changing that shared
+        // RPC's signature (same pattern already used for stock_number alone).
+        await admin.from('listings').update({
+          ...(stockNumber ? { stock_number: stockNumber } : {}),
+          is_feed_managed: true,
+        }).eq('id', newId);
+        result.inserted++;
+        postListingToFacebook({ id: newId, title, make, model, year, price, slug, images }).catch(() => {});
+        submitToIndexNow([`${BASE_URL}/listings/${toSlug(make)}/${toSlug(model)}/${newId}/${slug}`]).catch(() => {});
+      }
+    }
+  }
+
+  // Anything previously synced for this dealer but missing from today's feed is sold/removed.
+  for (const l of existingListings ?? []) {
+    if (!seenIds.has(l.id)) {
+      const { error } = await admin.from('listings').update({ is_sold: true }).eq('id', l.id);
+      if (error) result.errors.push(`Mark-sold failed for listing ${l.id}: ${error.message}`);
+      else result.markedSold++;
+    }
+  }
+
+  return result;
+}
+
+export function summarizeFeedSync(r: FeedSyncResult): string {
+  if (r.errors.length) return `Error: ${r.errors[0]}`;
+  return `${r.inserted} inserted, ${r.updated} updated, ${r.markedSold} sold, ${r.skipped} skipped`;
+}
+
 // GET /api/cron/dealer-feed-sync
-// Called daily by Vercel Cron. For each configured dealer feed: fetches their
-// CSV, inserts new vehicles (matched by VIN), updates existing ones, and marks
-// as sold any previously-synced VIN no longer present in today's feed.
+// Runs hourly via Vercel Cron. Syncs every dealer whose feed_sync_hour matches
+// the current UTC hour, so each dealer gets one sync per day at their own
+// chosen time despite the cron itself firing every hour.
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -112,169 +268,25 @@ export async function GET(request: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const results: Record<string, { inserted: number; updated: number; markedSold: number; skipped: number; errors: string[]; unrecognizedMakes: string[] }> = {};
   const knownMakes = new Set(MAKES.map(m => m.toLowerCase()));
+  const currentHour = new Date().getUTCHours();
 
-  for (const feed of getFeeds()) {
-    const key = feed.dealerEmail;
-    results[key] = { inserted: 0, updated: 0, markedSold: 0, skipped: 0, errors: [], unrecognizedMakes: [] };
+  const { data: dealers } = await admin
+    .from('dealers')
+    .select('id, name, phone, email, location, state, feed_url')
+    .not('feed_url', 'is', null)
+    .eq('feed_sync_hour', currentHour);
 
-    if (!feed.feedUrl) {
-      results[key].errors.push('No feed URL configured for this dealer.');
-      continue;
-    }
+  const results: Record<string, FeedSyncResult> = {};
 
-    const { data: dealer } = await admin
-      .from('dealers')
-      .select('id, name, phone, email, location, state')
-      .eq('email', feed.dealerEmail)
-      .maybeSingle();
+  for (const dealer of (dealers ?? []) as (FeedDealer & { feed_url: string })[]) {
+    const result = await syncDealerFeed(admin, dealer, dealer.feed_url, knownMakes);
+    results[dealer.email] = result;
 
-    if (!dealer) {
-      results[key].errors.push(`No dealer account found for ${feed.dealerEmail}.`);
-      continue;
-    }
-
-    let csvText: string;
-    try {
-      const res = await fetch(feed.feedUrl);
-      if (!res.ok) throw new Error(`Feed fetch failed: ${res.status}`);
-      csvText = await res.text();
-    } catch (e) {
-      results[key].errors.push(`Could not fetch feed: ${(e as Error).message}`);
-      continue;
-    }
-
-    const rows = parseCSV(csvText.replace(/^﻿/, ''));
-    const header = rows[0];
-    const idx = (name: string) => header.indexOf(name);
-    const dataRows = rows.slice(1);
-
-    const { data: existingListings } = await admin
-      .from('listings')
-      .select('id, vin, stock_number')
-      .eq('seller_id', dealer.id);
-    // VIN is the primary match key (globally unique). Stock number is a fallback --
-    // only unique *within* this dealer's own inventory, which is fine here since
-    // this map is already scoped to a single dealer (.eq('seller_id', dealer.id)
-    // above), but it must never be used to match across different dealers.
-    const existingByVin = new Map<string, string>();
-    const existingByStock = new Map<string, string>();
-    for (const l of existingListings ?? []) {
-      if (l.vin) existingByVin.set(l.vin, l.id);
-      if (l.stock_number) existingByStock.set(l.stock_number, l.id);
-    }
-    const seenIds = new Set<string>();
-
-    for (const r of dataRows) {
-      const bodyStyleRaw = r[idx('BodyStyle')]?.trim();
-      if (SKIP_BODY_STYLES.has(bodyStyleRaw)) { results[key].skipped++; continue; }
-
-      const vin = r[idx('VIN')]?.trim() || null;
-      const stockNumber = r[idx('Stock Number')]?.trim() || null;
-      if (!vin && !stockNumber) { results[key].skipped++; continue; }
-
-      const year = parseInt(r[idx('Year')], 10);
-      const make = r[idx('Make')]?.trim();
-      // Import the car regardless -- a make not yet in our official MAKES list is a
-      // real data-review item, not a reason to drop otherwise-sellable inventory.
-      // Flagged here so it surfaces for a deliberate add/reject decision.
-      if (make && !knownMakes.has(make.toLowerCase()) && !results[key].unrecognizedMakes.includes(make)) {
-        results[key].unrecognizedMakes.push(make);
-      }
-      const model = r[idx('Model')]?.trim();
-      const subModel = r[idx('Sub-Model')]?.trim();
-      const price = parseInt(r[idx('List Price')], 10) || 0;
-      const mileage = parseInt(r[idx('Mileage')], 10) || null;
-      const bodyStyle = BODY_STYLE_MAP[bodyStyleRaw] ?? bodyStyleRaw;
-      const transmission = mapTransmission(r[idx('Transmission')] ?? '');
-      const engine = r[idx('Engine Size')]?.trim() || null;
-      const color = r[idx('Basic Exterior Color')]?.trim() || r[idx('Factory Exterior Color')]?.trim() || null;
-      const rawImages = (r[idx('Images Urls')] ?? '').split(',').map(s => s.trim()).filter(Boolean);
-      const images = selectRepresentativeImages(rawImages, 30);
-      const description = r[idx('Long Description')]?.trim() ?? '';
-      const title = `${year} ${make} ${model}${subModel ? ` ${subModel}` : ''}`;
-
-      // Multi-location dealers (e.g. Survivor: Tampa/Chicago/Atlanta) have genuinely
-      // different city/state/phone/email per row. The City/State columns are blank
-      // on every row for this vendor, but "Dealer Name" is really a "City, State"
-      // location label (e.g. "Tampa, Florida") -- parse that first. Seller *name*
-      // is always the dealer's real business name (dealer.name), never this column.
-      const dealerNameLoc = parseDealerNameLocation(r[idx('Dealer Name')] ?? '');
-      const listingLocation = r[idx('City')]?.trim() || dealerNameLoc?.city || dealer.location;
-      const listingState = r[idx('State')]?.trim() || dealerNameLoc?.state || dealer.state;
-      const listingPhone = r[idx('Dealer Phone Number')]?.trim() || dealer.phone;
-      const listingEmail = r[idx('Dealer Email Address')]?.trim() || dealer.email;
-
-      const existingId = (vin && existingByVin.get(vin)) || (stockNumber && existingByStock.get(stockNumber)) || undefined;
-
-      if (existingId) {
-        seenIds.add(existingId);
-        const { error } = await admin.from('listings').update({
-          title, year, make, model, price, mileage,
-          location: listingLocation, state: listingState,
-          condition: 'Good',
-          body_style: bodyStyle,
-          transmission, engine, color, images, description,
-          seller_phone: listingPhone,
-          vin, stock_number: stockNumber,
-          is_sold: false,
-        }).eq('id', existingId);
-        if (error) results[key].errors.push(`Update failed for ${vin ?? stockNumber}: ${error.message}`);
-        else results[key].updated++;
-      } else {
-        const newId = crypto.randomUUID();
-        const slug = `${toSlug(title)}-${Date.now()}`;
-        const { error } = await admin.rpc('insert_listing_with_limit', {
-          p_id: newId,
-          p_slug: slug,
-          p_title: title,
-          p_year: year,
-          p_make: make,
-          p_model: model,
-          p_price: price,
-          p_mileage: mileage,
-          p_location: listingLocation,
-          p_state: listingState,
-          p_condition: 'Good',
-          p_body_style: bodyStyle,
-          p_transmission: transmission,
-          p_engine: engine,
-          p_color: color,
-          p_images: images,
-          p_description: description,
-          p_seller_name: dealer.name,
-          p_seller_phone: listingPhone,
-          p_seller_email: listingEmail,
-          p_vin: vin,
-          p_vin_verified: false,
-          p_featured: false,
-          p_status: 'approved',
-          p_seller_id: dealer.id,
-          p_enforce_limit: false,
-        });
-        if (error) {
-          results[key].errors.push(`Insert failed for ${vin ?? stockNumber}: ${error.message}`);
-        } else {
-          seenIds.add(newId);
-          // insert_listing_with_limit has no stock-number parameter -- set it with a
-          // small follow-up write rather than changing that shared RPC's signature.
-          if (stockNumber) await admin.from('listings').update({ stock_number: stockNumber }).eq('id', newId);
-          results[key].inserted++;
-          postListingToFacebook({ id: newId, title, make, model, year, price, slug, images }).catch(() => {});
-          submitToIndexNow([`${BASE_URL}/listings/${toSlug(make)}/${toSlug(model)}/${newId}/${slug}`]).catch(() => {});
-        }
-      }
-    }
-
-    // Anything previously synced for this dealer but missing from today's feed is sold/removed.
-    for (const l of existingListings ?? []) {
-      if (!seenIds.has(l.id)) {
-        const { error } = await admin.from('listings').update({ is_sold: true }).eq('id', l.id);
-        if (error) results[key].errors.push(`Mark-sold failed for listing ${l.id}: ${error.message}`);
-        else results[key].markedSold++;
-      }
-    }
+    await admin.from('dealers').update({
+      feed_last_synced_at: new Date().toISOString(),
+      feed_last_sync_summary: summarizeFeedSync(result),
+    }).eq('id', dealer.id);
   }
 
   const anyErrors = Object.values(results).some(r => r.errors.length > 0);

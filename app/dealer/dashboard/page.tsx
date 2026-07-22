@@ -28,6 +28,8 @@ interface DbDealer {
   address?: string; zip?: string;
   description?: string; website?: string; specialties?: string[];
   plan?: string; beta_expires_at?: string;
+  feed_url?: string | null; feed_sync_hour?: number | null;
+  feed_last_synced_at?: string | null; feed_last_sync_summary?: string | null;
 }
 
 function toSlug(s: string) {
@@ -432,6 +434,18 @@ export default function DealerDashboard() {
     avgDaysOnMarket: number;
     recentInquiries: any[];
   } | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
+  const handleSyncNow = async () => {
+    setSyncing(true);
+    setSyncMessage(null);
+    const res = await fetch('/api/dealer/feed-sync', { method: 'POST' });
+    const json = await res.json();
+    setSyncing(false);
+    setSyncMessage(res.ok ? json.summary : (json.error ?? 'Sync failed'));
+    if (res.ok) loadData();
+  };
 
   const loadData = useCallback(async () => {
     const supabase = createClient();
@@ -439,7 +453,7 @@ export default function DealerDashboard() {
     if (!user) { router.replace('/dealer/login'); return; }
 
     const { data: dealerRow } = await supabase
-      .from('dealers').select('id, slug, name, phone, email, address, location, state, zip, description, website, specialties, since, logo, plan, beta_expires_at')
+      .from('dealers').select('id, slug, name, phone, email, address, location, state, zip, description, website, specialties, since, logo, plan, beta_expires_at, feed_url, feed_sync_hour, feed_last_synced_at, feed_last_sync_summary')
       .or(`id.eq.${user.id},email.eq.${user.email}`)
       .single();
 
@@ -749,9 +763,16 @@ export default function DealerDashboard() {
 
         <div className="bg-white border border-zinc-100 rounded-xl px-5 py-3 flex items-center justify-between mb-6 text-sm">
           <span className="text-zinc-500">Inventory: <span className="font-medium text-zinc-800">{listings.length} active vehicles</span></span>
-          <div className="flex gap-2">
-            <button disabled title="Coming soon" className="text-xs border border-zinc-200 px-3 py-1.5 rounded-lg text-zinc-400 cursor-not-allowed opacity-50">Import JSON</button>
-            <button disabled title="Coming soon" className="text-xs bg-zinc-300 text-zinc-400 px-3 py-1.5 rounded-lg cursor-not-allowed opacity-50">Sync now</button>
+          <div className="flex items-center gap-3">
+            {syncMessage && <span className="text-xs text-zinc-400">{syncMessage}</span>}
+            {dealer?.feed_url ? (
+              <button onClick={handleSyncNow} disabled={syncing}
+                className="text-xs bg-zinc-800 hover:bg-zinc-900 disabled:opacity-60 text-white px-3 py-1.5 rounded-lg transition-colors">
+                {syncing ? 'Syncing…' : 'Sync now'}
+              </button>
+            ) : (
+              <button disabled title="Add a feed URL in Settings first" className="text-xs bg-zinc-300 text-zinc-400 px-3 py-1.5 rounded-lg cursor-not-allowed opacity-50">Sync now</button>
+            )}
           </div>
         </div>
 
@@ -965,6 +986,9 @@ export default function DealerDashboard() {
             <DealerSettings dealer={dealer} onSaved={loadData} />
             <div className="max-w-2xl mt-6">
               <DealerLocations dealerId={dealer.id} />
+            </div>
+            <div className="max-w-2xl mt-6">
+              <DealerFeedSync dealer={dealer} onSaved={loadData} />
             </div>
           </>
         )}
@@ -1413,6 +1437,80 @@ function DealerLocations({ dealerId }: { dealerId: string }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Dealer Feed Sync ─────────────────────────────────────────────────────────
+function DealerFeedSync({ dealer, onSaved }: { dealer: DbDealer; onSaved: () => void }) {
+  const [feedUrl, setFeedUrl] = useState(dealer.feed_url ?? '');
+  const [syncHour, setSyncHour] = useState<string>(dealer.feed_sync_hour != null ? String(dealer.feed_sync_hour) : '');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSave = async () => {
+    setSaving(true); setError(''); setSaved(false);
+    const res = await fetch('/api/dealer/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dealerId: dealer.id,
+        feed_url: feedUrl.trim() || null,
+        feed_sync_hour: syncHour === '' ? null : Number(syncHour),
+      }),
+    });
+    setSaving(false);
+    const json = await res.json();
+    if (!res.ok) { setError(json.error ?? 'Save failed'); return; }
+    setSaved(true);
+    onSaved();
+  };
+
+  const inp = "w-full border border-zinc-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500";
+  const hourLabel = (h: number) => {
+    const period = h < 12 ? 'AM' : 'PM';
+    const hour12 = h % 12 === 0 ? 12 : h % 12;
+    return `${hour12}:00 ${period} UTC`;
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-6">
+      <h2 className="font-bold text-zinc-800 text-lg mb-1">Feed Sync</h2>
+      <p className="text-sm text-zinc-400 mb-6">If your inventory system publishes a CSV data feed, add its URL here to keep your listings synced automatically once a day. Use "Sync now" above anytime for an immediate one-off sync.</p>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Feed URL</label>
+          <input type="url" value={feedUrl} onChange={e => { setFeedUrl(e.target.value); setSaved(false); }} placeholder="https://example.com/inventory-feed.csv" className={inp} />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Daily Sync Time</label>
+          <select value={syncHour} onChange={e => { setSyncHour(e.target.value); setSaved(false); }} className={inp}>
+            <option value="">Not scheduled — manual sync only</option>
+            {Array.from({ length: 24 }, (_, h) => (
+              <option key={h} value={h}>{hourLabel(h)}</option>
+            ))}
+          </select>
+        </div>
+
+        {dealer.feed_last_synced_at && (
+          <p className="text-xs text-zinc-400">
+            Last synced {new Date(dealer.feed_last_synced_at).toLocaleString()}
+            {dealer.feed_last_sync_summary ? ` — ${dealer.feed_last_sync_summary}` : ''}
+          </p>
+        )}
+
+        {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2">{error}</p>}
+
+        <div className="flex items-center gap-4">
+          <button onClick={handleSave} disabled={saving}
+            className="bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors">
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+          {saved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
+        </div>
+      </div>
     </div>
   );
 }
