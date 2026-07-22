@@ -2,8 +2,12 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import Link from 'next/link';
 import CarCard from '@/components/CarCard';
+import Pagination from '@/components/Pagination';
 import { getEntry, ENCYCLOPEDIA } from '@/lib/encyclopedia';
-import { fetchCars } from '@/lib/db';
+import { createClient } from '@/lib/supabase/server';
+import type { Car } from '@/lib/types';
+
+const PAGE_SIZE = 3; // 1 row at the 3-column (lg) breakpoint, matching /cars/[decade]
 
 function slugify(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -11,6 +15,7 @@ function slugify(s: string) {
 
 interface Props {
   params: Promise<{ make: string; model: string }>;
+  searchParams: Promise<{ page?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -36,12 +41,46 @@ export async function generateStaticParams() {
   }));
 }
 
-export default async function ModelPage({ params }: Props) {
+export default async function ModelPage({ params, searchParams }: Props) {
   const { make: makeSlug, model: modelSlug } = await params;
+  const { page: pageParam } = await searchParams;
   const entry = getEntry(makeSlug, modelSlug);
   if (!entry) notFound();
 
-  const listings = await fetchCars({ make: entry.make, model: entry.model, limit: 6 });
+  const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1);
+
+  const supabase = await createClient();
+  // Prefix-match on the model family's first word, not the full string -- real listing
+  // titles are almost always more specific than a general model name (e.g. a listing's
+  // model might be "Challenger SRT Hellcat" while the model family is just "Challenger"),
+  // so an exact match would miss nearly everything. Matches fetchCars()'s existing logic.
+  const firstWord = entry.model.trim().split(/\s+/)[0];
+  const { data: dbRows, count } = await supabase
+    .from('listings')
+    .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at', { count: 'exact' })
+    .eq('status', 'approved')
+    .eq('is_sold', false)
+    .eq('make', entry.make)
+    .ilike('model', `${firstWord}%`)
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: true }) // tiebreaker for stable pagination -- see app/listings/page.tsx
+    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+
+  const listings: Car[] = (dbRows ?? []).map(r => ({
+    id: r.id, slug: r.slug, title: r.title,
+    year: r.year, make: r.make, model: r.model,
+    price: r.price, mileage: r.mileage,
+    location: r.location ?? '', state: r.state ?? '',
+    condition: r.condition, bodyStyle: r.body_style,
+    transmission: r.transmission, engine: r.engine,
+    color: r.color, images: r.images ?? [],
+    description: r.description,
+    sellerId: '', sellerName: r.seller_name ?? '', sellerPhone: r.seller_phone ?? '',
+    featured: r.featured ?? false, listedAt: r.listed_at ?? '',
+  }));
+  const totalCount = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const articleJsonLd = {
     '@context': 'https://schema.org',
@@ -204,12 +243,12 @@ export default async function ModelPage({ params }: Props) {
               {entry.make} {entry.model} For Sale
             </h2>
             <p className="text-zinc-500 text-sm mt-1">
-              {listings.length > 0
-                ? `${listings.length} listing${listings.length !== 1 ? 's' : ''} currently available`
+              {totalCount > 0
+                ? `${totalCount} listing${totalCount !== 1 ? 's' : ''} currently available`
                 : 'No listings currently available — check back soon'}
             </p>
           </div>
-          {listings.length > 0 && (
+          {totalCount > 0 && (
             <Link
               href={`/listings?make=${encodeURIComponent(entry.make)}&model=${encodeURIComponent(entry.model)}`}
               className="text-sm font-semibold text-red-600 hover:underline whitespace-nowrap"
@@ -219,10 +258,13 @@ export default async function ModelPage({ params }: Props) {
           )}
         </div>
 
-        {listings.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {listings.map(car => <CarCard key={car.id} car={car} />)}
-          </div>
+        {totalCount > 0 ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {listings.map(car => <CarCard key={car.id} car={car} />)}
+            </div>
+            <Pagination currentPage={page} totalPages={totalPages} basePath={`/cars/${makeSlug}/${modelSlug}`} />
+          </>
         ) : (
           <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-12 text-center">
             <p className="text-4xl mb-4">🔍</p>

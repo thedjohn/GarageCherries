@@ -2,8 +2,11 @@ import { Suspense } from 'react';
 import { Metadata } from 'next';
 import CarCard from '@/components/CarCard';
 import SearchFilters from '@/components/SearchFilters';
+import Pagination from '@/components/Pagination';
 import { createClient } from '@/lib/supabase/server';
 import type { Car } from '@/lib/types';
+
+const PAGE_SIZE = 9; // 3 rows at the 3-column (xl) breakpoint
 
 export const metadata: Metadata = {
   title: 'Cars For Sale — Classic, Muscle, Sport & Collector',
@@ -15,21 +18,23 @@ interface Props {
   searchParams: Promise<{
     q?: string; make?: string; model?: string; yearMin?: string; yearMax?: string;
     priceMin?: string; priceMax?: string; condition?: string;
-    bodyStyle?: string; transmission?: string; state?: string;
+    bodyStyle?: string; transmission?: string; state?: string; page?: string;
   }>;
 }
 
 export default async function ListingsPage({ searchParams }: Props) {
   const sp = await searchParams;
+  const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
 
   const supabase = await createClient();
   let query = supabase
     .from('listings')
-    .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at')
+    .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at', { count: 'exact' })
     .eq('status', 'approved')
     .eq('is_sold', false)
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-    .order('listed_at', { ascending: false });
+    .order('listed_at', { ascending: false })
+    .order('id', { ascending: true }); // tiebreaker -- listed_at is text and often shared across bulk-imported rows, so pagination needs a unique secondary key to avoid duplicate/skipped rows across pages
 
   if (sp.q) query = query.or(`title.ilike.%${sp.q}%,description.ilike.%${sp.q}%`);
   if (sp.make && sp.make !== 'All Makes') query = query.eq('make', sp.make);
@@ -48,8 +53,12 @@ export default async function ListingsPage({ searchParams }: Props) {
   if (sp.transmission) query = query.eq('transmission', sp.transmission);
   if (sp.state)        query = query.eq('state', sp.state);
 
-  const { data: dbRows, error: listingsError } = await query;
+  query = query.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+
+  const { data: dbRows, count, error: listingsError } = await query;
   if (listingsError) console.error('Listings query error:', listingsError.message, listingsError.details);
+  const totalCount = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const activeListingsFilter = () => supabase
     .from('listings')
@@ -77,7 +86,7 @@ export default async function ListingsPage({ searchParams }: Props) {
     sellerId: '', sellerName: r.seller_name ?? '', sellerPhone: r.seller_phone ?? '',
     featured: r.featured ?? false, listedAt: r.listed_at ?? '',
   }));
-  const hasFilters = Object.values(sp).some(Boolean);
+  const hasFilters = Object.entries(sp).some(([k, v]) => k !== 'page' && Boolean(v));
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -85,7 +94,7 @@ export default async function ListingsPage({ searchParams }: Props) {
         <h1 className="text-3xl font-extrabold text-zinc-900">
           {hasFilters ? 'Search Results' : 'All Cars'}
         </h1>
-        <p className="text-zinc-500 mt-1">{cars.length} listing{cars.length !== 1 ? 's' : ''} found</p>
+        <p className="text-zinc-500 mt-1">{totalCount} listing{totalCount !== 1 ? 's' : ''} found</p>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
@@ -101,9 +110,12 @@ export default async function ListingsPage({ searchParams }: Props) {
               <p className="text-zinc-500">Try adjusting your filters to see more results.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-              {cars.map(car => <CarCard key={car.id} car={car} />)}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                {cars.map(car => <CarCard key={car.id} car={car} />)}
+              </div>
+              <Pagination currentPage={page} totalPages={totalPages} basePath="/listings" searchParams={sp} />
+            </>
           )}
         </div>
       </div>

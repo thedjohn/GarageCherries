@@ -2,22 +2,30 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import type { Car } from '@/lib/types';
 import CarCard from '@/components/CarCard';
+import Pagination from '@/components/Pagination';
 import { PriceTierContent } from '@/lib/priceTiers';
 
-export default async function PriceTierPage({ content }: { content: PriceTierContent }) {
+const PAGE_SIZE = 3; // 1 row at the 3-column (lg) breakpoint, matching /cars/[decade]
+
+export default async function PriceTierPage({ content, page = 1 }: { content: PriceTierContent; page?: number }) {
   const supabase = await createClient();
   let query = supabase
     .from('listings')
-    .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at')
+    .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at', { count: 'exact' })
     .eq('status', 'approved')
     .eq('is_sold', false)
     .gte('price', content.min)
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-    .order('listed_at', { ascending: false });
+    .order('listed_at', { ascending: false })
+    .order('id', { ascending: true }); // tiebreaker for stable pagination -- see app/listings/page.tsx
 
   if (content.max !== null) query = query.lt('price', content.max);
 
-  const { data: dbRows } = await query;
+  query = query.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+
+  const { data: dbRows, count } = await query;
+  const totalCount = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const cars: Car[] = (dbRows ?? []).map(r => ({
     id: r.id, slug: r.slug, title: r.title,
@@ -70,15 +78,18 @@ export default async function PriceTierPage({ content }: { content: PriceTierCon
         </ul>
 
         <h2 className="text-xl font-bold text-zinc-900 mb-5">
-          Listings {content.label} {cars.length > 0 && <span className="text-zinc-400 font-normal">({cars.length})</span>}
+          Listings {content.label} {totalCount > 0 && <span className="text-zinc-400 font-normal">({totalCount})</span>}
         </h2>
-        {cars.length === 0 ? (
+        {totalCount === 0 ? (
           <p className="text-zinc-400 text-sm mb-8">
             No listings in this range right now — <Link href="/listings" className="text-red-600 hover:underline">browse all cars for sale</Link>.
           </p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
-            {cars.map(car => <CarCard key={car.id} car={car} />)}
+          <div className="mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {cars.map(car => <CarCard key={car.id} car={car} />)}
+            </div>
+            <Pagination currentPage={page} totalPages={totalPages} basePath={`/cars/${content.slug}`} />
           </div>
         )}
 

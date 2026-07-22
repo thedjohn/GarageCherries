@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://www.garagecherries.com/cars/fastbacks' },
 };
 
-export default function FastbacksPage() {
-  return <BodyStylePage content={getBodyStyleContent('fastbacks')!} />;
+export default async function FastbacksPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const { page } = await searchParams;
+  return <BodyStylePage content={getBodyStyleContent('fastbacks')!} page={Math.max(1, parseInt(page ?? '1', 10) || 1)} />;
 }

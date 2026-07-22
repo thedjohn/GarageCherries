@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://www.garagecherries.com/cars/2010s' },
 };
 
-export default function Decade2010sPage() {
-  return <DecadePage content={getDecadeContent('2010s')!} />;
+export default async function Decade2010sPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const { page } = await searchParams;
+  return <DecadePage content={getDecadeContent('2010s')!} page={Math.max(1, parseInt(page ?? '1', 10) || 1)} />;
 }

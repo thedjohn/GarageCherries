@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://www.garagecherries.com/cars/convertibles' },
 };
 
-export default function ConvertiblesPage() {
-  return <BodyStylePage content={getBodyStyleContent('convertibles')!} />;
+export default async function ConvertiblesPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const { page } = await searchParams;
+  return <BodyStylePage content={getBodyStyleContent('convertibles')!} page={Math.max(1, parseInt(page ?? '1', 10) || 1)} />;
 }

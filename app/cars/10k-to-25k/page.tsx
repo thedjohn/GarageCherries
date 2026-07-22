@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://www.garagecherries.com/cars/10k-to-25k' },
 };
 
-export default function TenToTwentyFiveKPage() {
-  return <PriceTierPage content={getPriceTierContent('10k-to-25k')!} />;
+export default async function TenToTwentyFiveKPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const { page } = await searchParams;
+  return <PriceTierPage content={getPriceTierContent('10k-to-25k')!} page={Math.max(1, parseInt(page ?? '1', 10) || 1)} />;
 }
