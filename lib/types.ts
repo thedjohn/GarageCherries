@@ -79,7 +79,7 @@ export const MAKES = [
 export const BODY_STYLES = [
   'All Styles',
   '2-Door','4-Door','Convertible','Coupe','Fastback','Hardtop',
-  'Pickup Truck','Roadster','Sedan','Station Wagon',
+  'Pickup Truck','Roadster','Sedan','Station Wagon','SUV',
 ];
 
 // Kept in quality order (best to worst), not alphabetical — "Excellent, Fair,
