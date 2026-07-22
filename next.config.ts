@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'comiuxnpvngcrvtgzpae.supabase.co' },
       { protocol: 'https', hostname: 'lirp.cdn-website.com' },
+      { protocol: 'https', hostname: 'cdn.dealeraccelerate.com' },
     ],
   },
   async redirects() {

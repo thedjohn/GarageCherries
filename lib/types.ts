@@ -72,7 +72,7 @@ export const MAKES = [
   'All Makes',
   'Alfa Romeo','AMC','Austin Healey','BMW','Buick','Cadillac','Chevrolet','Chrysler','Datsun','DeSoto','Dodge','Factory Five','Fiberfab','Ford',
   'GMC','Hudson','International','Jaguar','Jeep','Kaiser','Land Rover','Lincoln','Lotus','Mazda',
-  'Mercedes','Mercury','MG','Nash','Nissan','Oldsmobile','Packard',
+  'Mercedes','Mercury','MG','Mitsuoka','Nash','Nissan','Oldsmobile','Packard',
   'Plymouth','Pontiac','Porsche','Ram','Rover','Studebaker','Toyota','Triumph','Tucker','Volkswagen','Willys',
 ];
 

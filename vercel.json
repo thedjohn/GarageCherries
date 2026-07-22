@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/sitemap-health",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/dealer-feed-sync",
+      "schedule": "0 8 * * *"
     }
   ]
 }

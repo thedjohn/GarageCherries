@@ -561,4 +561,14 @@ describe('POST /api/admin/users', () => {
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ id: 'new-user-1', name: 'Dealer Co', slug: 'dealer-co' }));
     expect(res._data).toEqual({ success: true, userId: 'new-user-1' });
   });
+
+  it('saves the login email onto the dealer row, not just the auth account', async () => {
+    mockRequireAdmin.mockResolvedValue('superadmin');
+    mockCreateUser.mockResolvedValue({ data: { user: { id: 'new-user-2' } }, error: null });
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    mockFrom.mockImplementation(() => ({ insert }));
+
+    await POST(makeJsonRequest({ email: 'dealer@example.com', password: 'pw', dealerName: 'Dealer Co' }));
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ email: 'dealer@example.com' }));
+  });
 });

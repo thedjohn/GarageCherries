@@ -333,6 +333,7 @@ export async function POST(req: NextRequest) {
     id: userId,
     slug,
     name: dealerName,
+    email,
     location: location ?? '',
     state: state ?? '',
   });

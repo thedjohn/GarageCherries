@@ -48,6 +48,12 @@ export default async function DealerPage({ params }: { params: Promise<{ slug: s
   const { data: { user } } = await supabase.auth.getUser();
   const isLoggedIn = !!user;
 
+  const { data: dealerLocations } = await supabase
+    .from('dealer_locations')
+    .select('id, city, state, address, zip, phone, email, is_primary')
+    .eq('dealer_id', dealer.id)
+    .order('is_primary', { ascending: false });
+
   const { data: dbCars } = await supabase
     .from('listings')
     .select('id, slug, title, year, make, model, price, mileage, condition, body_style, images, location, state, seller_id, seller_name, seller_phone, featured, listed_at, transmission, engine, color, description')
@@ -205,6 +211,25 @@ export default async function DealerPage({ params }: { params: Promise<{ slug: s
           title={`Map of ${dealer.name}`}
         />
       </div>
+
+      {(dealerLocations?.length ?? 0) > 1 && (
+        <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6 mb-8">
+          <h2 className="text-lg font-bold text-zinc-900 mb-4">Our Locations</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {dealerLocations!.map(loc => (
+              <div key={loc.id} className="border border-zinc-100 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="font-semibold text-zinc-800 text-sm">{loc.city}, {loc.state}</p>
+                  {loc.is_primary && <span className="text-[10px] font-bold uppercase tracking-wide bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Primary</span>}
+                </div>
+                {loc.address && <p className="text-sm text-zinc-500">{loc.address} {loc.zip}</p>}
+                {loc.phone && <a href={`tel:${loc.phone.replace(/\D/g, '')}`} className="text-sm text-red-600 hover:underline block">{formatPhone(loc.phone)}</a>}
+                {loc.email && <a href={`mailto:${loc.email}`} className="text-sm text-red-600 hover:underline block">{loc.email}</a>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-bold text-zinc-900">

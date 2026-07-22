@@ -961,7 +961,12 @@ export default function DealerDashboard() {
 
         {/* SETTINGS */}
         {tab === 'settings' && dealer && (
-          <DealerSettings dealer={dealer} onSaved={loadData} />
+          <>
+            <DealerSettings dealer={dealer} onSaved={loadData} />
+            <div className="max-w-2xl mt-6">
+              <DealerLocations dealerId={dealer.id} />
+            </div>
+          </>
         )}
 
       </div>
@@ -1271,6 +1276,143 @@ function DealerSettings({ dealer, onSaved }: { dealer: DbDealer & { phone?: stri
           {saved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
         </div>
       </form>
+    </div>
+  );
+}
+
+// ─── Dealer Locations ─────────────────────────────────────────────────────────
+interface DealerLocation {
+  id: string; city: string; state: string; address: string | null;
+  zip: string | null; phone: string | null; email: string | null; is_primary: boolean;
+}
+
+function DealerLocations({ dealerId }: { dealerId: string }) {
+  const [locations, setLocations] = useState<DealerLocation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState({ city: '', state: '', address: '', zip: '', phone: '', email: '', isPrimary: false });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = async () => {
+    setLoading(true);
+    const res = await fetch('/api/dealer/locations');
+    const json = await res.json();
+    if (res.ok) setLocations(json.locations ?? []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const resetForm = () => { setForm({ city: '', state: '', address: '', zip: '', phone: '', email: '', isPrimary: false }); setAdding(false); setEditingId(null); setError(''); };
+
+  const startEdit = (loc: DealerLocation) => {
+    setForm({ city: loc.city, state: loc.state, address: loc.address ?? '', zip: loc.zip ?? '', phone: loc.phone ?? '', email: loc.email ?? '', isPrimary: loc.is_primary });
+    setEditingId(loc.id); setAdding(false); setError('');
+  };
+
+  const handleSave = async () => {
+    if (!form.city.trim() || !form.state.trim()) { setError('City and state are required.'); return; }
+    setSaving(true); setError('');
+    const res = await fetch('/api/dealer/locations', {
+      method: editingId ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editingId ? { id: editingId, ...form } : form),
+    });
+    const json = await res.json();
+    setSaving(false);
+    if (!res.ok) { setError(json.error ?? 'Save failed'); return; }
+    resetForm();
+    load();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Remove this location?')) return;
+    await fetch(`/api/dealer/locations?id=${id}`, { method: 'DELETE' });
+    load();
+  };
+
+  const inp = "w-full border border-zinc-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500";
+
+  return (
+    <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-6">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="font-bold text-zinc-800 text-lg">Locations</h2>
+        {!adding && !editingId && (
+          <button onClick={() => { setAdding(true); setError(''); }}
+            className="text-sm font-semibold text-red-600 hover:underline">+ Add Location</button>
+        )}
+      </div>
+      <p className="text-sm text-zinc-400 mb-6">If you sell from more than one location, add each one here. The one marked primary shows as your main contact info everywhere on the site.</p>
+
+      {loading ? (
+        <p className="text-sm text-zinc-400">Loading…</p>
+      ) : locations.length === 0 && !adding ? (
+        <p className="text-sm text-zinc-400">No additional locations added yet — your dealer profile above is your only location.</p>
+      ) : (
+        <div className="space-y-3 mb-4">
+          {locations.map(loc => (
+            <div key={loc.id} className="border border-zinc-100 rounded-xl p-4 flex items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-zinc-800 text-sm">{loc.city}, {loc.state}</p>
+                  {loc.is_primary && <span className="text-[10px] font-bold uppercase tracking-wide bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Primary</span>}
+                </div>
+                {loc.address && <p className="text-sm text-zinc-500">{loc.address} {loc.zip}</p>}
+                {loc.phone && <p className="text-sm text-zinc-500">{loc.phone}</p>}
+                {loc.email && <p className="text-sm text-zinc-500">{loc.email}</p>}
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={() => startEdit(loc)} className="text-xs font-semibold text-zinc-500 hover:text-zinc-900">Edit</button>
+                <button onClick={() => handleDelete(loc.id)} className="text-xs font-semibold text-red-600 hover:text-red-700">Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(adding || editingId) && (
+        <div className="border-t border-zinc-100 pt-5 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">City *</label>
+              <input type="text" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} className={inp} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">State *</label>
+              <input type="text" value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} maxLength={2} className={inp} />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Street Address</label>
+              <input type="text" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} className={inp} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">ZIP Code</label>
+              <input type="text" value={form.zip} onChange={e => setForm(f => ({ ...f, zip: e.target.value }))} maxLength={10} className={inp} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Phone</label>
+              <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={inp} />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Email</label>
+              <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={inp} />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-zinc-600">
+            <input type="checkbox" checked={form.isPrimary} onChange={e => setForm(f => ({ ...f, isPrimary: e.target.checked }))} />
+            Make this my primary location
+          </label>
+          {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2">{error}</p>}
+          <div className="flex items-center gap-3">
+            <button onClick={handleSave} disabled={saving}
+              className="bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors">
+              {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Add Location'}
+            </button>
+            <button onClick={resetForm} className="text-sm text-zinc-400 hover:text-zinc-600">Cancel</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
