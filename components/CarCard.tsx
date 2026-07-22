@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Car } from '@/lib/types';
-import { formatPrice, formatMileage, toSegment } from '@/lib/data';
+import { formatListingPrice, formatMileage, toSegment } from '@/lib/data';
 
 const CONDITION_COLORS: Record<string, string> = {
   Excellent: 'bg-green-100 text-green-800',
@@ -54,7 +54,7 @@ export default function CarCard({ car }: { car: Car }) {
         </div>
 
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-100">
-          <span className="text-xl font-bold text-zinc-900">{formatPrice(car.price)}</span>
+          <span className="text-xl font-bold text-zinc-900">{formatListingPrice(car.price)}</span>
           <span className="text-xs text-zinc-400">{car.bodyStyle}</span>
         </div>
       </div>

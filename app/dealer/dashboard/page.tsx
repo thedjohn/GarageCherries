@@ -5,7 +5,7 @@ import Tooltip from '@/components/Tooltip';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { formatPrice } from '@/lib/data';
+import { formatListingPrice } from '@/lib/data';
 import { resizeImageFiles } from '@/lib/resizeImage';
 import VehicleFieldsForm, { type VehicleFieldsValues } from '@/components/VehicleFieldsForm';
 
@@ -829,7 +829,7 @@ export default function DealerDashboard() {
                         <div className="min-w-0 flex-1">
                           <Link href={`/listings/${toSlug(car.make)}/${toSlug(car.model)}/${car.id}/${car.slug}`} target="_blank"
                             className="font-semibold text-zinc-800 hover:text-red-600 transition-colors truncate block">{car.title}</Link>
-                          <p className="text-xs text-zinc-400">{car.condition} · {car.price > 0 ? `$${car.price.toLocaleString()}` : 'Call for price'}</p>
+                          <p className="text-xs text-zinc-400">{car.condition} · {formatListingPrice(car.price)}</p>
                           <p className="text-xs text-zinc-400">{listingViews[car.id] ?? 0} view{(listingViews[car.id] ?? 0) !== 1 ? 's' : ''} · {totalWatchers[car.id] ?? 0} watching</p>
                         </div>
                       </div>
@@ -883,7 +883,7 @@ export default function DealerDashboard() {
                         <p className="font-semibold text-zinc-900">{car.title}</p>
                         <p className="text-xs text-zinc-400">ID #{car.id}</p>
                       </td>
-                      <td className="px-4 py-3 font-medium">{car.price > 0 ? formatPrice(car.price) : 'Call for price'}</td>
+                      <td className="px-4 py-3 font-medium">{formatListingPrice(car.price)}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                           car.condition === 'Excellent' ? 'bg-green-100 text-green-700' :

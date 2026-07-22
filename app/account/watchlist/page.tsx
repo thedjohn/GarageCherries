@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
-import { formatPrice, toSegment } from '@/lib/data';
+import { formatPrice, formatListingPrice, toSegment } from '@/lib/data';
 import RemoveWatchButton from '@/components/RemoveWatchButton';
 import SignOutButton from '@/components/SignOutButton';
 
@@ -92,7 +92,7 @@ export default async function WatchlistPage() {
                     {car.condition} · {car.location}{car.state ? `, ${car.state}` : ''}
                   </p>
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
-                    <span className="text-lg font-bold text-red-600">{formatPrice(car.price)}</span>
+                    <span className="text-lg font-bold text-red-600">{formatListingPrice(car.price)}</span>
                     {priceDiff < 0 && (
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-800">
                         ▼ {formatPrice(Math.abs(priceDiff))} drop

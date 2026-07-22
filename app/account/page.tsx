@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
-import { formatPrice, toSegment } from '@/lib/data';
+import { formatPrice, formatListingPrice, toSegment } from '@/lib/data';
 import { MAKES, BODY_STYLES, CONDITIONS, TRANSMISSIONS, STATES } from '@/lib/types';
 import { resizeImageFiles } from '@/lib/resizeImage';
 import AccountTabBar from '@/components/AccountTabBar';
@@ -687,7 +687,7 @@ function AccountPage() {
                         {car.title}
                       </Link>
                       <div className="flex items-center gap-3 mt-1 flex-wrap">
-                        <span className="text-lg font-extrabold text-zinc-900">{formatPrice(car.price)}</span>
+                        <span className="text-lg font-extrabold text-zinc-900">{formatListingPrice(car.price)}</span>
                         {priceChange && (
                           <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
                             ↓ {formatPrice(priceChange)} drop
@@ -967,7 +967,7 @@ function AccountPage() {
                                   )}
                                   <div className="flex-1 min-w-0">
                                     <p className="font-semibold text-sm text-zinc-900 line-clamp-1">{car.title}</p>
-                                    <p className="text-sm font-bold text-red-600">{formatPrice(car.price)}</p>
+                                    <p className="text-sm font-bold text-red-600">{formatListingPrice(car.price)}</p>
                                     <p className="text-xs text-zinc-400">{car.location}, {car.state}</p>
                                   </div>
                                   <svg className="w-4 h-4 text-zinc-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

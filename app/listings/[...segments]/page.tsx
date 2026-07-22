@@ -10,7 +10,7 @@ import AdSlot from '@/components/AdSlot';
 import MakeOfferButton from '@/components/MakeOfferButton';
 import FinancingCalculator from '@/components/FinancingCalculator';
 import {
-  getCar, getDealerById, formatPrice, formatMileage, formatPhone,
+  getCar, getDealerById, formatPrice, formatListingPrice, formatMileage, formatPhone,
   toSegment, makeFromSegment, CARS,
 } from '@/lib/data';
 import { getListingsIntro } from '@/lib/listingsMakeContent';
@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: { params: Promise<{ segments:
     }
     if (!car) return {};
     const title = `${car.title} For Sale`;
-    const desc = `${car.year} ${car.make} ${car.model} in ${car.condition} condition${car.mileage ? ` with ${Number(car.mileage).toLocaleString()} miles` : ''}${car.price ? `. Asking ${formatPrice(car.price)}` : ''}. View photos and full details on GarageCherries.`;
+    const desc = `${car.year} ${car.make} ${car.model} in ${car.condition} condition${car.mileage ? ` with ${Number(car.mileage).toLocaleString()} miles` : ''}${car.price ? `. Asking ${formatListingPrice(car.price)}` : ''}. View photos and full details on GarageCherries.`;
     const image = car.images?.[0];
     const url = `${BASE_URL}/listings/${toSegment(car.make)}/${toSegment(car.model)}/${car.id}/${car.slug}`;
     return {
@@ -296,7 +296,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                 <h1 className="text-2xl font-extrabold text-zinc-900 leading-tight">{car.title}</h1>
                 <span className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-full border ${CONDITION_COLORS[car.condition]}`}>{car.condition}</span>
               </div>
-              <p className="text-3xl font-bold text-red-600 mt-2">{formatPrice(car.price)}</p>
+              <p className="text-3xl font-bold text-red-600 mt-2">{formatListingPrice(car.price)}</p>
             </div>
 
             {/* Description */}
@@ -393,7 +393,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                 <p className="text-xl font-extrabold text-zinc-900 leading-tight">{car.title}</p>
                 <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full border ${CONDITION_COLORS[car.condition]}`}>{car.condition}</span>
               </div>
-              <p className="text-3xl font-bold text-red-600 mt-2 mb-5">{formatPrice(car.price)}</p>
+              <p className="text-3xl font-bold text-red-600 mt-2 mb-5">{formatListingPrice(car.price)}</p>
 
               <div className="border-t border-zinc-100 pt-4 mb-4">
                 <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-2">{dealer ? 'Dealer' : 'Private Seller'}</p>

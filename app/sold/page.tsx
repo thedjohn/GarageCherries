@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createAdminClient } from '@/lib/supabase/server';
-import { formatPrice, formatMileage, toSegment } from '@/lib/data';
+import { formatListingPrice, formatMileage, toSegment } from '@/lib/data';
 
 export const revalidate = 3600;
 
@@ -126,7 +126,7 @@ function SoldCard({ car }: { car: SoldCar }) {
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-100">
           <div>
             <p className="text-xs text-zinc-400 leading-none mb-0.5">Listed at</p>
-            <p className="text-lg font-bold text-zinc-900">{formatPrice(car.price)}</p>
+            <p className="text-lg font-bold text-zinc-900">{formatListingPrice(car.price)}</p>
           </div>
           <span className="text-xs text-zinc-400">{car.body_style}</span>
         </div>

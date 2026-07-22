@@ -258,6 +258,10 @@ export function formatPrice(price: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(price);
 }
 
+export function formatListingPrice(price: number): string {
+  return price > 0 ? formatPrice(price) : 'Call For Price';
+}
+
 export function formatMileage(miles: number | null): string {
   if (miles == null) return 'N/A';
   return new Intl.NumberFormat('en-US').format(miles) + ' mi';
