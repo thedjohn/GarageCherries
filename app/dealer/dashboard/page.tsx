@@ -1,8 +1,8 @@
 'use client';
 import Image from 'next/image';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import Tooltip from '@/components/Tooltip';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { formatListingPrice } from '@/lib/data';
@@ -410,6 +410,18 @@ function VehicleModal({ dealerId, dealerName, dealerLocation, dealerState, car, 
   );
 }
 
+// Reads ?tab=inventory&add=1 (used to deep-link from /sell into Add Vehicle)
+// once on mount. Isolated in its own component since useSearchParams()
+// requires a Suspense boundary.
+function DashboardDeepLinkReader({ onParams }: { onParams: (tab: string | null, add: boolean) => void }) {
+  const params = useSearchParams();
+  useEffect(() => {
+    onParams(params.get('tab'), params.get('add') === '1');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export default function DealerDashboard() {
   const router = useRouter();
@@ -436,6 +448,13 @@ export default function DealerDashboard() {
   } | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
+  const handleDeepLinkParams = useCallback((paramTab: string | null, add: boolean) => {
+    if (paramTab === 'overview' || paramTab === 'inventory' || paramTab === 'inquiries' || paramTab === 'offers' || paramTab === 'settings') {
+      setTab(paramTab);
+    }
+    if (add) setModalCar('new');
+  }, []);
 
   const handleSyncNow = async () => {
     setSyncing(true);
@@ -614,6 +633,10 @@ export default function DealerDashboard() {
 
   return (
     <>
+    <Suspense fallback={null}>
+      <DashboardDeepLinkReader onParams={handleDeepLinkParams} />
+    </Suspense>
+
     {/* Vehicle modal */}
     {modalCar !== null && dealer && (
       <VehicleModal
