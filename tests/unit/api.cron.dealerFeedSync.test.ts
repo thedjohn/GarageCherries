@@ -175,6 +175,29 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     expect(followUp!.payload.is_feed_managed).toBe(true);
   });
 
+  it('sets listed_at on the follow-up write after inserting, so "days on market" is never computed from a null date', async () => {
+    const { listingUpdateCalls } = makeSupabaseMock({ dealers: [DEALER], existingListings: [] });
+    const csv = buildCsv([{ VIN: 'VIN-NEW-2', Year: '1970', Make: 'Ford', Model: 'Mustang', BodyStyle: 'Coupe', 'List Price': '30000' }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+    await GET(makeRequest('Bearer cron-secret'));
+    const followUp = listingUpdateCalls.find(c => c.payload.listed_at !== undefined);
+    expect(followUp!.payload.listed_at).toBeTruthy();
+    expect(new Date(followUp!.payload.listed_at).getFullYear()).toBeGreaterThan(2000);
+  });
+
+  it('does not overwrite listed_at when updating an existing feed-synced listing', async () => {
+    const { listingUpdateCalls } = makeSupabaseMock({
+      dealers: [DEALER],
+      existingListings: [{ id: 'listing-existing', vin: 'VIN-EXIST-2' }],
+    });
+    const csv = buildCsv([{ VIN: 'VIN-EXIST-2', Year: '1969', Make: 'Chevrolet', Model: 'Camaro', BodyStyle: 'Coupe', 'List Price': '55000' }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+    await GET(makeRequest('Bearer cron-secret'));
+    expect(listingUpdateCalls[0].payload.listed_at).toBeUndefined();
+  });
+
   it("uses each row's own City/State/Dealer Phone/Dealer Email, not the dealer account's fields, for multi-location dealers", async () => {
     makeSupabaseMock({ dealers: [DEALER], existingListings: [] });
     const csv = buildCsv([{

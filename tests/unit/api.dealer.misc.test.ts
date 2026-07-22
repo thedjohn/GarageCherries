@@ -222,7 +222,14 @@ describe('GET /api/dealer/metrics', () => {
         if (listingViewsCall === 1) {
           return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ count: 20 }) }) }) };
         }
-        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ lt: vi.fn().mockResolvedValue({ count: 10 }) }) }) }) };
+        if (listingViewsCall === 2) {
+          return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ lt: vi.fn().mockResolvedValue({ count: 10 }) }) }) }) };
+        }
+        // Call 3 (viewsTrend): .select('viewed_at').eq().gte() awaited directly, raw rows.
+        const today = new Date().toISOString().slice(0, 10);
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ data: [
+          { viewed_at: `${today}T10:00:00Z` }, { viewed_at: `${today}T14:00:00Z` },
+        ] }) }) }) };
       }
       if (table === 'listings') {
         listingsCall++;
@@ -235,10 +242,17 @@ describe('GET /api/dealer/metrics', () => {
         conversationsCall++;
         if (conversationsCall === 1) return { select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 5 }) }) }) };
         if (conversationsCall === 2) return { select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ lt: vi.fn().mockResolvedValue({ count: 2 }) }) }) }) };
-        return { select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue({ data: [
-          { id: 'c1', listing_id: 'l1', buyer_name: 'Buyer One', buyer_email: 'b1@x.com', created_at: '2026-01-01' },
-          { id: 'c2', listing_id: 'l2', buyer_name: 'Buyer Two', buyer_email: 'b2@x.com', created_at: '2026-01-02' },
-        ] }) }) }) }) };
+        if (conversationsCall === 3) {
+          return { select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue({ data: [
+            { id: 'c1', listing_id: 'l1', buyer_name: 'Buyer One', buyer_email: 'b1@x.com', created_at: '2026-01-01' },
+            { id: 'c2', listing_id: 'l2', buyer_name: 'Buyer Two', buyer_email: 'b2@x.com', created_at: '2026-01-02' },
+          ] }) }) }) }) };
+        }
+        // Call 4 (inquiriesTrend): .select('created_at').in().gte() awaited directly, raw rows.
+        const today = new Date().toISOString().slice(0, 10);
+        return { select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ data: [
+          { created_at: `${today}T09:00:00Z` },
+        ] }) }) }) };
       }
       if (table === 'messages') {
         return { select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({ data: [
@@ -257,6 +271,10 @@ describe('GET /api/dealer/metrics', () => {
     expect(res._data.recentInquiries[0].carTitle).toBe('Nice Car');
     expect(res._data.recentInquiries[0].message).toBe('Hi is this still available?');
     expect(res._data.recentInquiries[1].carTitle).toBe('Unknown listing');
+    expect(res._data.viewsTrend).toHaveLength(30);
+    expect(res._data.viewsTrend[29].count).toBe(2); // today's bucket -- 2 viewed_at rows mocked for today
+    expect(res._data.inquiriesTrend).toHaveLength(30);
+    expect(res._data.inquiriesTrend[29].count).toBe(1); // today's bucket -- 1 created_at row mocked for today
   });
 
   it('returns null deltas and zero avgDaysOnMarket when there is no prior-period or listing data', async () => {

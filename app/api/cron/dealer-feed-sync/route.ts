@@ -225,12 +225,19 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
         result.errors.push(`Insert failed for ${vin ?? stockNumber}: ${error.message}`);
       } else {
         seenIds.add(newId);
-        // insert_listing_with_limit has no stock-number/is_feed_managed parameters --
-        // set them with a small follow-up write rather than changing that shared
-        // RPC's signature (same pattern already used for stock_number alone).
+        // insert_listing_with_limit has no stock-number/is_feed_managed/listed_at
+        // parameters -- set them with a small follow-up write rather than changing
+        // that shared RPC's signature (same pattern already used for stock_number
+        // alone). listed_at is normally set by the admin-approval flow, which this
+        // insert bypasses entirely (it goes straight to status: 'approved'); without
+        // this, listed_at stays null and "days on market" reads it as the Unix epoch,
+        // computing a wildly wrong number of days. Only set on insert, never on the
+        // update branch above -- re-syncing an existing listing shouldn't reset when
+        // it first went live.
         await admin.from('listings').update({
           ...(stockNumber ? { stock_number: stockNumber } : {}),
           is_feed_managed: true,
+          listed_at: new Date().toISOString(),
         }).eq('id', newId);
         result.inserted++;
         // Facebook posting is deliberately NOT triggered here -- a bulk feed sync can

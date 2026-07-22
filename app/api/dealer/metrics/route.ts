@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { createClient } from '@/lib/supabase/server';
 
+// Buckets raw timestamps into a zero-filled daily series (oldest first), so
+// the trend chart shows a real flat 0 on quiet days instead of a gap.
+function bucketByDay(timestamps: (string | null)[], days: number): { date: string; count: number }[] {
+  const counts: Record<string, number> = {};
+  for (const ts of timestamps) {
+    if (!ts) continue;
+    const day = ts.slice(0, 10); // YYYY-MM-DD
+    counts[day] = (counts[day] ?? 0) + 1;
+  }
+  const series: { date: string; count: number }[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    series.push({ date: d, count: counts[d] ?? 0 });
+  }
+  return series;
+}
+
 export async function GET(request: NextRequest) {
   // Verify auth
   const supabase = await createClient();
@@ -104,6 +121,26 @@ export async function GET(request: NextRequest) {
     }));
   }
 
+  // Daily views/inquiries for the trend charts -- separate raw-timestamp fetches
+  // (not reused from the count queries above, which only return a total) so the
+  // Overview tab can show a day-by-day trend instead of a flat 30d snapshot.
+  const { data: viewRows } = await admin
+    .from('listing_views')
+    .select('viewed_at')
+    .eq('dealer_id', dealerId)
+    .gte('viewed_at', thirtyDaysAgo);
+  const viewsTrend = bucketByDay((viewRows ?? []).map(r => r.viewed_at), 30);
+
+  let inquiriesTrend = bucketByDay([], 30);
+  if (dealerListingIds.length > 0) {
+    const { data: convRows } = await admin
+      .from('conversations')
+      .select('created_at')
+      .in('listing_id', dealerListingIds)
+      .gte('created_at', thirtyDaysAgo);
+    inquiriesTrend = bucketByDay((convRows ?? []).map(r => r.created_at), 30);
+  }
+
   // Active approved unsold listings + avg days on market
   const { data: cars } = await admin
     .from('listings')
@@ -132,5 +169,7 @@ export async function GET(request: NextRequest) {
     inquiriesDelta,
     avgDaysOnMarket,
     recentInquiries,
+    viewsTrend,
+    inquiriesTrend,
   });
 }

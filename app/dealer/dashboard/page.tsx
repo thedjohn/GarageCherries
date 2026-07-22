@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { formatListingPrice } from '@/lib/data';
 import { resizeImageFiles } from '@/lib/resizeImage';
 import VehicleFieldsForm, { type VehicleFieldsValues } from '@/components/VehicleFieldsForm';
+import TrendChart, { type TrendPoint } from '@/components/TrendChart';
 
 interface DbCar {
   id: string; slug: string; title: string; year: number;
@@ -445,6 +446,8 @@ export default function DealerDashboard() {
     inquiries30d: number; inquiriesDelta: number | null;
     avgDaysOnMarket: number;
     recentInquiries: any[];
+    viewsTrend: TrendPoint[];
+    inquiriesTrend: TrendPoint[];
   } | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
@@ -816,6 +819,20 @@ export default function DealerDashboard() {
                 </div>
               ))}
             </div>
+
+            {metrics && (metrics.viewsTrend.length > 0 || metrics.inquiriesTrend.length > 0) && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
+                  <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-3">Views — last 30 days</p>
+                  <TrendChart data={metrics.viewsTrend} unitLabel="views" color="#dc2626" />
+                </div>
+                <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
+                  <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-3">Inquiries — last 30 days</p>
+                  <TrendChart data={metrics.inquiriesTrend} unitLabel="inquiries" color="#dc2626" />
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
                 <h2 className="font-bold text-zinc-800 mb-4 text-sm">Recent inquiries <span className="text-zinc-400 font-normal">— last 30 days</span></h2>
@@ -839,12 +856,14 @@ export default function DealerDashboard() {
                 )}
               </div>
               <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
-                <h2 className="font-bold text-zinc-800 mb-4 text-sm">Your listings</h2>
+                <h2 className="font-bold text-zinc-800 mb-4 text-sm">Your listings <span className="text-zinc-400 font-normal">— top 5 by views</span></h2>
                 {listings.filter(c => !c.is_sold).length === 0 ? (
                   <p className="text-sm text-zinc-400 py-4 text-center">No listings yet.</p>
                 ) : (
                   <div className="space-y-3">
-                    {listings.filter(c => !c.is_sold).slice(0, 5).map(car => (
+                    {listings.filter(c => !c.is_sold)
+                      .sort((a, b) => (listingViews[b.id] ?? 0) - (listingViews[a.id] ?? 0))
+                      .slice(0, 5).map(car => (
                       <div key={car.id} className="flex items-center gap-3 text-sm">
                         <div className="w-10 h-10 rounded-lg bg-zinc-100 overflow-hidden shrink-0">
                           {car.images?.[0] && <img src={car.images[0]} alt="" className="w-full h-full object-cover" />}
