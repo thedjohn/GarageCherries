@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 const {
   mockFrom, mockRpc, mockNotifyAdmin, mockLoggerInfo, mockLoggerWarn, mockLoggerFlush,
-  mockPostToFacebook, mockSubmitToIndexNow,
+  mockSubmitToIndexNow,
 } = vi.hoisted(() => ({
   mockFrom:             vi.fn(),
   mockRpc:              vi.fn(),
@@ -11,7 +11,6 @@ const {
   mockLoggerInfo:       vi.fn(),
   mockLoggerWarn:       vi.fn(),
   mockLoggerFlush:      vi.fn().mockResolvedValue(undefined),
-  mockPostToFacebook:   vi.fn().mockResolvedValue(true),
   mockSubmitToIndexNow: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -22,7 +21,6 @@ vi.mock('@/lib/notifyAdmin', () => ({ notifyAdmin: mockNotifyAdmin }));
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ info: mockLoggerInfo, warn: mockLoggerWarn, error: vi.fn(), flush: mockLoggerFlush }),
 }));
-vi.mock('@/lib/facebook/postToPage', () => ({ postListingToFacebook: mockPostToFacebook }));
 vi.mock('@/lib/indexNow', () => ({ submitToIndexNow: mockSubmitToIndexNow }));
 vi.mock('next/server', () => ({
   NextResponse: {
@@ -140,7 +138,7 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     expect(dealerUpdateCalls[0].payload.feed_last_sync_summary).toBe('0 inserted, 0 updated, 0 sold, 0 skipped');
   });
 
-  it('inserts a new vehicle not already in our listings, flags it feed-managed, and fires Facebook/IndexNow', async () => {
+  it('inserts a new vehicle not already in our listings, flags it feed-managed, and submits it to IndexNow', async () => {
     makeSupabaseMock({ dealers: [DEALER], existingListings: [] });
     const csv = buildCsv([{
       VIN: '1J4FY19P9SP307762', Year: '1995', Make: 'Jeep', Model: 'Wrangler', 'Sub-Model': '4x4',
@@ -164,7 +162,6 @@ describe('GET /api/cron/dealer-feed-sync', () => {
       p_status: 'approved',
       p_images: ['https://example.com/1.jpg', 'https://example.com/2.jpg'],
     }));
-    expect(mockPostToFacebook).toHaveBeenCalled();
     expect(mockSubmitToIndexNow).toHaveBeenCalled();
   });
 

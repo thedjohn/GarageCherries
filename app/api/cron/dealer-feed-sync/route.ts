@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { notifyAdmin } from '@/lib/notifyAdmin';
 import { createLogger } from '@/lib/logger';
-import { postListingToFacebook } from '@/lib/facebook/postToPage';
 import { submitToIndexNow } from '@/lib/indexNow';
 import { MAKES } from '@/lib/types';
 
@@ -234,7 +233,11 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
           is_feed_managed: true,
         }).eq('id', newId);
         result.inserted++;
-        postListingToFacebook({ id: newId, title, make, model, year, price, slug, images }).catch(() => {});
+        // Facebook posting is deliberately NOT triggered here -- a bulk feed sync can
+        // insert many listings at once, and posting all of them synchronously either
+        // hits Facebook's own rate limit or spams the Page. New inserts start with
+        // fb_posted_at null (the column's default), so they're picked up gradually by
+        // the hourly facebook-post-queue cron instead, same as any other new listing.
         submitToIndexNow([`${BASE_URL}/listings/${toSlug(make)}/${toSlug(model)}/${newId}/${slug}`]).catch(() => {});
       }
     }
