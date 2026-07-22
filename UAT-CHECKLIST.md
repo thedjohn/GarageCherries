@@ -10,6 +10,8 @@
 
 *Updated 2026-07-17 — added items for: the Car Guide "Live Inventory" model-matching fix and the new Dodge SRT brand-overview page (§1); admin Listings tab filtering/sorting/pagination, per-listing view/watcher counts, and the manual "Post to Facebook"/"Repost to Facebook" action (§6). The sign-off below predates all of this session's work and does not cover any of it.*
 
+*Updated 2026-07-22 — added items for: dealer multi-location support and the "Our Locations" section on a dealer's public page (§1); dealer self-service Feed Sync settings and a now-functional "Sync now" button, replacing the old "Import JSON"/"Sync Now — Coming soon" line, which is no longer accurate (§4); public-facing pagination on `/listings` and every `/cars` listings grid, and the `/listings` sort dropdown (§1); `$0`-priced listings showing "Call For Price" (§1). The sign-off below predates all of this and does not cover any of it.*
+
 ---
 
 ## 1. Public Browsing (no login required)
@@ -18,8 +20,12 @@
 - [ ] `/listings` loads and shows cars; filter sidebar present (make, year, price, condition, body style, transmission, state)
 - [ ] Keyword search box on `/listings` returns relevant results for a text query (e.g. a make or model name)
 - [ ] Filtering by make narrows results correctly
+- [ ] `/listings` shows numbered pagination at the bottom (1, 2, 3 … Next →) once there are more than 9 matching results; page 2+ shows different cars than page 1 (no duplicates or repeats across pages); "N listings found" reflects the true total, not just the current page's count; the control disappears entirely when everything fits on one page
+- [ ] `/listings` "Sort by" dropdown (Newest / Price: Low to High / Price: High to Low / Featured First) actually reorders results; Featured First shows featured listings first without hiding the rest; changing sort resets back to page 1
+- [ ] A listing priced at `$0` shows "Call For Price" instead of "$0" everywhere it appears (listing card, listing detail page)
 - [ ] `/cars/[make]` (e.g. `/cars/ford`) shows all cars for that make with model sub-nav
-- [ ] `/cars/[make]/[model]` shows filtered results
+- [ ] `/cars/[make]/[model]` shows filtered results, paginated 3 at a time (1 row) once there are more than 3 matching listings
+- [ ] `/cars/[decade]`, a body-style page (e.g. `/cars/convertibles`), and a price-tier page (e.g. `/cars/under-10k`) each paginate their live-listings section the same way (3/page), with a real total count in the section heading
 - [ ] Listing detail page loads: photo gallery + thumbnails, full spec sheet, dealer info panel with map
 - [ ] Listing detail page shows **Make an Offer** button (dealer listings) and the offer modal opens
 - [ ] Listing detail page shows **Financing Calculator** (collapsible) and the math updates when inputs change
@@ -28,6 +34,7 @@
 - [ ] Dealer directory (`/dealers`) lists all dealers with listing counts
 - [ ] Dealer profile page (`/dealers/[slug]`) shows logo, description, specialties, map, **tier badge** (Bronze/Silver/Gold), and **reviews** section
 - [ ] Dealer profile page inventory grid does NOT show a listing the dealer has marked Sold (mark one sold via dashboard, refresh the public profile page)
+- [ ] A dealer with 2+ locations added (Settings → Locations) shows an "Our Locations" section on their public profile page, with the primary location badged; a dealer with only 1 location (the default) shows no such section
 - [ ] Classic Car Encyclopedia (`/cars`) — browse index, open a model page, confirm history/specs/live listings render
 - [x] A Car Guide model page's "Live Inventory" section shows a matching live listing whose actual model name is more specific than the page's general model family (e.g. `/cars/dodge/challenger` showing a listing titled "...Challenger SRT Hellcat") — was exact-matching and silently showed "No listings currently available" for almost every page; fixed 2026-07-17, confirmed live for Dodge Challenger and Mazda Miata
 - [ ] Dodge SRT brand-overview page (`/cars/srt`) loads — history, model lineup, notable special editions, buying tips, and a working "View SRT Listings" CTA; also check the "Featured Guide" card appears on `/cars` and on `/cars/dodge` specifically (confirm absent on another make's page, e.g. `/cars/ford`)
@@ -107,7 +114,8 @@
 - [ ] Mark a listing as Sold in dealer dashboard — Edit button and "Expires in Xd" text disappear; only View remains
 - [ ] Settings tab — update dealer profile fields, upload a logo (JPG/PNG/WebP), preview updates immediately
 - [ ] "Message watchers" on a listing with watchers — compose modal sends, "Messaged" label appears after
-- [ ] Confirm **Import JSON** and **Sync Now** buttons are visibly disabled with a "Coming soon" tooltip — this is expected, not a bug
+- [ ] Settings → **Locations** — add a second location, mark it primary; confirm the dealer's own phone/address/city/state/zip/email update to match, and the public dealer page's "Our Locations" section appears (see §1); edit and delete a location
+- [ ] Settings → **Feed Sync** — enter a feed URL and pick a daily sync hour, save succeeds; "Sync now" button in the Overview header runs an immediate sync and shows a result summary (e.g. "3 inserted, 1 updated, 0 sold, 0 skipped"); button is disabled with a tooltip if no feed URL is configured yet. **Import JSON** no longer exists (removed — this vendor format never offered a JSON/API option, only a CSV/XML feed URL)
 - [ ] (If a test dealer account has an expired beta) — confirm redirect to `/dealer/expired` on dashboard load
 
 ---
