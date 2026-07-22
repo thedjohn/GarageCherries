@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import CarCard from '@/components/CarCard';
 import SearchFilters from '@/components/SearchFilters';
 import Pagination from '@/components/Pagination';
+import SortSelect from '@/components/SortSelect';
 import { createClient } from '@/lib/supabase/server';
 import type { Car } from '@/lib/types';
 
@@ -18,7 +19,7 @@ interface Props {
   searchParams: Promise<{
     q?: string; make?: string; model?: string; yearMin?: string; yearMax?: string;
     priceMin?: string; priceMax?: string; condition?: string;
-    bodyStyle?: string; transmission?: string; state?: string; page?: string;
+    bodyStyle?: string; transmission?: string; state?: string; page?: string; sort?: string;
   }>;
 }
 
@@ -32,9 +33,24 @@ export default async function ListingsPage({ searchParams }: Props) {
     .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at', { count: 'exact' })
     .eq('status', 'approved')
     .eq('is_sold', false)
-    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-    .order('listed_at', { ascending: false })
-    .order('id', { ascending: true }); // tiebreaker -- listed_at is text and often shared across bulk-imported rows, so pagination needs a unique secondary key to avoid duplicate/skipped rows across pages
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
+
+  // `id` is appended to every branch as a tiebreaker -- listed_at/price are often shared
+  // across bulk-imported rows, so pagination needs a unique secondary key to avoid
+  // duplicate/skipped rows across pages.
+  switch (sp.sort) {
+    case 'price-asc':
+      query = query.order('price', { ascending: true }).order('id', { ascending: true });
+      break;
+    case 'price-desc':
+      query = query.order('price', { ascending: false }).order('id', { ascending: true });
+      break;
+    case 'featured':
+      query = query.order('featured', { ascending: false }).order('listed_at', { ascending: false }).order('id', { ascending: true });
+      break;
+    default:
+      query = query.order('listed_at', { ascending: false }).order('id', { ascending: true });
+  }
 
   if (sp.q) query = query.or(`title.ilike.%${sp.q}%,description.ilike.%${sp.q}%`);
   if (sp.make && sp.make !== 'All Makes') query = query.eq('make', sp.make);
@@ -86,15 +102,20 @@ export default async function ListingsPage({ searchParams }: Props) {
     sellerId: '', sellerName: r.seller_name ?? '', sellerPhone: r.seller_phone ?? '',
     featured: r.featured ?? false, listedAt: r.listed_at ?? '',
   }));
-  const hasFilters = Object.entries(sp).some(([k, v]) => k !== 'page' && Boolean(v));
+  const hasFilters = Object.entries(sp).some(([k, v]) => k !== 'page' && k !== 'sort' && Boolean(v));
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-extrabold text-zinc-900">
-          {hasFilters ? 'Search Results' : 'All Cars'}
-        </h1>
-        <p className="text-zinc-500 mt-1">{totalCount} listing{totalCount !== 1 ? 's' : ''} found</p>
+      <div className="mb-6 flex items-end justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-3xl font-extrabold text-zinc-900">
+            {hasFilters ? 'Search Results' : 'All Cars'}
+          </h1>
+          <p className="text-zinc-500 mt-1">{totalCount} listing{totalCount !== 1 ? 's' : ''} found</p>
+        </div>
+        <Suspense>
+          <SortSelect />
+        </Suspense>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
