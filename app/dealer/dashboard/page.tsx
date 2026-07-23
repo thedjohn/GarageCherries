@@ -31,6 +31,8 @@ interface DbDealer {
   plan?: string; beta_expires_at?: string;
   feed_url?: string | null; feed_sync_hour?: number | null;
   feed_last_synced_at?: string | null; feed_last_sync_summary?: string | null;
+  feed_protocol?: string | null; feed_host?: string | null; feed_port?: number | null;
+  feed_username?: string | null; feed_password?: string | null; feed_remote_path?: string | null;
 }
 
 function toSlug(s: string) {
@@ -475,7 +477,7 @@ export default function DealerDashboard() {
     if (!user) { router.replace('/dealer/login'); return; }
 
     const { data: dealerRow } = await supabase
-      .from('dealers').select('id, slug, name, phone, email, address, location, state, zip, description, website, specialties, since, logo, plan, beta_expires_at, feed_url, feed_sync_hour, feed_last_synced_at, feed_last_sync_summary')
+      .from('dealers').select('id, slug, name, phone, email, address, location, state, zip, description, website, specialties, since, logo, plan, beta_expires_at, feed_url, feed_sync_hour, feed_last_synced_at, feed_last_sync_summary, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path')
       .or(`id.eq.${user.id},email.eq.${user.email}`)
       .single();
 
@@ -791,13 +793,13 @@ export default function DealerDashboard() {
           <span className="text-zinc-500">Inventory: <span className="font-medium text-zinc-800">{listings.length} active vehicles</span></span>
           <div className="flex items-center gap-3">
             {syncMessage && <span className="text-xs text-zinc-400">{syncMessage}</span>}
-            {dealer?.feed_url ? (
+            {(dealer?.feed_url || (dealer?.feed_protocol === 'sftp' && dealer?.feed_host)) ? (
               <button onClick={handleSyncNow} disabled={syncing}
                 className="text-xs bg-zinc-800 hover:bg-zinc-900 disabled:opacity-60 text-white px-3 py-1.5 rounded-lg transition-colors">
                 {syncing ? 'Syncing…' : 'Sync now'}
               </button>
             ) : (
-              <button disabled title="Add a feed URL in Settings first" className="text-xs bg-zinc-300 text-zinc-400 px-3 py-1.5 rounded-lg cursor-not-allowed opacity-50">Sync now</button>
+              <button disabled title="Add a feed in Settings first" className="text-xs bg-zinc-300 text-zinc-400 px-3 py-1.5 rounded-lg cursor-not-allowed opacity-50">Sync now</button>
             )}
           </div>
         </div>
@@ -1485,7 +1487,13 @@ function DealerLocations({ dealerId }: { dealerId: string }) {
 
 // ─── Dealer Feed Sync ─────────────────────────────────────────────────────────
 function DealerFeedSync({ dealer, onSaved }: { dealer: DbDealer; onSaved: () => void }) {
+  const [protocol, setProtocol] = useState<'https' | 'sftp'>(dealer.feed_protocol === 'sftp' ? 'sftp' : 'https');
   const [feedUrl, setFeedUrl] = useState(dealer.feed_url ?? '');
+  const [sftpHost, setSftpHost] = useState(dealer.feed_host ?? '');
+  const [sftpPort, setSftpPort] = useState(dealer.feed_port != null ? String(dealer.feed_port) : '22');
+  const [sftpUsername, setSftpUsername] = useState(dealer.feed_username ?? '');
+  const [sftpPassword, setSftpPassword] = useState(dealer.feed_password ?? '');
+  const [sftpRemotePath, setSftpRemotePath] = useState(dealer.feed_remote_path ?? '');
   const [syncHour, setSyncHour] = useState<string>(dealer.feed_sync_hour != null ? String(dealer.feed_sync_hour) : '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -1498,7 +1506,13 @@ function DealerFeedSync({ dealer, onSaved }: { dealer: DbDealer; onSaved: () => 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         dealerId: dealer.id,
-        feed_url: feedUrl.trim() || null,
+        feed_protocol: protocol,
+        feed_url: protocol === 'https' ? (feedUrl.trim() || null) : null,
+        feed_host: protocol === 'sftp' ? (sftpHost.trim() || null) : null,
+        feed_port: protocol === 'sftp' ? (Number(sftpPort) || 22) : null,
+        feed_username: protocol === 'sftp' ? (sftpUsername.trim() || null) : null,
+        feed_password: protocol === 'sftp' ? (sftpPassword || null) : null,
+        feed_remote_path: protocol === 'sftp' ? (sftpRemotePath.trim() || null) : null,
         feed_sync_hour: syncHour === '' ? null : Number(syncHour),
       }),
     });
@@ -1519,13 +1533,47 @@ function DealerFeedSync({ dealer, onSaved }: { dealer: DbDealer; onSaved: () => 
   return (
     <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-6">
       <h2 className="font-bold text-zinc-800 text-lg mb-1">Feed Sync</h2>
-      <p className="text-sm text-zinc-400 mb-6">If your inventory system publishes a CSV data feed, add its URL here to keep your listings synced automatically once a day. Use "Sync now" above anytime for an immediate one-off sync.</p>
+      <p className="text-sm text-zinc-400 mb-6">If your inventory system publishes a data feed, connect it here to keep your listings synced automatically once a day. Use "Sync now" above anytime for an immediate one-off sync.</p>
 
       <div className="space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Feed URL</label>
-          <input type="url" value={feedUrl} onChange={e => { setFeedUrl(e.target.value); setSaved(false); }} placeholder="https://example.com/inventory-feed.csv" className={inp} />
+          <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Feed Type</label>
+          <select value={protocol} onChange={e => { setProtocol(e.target.value as 'https' | 'sftp'); setSaved(false); }} className={inp}>
+            <option value="https">Direct URL (HTTPS)</option>
+            <option value="sftp">SFTP</option>
+          </select>
         </div>
+        {protocol === 'https' ? (
+          <div>
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Feed URL</label>
+            <input type="url" value={feedUrl} onChange={e => { setFeedUrl(e.target.value); setSaved(false); }} placeholder="https://example.com/inventory-feed.csv" className={inp} />
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">SFTP Host</label>
+                <input type="text" value={sftpHost} onChange={e => { setSftpHost(e.target.value); setSaved(false); }} placeholder="sftp.example.com" className={inp} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Port</label>
+                <input type="number" value={sftpPort} onChange={e => { setSftpPort(e.target.value); setSaved(false); }} placeholder="22" className={inp} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Username</label>
+              <input type="text" value={sftpUsername} onChange={e => { setSftpUsername(e.target.value); setSaved(false); }} className={inp} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Password</label>
+              <input type="password" value={sftpPassword} onChange={e => { setSftpPassword(e.target.value); setSaved(false); }} className={inp} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Remote File Path</label>
+              <input type="text" value={sftpRemotePath} onChange={e => { setSftpRemotePath(e.target.value); setSaved(false); }} placeholder="/inventory/feed.csv" className={inp} />
+            </div>
+          </>
+        )}
         <div>
           <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Daily Sync Time</label>
           <select value={syncHour} onChange={e => { setSyncHour(e.target.value); setSaved(false); }} className={inp}>

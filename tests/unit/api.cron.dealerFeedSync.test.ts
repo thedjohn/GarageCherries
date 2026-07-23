@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 const {
   mockFrom, mockRpc, mockNotifyAdmin, mockLoggerInfo, mockLoggerWarn, mockLoggerFlush,
-  mockSubmitToIndexNow,
+  mockSubmitToIndexNow, mockSftpConnect, mockSftpGet, mockSftpEnd,
 } = vi.hoisted(() => ({
   mockFrom:             vi.fn(),
   mockRpc:              vi.fn(),
@@ -12,6 +12,9 @@ const {
   mockLoggerWarn:       vi.fn(),
   mockLoggerFlush:      vi.fn().mockResolvedValue(undefined),
   mockSubmitToIndexNow: vi.fn().mockResolvedValue(undefined),
+  mockSftpConnect:      vi.fn().mockResolvedValue(undefined),
+  mockSftpGet:          vi.fn(),
+  mockSftpEnd:          vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -22,6 +25,11 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ info: mockLoggerInfo, warn: mockLoggerWarn, error: vi.fn(), flush: mockLoggerFlush }),
 }));
 vi.mock('@/lib/indexNow', () => ({ submitToIndexNow: mockSubmitToIndexNow }));
+vi.mock('ssh2-sftp-client', () => ({
+  default: vi.fn().mockImplementation(function () {
+    return { connect: mockSftpConnect, get: mockSftpGet, end: mockSftpEnd };
+  }),
+}));
 vi.mock('next/server', () => ({
   NextResponse: {
     json: vi.fn((data: unknown, init?: { status?: number }) => ({ _data: data, _status: init?.status ?? 200 })),
@@ -49,13 +57,19 @@ function buildCsv(rows: Partial<Record<string, string>>[]) {
 }
 
 const CURRENT_HOUR = new Date().getUTCHours();
-const DEALER = {
+type TestDealerRow = {
+  id: string; name: string; phone: string; email: string; location: string; state: string;
+  feed_url: string | null;
+  feed_protocol?: string; feed_host?: string; feed_port?: number;
+  feed_username?: string; feed_password?: string; feed_remote_path?: string | null;
+};
+const DEALER: TestDealerRow = {
   id: 'dealer-1', name: 'Survivor Classic Car Services', phone: '555-1234', email: 'info@survivor-cars.com',
   location: 'Tampa', state: 'FL', feed_url: 'https://example.com/feed.csv',
 };
 
 function makeSupabaseMock({ dealers, existingListings = [] as { id: string; vin: string | null; stock_number?: string | null }[], updateError = null as string | null }: {
-  dealers: (typeof DEALER)[];
+  dealers: TestDealerRow[];
   existingListings?: { id: string; vin: string | null; stock_number?: string | null }[];
   updateError?: string | null;
 }) {
@@ -67,12 +81,10 @@ function makeSupabaseMock({ dealers, existingListings = [] as { id: string; vin:
     if (table === 'dealers') {
       return {
         select: () => ({
-          not: () => ({
-            eq: (col: string, val: any) => {
-              dealerQueryCalls.push({ col, val });
-              return Promise.resolve({ data: dealers });
-            },
-          }),
+          eq: (col: string, val: any) => {
+            dealerQueryCalls.push({ col, val });
+            return { or: () => Promise.resolve({ data: dealers }) };
+          },
         }),
         update: (payload: any) => ({
           eq: (_col: string, id: string) => { dealerUpdateCalls.push({ id, payload }); return Promise.resolve({ error: null }); },
@@ -403,5 +415,53 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     const res: any = await GET(makeRequest('Bearer cron-secret'));
     expect(res._data.results['info@survivor-cars.com'].inserted).toBe(1);
     expect(res._data.results['other@dealer.com'].inserted).toBe(0);
+  });
+
+  describe('SFTP feeds', () => {
+    const SFTP_DEALER: TestDealerRow = {
+      id: 'dealer-sftp', name: 'McGinty Motor Cars', phone: '555-9999', email: 'inventory@mcgintymotorcars.com',
+      location: 'Springfield', state: 'IL', feed_url: null,
+      feed_protocol: 'sftp', feed_host: 'sftp.dealer.com', feed_port: 22,
+      feed_username: 'mcginty', feed_password: 'secret', feed_remote_path: '/export/inventory.csv',
+    };
+
+    it('downloads the feed via SFTP instead of HTTPS when feed_protocol is sftp', async () => {
+      makeSupabaseMock({ dealers: [SFTP_DEALER], existingListings: [] });
+      vi.stubGlobal('fetch', vi.fn());
+      const csv = buildCsv([{ VIN: 'VIN-SFTP-1', Year: '1970', Make: 'Ford', Model: 'Mustang', BodyStyle: 'Coupe', 'List Price': '30000' }]);
+      mockSftpGet.mockResolvedValue(Buffer.from(csv));
+
+      const res: any = await GET(makeRequest('Bearer cron-secret'));
+      expect(mockSftpConnect).toHaveBeenCalledWith({ host: 'sftp.dealer.com', port: 22, username: 'mcginty', password: 'secret' });
+      expect(mockSftpGet).toHaveBeenCalledWith('/export/inventory.csv');
+      expect(mockSftpEnd).toHaveBeenCalled();
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(res._data.results['inventory@mcgintymotorcars.com'].inserted).toBe(1);
+    });
+
+    it('records an error and still ends the connection when the SFTP download fails', async () => {
+      makeSupabaseMock({ dealers: [SFTP_DEALER], existingListings: [] });
+      mockSftpGet.mockRejectedValue(new Error('Authentication failed'));
+
+      const res: any = await GET(makeRequest('Bearer cron-secret'));
+      expect(res._data.results['inventory@mcgintymotorcars.com'].errors[0]).toContain('Authentication failed');
+      expect(mockSftpEnd).toHaveBeenCalled();
+    });
+
+    it('records an error instead of connecting when the SFTP config is missing a remote path', async () => {
+      makeSupabaseMock({ dealers: [{ ...SFTP_DEALER, feed_remote_path: null }], existingListings: [] });
+
+      const res: any = await GET(makeRequest('Bearer cron-secret'));
+      expect(res._data.results['inventory@mcgintymotorcars.com'].errors[0]).toContain('missing host, username, or remote file path');
+      expect(mockSftpConnect).not.toHaveBeenCalled();
+    });
+
+    it('includes SFTP-configured dealers in the query even though they have no feed_url', async () => {
+      const { dealerQueryCalls } = makeSupabaseMock({ dealers: [] });
+      await GET(makeRequest('Bearer cron-secret'));
+      // The real query combines feed_sync_hour with an OR across feed_url/feed_protocol -- this
+      // just confirms the eq() call still fires correctly now that .or() sits after it.
+      expect(dealerQueryCalls[0]).toEqual({ col: 'feed_sync_hour', val: CURRENT_HOUR });
+    });
   });
 });

@@ -14,12 +14,13 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   const { data: dealer } = await admin
     .from('dealers')
-    .select('id, name, phone, email, location, state, feed_url')
+    .select('id, name, phone, email, location, state, feed_url, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path')
     .eq('id', user.id)
     .single();
 
   if (!dealer) return NextResponse.json({ error: 'Dealer not found' }, { status: 403 });
-  if (!dealer.feed_url) return NextResponse.json({ error: 'No feed URL configured. Add one in Settings first.' }, { status: 400 });
+  const hasFeed = dealer.feed_url || (dealer.feed_protocol === 'sftp' && dealer.feed_host);
+  if (!hasFeed) return NextResponse.json({ error: 'No feed configured. Add one in Settings first.' }, { status: 400 });
 
   const knownMakes = new Set(MAKES.map(m => m.toLowerCase()));
   const result = await syncDealerFeed(admin, dealer, dealer.feed_url, knownMakes);

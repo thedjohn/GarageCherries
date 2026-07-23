@@ -4,6 +4,7 @@ import { notifyAdmin } from '@/lib/notifyAdmin';
 import { createLogger } from '@/lib/logger';
 import { submitToIndexNow } from '@/lib/indexNow';
 import { MAKES } from '@/lib/types';
+import Client from 'ssh2-sftp-client';
 
 const log = createLogger('cron/dealer-feed-sync');
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.garagecherries.com';
@@ -93,20 +94,50 @@ export interface FeedSyncResult {
   errors: string[]; unrecognizedMakes: string[];
 }
 
-type FeedDealer = { id: string; name: string; phone: string | null; email: string; location: string | null; state: string | null };
+type FeedDealer = {
+  id: string; name: string; phone: string | null; email: string; location: string | null; state: string | null;
+  feed_protocol?: string | null; feed_host?: string | null; feed_port?: number | null;
+  feed_username?: string | null; feed_password?: string | null; feed_remote_path?: string | null;
+};
+
+// Downloads the feed file from an SFTP server instead of a plain HTTPS URL --
+// used by dealers whose inventory system (e.g. Dealer.com) only exports via
+// FTP/SFTP, not a hosted pull URL.
+async function fetchViaSftp(dealer: FeedDealer): Promise<string> {
+  if (!dealer.feed_host || !dealer.feed_username || !dealer.feed_remote_path) {
+    throw new Error('SFTP feed is missing host, username, or remote file path');
+  }
+  const sftp = new Client();
+  try {
+    await sftp.connect({
+      host: dealer.feed_host,
+      port: dealer.feed_port ?? 22,
+      username: dealer.feed_username,
+      password: dealer.feed_password ?? undefined,
+    });
+    const data = await sftp.get(dealer.feed_remote_path);
+    return data.toString();
+  } finally {
+    await sftp.end();
+  }
+}
 
 // Fetches one dealer's CSV feed and syncs it: inserts new vehicles (matched by
 // VIN, falling back to Stock Number), updates existing ones, and marks as sold
 // any previously-synced VIN/Stock Number no longer present in the feed. Shared
 // by both the scheduled cron below and the dealer-triggered on-demand sync.
-export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>, dealer: FeedDealer, feedUrl: string, knownMakes: Set<string>): Promise<FeedSyncResult> {
+export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>, dealer: FeedDealer, feedUrl: string | null, knownMakes: Set<string>): Promise<FeedSyncResult> {
   const result: FeedSyncResult = { inserted: 0, updated: 0, markedSold: 0, skipped: 0, errors: [], unrecognizedMakes: [] };
 
   let csvText: string;
   try {
-    const res = await fetch(feedUrl);
-    if (!res.ok) throw new Error(`Feed fetch failed: ${res.status}`);
-    csvText = await res.text();
+    if (dealer.feed_protocol === 'sftp') {
+      csvText = await fetchViaSftp(dealer);
+    } else {
+      const res = await fetch(feedUrl ?? '');
+      if (!res.ok) throw new Error(`Feed fetch failed: ${res.status}`);
+      csvText = await res.text();
+    }
   } catch (e) {
     result.errors.push(`Could not fetch feed: ${(e as Error).message}`);
     return result;
@@ -283,13 +314,13 @@ export async function GET(request: NextRequest) {
 
   const { data: dealers } = await admin
     .from('dealers')
-    .select('id, name, phone, email, location, state, feed_url')
-    .not('feed_url', 'is', null)
-    .eq('feed_sync_hour', currentHour);
+    .select('id, name, phone, email, location, state, feed_url, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path')
+    .eq('feed_sync_hour', currentHour)
+    .or('feed_url.not.is.null,feed_protocol.eq.sftp');
 
   const results: Record<string, FeedSyncResult> = {};
 
-  for (const dealer of (dealers ?? []) as (FeedDealer & { feed_url: string })[]) {
+  for (const dealer of (dealers ?? []) as (FeedDealer & { feed_url: string | null })[]) {
     const result = await syncDealerFeed(admin, dealer, dealer.feed_url, knownMakes);
     results[dealer.email] = result;
 
