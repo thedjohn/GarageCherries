@@ -81,8 +81,10 @@ const FAQS = [
 export default async function PricingPage() {
   const settings = await getSiteSettings();
   const isPromo = new Date() < new Date(settings.promoApplicationCutoff);
+  const promoExpiresLabel = new Date(settings.promoExpiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  const promoCutoffLabel = new Date(settings.promoApplicationCutoff).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   const trialLabel = isPromo
-    ? `Free through ${new Date(settings.promoExpiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+    ? `Free through ${promoExpiresLabel}`
     : `${settings.advertiserTrialDays}-day free trial`;
   return (
     <div className="bg-zinc-50 min-h-screen">
@@ -102,7 +104,7 @@ export default async function PricingPage() {
 
       {/* 250th Birthday Promo banner */}
       <div className="bg-zinc-800 text-white text-center py-3 text-sm font-semibold">
-        🇺🇸 250th Birthday Promo — Dealers, private sellers &amp; advertisers get free access through October 31, 2026. Sign up before July 31, 2026.{' '}
+        🇺🇸 250th Birthday Promo — Dealers, private sellers &amp; advertisers get free access through {promoExpiresLabel}. Sign up before {promoCutoffLabel}.{' '}
         <Link href="/account/signup?promo=250th" className="underline text-red-400 hover:text-red-300">Claim now →</Link>
       </div>
 
@@ -263,7 +265,7 @@ export default async function PricingPage() {
           <div className="text-center mb-10">
             <h2 className="text-2xl font-extrabold text-zinc-900 mb-2">Advertise on GarageCherries</h2>
             <p className="text-zinc-500 text-sm mb-2">Reach a passionate audience of classic, muscle, and collector car enthusiasts across the USA.</p>
-            <p className="text-red-600 text-sm font-semibold">🇺🇸 250th Birthday Promo: Sign up before July 31, 2026 for free access through October 31, 2026.</p>
+            <p className="text-red-600 text-sm font-semibold">🇺🇸 250th Birthday Promo: Sign up before {promoCutoffLabel} for free access through {promoExpiresLabel}.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
             {[

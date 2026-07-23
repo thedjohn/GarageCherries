@@ -8,13 +8,19 @@ const PROMO_IMG = 'https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/pu
 
 export default function PromoModal() {
   const [open, setOpen] = useState(false);
+  const [expiresLabel, setExpiresLabel] = useState('');
   const router = useRouter();
 
   useEffect(() => {
-    const promoExpired = new Date() > new Date('2026-12-31T23:59:59');
-    if (!promoExpired && !localStorage.getItem(STORAGE_KEY)) {
-      setOpen(true);
-    }
+    fetch('/api/public/trial-days')
+      .then(res => res.json())
+      .then(data => {
+        if (data.isPromo && !localStorage.getItem(STORAGE_KEY)) {
+          setExpiresLabel(new Date(data.promoExpiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }));
+          setOpen(true);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const dismiss = () => {
@@ -83,7 +89,7 @@ export default function PromoModal() {
             </button>
           </div>
           <p className="text-xs text-zinc-400 mt-3 text-center">
-            No credit card required. Offer valid through December 31, 2026.
+            No credit card required. Offer valid through {expiresLabel}.
           </p>
         </div>
       </div>
