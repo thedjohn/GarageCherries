@@ -3,7 +3,7 @@ import { withSentryConfig } from '@sentry/nextjs';
 import { withAxiom } from 'next-axiom';
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['sharp'],
+  serverExternalPackages: ['sharp', 'ssh2', 'ssh2-sftp-client'],
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },
