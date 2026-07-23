@@ -125,6 +125,7 @@ export default function Header() {
             <Link href="/dealers" className="hover:text-red-400 transition-colors">Dealers</Link>
             <Link href="/sell" className="hover:text-red-400 transition-colors">Sell</Link>
             <Link href="/pricing" className="hover:text-red-400 transition-colors">Pricing</Link>
+            <a href="https://garage-cherries-shop.fourthwall.com/" target="_blank" rel="noopener noreferrer" className="hover:text-red-400 transition-colors">Shop</a>
           </nav>
 
           {/* Auth CTA */}
@@ -280,6 +281,7 @@ export default function Header() {
             <Link href="/dealers" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Dealers</Link>
             <Link href="/sell" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Sell Your Car</Link>
             <Link href="/pricing" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Pricing</Link>
+            <a href="https://garage-cherries-shop.fourthwall.com/" target="_blank" rel="noopener noreferrer" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Shop</a>
             <Link href="/advertise" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Advertise</Link>
 
             <div className="border-t border-zinc-700 pt-3 mt-2 space-y-2">
