@@ -12,6 +12,8 @@
 
 *Updated 2026-07-22 — added items for: dealer multi-location support and the "Our Locations" section on a dealer's public page (§1); dealer self-service Feed Sync settings and a now-functional "Sync now" button, replacing the old "Import JSON"/"Sync Now — Coming soon" line, which is no longer accurate (§4); public-facing pagination on `/listings` and every `/cars` listings grid, and the `/listings` sort dropdown (§1); `$0`-priced listings showing "Call For Price" (§1). The sign-off below predates all of this and does not cover any of it.*
 
+*Updated 2026-07-23 — added items for: dealer Feed Sync gaining a "Feed Type" choice between the existing direct URL and a new SFTP option (host/port/username/password/remote path), for dealers whose inventory platform only exports via FTP/SFTP rather than a hosted pull URL (§4); the site nav (desktop + mobile) and footer gaining a "Shop"/"Shop Merch" link to the GarageCherries merch storefront (§1); the pricing page's 250th Promo banner and advertiser-section promo text now correctly showing the real configured promo dates instead of stale hardcoded ones, and the homepage promo popup's copy and its show/hide behavior both now driven by that same setting instead of a separate hardcoded date (§1). The sign-off below predates all of this and does not cover any of it.*
+
 ---
 
 ## 1. Public Browsing (no login required)
@@ -116,6 +118,7 @@
 - [ ] "Message watchers" on a listing with watchers — compose modal sends, "Messaged" label appears after
 - [ ] Settings → **Locations** — add a second location, mark it primary; confirm the dealer's own phone/address/city/state/zip/email update to match, and the public dealer page's "Our Locations" section appears (see §1); edit and delete a location
 - [ ] Settings → **Feed Sync** — enter a feed URL and pick a daily sync hour, save succeeds; "Sync now" button in the Overview header runs an immediate sync and shows a result summary (e.g. "3 inserted, 1 updated, 0 sold, 0 skipped"); button is disabled with a tooltip if no feed URL is configured yet. **Import JSON** no longer exists (removed — this vendor format never offered a JSON/API option, only a CSV/XML feed URL)
+- [ ] Settings → **Feed Sync → Feed Type: SFTP** — switching from "Direct URL (HTTPS)" swaps the URL field for Host/Port/Username/Password/Remote File Path; saving with SFTP configured (no Feed URL) still enables the "Sync now" button in the Overview header
 - [ ] (If a test dealer account has an expired beta) — confirm redirect to `/dealer/expired` on dashboard load
 
 ---
