@@ -122,7 +122,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
       availability: 'https://schema.org/InStock',
       price: '0',
       priceCurrency: 'USD',
-      hasMerchantReturnPolicy: { '@type': 'MerchantReturnPolicy', returnPolicyCategory: 'https://schema.org/MerchantReturnNotPermitted' },
+      hasMerchantReturnPolicy: { '@type': 'MerchantReturnPolicy', returnPolicyCategory: 'https://schema.org/MerchantReturnNotPermitted', applicableCountry: 'US' },
     },
     ...(e.url ? { url: e.url } : {}),
   };
