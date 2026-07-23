@@ -12,6 +12,11 @@ interface Event {
   featured: boolean; description: string; url?: string | null;
 }
 
+interface RelatedEvent {
+  id: string; name: string; slug: string; date: string; end_date: string | null;
+  location: string; state: string; type: string;
+}
+
 const TYPE_LABELS: Record<string, string> = {
   'show': 'Car Show', 'swap-meet': 'Swap Meet', 'cruise': 'Cruise Night', 'auction': 'Auction',
 };
@@ -83,6 +88,34 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
   if (!event) notFound();
 
   const e = event as Event;
+
+  // "More Upcoming Events" -- same state first (more likely to actually be
+  // relevant to someone reading about this one), falling back to any other
+  // upcoming event if there aren't enough in-state. Excludes this event and
+  // anything already past, same date-filter convention as app/events/page.tsx.
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: sameStateEvents } = await admin
+    .from('events')
+    .select('id, name, slug, date, end_date, location, state, type')
+    .eq('status', 'approved')
+    .eq('state', e.state)
+    .neq('id', e.id)
+    .gte('date', today)
+    .order('date', { ascending: true })
+    .limit(3);
+  let relatedEvents: RelatedEvent[] = sameStateEvents ?? [];
+  if (relatedEvents.length < 3) {
+    const { data: otherEvents } = await admin
+      .from('events')
+      .select('id, name, slug, date, end_date, location, state, type')
+      .eq('status', 'approved')
+      .neq('id', e.id)
+      .neq('state', e.state)
+      .gte('date', today)
+      .order('date', { ascending: true })
+      .limit(3 - relatedEvents.length);
+    relatedEvents = [...relatedEvents, ...(otherEvents ?? [])];
+  }
   const timeRange = e.start_time
     ? e.end_time
       ? `${formatTime(e.start_time)} – ${formatTime(e.end_time)}`
@@ -194,6 +227,29 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             </a>
           )}
         </div>
+
+        {relatedEvents.length > 0 && (
+          <div className="mt-10 pt-8 border-t border-zinc-100">
+            <h2 className="text-lg font-bold text-zinc-900 mb-4">More Upcoming Events</h2>
+            <div className="space-y-3">
+              {relatedEvents.map(re => (
+                <Link key={re.id} href={`/events/${re.slug}`}
+                  className="block bg-white border border-zinc-100 rounded-xl p-4 hover:border-red-200 hover:shadow-sm transition-all">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600">
+                      {TYPE_LABELS[re.type] ?? re.type}
+                    </span>
+                    <p className="font-semibold text-zinc-900 text-sm">{re.name}</p>
+                  </div>
+                  <p className="text-xs text-zinc-500">{formatDate(re.date, re.end_date)} · {re.location}, {re.state}</p>
+                </Link>
+              ))}
+            </div>
+            <Link href="/events" className="inline-block mt-4 text-sm font-semibold text-red-600 hover:underline">
+              View full calendar →
+            </Link>
+          </div>
+        )}
 
         <p className="mt-10 text-xs text-zinc-400">
           Dates are subject to change. Verify with organizers before making travel arrangements.
