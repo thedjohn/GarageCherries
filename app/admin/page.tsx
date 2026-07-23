@@ -7,6 +7,7 @@ import VehicleFieldsForm from '@/components/VehicleFieldsForm';
 import AdminEmailCampaigns from '@/components/AdminEmailCampaigns';
 import { resolveAdminRole, type TeamMember } from '@/lib/resolveAdminRole';
 import { MAKES } from '@/lib/types';
+import TrendChart, { type TrendPoint } from '@/components/TrendChart';
 
 interface Listing {
   id: string; slug: string; title: string; year: number; make: string; model: string;
@@ -42,7 +43,7 @@ interface SiteUser {
   conversation_count: number;
 }
 
-type Tab = 'listings' | 'reported' | 'team' | 'users' | 'applications' | 'events' | 'email';
+type Tab = 'overview' | 'listings' | 'reported' | 'team' | 'users' | 'applications' | 'events' | 'email';
 
 interface CarEvent {
   id: string; name: string; date: string; end_date: string | null;
@@ -67,6 +68,18 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [adminRole, setAdminRole] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('listings');
+
+  // Overview
+  const [overview, setOverview] = useState<{
+    pendingQueue: { count: number; oldestDays: number | null };
+    reportedQueue: { count: number };
+    funnel: { views30d: number; inquiries30d: number; offers30d: number; sold30d: number };
+    dealerSignupsTrend: TrendPoint[];
+  } | null>(null);
+  const loadOverview = async () => {
+    const res = await fetch('/api/admin/overview');
+    if (res.ok) setOverview(await res.json());
+  };
 
   // Listings
   const [listings, setListings] = useState<Listing[]>([]);
@@ -743,6 +756,11 @@ export default function AdminPage() {
 
       {/* Tabs — visible tabs depend on role */}
       <div className="flex gap-1 mb-6 bg-zinc-100 rounded-xl p-1 w-fit flex-wrap">
+        {(adminRole === 'superadmin' || adminRole === 'admin') && (
+          <button onClick={() => { setTab('overview'); if (!overview) loadOverview(); }} className={tabCls('overview')}>
+            Overview
+          </button>
+        )}
         {adminRole !== 'support' && (
           <button onClick={() => setTab('listings')} className={tabCls('listings')}>
             Listings <span className="ml-1 text-xs text-zinc-400">{statusCounts.pending} pending</span>
@@ -786,6 +804,60 @@ export default function AdminPage() {
           </button>
         )}
       </div>
+
+      {/* Overview tab */}
+      {tab === 'overview' && (
+        <div className="space-y-4 mb-6">
+          {!overview ? (
+            <p className="text-sm text-zinc-400">Loading…</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
+                  <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-1">Pending listings queue</p>
+                  <p className="text-2xl font-bold text-zinc-900">{overview.pendingQueue.count}</p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    {overview.pendingQueue.oldestDays !== null
+                      ? `Oldest submitted ${overview.pendingQueue.oldestDays}d ago`
+                      : 'Nothing waiting right now'}
+                  </p>
+                </div>
+                <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
+                  <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-1">Reported content queue</p>
+                  <p className="text-2xl font-bold text-zinc-900">{overview.reportedQueue.count}</p>
+                  <p className="text-xs text-zinc-400 mt-1">Open reports right now</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
+                  <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-3">Marketplace-wide buyer journey — last 30 days</p>
+                  <div className="space-y-2">
+                    {[
+                      { label: 'Listing views', value: overview.funnel.views30d, of: overview.funnel.views30d },
+                      { label: 'Inquiries', value: overview.funnel.inquiries30d, of: overview.funnel.views30d },
+                      { label: 'Offers', value: overview.funnel.offers30d, of: overview.funnel.views30d },
+                      { label: 'Sold', value: overview.funnel.sold30d, of: overview.funnel.views30d },
+                    ].map(row => (
+                      <div key={row.label} className="grid grid-cols-[100px_1fr_60px] items-center gap-3 text-sm">
+                        <span className="text-zinc-500">{row.label}</span>
+                        <div className="bg-zinc-100 rounded h-4 overflow-hidden">
+                          <div className="bg-red-600 h-full rounded" style={{ width: `${row.of > 0 ? Math.max(2, Math.round((row.value / row.of) * 100)) : 0}%` }} />
+                        </div>
+                        <span className="text-zinc-700 text-right">{row.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
+                  <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-3">New dealer signups — last 30 days</p>
+                  <TrendChart data={overview.dealerSignupsTrend} unitLabel="new dealers" color="#dc2626" />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Listings tab */}
       {tab === 'listings' && <>
