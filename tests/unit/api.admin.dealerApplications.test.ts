@@ -183,6 +183,7 @@ function setupAppFetch(app: Record<string, unknown> | null) {
       };
     }
     if (table === 'dealers') return { insert: vi.fn().mockResolvedValue({ error: null }) };
+    if (table === 'profiles') return { delete: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }) };
     return {};
   });
 }
@@ -235,6 +236,16 @@ describe('PATCH /api/admin/dealer-applications', () => {
       const res: any = await PATCH(makeRequest({ id: 'app-1', action: 'resend' }));
       expect(res._status).toBe(200);
       expect(mockSend).toHaveBeenCalledOnce();
+    });
+
+    it('generates the recovery link with the dealer/login redirect (the only dealer URL in Supabase\'s allow-list)', async () => {
+      mockRequireAdmin.mockResolvedValue('admin');
+      setupAppFetch({ ...baseApp, status: 'approved' });
+      await PATCH(makeRequest({ id: 'app-1', action: 'resend' }));
+      expect(mockGenerateLink).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'recovery',
+        options: { redirectTo: 'https://www.garagecherries.com/dealer/login' },
+      }));
     });
   });
 
@@ -325,6 +336,7 @@ describe('PATCH /api/admin/dealer-applications', () => {
           };
         }
         if (table === 'dealers') return { insert: vi.fn().mockResolvedValue({ error: null }) };
+        if (table === 'profiles') return { delete: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }) };
         return {};
       });
       const res: any = await PATCH(makeRequest({ id: 'app-1', action: 'approve' }));
@@ -370,6 +382,7 @@ describe('PATCH /api/admin/dealer-applications', () => {
           };
         }
         if (table === 'dealers') return { insert };
+        if (table === 'profiles') return { delete: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }) };
         return {};
       });
       // Application submitted Aug 15 — would have qualified for the OLD hardcoded promo cutoff
@@ -389,6 +402,17 @@ describe('PATCH /api/admin/dealer-applications', () => {
       const res: any = await PATCH(makeRequest({ id: 'app-1', action: 'approve' }));
       expect(res._status).toBe(200);
       expect(mockSend.mock.calls[0][0].html).toContain('support@garagecherries.com');
+    });
+
+    it('generates the recovery link with the dealer/login redirect (the only dealer URL in Supabase\'s allow-list)', async () => {
+      mockRequireAdmin.mockResolvedValue('admin');
+      mockCreateUser.mockResolvedValue({ data: { user: { id: 'new-user-1' } }, error: null });
+      setupAppFetch(baseApp);
+      await PATCH(makeRequest({ id: 'app-1', action: 'approve' }));
+      expect(mockGenerateLink).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'recovery',
+        options: { redirectTo: 'https://www.garagecherries.com/dealer/login' },
+      }));
     });
   });
 });

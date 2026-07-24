@@ -39,16 +39,29 @@ export default function DealerLoginPage() {
       setError(linkError.replace(/\+/g, ' '));
     }
 
-    // Supabase ignores redirect_to and sends recovery links to this page --
-    // rely on the SDK's own PASSWORD_RECOVERY event (same pattern already
-    // proven working on app/account/reset-password/page.tsx) instead of
-    // manually parsing hash params for access_token/type. That manual parsing
-    // broke once the browser client (createBrowserClient from @supabase/ssr,
-    // which defaults to the PKCE flow) stopped sending those hash params at
-    // all -- recovery links landed here but were never detected, so the page
-    // silently fell through to the normal sign-in view instead of the
-    // password-setup form.
     const supabase = createClient();
+
+    // Admin-generated recovery links (dealer invite/resend emails, via
+    // auth.admin.generateLink) use Supabase's implicit flow and arrive here
+    // as hash tokens (#access_token=...&type=recovery) -- redirect_to isn't
+    // in Supabase's allow-list for anywhere else dealer-related, so these
+    // always land on this page and need to be parsed directly.
+    const accessToken = hashParams.get('access_token');
+    if (accessToken && hashParams.get('type') === 'recovery') {
+      setSetupMode(true);
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: hashParams.get('refresh_token') ?? '' })
+        .then(({ data, error: setSessionError }) => {
+          if (data.session) {
+            setSetupReady(true);
+          } else {
+            setError(setSessionError?.message ?? 'This reset link is invalid or has expired.');
+          }
+        });
+    }
+
+    // Self-service "forgot password" links (resetPasswordForEmail) use the
+    // PKCE flow instead, which the SDK surfaces via this event rather than
+    // hash params.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setSetupMode(true);

@@ -72,7 +72,7 @@ export async function PATCH(req: NextRequest) {
     const { data: linkData } = await admin.auth.admin.generateLink({
       type: 'recovery',
       email: app.email,
-      options: { redirectTo: 'https://www.garagecherries.com/dealer/reset-password' },
+      options: { redirectTo: 'https://www.garagecherries.com/dealer/login' },
     });
     const actionLink = linkData?.properties?.action_link;
     if (!actionLink) return NextResponse.json({ error: 'Failed to generate reset link' }, { status: 500 });
@@ -177,11 +177,16 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: dealerErr.message }, { status: 500 });
   }
 
+  // handle_new_user_profile() fires on any email-provider auth.users insert (built for
+  // regular /account/signup buyers) and auto-creates a matching `profiles` row here too --
+  // remove it so a dealer account isn't also a buyer/seller account with duplicate nav access.
+  await admin.from('profiles').delete().eq('id', userId);
+
   // Generate password-set link and email it to the new dealer
   const { data: linkData } = await admin.auth.admin.generateLink({
     type: 'recovery',
     email: app.email,
-    options: { redirectTo: 'https://www.garagecherries.com/dealer/reset-password' },
+    options: { redirectTo: 'https://www.garagecherries.com/dealer/login' },
   });
   const actionLink = linkData?.properties?.action_link;
 
