@@ -19,7 +19,7 @@ const BATCH_SIZE = 5;
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized', debugEnvSecretLen: process.env.CRON_SECRET?.length ?? null, debugHeaderLen: authHeader?.length ?? null, debugEnvSet: 'CRON_SECRET' in process.env }, { status: 401 });
   }
 
   const admin = createAdminClient();
