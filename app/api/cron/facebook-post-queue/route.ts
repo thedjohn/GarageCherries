@@ -31,6 +31,9 @@ export async function GET(request: NextRequest) {
       debugDeploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? null,
       debugVercelUrl: process.env.VERCEL_URL ?? null,
       debugGitSha: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
+      debugCronKeys: Object.keys(process.env).filter((k) => /cron/i.test(k)),
+      debugNodeEnv: process.env.NODE_ENV ?? null,
+      debugVercelEnv: process.env.VERCEL_ENV ?? null,
     }, { status: 401 });
   }
 
