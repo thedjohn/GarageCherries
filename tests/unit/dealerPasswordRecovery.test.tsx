@@ -44,46 +44,23 @@ afterEach(() => {
 });
 
 // ── /dealer/login ────────────────────────────────────────────────────────────
-// This page has to detect two genuinely different recovery-link formats,
-// because both end up landing here (it's the only dealer-related URL in
-// Supabase's Redirect URLs allow-list):
-//   - Admin-generated links (dealer invite/resend emails, auth.admin.generateLink)
-//     use the implicit flow and arrive as hash tokens (#access_token=...&type=recovery).
-//   - Self-service "forgot password" links (resetPasswordForEmail) use the PKCE
-//     flow and are surfaced via the SDK's own PASSWORD_RECOVERY event instead.
-// e68eaf4 (2026-07-21) replaced hash parsing with the PASSWORD_RECOVERY listener
-// to fix the second case, which silently broke the first (admin-generated links
-// stopped being detected here at all) -- restored 2026-07-24 so both are handled
-// side by side. See IMPLEMENTATION_STATUS.md for the full incident writeup.
+// This is the only dealer-related URL in Supabase's Redirect URLs allow-list,
+// so both admin-generated links (dealer invite/resend emails, implicit-flow
+// hash tokens) and self-service "forgot password" links (PKCE flow) land
+// here. Both are auto-detected and turned into a PASSWORD_RECOVERY event by
+// the SDK itself (detectSessionInUrl, on by default for createBrowserClient,
+// applies regardless of flowType) -- manually re-parsing the hash and calling
+// setSession() directly was tried 2026-07-24 to "fix" the first case, but
+// that's redundant with the SDK's own handling and actively raced against it
+// (failed with "Auth session missing!" on a real recovery link) -- reverted
+// same day. The real fix for links landing on plain sign-in was never about
+// token format; redirect_to wasn't in Supabase's allow-list at all (see
+// IMPLEMENTATION_STATUS.md for the full incident writeup).
 
 describe('DealerLoginPage recovery link handling', () => {
   it('shows the normal sign-in form by default', () => {
     render(<DealerLoginPage />);
     expect(screen.getByText('Sign in to your account')).toBeInTheDocument();
-  });
-
-  it('shows the password setup form for a hash-based recovery token (admin-generated link)', async () => {
-    window.location.hash = '#access_token=fake-access-token&refresh_token=fake-refresh-token&type=recovery';
-    mockSetSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } }, error: null });
-
-    render(<DealerLoginPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Set a new password')).toBeInTheDocument();
-    });
-    expect(mockSetSession).toHaveBeenCalledWith({ access_token: 'fake-access-token', refresh_token: 'fake-refresh-token' });
-    expect(screen.queryByText('Sign in to your account')).not.toBeInTheDocument();
-  });
-
-  it('shows an invalid-link error when the hash-based token fails to establish a session', async () => {
-    window.location.hash = '#access_token=fake-access-token&refresh_token=fake-refresh-token&type=recovery';
-    mockSetSession.mockResolvedValue({ data: { session: null }, error: { message: 'Token has expired.' } });
-
-    render(<DealerLoginPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Token has expired.')).toBeInTheDocument();
-    });
   });
 
   it('shows the password setup form when Supabase fires PASSWORD_RECOVERY', async () => {
