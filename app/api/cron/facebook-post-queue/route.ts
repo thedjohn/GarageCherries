@@ -2,12 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { postListingToFacebook } from '@/lib/facebook/postToPage';
 import { createLogger } from '@/lib/logger';
-import { createHash } from 'crypto';
 
 const log = createLogger('cron/facebook-post-queue');
 const BATCH_SIZE = 5;
-// cache-buster: debug-round-2
-const fp = (s: string | undefined | null) => (s == null ? null : createHash('sha256').update(s).digest('hex').slice(0, 12));
 
 // GET /api/cron/facebook-post-queue
 // Runs hourly via Vercel Cron. Posts a small, fixed batch of not-yet-posted
@@ -22,19 +19,7 @@ const fp = (s: string | undefined | null) => (s == null ? null : createHash('sha
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({
-      error: 'Unauthorized',
-      debugEnvSecretLen: process.env.CRON_SECRET?.length ?? null,
-      debugHeaderLen: authHeader?.length ?? null,
-      debugEnvFingerprint: fp(process.env.CRON_SECRET),
-      debugSentFingerprint: fp(authHeader?.replace(/^Bearer /, '')),
-      debugDeploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? null,
-      debugVercelUrl: process.env.VERCEL_URL ?? null,
-      debugGitSha: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
-      debugCronKeys: Object.keys(process.env).filter((k) => /cron/i.test(k)),
-      debugNodeEnv: process.env.NODE_ENV ?? null,
-      debugVercelEnv: process.env.VERCEL_ENV ?? null,
-    }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const admin = createAdminClient();
