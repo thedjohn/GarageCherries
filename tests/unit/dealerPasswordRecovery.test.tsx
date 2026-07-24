@@ -77,34 +77,22 @@ describe('DealerLoginPage recovery link handling', () => {
     expect(screen.queryByText('Sign in to your account')).not.toBeInTheDocument();
   });
 
-  it('shows a friendly invalid-link message (not the raw SDK error) when the hash-based token fails', async () => {
+  it('falls back to the normal sign-in form with a friendly note when the hash-based token is dead', async () => {
     window.location.hash = '#access_token=fake-access-token&refresh_token=fake-refresh-token&type=recovery';
     // The raw SDK message for a revoked/consumed token is "Auth session
-    // missing!" -- meaningless to a dealer. Assert it never surfaces.
+    // missing!" -- meaningless to a dealer. A dead token must never strand
+    // the user on the setup card: they get the sign-in form directly, with
+    // a plain-language note, and the raw SDK text never surfaces.
     mockSetSession.mockResolvedValue({ data: { session: null }, error: { message: 'Auth session missing!' } });
 
     render(<DealerLoginPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/this reset link is invalid or has expired/i)).toBeInTheDocument();
-    });
-    expect(screen.queryByText('Auth session missing!')).not.toBeInTheDocument();
-  });
-
-  it('offers a "Back to sign in" escape from the failed-token error card', async () => {
-    window.location.hash = '#access_token=fake-access-token&refresh_token=fake-refresh-token&type=recovery';
-    mockSetSession.mockResolvedValue({ data: { session: null }, error: { message: 'Auth session missing!' } });
-
-    render(<DealerLoginPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Back to sign in')).toBeInTheDocument();
-    });
-    screen.getByText('Back to sign in').click();
 
     await waitFor(() => {
       expect(screen.getByText('Sign in to your account')).toBeInTheDocument();
     });
+    expect(screen.getByText(/that password link has expired or was already used/i)).toBeInTheDocument();
+    expect(screen.queryByText('Set a new password')).not.toBeInTheDocument();
+    expect(screen.queryByText('Auth session missing!')).not.toBeInTheDocument();
   });
 
   it('strips the token from the URL after reading it, so history/autocomplete never replays it', async () => {

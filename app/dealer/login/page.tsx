@@ -64,9 +64,13 @@ export default function DealerLoginPage() {
           if (data.session) {
             setSetupReady(true);
           } else {
-            // Raw SDK messages here ("Auth session missing!") read as noise --
-            // whatever the specific failure, to the dealer it means one thing.
-            setError('This reset link is invalid or has expired. Use "Forgot password?" below to request a new one.');
+            // Dead token (expired, already used, or revoked by a sign-out):
+            // drop straight back to the normal sign-in form with a plain
+            // explanation, rather than stranding the user on a setup card
+            // they can't use. Raw SDK messages ("Auth session missing!")
+            // read as noise, so don't surface them.
+            setSetupMode(false);
+            setError('That password link has expired or was already used. Sign in below, or use "Forgot password?" to get a new link.');
           }
         });
     }
