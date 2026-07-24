@@ -27,6 +27,9 @@ export async function GET(request: NextRequest) {
       debugHeaderLen: authHeader?.length ?? null,
       debugEnvFingerprint: fp(process.env.CRON_SECRET),
       debugSentFingerprint: fp(authHeader?.replace(/^Bearer /, '')),
+      debugDeploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? null,
+      debugVercelUrl: process.env.VERCEL_URL ?? null,
+      debugGitSha: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
     }, { status: 401 });
   }
 
