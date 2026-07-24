@@ -39,24 +39,33 @@ export default function DealerLoginPage() {
       setError(linkError.replace(/\+/g, ' '));
     }
 
-    // @supabase/ssr's createBrowserClient defaults detectSessionInUrl to true
-    // (confirmed in node_modules/@supabase/ssr/dist/main/createBrowserClient.js),
-    // which auto-detects and processes BOTH hash-based implicit-flow tokens
-    // (#access_token=...&type=recovery -- what admin-generated dealer
-    // invite/resend links use) and PKCE-flow links (self-service forgot
-    // password) regardless of the client's configured flowType -- that
-    // setting only affects outbound requests, not inbound URL detection
-    // (confirmed in node_modules/@supabase/auth-js/dist/main/GoTrueClient.js,
-    // _initialize()/_isImplicitGrantCallback()). So the SDK establishes the
-    // session from either link format on its own and fires PASSWORD_RECOVERY
-    // below -- no manual token parsing needed, and doing it anyway raced
-    // against the SDK's own auto-detection and failed with "Auth session
-    // missing!" (tried 2026-07-24, reverted same day). The actual cause of
-    // recovery links landing on plain sign-in was never the token format --
-    // it was redirect_to not being in Supabase's allow-list at all, so links
-    // fell back to the Site URL instead of wherever redirect_to pointed (see
-    // app/api/admin/dealer-applications/route.ts).
     const supabase = createClient();
+
+    // Admin-generated recovery links (dealer invite/resend emails, via
+    // auth.admin.generateLink) use Supabase's implicit flow and arrive here
+    // as hash tokens (#access_token=...&type=recovery). @supabase/ssr's
+    // createBrowserClient hardcodes flowType: 'pkce' (non-overridable), and
+    // GoTrueClient's own auto URL-detection explicitly REJECTS implicit-flow
+    // callbacks when flowType is 'pkce' (throws AuthPKCEGrantCodeExchangeError
+    // in _getSessionFromURL, confirmed by reading node_modules/@supabase/auth-js
+    // source directly, 2026-07-24) -- so these links are never auto-detected
+    // and must be parsed here manually.
+    const accessToken = hashParams.get('access_token');
+    if (accessToken && hashParams.get('type') === 'recovery') {
+      setSetupMode(true);
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: hashParams.get('refresh_token') ?? '' })
+        .then(({ data, error: setSessionError }) => {
+          if (data.session) {
+            setSetupReady(true);
+          } else {
+            setError(setSessionError?.message ?? 'This reset link is invalid or has expired.');
+          }
+        });
+    }
+
+    // Self-service "forgot password" links (resetPasswordForEmail) use the
+    // PKCE flow instead, which the SDK surfaces via this event rather than
+    // hash params.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setSetupMode(true);

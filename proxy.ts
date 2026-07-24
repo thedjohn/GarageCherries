@@ -33,12 +33,13 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Redirect authenticated users away from login page
-  if (request.nextUrl.pathname === '/dealer/login' && user) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/dealer/dashboard';
-    return NextResponse.redirect(url);
-  }
+  // Deliberately no "already authenticated -> redirect away from /dealer/login"
+  // here: recovery-link tokens (#access_token=...) arrive as a URL hash, which
+  // is never sent to the server, so this middleware can't tell a recovery
+  // link apart from a normal visit -- redirecting on any existing session
+  // silently discarded the new token and used whatever session was already in
+  // the browser instead, which is what broke the dealer password-reset flow
+  // for anyone who wasn't in a fully signed-out browser (2026-07-24).
 
   return supabaseResponse;
 }
