@@ -77,15 +77,46 @@ describe('DealerLoginPage recovery link handling', () => {
     expect(screen.queryByText('Sign in to your account')).not.toBeInTheDocument();
   });
 
-  it('shows an invalid-link error when the hash-based token fails to establish a session', async () => {
+  it('shows a friendly invalid-link message (not the raw SDK error) when the hash-based token fails', async () => {
     window.location.hash = '#access_token=fake-access-token&refresh_token=fake-refresh-token&type=recovery';
-    mockSetSession.mockResolvedValue({ data: { session: null }, error: { message: 'Token has expired.' } });
+    // The raw SDK message for a revoked/consumed token is "Auth session
+    // missing!" -- meaningless to a dealer. Assert it never surfaces.
+    mockSetSession.mockResolvedValue({ data: { session: null }, error: { message: 'Auth session missing!' } });
 
     render(<DealerLoginPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Token has expired.')).toBeInTheDocument();
+      expect(screen.getByText(/this reset link is invalid or has expired/i)).toBeInTheDocument();
     });
+    expect(screen.queryByText('Auth session missing!')).not.toBeInTheDocument();
+  });
+
+  it('offers a "Back to sign in" escape from the failed-token error card', async () => {
+    window.location.hash = '#access_token=fake-access-token&refresh_token=fake-refresh-token&type=recovery';
+    mockSetSession.mockResolvedValue({ data: { session: null }, error: { message: 'Auth session missing!' } });
+
+    render(<DealerLoginPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Back to sign in')).toBeInTheDocument();
+    });
+    screen.getByText('Back to sign in').click();
+
+    await waitFor(() => {
+      expect(screen.getByText('Sign in to your account')).toBeInTheDocument();
+    });
+  });
+
+  it('strips the token from the URL after reading it, so history/autocomplete never replays it', async () => {
+    window.location.hash = '#access_token=fake-access-token&refresh_token=fake-refresh-token&type=recovery';
+    mockSetSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } }, error: null });
+
+    render(<DealerLoginPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Set a new password')).toBeInTheDocument();
+    });
+    expect(window.location.hash).toBe('');
   });
 
   it('shows the password setup form when Supabase fires PASSWORD_RECOVERY', async () => {

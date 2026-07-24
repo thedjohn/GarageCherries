@@ -52,13 +52,21 @@ export default function DealerLoginPage() {
     // and must be parsed here manually.
     const accessToken = hashParams.get('access_token');
     if (accessToken && hashParams.get('type') === 'recovery') {
+      // Strip the token from the URL immediately after reading it, so the
+      // browser's history/autocomplete never stores a URL carrying it --
+      // revisiting /dealer/login via address-bar autocomplete used to replay
+      // the (by then consumed or revoked) token and dead-end on a cryptic
+      // "Auth session missing!" error.
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
       setSetupMode(true);
       supabase.auth.setSession({ access_token: accessToken, refresh_token: hashParams.get('refresh_token') ?? '' })
-        .then(({ data, error: setSessionError }) => {
+        .then(({ data }) => {
           if (data.session) {
             setSetupReady(true);
           } else {
-            setError(setSessionError?.message ?? 'This reset link is invalid or has expired.');
+            // Raw SDK messages here ("Auth session missing!") read as noise --
+            // whatever the specific failure, to the dealer it means one thing.
+            setError('This reset link is invalid or has expired. Use "Forgot password?" below to request a new one.');
           }
         });
     }
@@ -143,7 +151,15 @@ export default function DealerLoginPage() {
           ) : !setupReady ? (
             <div>
               {error
-                ? <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+                ? (
+                  <>
+                    <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+                    <button type="button" onClick={() => { setSetupMode(false); setError(''); }}
+                      className="mt-4 w-full border border-zinc-200 text-zinc-600 font-semibold py-2.5 rounded-xl text-sm hover:bg-zinc-50 transition-colors">
+                      Back to sign in
+                    </button>
+                  </>
+                )
                 : <p className="text-sm text-zinc-400">Verifying link…</p>
               }
             </div>
