@@ -6,6 +6,7 @@ import { createHash } from 'crypto';
 
 const log = createLogger('cron/facebook-post-queue');
 const BATCH_SIZE = 5;
+// cache-buster: debug-round-2
 const fp = (s: string | undefined | null) => (s == null ? null : createHash('sha256').update(s).digest('hex').slice(0, 12));
 
 // GET /api/cron/facebook-post-queue
