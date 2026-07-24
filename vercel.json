@@ -14,11 +14,11 @@
     },
     {
       "path": "/api/cron/dealer-feed-sync",
-      "schedule": "0 * * * *"
+      "schedule": "0 11 * * *"
     },
     {
       "path": "/api/cron/facebook-post-queue",
-      "schedule": "0 * * * *"
+      "schedule": "0 15 * * *"
     }
   ]
 }
