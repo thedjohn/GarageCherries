@@ -15,5 +15,11 @@ jobs:
     steps:
       - name: Call facebook-post-queue cron endpoint
         run: |
-          curl -sf -X GET "https://www.garagecherries.com/api/cron/facebook-post-queue" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+          status=$(curl -s -o response.txt -w "%{http_code}" -X GET "https://www.garagecherries.com/api/cron/facebook-post-queue" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "HTTP status: $status"
+          echo "Response body:"
+          cat response.txt
+          if [ "$status" -ge 400 ]; then
+            exit 1
+          fi
