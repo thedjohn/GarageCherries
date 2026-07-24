@@ -1,0 +1,19 @@
+name: Facebook Post Queue
+
+# Runs hourly to drain the Facebook post queue (moved off Vercel Cron, whose
+# Hobby plan only allows daily jobs). See app/api/cron/facebook-post-queue/route.ts
+# for why hourly matters: it trickles new listings out a few per hour instead
+# of dumping them all at once.
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call facebook-post-queue cron endpoint
+        run: |
+          curl -sf -X GET "https://www.garagecherries.com/api/cron/facebook-post-queue" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
