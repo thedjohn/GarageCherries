@@ -45,6 +45,22 @@ function LoginForm() {
         router.push('/account/suspended');
         return;
       }
+
+      // Dealer accounts belong in the dealer portal -- signing in here would
+      // drop them into the buyer experience with no dealer dashboard access.
+      // Local-scope sign-out so an active dealer session on another
+      // device/tab isn't revoked by the mistake.
+      const { data: dealerRow } = await supabase
+        .from('dealers')
+        .select('id')
+        .or(`id.eq.${userId},email.eq.${data.user!.email}`)
+        .maybeSingle();
+      if (dealerRow) {
+        await supabase.auth.signOut({ scope: 'local' });
+        setError('This is a dealer account. Please use the Dealer sign in link below.');
+        setLoading(false);
+        return;
+      }
     }
 
     router.push(returnTo);
