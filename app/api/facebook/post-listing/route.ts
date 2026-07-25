@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   const { data: listing } = await admin
     .from('listings')
-    .select('id, title, make, model, year, price, slug, images, seller_id')
+    .select('id, title, make, model, year, price, slug, images, seller_id, mileage, condition, location, state')
     .eq('id', carId)
     .single();
 

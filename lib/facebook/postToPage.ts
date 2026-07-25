@@ -44,13 +44,26 @@ interface ListingPostInput {
   price: number;
   slug: string;
   images: string[] | null;
+  mileage?: number | null;
+  condition?: string | null;
+  location?: string | null;
+  state?: string | null;
 }
 
 // Designed to never throw: a Facebook API failure must never break listing/event creation.
 // Returns whether the post actually succeeded, so callers can record it (e.g. fb_posted_at).
 export async function postListingToFacebook(listing: ListingPostInput): Promise<boolean> {
   const url = `https://www.garagecherries.com/listings/${toSegment(listing.make)}/${toSegment(listing.model)}/${listing.id}/${listing.slug}`;
-  const caption = `${listing.year} ${listing.make} ${listing.model} — ${fmtPrice(listing.price)}\n\nView details: ${url}`;
+
+  const details = [
+    listing.mileage ? `${listing.mileage.toLocaleString()} miles` : null,
+    listing.condition ? `${listing.condition} condition` : null,
+    listing.location && listing.state ? `${listing.location}, ${listing.state}` : null,
+  ].filter(Boolean).join(' · ');
+
+  const caption = `${listing.year} ${listing.make} ${listing.model} — ${fmtPrice(listing.price)}`
+    + (details ? `\n${details}` : '')
+    + `\n\nSee full details & more photos: ${url}`;
 
   try {
     if (listing.images?.[0]) {

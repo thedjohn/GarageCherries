@@ -165,7 +165,7 @@ export async function PATCH(req: NextRequest) {
 
     const { data: listing } = await admin
       .from('listings')
-      .select('id, title, make, model, year, price, images, slug')
+      .select('id, title, make, model, year, price, images, slug, mileage, condition, location, state')
       .eq('id', id)
       .single();
     if (!listing) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
@@ -190,7 +190,7 @@ export async function PATCH(req: NextRequest) {
   // Fetch listing details needed for seller notification email and Facebook post
   const { data: listing } = await admin
     .from('listings')
-    .select('id, title, make, model, year, price, images, slug, seller_email, seller_name, seller_id')
+    .select('id, title, make, model, year, price, images, slug, seller_email, seller_name, seller_id, mileage, condition, location, state')
     .eq('id', id)
     .single();
 

@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
   const { data: pending } = await admin
     .from('listings')
-    .select('id, title, make, model, year, price, slug, images')
+    .select('id, title, make, model, year, price, slug, images, mileage, condition, location, state')
     .eq('status', 'approved')
     .eq('is_sold', false)
     .is('fb_posted_at', null)
