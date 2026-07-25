@@ -14,7 +14,7 @@
     },
     {
       "path": "/api/cron/dealer-feed-sync",
-      "schedule": "0 11 * * *"
+      "schedule": "0 * * * *"
     }
   ]
 }
