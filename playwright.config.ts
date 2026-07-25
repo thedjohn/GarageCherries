@@ -1,4 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
+import dotenv from 'dotenv';
+
+// Loads the Supabase branch used for E2E testing. These values are set in
+// process.env before `next dev` starts, so Next.js's own .env.local loading
+// won't override them (Next never overrides vars already present in process.env).
+dotenv.config({ path: '.env.test.local' });
 
 export default defineConfig({
   testDir: './tests/e2e',
