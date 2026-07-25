@@ -42,8 +42,9 @@ test.describe('Listings page', () => {
   });
 
   test('applying make filter updates URL', async ({ page }) => {
-    // Make is the first <select> in the filter sidebar
-    await page.locator('select').first().selectOption('Chevrolet');
+    // Make is the first <select> inside the filter sidebar <aside> — scoped
+    // to avoid matching the unrelated "Sort listings" dropdown elsewhere on the page.
+    await page.locator('aside select').first().selectOption('Chevrolet');
     await page.getByRole('button', { name: /apply filters/i }).click();
     await expect(page).toHaveURL(/make=Chevrolet/i);
   });

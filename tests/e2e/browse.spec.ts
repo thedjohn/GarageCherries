@@ -18,8 +18,9 @@ test.describe('Browse listings (public)', () => {
 
   test('filter by make narrows results', async ({ page }) => {
     await page.goto('/listings');
-    // Use the make filter
-    const makeSelect = page.locator('select[name="make"], select').first();
+    // Use the make filter — scoped to the filter sidebar <aside> to avoid
+    // matching the unrelated "Sort listings" dropdown elsewhere on the page.
+    const makeSelect = page.locator('aside select').first();
     await makeSelect.selectOption('Chevrolet');
     await page.getByRole('button', { name: /apply filters/i }).click();
     await page.waitForURL(/make=Chevrolet/, { timeout: 10000 });

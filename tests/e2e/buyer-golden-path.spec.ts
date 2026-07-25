@@ -83,8 +83,11 @@ test.describe('Listing detail page — core content', () => {
     const found = await navigateToFirstListing(page);
     if (!found) { test.skip(); return; }
 
+    // Scoped to visible `.rounded-full` condition badges with an exact match,
+    // since the page renders a duplicate badge for mobile (CSS-hidden at desktop
+    // width) and a loose text match can also catch unrelated "Newest" sort options.
     await expect(
-      page.getByText(/excellent|good|fair|project|new/i).first()
+      page.locator('span.rounded-full:visible', { hasText: /^(Excellent|Good|Fair|Project|New)$/i }).first()
     ).toBeVisible();
   });
 
