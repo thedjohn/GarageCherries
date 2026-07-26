@@ -6,7 +6,7 @@ export default function SellGate() {
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="w-full max-w-md text-center">
 
-        <Image src="https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/branding/cherries.png" alt="" width={64} height={64} unoptimized className="mb-6 inline-block" />
+        <Image src="https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/branding/cherries.png" alt="GarageCherries" width={64} height={64} unoptimized className="mb-6 inline-block" />
         <h1 className="text-3xl font-extrabold text-zinc-900 mb-3">
           Ready to sell your classic?
         </h1>

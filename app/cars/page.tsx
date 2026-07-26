@@ -6,7 +6,7 @@ import { DECADES_CONTENT } from '@/lib/decades';
 import { PRICE_TIERS_CONTENT } from '@/lib/priceTiers';
 
 export const metadata: Metadata = {
-  title: "Classic Car Encyclopedia — Specs, History & Buyer's Guides",
+  title: "Classic Car Encyclopedia — Specs & History",
   description: 'Research classic American muscle cars before you buy. Specs, history, buying tips, and market values for Camaro, Mustang, Charger, Corvette, GTO, and 20+ iconic models.',
   alternates: { canonical: 'https://www.garagecherries.com/cars' },
 };

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: "Dodge SRT — The Complete Guide to America's Performance Sub-Brand",
+  title: "Dodge SRT — Performance Sub-Brand Guide",
   description: "The history of Dodge's SRT performance division, from the Neon SRT-4 to the 1,025-hp Demon 170 — lineup, notable special editions, and what to know before buying a used SRT.",
   alternates: { canonical: 'https://www.garagecherries.com/cars/srt' },
 };
