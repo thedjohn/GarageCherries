@@ -29,6 +29,11 @@ const nextConfig: NextConfig = {
         destination: '/listings/oldsmobile/cutlass/025577a3-581d-4b26-8694-7a0c1d71c65b/1982-oldsmobile-cutlass-1784405879348',
         permanent: true,
       },
+      {
+        source: '/listings/plymouth/barracuda/5522d058-cb7b-42fc-a695-5926aeb771cc/1966-plymouth-baracuda-5522d058',
+        destination: '/listings/plymouth/barracuda/5522d058-cb7b-42fc-a695-5926aeb771cc/1966-plymouth-barracuda-5522d058',
+        permanent: true,
+      },
     ];
   },
 };
