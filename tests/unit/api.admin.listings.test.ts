@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
 const {
-  mockGetUser, mockRequireAdmin, mockFrom, mockStorageRemove,
+  mockGetUser, mockRequireAdmin, mockFrom, mockStorageRemove, mockRpc,
   mockSend, mockPostToFacebook, mockLoggerInfo, mockLoggerWarn, mockLoggerError, mockLoggerFlush,
   mockRevalidatePath,
 } = vi.hoisted(() => ({
@@ -10,6 +10,7 @@ const {
   mockRequireAdmin:   vi.fn(),
   mockFrom:           vi.fn(),
   mockStorageRemove:  vi.fn(),
+  mockRpc:            vi.fn(),
   mockSend:           vi.fn().mockResolvedValue({ id: 'email-1' }),
   mockPostToFacebook: vi.fn().mockResolvedValue(undefined),
   mockLoggerInfo:     vi.fn(),
@@ -23,6 +24,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({ auth: { getUser: mockGetUser } })),
   createAdminClient: vi.fn(() => ({
     from: mockFrom,
+    rpc: mockRpc,
     storage: { from: vi.fn(() => ({ remove: mockStorageRemove })) },
   })),
 }));
@@ -381,6 +383,153 @@ describe('GET /api/admin/listings', () => {
     // Private-seller listing has no matching dealer row — stays untouched
     expect(l2.seller_name).toBe('Jane Private');
     expect(l2.seller_phone).toBe('222');
+  });
+
+  it('sorts by price ascending when sortBy=price_asc, skipping the default year/make/model order', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    let capturedOrders: any[] = [];
+    let listingsCalls = 0;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        listingsCalls++;
+        if (listingsCalls > 1) return makeListingsBuilder({ count: 0 });
+        const builder = makeListingsBuilder({ data: [], error: null, count: 0 });
+        const originalOrder = builder.order;
+        builder.order = vi.fn((...args: any[]) => { capturedOrders.push(args); return originalOrder(...args); });
+        return builder;
+      }
+      return {};
+    });
+
+    await GET(makeGetRequest({ sortBy: 'price_asc' }));
+    expect(capturedOrders).toEqual([['price', { ascending: true }]]);
+  });
+
+  it('sorts by price descending when sortBy=price_desc', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    let capturedOrders: any[] = [];
+    let listingsCalls = 0;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        listingsCalls++;
+        if (listingsCalls > 1) return makeListingsBuilder({ count: 0 });
+        const builder = makeListingsBuilder({ data: [], error: null, count: 0 });
+        const originalOrder = builder.order;
+        builder.order = vi.fn((...args: any[]) => { capturedOrders.push(args); return originalOrder(...args); });
+        return builder;
+      }
+      return {};
+    });
+
+    await GET(makeGetRequest({ sortBy: 'price_desc' }));
+    expect(capturedOrders).toEqual([['price', { ascending: false }]]);
+  });
+
+  it('ranks by view count across all matching listings when sortBy=views_desc, not just the current page', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    let listingsCalls = 0;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        listingsCalls++;
+        // Call 1: the unpaginated id-only lookup used to rank by views.
+        if (listingsCalls === 1) {
+          return makeListingsBuilder({ data: [{ id: 'l1' }, { id: 'l2' }, { id: 'l3' }], error: null, count: 3 });
+        }
+        // Call 2: the page-slice fetch by id, after ranking.
+        if (listingsCalls === 2) {
+          return makeListingsBuilder({
+            data: [
+              { id: 'l1', title: 'Low views' },
+              { id: 'l2', title: 'High views' },
+              { id: 'l3', title: 'Mid views' },
+            ],
+            error: null,
+          });
+        }
+        // Calls 3-5: the always-on pending/approved/rejected status counts.
+        return makeListingsBuilder({ count: 0 });
+      }
+      return {};
+    });
+    mockRpc.mockResolvedValue({
+      data: [
+        { listing_id: 'l1', view_count: 2 },
+        { listing_id: 'l2', view_count: 50 },
+        { listing_id: 'l3', view_count: 10 },
+      ],
+    });
+
+    const res: any = await GET(makeGetRequest({ sortBy: 'views_desc' }));
+    expect(mockRpc).toHaveBeenCalledWith('count_listing_views', { p_listing_ids: ['l1', 'l2', 'l3'] });
+    expect(res._data.listings.map((l: any) => l.id)).toEqual(['l2', 'l3', 'l1']);
+    expect(res._data.total).toBe(3);
+  });
+
+  it('treats listings with no view_views rows as 0 views when sorting by views', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    let listingsCalls = 0;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        listingsCalls++;
+        if (listingsCalls === 1) return makeListingsBuilder({ data: [{ id: 'l1' }, { id: 'l2' }], error: null, count: 2 });
+        if (listingsCalls === 2) return makeListingsBuilder({ data: [{ id: 'l1' }, { id: 'l2' }], error: null });
+        return makeListingsBuilder({ count: 0 });
+      }
+      return {};
+    });
+    mockRpc.mockResolvedValue({ data: [{ listing_id: 'l2', view_count: 5 }] }); // l1 has no listing_views rows at all
+
+    const res: any = await GET(makeGetRequest({ sortBy: 'views_desc' }));
+    expect(res._data.listings.map((l: any) => l.id)).toEqual(['l2', 'l1']);
+  });
+
+  it('returns an empty page without querying view counts when no listings match while sorting by views', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    setupListingsGet({ data: [], error: null, count: 0 });
+
+    const res: any = await GET(makeGetRequest({ sortBy: 'views_desc', make: 'Nonexistent' }));
+    expect(res._status).toBe(200);
+    expect(res._data.listings).toEqual([]);
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it('returns the full dealer list for the filter dropdown', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    let listingsCalls = 0;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        listingsCalls++;
+        if (listingsCalls === 1) return makeListingsBuilder({ data: [], error: null, count: 0 });
+        return makeListingsBuilder({ count: 0 });
+      }
+      if (table === 'dealers') {
+        return { select: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({
+          data: [{ id: 'd1', name: 'AutoArcheologist' }, { id: 'd2', name: 'Survivor Classic Car Services' }],
+        }) }) };
+      }
+      return {};
+    });
+
+    const res: any = await GET(makeGetRequest());
+    expect(res._data.dealers).toEqual([{ id: 'd1', name: 'AutoArcheologist' }, { id: 'd2', name: 'Survivor Classic Car Services' }]);
+  });
+
+  it('degrades gracefully to an empty dealer list if that lookup fails, without failing the request', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'u1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    // setupListingsGet's 'dealers' mock shape has no .order() method, standing
+    // in for any real-world failure of this lookup — must not 500 the request.
+    setupListingsGet({ data: [], error: null, count: 0 });
+
+    const res: any = await GET(makeGetRequest());
+    expect(res._status).toBe(200);
+    expect(res._data.dealers).toEqual([]);
   });
 });
 

@@ -37,51 +37,113 @@ export async function GET(req: NextRequest) {
   const sellerType = params.get('sellerType'); // 'dealer' | 'private'
   const fbPosted = params.get('fbPosted'); // 'posted' | 'not_posted'
   const expiringSoon = params.get('expiringSoon') === 'true';
+  const sortBy = params.get('sortBy'); // null (default year/make/model) | 'price_asc' | 'price_desc' | 'views_desc'
   const page  = Math.max(1, parseInt(params.get('page')  ?? '1',  10));
   const limit = Math.min(100, Math.max(1, parseInt(params.get('limit') ?? '50', 10)));
   const from = (page - 1) * limit;
   const to   = from + limit - 1;
 
-  let query = admin
-    .from('listings')
-    .select('id,slug,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,fuel_type,drive_type,vin,location,state,seller_name,seller_phone,seller_email,seller_id,images,description,featured,status,rejection_reason,resubmission_note,resubmission_count,created_at,fb_posted_at,expires_at', { count: 'exact' })
-    .order('year', { ascending: false })
-    .order('make', { ascending: true })
-    .order('model', { ascending: true });
-
-  if (sellerId) query = query.eq('seller_id', sellerId);
-  if (make) query = query.eq('make', make);
-  if (model) query = query.ilike('model', `%${model}%`);
-  if (yearMin) query = query.gte('year', Number(yearMin));
-  if (yearMax) query = query.lte('year', Number(yearMax));
-  if (priceMin) query = query.gte('price', Number(priceMin));
-  if (priceMax) query = query.lte('price', Number(priceMax));
-  if (status && status !== 'all') query = query.eq('status', status);
-  if (resubmissionsOnly) query = query.gt('resubmission_count', 0);
-  if (featuredOnly) query = query.eq('featured', true);
-  if (fbPosted === 'posted') query = query.not('fb_posted_at', 'is', null);
-  if (fbPosted === 'not_posted') query = query.is('fb_posted_at', null);
-  if (expiringSoon) {
-    const now = new Date().toISOString();
-    const weekFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    query = query.gte('expires_at', now).lte('expires_at', weekFromNow);
-  }
+  const SELECT_COLUMNS = 'id,slug,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,fuel_type,drive_type,vin,location,state,seller_name,seller_phone,seller_email,seller_id,images,description,featured,status,rejection_reason,resubmission_note,resubmission_count,created_at,fb_posted_at,expires_at';
 
   // Dealer vs private-seller split requires knowing which seller_ids are
   // dealers — there's no boolean column on listings for this, so it's
   // resolved via a lightweight lookup against the (small) dealers table.
+  // Resolved once, up front, so applyFilters below can stay a plain
+  // synchronous function (see its comment for why that matters).
+  let dealerIdsForSplit: string[] | null = null;
   if (sellerType === 'dealer' || sellerType === 'private') {
     const { data: allDealers } = await admin.from('dealers').select('id');
-    const dealerIds = (allDealers ?? []).map(d => d.id);
-    if (sellerType === 'dealer') {
-      query = dealerIds.length ? query.in('seller_id', dealerIds) : query.eq('id', '00000000-0000-0000-0000-000000000000');
-    } else if (dealerIds.length) {
-      query = query.not('seller_id', 'in', `(${dealerIds.join(',')})`);
-    }
+    dealerIdsForSplit = (allDealers ?? []).map((d: { id: string }) => d.id);
   }
 
-  query = query.range(from, to);
-  const { data: listings, error, count } = await query;
+  // Every optional filter, shared between the normal (DB-paginated) path below
+  // and the views-sort path, which needs the full matching id list before it
+  // can rank by view count -- kept in one place so the two paths can't drift.
+  // Deliberately NOT async: the query builder is itself thenable (mirrors
+  // Supabase's real one), so an async function returning it would have its
+  // return value silently unwrapped by JS's own await machinery before the
+  // caller ever gets to chain .range()/.order() onto it.
+  function applyFilters(q: any) {
+    if (sellerId) q = q.eq('seller_id', sellerId);
+    if (make) q = q.eq('make', make);
+    if (model) q = q.ilike('model', `%${model}%`);
+    if (yearMin) q = q.gte('year', Number(yearMin));
+    if (yearMax) q = q.lte('year', Number(yearMax));
+    if (priceMin) q = q.gte('price', Number(priceMin));
+    if (priceMax) q = q.lte('price', Number(priceMax));
+    if (status && status !== 'all') q = q.eq('status', status);
+    if (resubmissionsOnly) q = q.gt('resubmission_count', 0);
+    if (featuredOnly) q = q.eq('featured', true);
+    if (fbPosted === 'posted') q = q.not('fb_posted_at', 'is', null);
+    if (fbPosted === 'not_posted') q = q.is('fb_posted_at', null);
+    if (expiringSoon) {
+      const now = new Date().toISOString();
+      const weekFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      q = q.gte('expires_at', now).lte('expires_at', weekFromNow);
+    }
+    if (dealerIdsForSplit !== null) {
+      if (sellerType === 'dealer') {
+        q = dealerIdsForSplit.length ? q.in('seller_id', dealerIdsForSplit) : q.eq('id', '00000000-0000-0000-0000-000000000000');
+      } else if (dealerIdsForSplit.length) {
+        q = q.not('seller_id', 'in', `(${dealerIdsForSplit.join(',')})`);
+      }
+    }
+    return q;
+  }
+
+  let listings: any[] | null;
+  let error: { message: string } | null;
+  let count: number | null;
+
+  if (sortBy === 'views_desc') {
+    // View counts live in the separate listing_views table, not a column on
+    // listings, so ranking by them can't be a plain .order(). Fetch every
+    // matching id first (same filters, no pagination), rank by view count via
+    // the same RPC the watcher-counts endpoints already use per-page, then
+    // fetch just this page's rows and put them back in ranked order — an
+    // .in() query doesn't preserve the order of the id array passed to it.
+    let idQuery = admin.from('listings').select('id', { count: 'exact' });
+    idQuery = applyFilters(idQuery);
+    const { data: idRows, error: idErr, count: idCount } = await idQuery;
+    if (idErr) return NextResponse.json({ error: idErr.message }, { status: 500 });
+
+    const allIds: string[] = (idRows ?? []).map((r: { id: string }) => r.id);
+    let viewsByListing: Record<string, number> = {};
+    if (allIds.length) {
+      const { data: viewRows } = await admin.rpc('count_listing_views', { p_listing_ids: allIds });
+      viewsByListing = Object.fromEntries((viewRows ?? []).map((r: { listing_id: string; view_count: number }) => [r.listing_id, r.view_count]));
+    }
+    const sortedIds = [...allIds].sort((a, b) => (viewsByListing[b] ?? 0) - (viewsByListing[a] ?? 0));
+    const pageIds = sortedIds.slice(from, to + 1);
+
+    if (pageIds.length) {
+      const { data: pageRows, error: pageErr } = await admin.from('listings').select(SELECT_COLUMNS).in('id', pageIds);
+      if (pageErr) return NextResponse.json({ error: pageErr.message }, { status: 500 });
+      const rowsById = Object.fromEntries((pageRows ?? []).map((r: any) => [r.id, r]));
+      listings = pageIds.map(id => rowsById[id]).filter(Boolean);
+    } else {
+      listings = [];
+    }
+    error = null;
+    count = idCount ?? allIds.length;
+  } else {
+    let query = admin.from('listings').select(SELECT_COLUMNS, { count: 'exact' });
+    if (sortBy === 'price_asc' || sortBy === 'price_desc') {
+      query = query.order('price', { ascending: sortBy === 'price_asc' });
+    } else {
+      query = query
+        .order('year', { ascending: false })
+        .order('make', { ascending: true })
+        .order('model', { ascending: true });
+    }
+    query = applyFilters(query);
+    query = query.range(from, to);
+    const result = await query;
+    listings = result.data;
+    error = result.error;
+    count = result.count;
+  }
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Always-unfiltered totals for the "X pending · Y approved · Z rejected" summary —
@@ -113,7 +175,19 @@ export async function GET(req: NextRequest) {
     return { ...l, seller_name: dealer.name ?? l.seller_name, seller_phone: dealer.phone ?? l.seller_phone };
   });
 
-  return NextResponse.json({ listings: listingsWithLiveSellerInfo, total: count ?? 0, page, limit, statusCounts });
+  // Full dealer list for the admin filter dropdown (distinct from dealersById
+  // above, which is only the handful of dealers on the current page). Wrapped
+  // defensively — this is a "nice to have" for the filter UI, not core to the
+  // listings response, so a lookup failure here shouldn't fail the whole request.
+  let dealerOptions: { id: string; name: string }[] = [];
+  try {
+    const { data: allDealerRows } = await admin.from('dealers').select('id,name').order('name');
+    dealerOptions = allDealerRows ?? [];
+  } catch {
+    // dealerOptions stays [] — dropdown just shows no dealers this request.
+  }
+
+  return NextResponse.json({ listings: listingsWithLiveSellerInfo, total: count ?? 0, page, limit, statusCounts, dealers: dealerOptions });
 }
 
 export async function PATCH(req: NextRequest) {

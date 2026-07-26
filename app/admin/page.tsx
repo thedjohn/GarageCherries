@@ -88,6 +88,7 @@ export default function AdminPage() {
   const [listingsTotal, setListingsTotal] = useState(0);
   const [listingPage, setListingPage] = useState(1);
   const [statusCounts, setStatusCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
+  const [dealerOptions, setDealerOptions] = useState<{ id: string; name: string }[]>([]);
   const LISTING_PAGE_SIZE = 20;
 
   // Listing filters
@@ -103,6 +104,8 @@ export default function AdminPage() {
   const [filterSellerType, setFilterSellerType] = useState('');
   const [filterFbPosted, setFilterFbPosted] = useState('');
   const [filterExpiringSoon, setFilterExpiringSoon] = useState(false);
+  const [filterDealerId, setFilterDealerId] = useState('');
+  const [filterSortBy, setFilterSortBy] = useState('');
 
   const [working, setWorking] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -267,6 +270,7 @@ export default function AdminPage() {
       priceMin: filterPriceMin, priceMax: filterPriceMax, status: filterStatus,
       resubmissionsOnly: filterResubmissionsOnly, featuredOnly: filterFeaturedOnly,
       sellerType: filterSellerType, fbPosted: filterFbPosted, expiringSoon: filterExpiringSoon,
+      dealerId: filterDealerId, sortBy: filterSortBy,
       ...overrides,
     };
     const p = new URLSearchParams({ page: String(page), limit: String(LISTING_PAGE_SIZE) });
@@ -282,14 +286,17 @@ export default function AdminPage() {
     if (f.sellerType) p.set('sellerType', String(f.sellerType));
     if (f.fbPosted) p.set('fbPosted', String(f.fbPosted));
     if (f.expiringSoon) p.set('expiringSoon', 'true');
+    if (f.dealerId) p.set('seller_id', String(f.dealerId));
+    if (f.sortBy) p.set('sortBy', String(f.sortBy));
 
     const res = await fetch(`/api/admin/listings?${p}`);
     if (!res.ok) return false;
-    const { listings: listingData, total, statusCounts: sc } = await res.json();
+    const { listings: listingData, total, statusCounts: sc, dealers } = await res.json();
     setListings((listingData ?? []) as Listing[]);
     setListingsTotal(total ?? 0);
     setListingPage(page);
     if (sc) setStatusCounts(sc);
+    if (dealers) setDealerOptions(dealers);
 
     const ids = (listingData ?? []).map((l: Listing) => l.id);
     if (ids.length) {
@@ -314,12 +321,14 @@ export default function AdminPage() {
     setFilterPriceMin(''); setFilterPriceMax(''); setFilterStatus('all');
     setFilterResubmissionsOnly(false); setFilterFeaturedOnly(false);
     setFilterSellerType(''); setFilterFbPosted(''); setFilterExpiringSoon(false);
+    setFilterDealerId(''); setFilterSortBy('');
     // State setters above are async — pass explicit reset values so this reload
     // doesn't read stale filter state from the current closure.
     loadListings(1, {
       make: '', model: '', yearMin: '', yearMax: '', priceMin: '', priceMax: '',
       status: 'all', resubmissionsOnly: false, featuredOnly: false,
       sellerType: '', fbPosted: '', expiringSoon: false,
+      dealerId: '', sortBy: '',
     });
   }
 
@@ -882,7 +891,7 @@ export default function AdminPage() {
             <input value={filterPriceMax} onChange={e => setFilterPriceMax(e.target.value)} type="number" placeholder="Price max"
               className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
               className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
               <option value="all">All Statuses</option>
@@ -896,11 +905,23 @@ export default function AdminPage() {
               <option value="dealer">Dealer only</option>
               <option value="private">Private seller only</option>
             </select>
+            <select value={filterDealerId} onChange={e => setFilterDealerId(e.target.value)}
+              className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+              <option value="">All Dealers</option>
+              {dealerOptions.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
             <select value={filterFbPosted} onChange={e => setFilterFbPosted(e.target.value)}
               className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
               <option value="">Facebook: Any</option>
               <option value="posted">Posted to Facebook</option>
               <option value="not_posted">Not posted to Facebook</option>
+            </select>
+            <select value={filterSortBy} onChange={e => setFilterSortBy(e.target.value)}
+              className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+              <option value="">Sort: Newest</option>
+              <option value="price_asc">Sort: Price Low-High</option>
+              <option value="price_desc">Sort: Price High-Low</option>
+              <option value="views_desc">Sort: Most Viewed</option>
             </select>
           </div>
           <div className="flex flex-wrap items-center gap-4">
