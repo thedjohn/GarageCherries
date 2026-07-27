@@ -50,20 +50,26 @@ interface ListingPostInput {
   state?: string | null;
 }
 
-// Designed to never throw: a Facebook API failure must never break listing/event creation.
-// Returns whether the post actually succeeded, so callers can record it (e.g. fb_posted_at).
-export async function postListingToFacebook(listing: ListingPostInput): Promise<boolean> {
-  const url = `https://www.garagecherries.com/listings/${toSegment(listing.make)}/${toSegment(listing.model)}/${listing.id}/${listing.slug}`;
+function buildListingUrl(listing: ListingPostInput): string {
+  return `https://www.garagecherries.com/listings/${toSegment(listing.make)}/${toSegment(listing.model)}/${listing.id}/${listing.slug}`;
+}
 
+function buildListingCaption(listing: ListingPostInput): string {
   const details = [
     listing.mileage ? `${listing.mileage.toLocaleString()} miles` : null,
     listing.condition ? `${listing.condition} condition` : null,
     listing.location && listing.state ? `${listing.location}, ${listing.state}` : null,
   ].filter(Boolean).join(' · ');
 
-  const caption = `${listing.year} ${listing.make} ${listing.model} — ${fmtPrice(listing.price)}`
+  return `${listing.year} ${listing.make} ${listing.model} — ${fmtPrice(listing.price)}`
     + (details ? `\n${details}` : '')
-    + `\n\nSee full details & more photos: ${url}`;
+    + `\n\nSee full details & more photos: ${buildListingUrl(listing)}`;
+}
+
+// Designed to never throw: a Facebook API failure must never break listing/event creation.
+// Returns whether the post actually succeeded, so callers can record it (e.g. fb_posted_at).
+export async function postListingToFacebook(listing: ListingPostInput): Promise<boolean> {
+  const caption = buildListingCaption(listing);
 
   try {
     if (listing.images?.[0]) {
@@ -77,11 +83,67 @@ export async function postListingToFacebook(listing: ListingPostInput): Promise<
       const post = await postToPage('feed', { message: caption, attached_media: JSON.stringify([{ media_fbid: upload.data.id }]) });
       return post.success;
     } else {
-      const post = await postToPage('feed', { message: caption, link: url });
+      const post = await postToPage('feed', { message: caption, link: buildListingUrl(listing) });
       return post.success;
     }
   } catch (err) {
     log.error('postListingToFacebook threw', err instanceof Error ? err : new Error(String(err)), { listingId: listing.id });
+    return false;
+  }
+}
+
+// Instagram publishing is a two-step process against the linked Instagram Business
+// Account (a different Graph API node than the Facebook Page): create a media
+// container, then publish it. Reuses the same Page Access Token as Facebook posting
+// -- Instagram Content Publishing accepts a Page token as long as it was granted
+// instagram_basic + instagram_content_publish, it does not need a separate token.
+// Requires INSTAGRAM_BUSINESS_ACCOUNT_ID and FACEBOOK_PAGE_ACCESS_TOKEN to be set;
+// no-ops (like postListingToFacebook) if either is missing.
+async function postToInstagram(igUserId: string, token: string, path: string, params: Record<string, string>): Promise<{ success: boolean; data?: any }> {
+  const url = `https://graph.facebook.com/${GRAPH_VERSION}/${igUserId}/${path}`;
+  const body = new URLSearchParams({ ...params, access_token: token });
+
+  const res = await fetch(url, { method: 'POST', body });
+  const data = await res.json();
+  if (!res.ok || data.error) {
+    log.error('Instagram post failed', new Error(data.error?.message ?? `HTTP ${res.status}`), { path });
+    return { success: false };
+  }
+  log.info('Instagram post succeeded', { path, id: data.id ?? '' });
+  return { success: true, data };
+}
+
+// Designed to never throw, same contract as postListingToFacebook: a failure here
+// must never break listing creation. Returns whether the post actually succeeded.
+// Note: Instagram's Content Publishing API only accepts JPEG images. Listing photos
+// are re-encoded to JPEG on upload only when they're large enough to need resizing
+// (see lib/resizeImage.ts) -- a small PNG/WebP photo could still fail here even
+// though the equivalent Facebook post (which has no format restriction) succeeds.
+export async function postListingToInstagram(listing: ListingPostInput): Promise<boolean> {
+  const igUserId = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
+  const token = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+  if (!igUserId || !token) {
+    log.info('Instagram post skipped — INSTAGRAM_BUSINESS_ACCOUNT_ID/FACEBOOK_PAGE_ACCESS_TOKEN not configured');
+    return false;
+  }
+
+  // Unlike Facebook, Instagram has no equivalent of a link-only post -- every post
+  // requires media, so there's nothing to fall back to when a listing has no photos.
+  const image = listing.images?.[0];
+  if (!image) {
+    log.info('Instagram post skipped — listing has no images', { listingId: listing.id });
+    return false;
+  }
+
+  const caption = buildListingCaption(listing);
+
+  try {
+    const container = await postToInstagram(igUserId, token, 'media', { image_url: image, caption });
+    if (!container.success || !container.data?.id) return false;
+    const publish = await postToInstagram(igUserId, token, 'media_publish', { creation_id: container.data.id });
+    return publish.success;
+  } catch (err) {
+    log.error('postListingToInstagram threw', err instanceof Error ? err : new Error(String(err)), { listingId: listing.id });
     return false;
   }
 }

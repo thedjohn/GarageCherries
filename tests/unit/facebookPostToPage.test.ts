@@ -4,7 +4,7 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), flush: vi.fn(async () => {}) }),
 }));
 
-import { postListingToFacebook, postEventToFacebook } from '@/lib/facebook/postToPage';
+import { postListingToFacebook, postListingToInstagram, postEventToFacebook } from '@/lib/facebook/postToPage';
 
 const originalEnv = { ...process.env };
 const originalFetch = global.fetch;
@@ -89,6 +89,64 @@ describe('postListingToFacebook', () => {
     process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
     await expect(postListingToFacebook(listing)).resolves.toBe(false);
+  });
+});
+
+describe('postListingToInstagram', () => {
+  it('no-ops and returns false when INSTAGRAM_BUSINESS_ACCOUNT_ID/FACEBOOK_PAGE_ACCESS_TOKEN are not configured (current production state)', async () => {
+    delete process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
+    delete process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+    vi.stubGlobal('fetch', vi.fn());
+    await expect(postListingToInstagram(listing)).resolves.toBe(false);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('returns false and never calls fetch when the listing has no images', async () => {
+    process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID = 'ig1';
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
+    vi.stubGlobal('fetch', vi.fn());
+    await expect(postListingToInstagram({ ...listing, images: null })).resolves.toBe(false);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('creates a media container, then publishes it, and returns true', async () => {
+    process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID = 'ig1';
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'ig-container-1' }) }));
+    await expect(postListingToInstagram(listing)).resolves.toBe(true);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+
+    const [containerUrl, containerInit] = (global.fetch as any).mock.calls[0];
+    expect(containerUrl).toContain('/ig1/media');
+    expect(containerInit.body.toString()).toContain(encodeURIComponent('image_url'));
+    expect(containerInit.body.toString()).toContain(encodeURIComponent(listing.images[0]));
+
+    const [publishUrl, publishInit] = (global.fetch as any).mock.calls[1];
+    expect(publishUrl).toContain('/ig1/media_publish');
+    expect(publishInit.body.toString()).toContain(encodeURIComponent('creation_id'));
+    expect(publishInit.body.toString()).toContain(encodeURIComponent('ig-container-1'));
+  });
+
+  it('returns false and never calls media_publish if the container is created but returns no id', async () => {
+    process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID = 'ig1';
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }));
+    await expect(postListingToInstagram(listing)).resolves.toBe(false);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs, does not throw, and returns false when the Instagram API returns an error', async () => {
+    process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID = 'ig1';
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 400, json: async () => ({ error: { message: 'Bad token' } }) }));
+    await expect(postListingToInstagram(listing)).resolves.toBe(false);
+  });
+
+  it('catches a thrown fetch error without propagating it and returns false (fire-and-forget contract)', async () => {
+    process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID = 'ig1';
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
+    await expect(postListingToInstagram(listing)).resolves.toBe(false);
   });
 });
 
