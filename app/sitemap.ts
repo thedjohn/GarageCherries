@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next';
 import { createAdminClient } from '@/lib/supabase/server';
 import { toSegment } from '@/lib/data';
+import { MAKES } from '@/lib/types';
 import { ENCYCLOPEDIA, getMakeSlugs } from '@/lib/encyclopedia';
 import { getBodyStyleSlugs } from '@/lib/bodyStyles';
 import { getDecadeSlugs } from '@/lib/decades';
@@ -72,7 +73,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: car.featured ? 0.9 : 0.8,
   }));
 
-  const makes = [...new Set((cars ?? []).map(c => c.make))];
+  // Only advertise a make-browse page for makes the site actually recognizes --
+  // /listings/[make] resolves the URL segment against MAKES (see makeFromSegment
+  // in lib/data.ts), not against whatever raw make strings happen to be sitting
+  // in the listings table. A listing with an unrecognized make (e.g. a dealer
+  // feed sending "Mercedes-Benz" when the site's list has "Mercedes") would
+  // otherwise get a sitemap entry that 404s -- confirmed live via a broken
+  // /listings/mercedes-benz URL caught by the sitemap-health cron.
+  const knownMakeSegments = new Set(MAKES.map(m => toSegment(m)));
+  const makes = [...new Set((cars ?? []).map(c => c.make))].filter(make => knownMakeSegments.has(toSegment(make)));
   const makePages: MetadataRoute.Sitemap = makes.map(make => ({
     url: `${BASE_URL}/listings/${toSegment(make)}`,
     lastModified: new Date(),
