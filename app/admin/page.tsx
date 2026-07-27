@@ -6,7 +6,7 @@ import { formatPhone, normalizeUrl } from '@/lib/data';
 import VehicleFieldsForm from '@/components/VehicleFieldsForm';
 import AdminEmailCampaigns from '@/components/AdminEmailCampaigns';
 import { resolveAdminRole, type TeamMember } from '@/lib/resolveAdminRole';
-import { MAKES } from '@/lib/types';
+import { MAKES, STATES } from '@/lib/types';
 import TrendChart, { type TrendPoint } from '@/components/TrendChart';
 
 interface Listing {
@@ -54,6 +54,7 @@ interface CarEvent {
 }
 const BLANK_EVENT = { name: '', date: '', end_date: '', start_time: '', end_time: '', location: '', state: '', type: 'show', description: '', url: '', featured: false };
 const EVENT_TYPES = ['show', 'swap-meet', 'cruise', 'auction'] as const;
+const EVENT_PAGE_SIZE = 20;
 
 interface DealerApplication {
   id: string; name: string; email: string; phone: string;
@@ -162,6 +163,13 @@ export default function AdminPage() {
   const [eventError, setEventError] = useState('');
   const [confirmDeleteEvent, setConfirmDeleteEvent] = useState<CarEvent | null>(null);
   const [eventActionWorking, setEventActionWorking] = useState<string | null>(null);
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [eventFilterType, setEventFilterType] = useState('');
+  const [eventFilterState, setEventFilterState] = useState('');
+  const [eventFilterStatus, setEventFilterStatus] = useState('');
+  const [eventFilterSearch, setEventFilterSearch] = useState('');
+  const [eventPage, setEventPage] = useState(1);
+  const [eventsTotal, setEventsTotal] = useState(0);
 
   // Applications
   const [applications, setApplications] = useState<DealerApplication[]>([]);
@@ -339,13 +347,52 @@ export default function AdminPage() {
     setApplicationsLoading(false);
   }
 
-  async function loadEvents() {
+  async function loadEvents(page = eventPage) {
     setEventsLoading(true);
-    const res = await fetch('/api/admin/events');
+    const p = new URLSearchParams({ page: String(page), limit: String(EVENT_PAGE_SIZE) });
+    if (eventFilterType) p.set('type', eventFilterType);
+    if (eventFilterState) p.set('state', eventFilterState);
+    if (eventFilterStatus) p.set('status', eventFilterStatus);
+    if (eventFilterSearch) p.set('search', eventFilterSearch);
+    const [pendingRes, mainRes] = await Promise.all([
+      fetch('/api/admin/events?status=pending'),
+      fetch(`/api/admin/events?${p}`),
+    ]);
+    if (pendingRes.ok) {
+      const { events: pending } = await pendingRes.json();
+      setPendingEvents(pending ?? []);
+    }
+    if (mainRes.ok) {
+      const { events: main, total } = await mainRes.json();
+      setEvents(main ?? []);
+      setEventsTotal(total ?? 0);
+      setEventPage(page);
+    }
+    setEventsLoading(false);
+  }
+
+  function clearEventFilters() {
+    setEventFilterType(''); setEventFilterState(''); setEventFilterStatus(''); setEventFilterSearch('');
+    loadEventsWithFilters(1, { type: '', state: '', status: '', search: '' });
+  }
+
+  async function loadEventsWithFilters(page: number, overrides: { type?: string; state?: string; status?: string; search?: string }) {
+    setEventsLoading(true);
+    const p = new URLSearchParams({ page: String(page), limit: String(EVENT_PAGE_SIZE) });
+    const type = overrides.type ?? eventFilterType;
+    const state = overrides.state ?? eventFilterState;
+    const status = overrides.status ?? eventFilterStatus;
+    const search = overrides.search ?? eventFilterSearch;
+    if (type) p.set('type', type);
+    if (state) p.set('state', state);
+    if (status) p.set('status', status);
+    if (search) p.set('search', search);
+    const res = await fetch(`/api/admin/events?${p}`);
     if (res.ok) {
-      const { events: all } = await res.json();
-      setPendingEvents((all ?? []).filter((e: CarEvent) => e.status === 'pending'));
-      setEvents((all ?? []).filter((e: CarEvent) => e.status !== 'pending'));
+      const { events: main, total } = await res.json();
+      setEvents(main ?? []);
+      setEventsTotal(total ?? 0);
+      setEventPage(page);
     }
     setEventsLoading(false);
   }
@@ -359,10 +406,7 @@ export default function AdminPage() {
     });
     setEventActionWorking(null);
     if (!res.ok) return;
-    const approved = action === 'approve';
-    const event = pendingEvents.find(e => e.id === id);
-    setPendingEvents(prev => prev.filter(e => e.id !== id));
-    if (approved && event) setEvents(prev => [...prev, { ...event, status: 'approved' }].sort((a, b) => a.date.localeCompare(b.date)));
+    await loadEvents(eventPage);
   }
 
   async function saveEvent() {
@@ -377,13 +421,13 @@ export default function AdminPage() {
     const json = await res.json();
     setEventWorking(false);
     if (!res.ok) { setEventError(json.error ?? 'Failed'); return; }
-    if (editingEvent) {
-      setEvents(prev => prev.map(e => e.id === editingEvent.id ? { ...e, ...eventForm } : e));
-    } else {
-      setEvents(prev => [...prev, json.event]);
-    }
     setEditingEvent(null);
     setEventForm(BLANK_EVENT);
+    setShowEventForm(false);
+    // Reload from the server rather than patching the local array -- with
+    // filters/pagination active, a naive client-side splice can no longer
+    // guarantee the item belongs on the currently-shown page at all.
+    await loadEvents(editingEvent ? eventPage : 1);
   }
 
   async function deleteEvent() {
@@ -393,8 +437,8 @@ export default function AdminPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: confirmDeleteEvent.id }),
     });
-    if (res.ok) setEvents(prev => prev.filter(e => e.id !== confirmDeleteEvent.id));
     setConfirmDeleteEvent(null);
+    if (res.ok) await loadEvents(eventPage);
   }
 
   async function resendDealerSetup(id: string) {
@@ -1613,7 +1657,16 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* Add / Edit form */}
+          {/* Add / Edit form — collapsed by default so the list (not an empty
+              form) is what you see first; opens for Add, or automatically
+              when editing an existing event. */}
+          {!showEventForm && !editingEvent && (
+            <button onClick={() => { setEditingEvent(null); setEventForm(BLANK_EVENT); setEventError(''); setShowEventForm(true); }}
+              className="mb-6 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition-colors">
+              + Add Event
+            </button>
+          )}
+          {(showEventForm || editingEvent) && (
           <div className="bg-white border border-zinc-100 rounded-2xl p-6 shadow-sm mb-6">
             <h2 className="font-bold text-zinc-900 mb-4">{editingEvent ? 'Edit Event' : 'Add Event'}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
@@ -1671,18 +1724,57 @@ export default function AdminPage() {
                 {eventWorking ? 'Saving…' : editingEvent ? 'Save Changes' : 'Add Event'}
               </button>
               {editingEvent && (
-                <button onClick={() => { setEditingEvent(null); setEventForm(BLANK_EVENT); setEventError(''); }}
+                <button onClick={() => { setEditingEvent(null); setEventForm(BLANK_EVENT); setEventError(''); setShowEventForm(false); }}
                   className="px-5 py-2 border border-zinc-200 text-zinc-600 font-semibold text-sm rounded-lg hover:bg-zinc-50 transition-colors">
                   Cancel
                 </button>
               )}
             </div>
           </div>
+          )}
+
+          {/* Filter bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <select value={eventFilterType} onChange={e => setEventFilterType(e.target.value)}
+              className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+              <option value="">All Types</option>
+              {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select value={eventFilterState} onChange={e => setEventFilterState(e.target.value)}
+              className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+              <option value="">All States</option>
+              {STATES.filter(s => s !== 'All States').map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={eventFilterStatus} onChange={e => setEventFilterStatus(e.target.value)}
+              className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+              <option value="">Approved &amp; Rejected</option>
+              <option value="approved">Approved only</option>
+              <option value="rejected">Rejected only</option>
+            </select>
+            <input value={eventFilterSearch} onChange={e => setEventFilterSearch(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') loadEvents(1); }}
+              placeholder="Search by name"
+              className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
+          </div>
+          <div className="flex gap-3 mb-6">
+            <button onClick={() => loadEvents(1)}
+              className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg">
+              Apply Filters
+            </button>
+            <button onClick={clearEventFilters}
+              className="px-4 py-1.5 border border-zinc-200 text-zinc-600 text-sm font-semibold rounded-lg hover:bg-zinc-50">
+              Clear all
+            </button>
+          </div>
 
           {/* Event list */}
           {eventsLoading && <div className="text-center py-10 text-zinc-400">Loading…</div>}
           {!eventsLoading && events.length === 0 && (
-            <div className="text-center py-10 text-zinc-400">No events yet. Add one above.</div>
+            <div className="text-center py-10 text-zinc-400">
+              {eventFilterType || eventFilterState || eventFilterStatus || eventFilterSearch
+                ? 'No events match these filters.'
+                : 'No events yet. Add one above.'}
+            </div>
           )}
           <div className="space-y-3">
             {events.map(e => (
@@ -1697,7 +1789,7 @@ export default function AdminPage() {
                   {e.description && <p className="text-xs text-zinc-400 mt-0.5 line-clamp-1">{e.description}</p>}
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <button onClick={() => { setEditingEvent(e); setEventForm({ name: e.name, date: e.date, end_date: e.end_date ?? '', start_time: e.start_time ?? '', end_time: e.end_time ?? '', location: e.location, state: e.state, type: e.type, description: e.description, url: e.url ?? '', featured: e.featured }); }}
+                  <button onClick={() => { setEditingEvent(e); setEventForm({ name: e.name, date: e.date, end_date: e.end_date ?? '', start_time: e.start_time ?? '', end_time: e.end_time ?? '', location: e.location, state: e.state, type: e.type, description: e.description, url: e.url ?? '', featured: e.featured }); setShowEventForm(true); }}
                     className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition-colors">Edit</button>
                   <button onClick={() => setConfirmDeleteEvent(e)}
                     className="text-xs font-semibold text-zinc-400 hover:text-red-600 transition-colors">Delete</button>
@@ -1705,6 +1797,25 @@ export default function AdminPage() {
               </div>
             ))}
           </div>
+          {eventsTotal > EVENT_PAGE_SIZE && (
+            <div className="flex items-center justify-between pt-6 mt-2 border-t border-zinc-100">
+              <button
+                onClick={() => loadEvents(eventPage - 1)}
+                disabled={eventPage <= 1}
+                className="px-4 py-2 text-sm font-semibold border border-zinc-200 rounded-xl text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                ← Previous
+              </button>
+              <span className="text-xs text-zinc-400">
+                {eventPage} / {Math.max(1, Math.ceil(eventsTotal / EVENT_PAGE_SIZE))} · {eventsTotal} event{eventsTotal !== 1 ? 's' : ''}
+              </span>
+              <button
+                onClick={() => loadEvents(eventPage + 1)}
+                disabled={eventPage >= Math.ceil(eventsTotal / EVENT_PAGE_SIZE)}
+                className="px-4 py-2 text-sm font-semibold border border-zinc-200 rounded-xl text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                Next →
+              </button>
+            </div>
+          )}
 
           {/* Delete confirm modal */}
           {confirmDeleteEvent && (

@@ -70,6 +70,52 @@ describe('GET /api/admin/events', () => {
     const res: any = await GET(makeGetRequest());
     expect(res._status).toBe(500);
   });
+
+  // A chainable + thenable query-builder mock for the paginated main-list
+  // branch (?page=...), which chains .neq()/.eq()/.ilike()/.range() before
+  // terminating — mirrors the same pattern used for admin/listings.
+  function makeEventsBuilder(result: { data?: any; error?: any; count?: number | null }) {
+    const builder: any = {
+      select: vi.fn(() => builder),
+      eq: vi.fn(() => builder),
+      neq: vi.fn(() => builder),
+      ilike: vi.fn(() => builder),
+      order: vi.fn(() => builder),
+      range: vi.fn(() => builder),
+      then: (resolve: any) => Promise.resolve(result).then(resolve),
+    };
+    return builder;
+  }
+
+  it('excludes pending events from the paginated main list by default', async () => {
+    mockRequireAdmin.mockResolvedValue('admin');
+    const builder = makeEventsBuilder({ data: [], error: null, count: 0 });
+    mockFrom.mockReturnValue(builder);
+    const res: any = await GET(makeGetRequest({ page: '1' }));
+    expect(res._status).toBe(200);
+    expect(builder.neq).toHaveBeenCalledWith('status', 'pending');
+  });
+
+  it('applies type/state/search filters and pagination range on the paginated main list', async () => {
+    mockRequireAdmin.mockResolvedValue('admin');
+    const builder = makeEventsBuilder({ data: [{ id: 'e1' }], error: null, count: 1 });
+    mockFrom.mockReturnValue(builder);
+    const res: any = await GET(makeGetRequest({ page: '2', limit: '10', type: 'cruise', state: 'MO', search: 'nationals', status: 'approved' }));
+    expect(res._status).toBe(200);
+    expect(builder.eq).toHaveBeenCalledWith('status', 'approved');
+    expect(builder.eq).toHaveBeenCalledWith('type', 'cruise');
+    expect(builder.eq).toHaveBeenCalledWith('state', 'MO');
+    expect(builder.ilike).toHaveBeenCalledWith('name', '%nationals%');
+    expect(builder.range).toHaveBeenCalledWith(10, 19);
+    expect(res._data).toEqual({ events: [{ id: 'e1' }], total: 1, page: 2, limit: 10 });
+  });
+
+  it('returns 500 on a query error in the paginated main list', async () => {
+    mockRequireAdmin.mockResolvedValue('admin');
+    mockFrom.mockReturnValue(makeEventsBuilder({ data: null, error: { message: 'db down' }, count: null }));
+    const res: any = await GET(makeGetRequest({ page: '1' }));
+    expect(res._status).toBe(500);
+  });
 });
 
 describe('POST /api/admin/events', () => {

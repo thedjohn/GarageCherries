@@ -18,13 +18,40 @@ export async function GET(req: NextRequest) {
   const role = await requireAdmin(user?.id ?? null);
   if (!role || !hasRole(role, 'admin')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const status = req.nextUrl.searchParams.get('status');
+  const params = req.nextUrl.searchParams;
+  const status = params.get('status');
   const admin = createAdminClient();
-  let query = admin.from('events').select('*').order('date', { ascending: true });
+
+  // No `page` param: exact original behavior (full, unfiltered-except-status
+  // fetch) -- this is what the always-visible Pending Submissions queue uses,
+  // and it must stay a simple full fetch, never paginated away.
+  const pageParam = params.get('page');
+  if (pageParam === null) {
+    let query = admin.from('events').select('*').order('date', { ascending: true });
+    if (status) query = query.eq('status', status);
+    const { data, error } = await query;
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ events: data ?? [] });
+  }
+
+  // `page` present: the filterable/paginated main list, used for everything
+  // that isn't pending (pending has its own unpaginated queue above).
+  const type = params.get('type');
+  const state = params.get('state');
+  const search = params.get('search');
+  const page = Math.max(1, parseInt(pageParam, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(params.get('limit') ?? '20', 10)));
+
+  let query = admin.from('events').select('*', { count: 'exact' }).order('date', { ascending: true }).neq('status', 'pending');
   if (status) query = query.eq('status', status);
-  const { data, error } = await query;
+  if (type) query = query.eq('type', type);
+  if (state) query = query.eq('state', state);
+  if (search) query = query.ilike('name', `%${search}%`);
+  query = query.range((page - 1) * limit, page * limit - 1);
+
+  const { data, error, count } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ events: data ?? [] });
+  return NextResponse.json({ events: data ?? [], total: count ?? 0, page, limit });
 }
 
 export async function POST(req: NextRequest) {
