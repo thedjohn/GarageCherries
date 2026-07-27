@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { postListingToFacebook } from '@/lib/facebook/postToPage';
+import { triggerListingVideo } from '@/lib/videoPipeline';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('cron/facebook-post-queue');
@@ -38,6 +39,7 @@ export async function GET(request: NextRequest) {
     if (success) {
       await admin.from('listings').update({ fb_posted_at: new Date().toISOString() }).eq('id', listing.id);
       posted++;
+      triggerListingVideo(listing).catch(() => {});
     }
   }
 

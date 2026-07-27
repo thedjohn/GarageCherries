@@ -4,7 +4,7 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), flush: vi.fn(async () => {}) }),
 }));
 
-import { postListingToFacebook, postListingToInstagram, postEventToFacebook } from '@/lib/facebook/postToPage';
+import { postListingToFacebook, postListingToInstagram, postListingReelToFacebook, postListingReelToInstagram, postEventToFacebook } from '@/lib/facebook/postToPage';
 
 const originalEnv = { ...process.env };
 const originalFetch = global.fetch;
@@ -147,6 +147,135 @@ describe('postListingToInstagram', () => {
     process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
     await expect(postListingToInstagram(listing)).resolves.toBe(false);
+  });
+});
+
+describe('postListingReelToFacebook', () => {
+  const videoUrl = 'https://storage.example.com/videos/corvette.mp4';
+
+  it('no-ops and returns false when FACEBOOK_PAGE_ID/ACCESS_TOKEN are not configured', async () => {
+    delete process.env.FACEBOOK_PAGE_ID;
+    delete process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+    vi.stubGlobal('fetch', vi.fn());
+    await expect(postListingReelToFacebook(listing, videoUrl)).resolves.toBe(false);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('runs start -> upload -> finish and returns true on success', async () => {
+    process.env.FACEBOOK_PAGE_ID = 'page1';
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ video_id: 'vid1', upload_url: 'https://rupload.example.com/vid1' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(postListingReelToFacebook(listing, videoUrl)).resolves.toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    const [startUrl, startInit] = fetchMock.mock.calls[0];
+    expect(startUrl).toContain('/video_reels');
+    expect(startInit.body.toString()).toContain(encodeURIComponent('upload_phase') + '=' + encodeURIComponent('start'));
+
+    const [uploadUrl, uploadInit] = fetchMock.mock.calls[1];
+    expect(uploadUrl).toBe('https://rupload.example.com/vid1');
+    expect(uploadInit.headers.file_url).toBe(videoUrl);
+    expect(uploadInit.headers.Authorization).toContain('token1');
+
+    const [finishUrl, finishInit] = fetchMock.mock.calls[2];
+    expect(finishUrl).toContain('/video_reels');
+    expect(finishInit.body.toString()).toContain(encodeURIComponent('upload_phase') + '=' + encodeURIComponent('finish'));
+    expect(finishInit.body.toString()).toContain(encodeURIComponent('video_id') + '=' + encodeURIComponent('vid1'));
+  });
+
+  it('returns false and never uploads if the start phase has no video_id/upload_url', async () => {
+    process.env.FACEBOOK_PAGE_ID = 'page1';
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }));
+    await expect(postListingReelToFacebook(listing, videoUrl)).resolves.toBe(false);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns false and never calls finish if the upload step fails', async () => {
+    process.env.FACEBOOK_PAGE_ID = 'page1';
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ video_id: 'vid1', upload_url: 'https://rupload.example.com/vid1' }) })
+      .mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({ error: { message: 'bad upload' } }) });
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(postListingReelToFacebook(listing, videoUrl)).resolves.toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('catches a thrown fetch error without propagating it and returns false', async () => {
+    process.env.FACEBOOK_PAGE_ID = 'page1';
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
+    await expect(postListingReelToFacebook(listing, videoUrl)).resolves.toBe(false);
+  });
+});
+
+describe('postListingReelToInstagram', () => {
+  const videoUrl = 'https://storage.example.com/videos/corvette.mp4';
+
+  it('no-ops and returns false when INSTAGRAM_BUSINESS_ACCOUNT_ID/FACEBOOK_PAGE_ACCESS_TOKEN are not configured', async () => {
+    delete process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
+    delete process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+    vi.stubGlobal('fetch', vi.fn());
+    await expect(postListingReelToInstagram(listing, videoUrl)).resolves.toBe(false);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('creates a REELS container, waits for it to finish processing, then publishes', async () => {
+    process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID = 'ig1';
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'container1' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ status_code: 'FINISHED' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'media1' }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(postListingReelToInstagram(listing, videoUrl)).resolves.toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    const [containerUrl, containerInit] = fetchMock.mock.calls[0];
+    expect(containerUrl).toContain('/ig1/media');
+    expect(containerInit.body.toString()).toContain(encodeURIComponent('media_type') + '=' + encodeURIComponent('REELS'));
+    expect(containerInit.body.toString()).toContain(encodeURIComponent('video_url'));
+
+    const [pollUrl] = fetchMock.mock.calls[1];
+    expect(pollUrl).toContain('container1');
+    expect(pollUrl).toContain('status_code');
+
+    const [publishUrl, publishInit] = fetchMock.mock.calls[2];
+    expect(publishUrl).toContain('/ig1/media_publish');
+    expect(publishInit.body.toString()).toContain(encodeURIComponent('creation_id') + '=' + encodeURIComponent('container1'));
+  });
+
+  it('returns false and never publishes if the container reports status_code=ERROR', async () => {
+    process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID = 'ig1';
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'container1' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ status_code: 'ERROR' }) });
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(postListingReelToInstagram(listing, videoUrl)).resolves.toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns false and never polls if the container is created but returns no id', async () => {
+    process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID = 'ig1';
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }));
+    await expect(postListingReelToInstagram(listing, videoUrl)).resolves.toBe(false);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('catches a thrown fetch error without propagating it and returns false', async () => {
+    process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID = 'ig1';
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
+    await expect(postListingReelToInstagram(listing, videoUrl)).resolves.toBe(false);
   });
 });
 

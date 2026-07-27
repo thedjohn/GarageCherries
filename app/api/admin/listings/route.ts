@@ -6,6 +6,7 @@ import { Resend } from 'resend';
 import { emailHeader } from '@/lib/emailBranding';
 import { createLogger } from '@/lib/logger';
 import { postListingToFacebook } from '@/lib/facebook/postToPage';
+import { triggerListingVideo } from '@/lib/videoPipeline';
 import { submitToIndexNow } from '@/lib/indexNow';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -248,6 +249,7 @@ export async function PATCH(req: NextRequest) {
     if (success) {
       await admin.from('listings').update({ fb_posted_at: new Date().toISOString() }).eq('id', id);
       log.info('Listing manually reposted to Facebook', { listingId: id, adminEmail: user?.email });
+      triggerListingVideo(listing).catch(() => {});
     } else {
       log.warn('Manual Facebook repost failed', { listingId: id, adminEmail: user?.email });
     }

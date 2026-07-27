@@ -148,6 +148,111 @@ export async function postListingToInstagram(listing: ListingPostInput): Promise
   }
 }
 
+// Facebook Reels use a different Graph API flow than the photo/feed post
+// above: a 3-step process against /video_reels (start upload session, upload
+// the file, finish/publish) rather than /photos or /feed. Requires a
+// pre-made, publicly-hosted video file (e.g. Supabase storage) -- Facebook
+// does not generate video from photos, unlike the photo post which just
+// needs an image URL.
+async function postReelStep(pageId: string, token: string, params: Record<string, string>): Promise<{ success: boolean; data?: any }> {
+  const url = `https://graph.facebook.com/${GRAPH_VERSION}/${pageId}/video_reels`;
+  const body = new URLSearchParams({ ...params, access_token: token });
+  const res = await fetch(url, { method: 'POST', body });
+  const data = await res.json();
+  if (!res.ok || data.error) {
+    log.error('Facebook Reel step failed', new Error(data.error?.message ?? `HTTP ${res.status}`), { phase: params.upload_phase });
+    return { success: false };
+  }
+  return { success: true, data };
+}
+
+// Designed to never throw, same contract as postListingToFacebook. Returns
+// whether the post actually succeeded. videoUrl must already be uploaded to
+// a public host (e.g. Supabase storage) before calling this -- unlike the
+// photo post, there's no local-upload path here.
+export async function postListingReelToFacebook(listing: ListingPostInput, videoUrl: string): Promise<boolean> {
+  const pageId = process.env.FACEBOOK_PAGE_ID;
+  const token = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+  if (!pageId || !token) {
+    log.info('Facebook Reel post skipped — FACEBOOK_PAGE_ID/FACEBOOK_PAGE_ACCESS_TOKEN not configured');
+    return false;
+  }
+
+  const caption = buildListingCaption(listing);
+
+  try {
+    const start = await postReelStep(pageId, token, { upload_phase: 'start' });
+    if (!start.success || !start.data?.video_id || !start.data?.upload_url) return false;
+    const videoId = start.data.video_id as string;
+
+    const uploadRes = await fetch(start.data.upload_url, {
+      method: 'POST',
+      headers: { Authorization: `OAuth ${token}`, file_url: videoUrl },
+    });
+    const uploadData = await uploadRes.json();
+    if (!uploadRes.ok || !uploadData.success) {
+      log.error('Facebook Reel upload failed', new Error(uploadData.error?.message ?? `HTTP ${uploadRes.status}`), { videoId });
+      return false;
+    }
+
+    const finish = await postReelStep(pageId, token, {
+      upload_phase: 'finish',
+      video_id: videoId,
+      video_state: 'PUBLISHED',
+      description: caption,
+    });
+    return finish.success;
+  } catch (err) {
+    log.error('postListingReelToFacebook threw', err instanceof Error ? err : new Error(String(err)), { listingId: listing.id });
+    return false;
+  }
+}
+
+// Instagram video containers process asynchronously (unlike the photo
+// container, which is ready immediately) -- publishing before status_code
+// reaches FINISHED fails, so this polls before calling media_publish.
+async function waitForInstagramContainer(igUserId: string, token: string, containerId: string, maxAttempts = 10): Promise<boolean> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const url = `https://graph.facebook.com/${GRAPH_VERSION}/${containerId}?fields=status_code&access_token=${token}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status_code === 'FINISHED') return true;
+    if (data.status_code === 'ERROR') {
+      log.error('Instagram Reel container processing failed', new Error('status_code=ERROR'), { containerId });
+      return false;
+    }
+    await new Promise(r => setTimeout(r, 3000));
+  }
+  log.error('Instagram Reel container timed out waiting to process', new Error('timeout'), { containerId });
+  return false;
+}
+
+export async function postListingReelToInstagram(listing: ListingPostInput, videoUrl: string): Promise<boolean> {
+  const igUserId = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
+  const token = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+  if (!igUserId || !token) {
+    log.info('Instagram Reel post skipped — INSTAGRAM_BUSINESS_ACCOUNT_ID/FACEBOOK_PAGE_ACCESS_TOKEN not configured');
+    return false;
+  }
+
+  const caption = buildListingCaption(listing);
+
+  try {
+    const container = await postToInstagram(igUserId, token, 'media', { media_type: 'REELS', video_url: videoUrl, caption });
+    if (!container.success || !container.data?.id) return false;
+    const containerId = container.data.id as string;
+
+    const ready = await waitForInstagramContainer(igUserId, token, containerId);
+    if (!ready) return false;
+
+    const publish = await postToInstagram(igUserId, token, 'media_publish', { creation_id: containerId });
+    return publish.success;
+  } catch (err) {
+    log.error('postListingReelToInstagram threw', err instanceof Error ? err : new Error(String(err)), { listingId: listing.id });
+    return false;
+  }
+}
+
 interface EventPostInput {
   slug: string;
   name: string;
