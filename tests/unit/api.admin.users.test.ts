@@ -555,18 +555,34 @@ describe('POST /api/admin/users', () => {
     mockRequireAdmin.mockResolvedValue('superadmin');
     mockCreateUser.mockResolvedValue({ data: { user: { id: 'new-user-1' } }, error: null });
     const insert = vi.fn().mockResolvedValue({ error: null });
-    mockFrom.mockImplementation(() => ({ insert }));
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    mockFrom.mockImplementation(() => ({ insert, delete: vi.fn(() => ({ eq })) }));
 
     const res: any = await POST(makeJsonRequest({ email: 'x@x.com', password: 'pw', dealerName: 'Dealer Co', location: 'STL', state: 'MO' }));
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ id: 'new-user-1', name: 'Dealer Co', slug: 'dealer-co' }));
     expect(res._data).toEqual({ success: true, userId: 'new-user-1' });
   });
 
+  it('deletes the auto-created profiles row so a dealer account is not also a buyer account', async () => {
+    mockRequireAdmin.mockResolvedValue('superadmin');
+    mockCreateUser.mockResolvedValue({ data: { user: { id: 'new-user-1' } }, error: null });
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const deleteFn = vi.fn(() => ({ eq }));
+    mockFrom.mockImplementation((table: string) => (table === 'profiles' ? { delete: deleteFn } : { insert, delete: deleteFn }));
+
+    await POST(makeJsonRequest({ email: 'x@x.com', password: 'pw', dealerName: 'Dealer Co' }));
+    expect(mockFrom).toHaveBeenCalledWith('profiles');
+    expect(deleteFn).toHaveBeenCalled();
+    expect(eq).toHaveBeenCalledWith('id', 'new-user-1');
+  });
+
   it('saves the login email onto the dealer row, not just the auth account', async () => {
     mockRequireAdmin.mockResolvedValue('superadmin');
     mockCreateUser.mockResolvedValue({ data: { user: { id: 'new-user-2' } }, error: null });
     const insert = vi.fn().mockResolvedValue({ error: null });
-    mockFrom.mockImplementation(() => ({ insert }));
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    mockFrom.mockImplementation(() => ({ insert, delete: vi.fn(() => ({ eq })) }));
 
     await POST(makeJsonRequest({ email: 'dealer@example.com', password: 'pw', dealerName: 'Dealer Co' }));
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ email: 'dealer@example.com' }));

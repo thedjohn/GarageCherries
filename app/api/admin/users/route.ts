@@ -339,5 +339,10 @@ export async function POST(req: NextRequest) {
   });
   if (dealerErr) return NextResponse.json({ error: dealerErr.message }, { status: 500 });
 
+  // handle_new_user_profile() fires on any email-provider auth.users insert (built for
+  // regular /account/signup buyers) and auto-creates a matching `profiles` row here too --
+  // remove it so a dealer account isn't also a buyer/seller account with duplicate nav access.
+  await admin.from('profiles').delete().eq('id', userId);
+
   return NextResponse.json({ success: true, userId });
 }
