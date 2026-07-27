@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import SubmitEventForm from './SubmitEventForm';
+import EventFilters from '@/components/EventFilters';
 
 export const revalidate = 0;
 
@@ -49,15 +50,24 @@ function formatTimeRange(start?: string | null, end?: string | null) {
   return end ? `${formatTime(start)} – ${formatTime(end)}` : formatTime(start);
 }
 
-export default async function EventsPage() {
+interface Props {
+  searchParams: Promise<{ state?: string; type?: string }>;
+}
+
+export default async function EventsPage({ searchParams }: Props) {
+  const sp = await searchParams;
   const admin = createAdminClient();
-  const { data } = await admin
+  let query = admin
     .from('events')
     .select('*')
     .eq('status', 'approved')
     .order('date', { ascending: true });
+  if (sp.state) query = query.eq('state', sp.state);
+  if (sp.type) query = query.eq('type', sp.type);
+  const { data } = await query;
 
   const events: CarShowEvent[] = data ?? [];
+  const hasActiveFilters = !!(sp.state || sp.type);
   const now = new Date().toISOString().slice(0, 10);
   const upcoming = events.filter(e => e.date >= now);
   const past = events.filter(e => e.date < now);
@@ -73,7 +83,18 @@ export default async function EventsPage() {
         </p>
       </div>
 
-      {events.length === 0 && (
+      <EventFilters />
+
+      {events.length === 0 && hasActiveFilters && (
+        <div className="bg-white border border-zinc-100 rounded-2xl p-16 text-center shadow-sm">
+          <p className="text-4xl mb-4">📅</p>
+          <h2 className="text-xl font-bold text-zinc-800 mb-2">No events match your filters</h2>
+          <p className="text-zinc-500 text-sm mb-4">Try a different state or event type.</p>
+          <Link href="/events" className="text-red-600 hover:underline text-sm font-semibold">Clear filters</Link>
+        </div>
+      )}
+
+      {events.length === 0 && !hasActiveFilters && (
         <div className="bg-white border border-zinc-100 rounded-2xl p-16 text-center shadow-sm">
           <p className="text-4xl mb-4">📅</p>
           <h2 className="text-xl font-bold text-zinc-800 mb-2">No events listed yet</h2>
