@@ -5,11 +5,15 @@ import Link from 'next/link';
 const STORAGE_KEY = 'gc_promo_250_banner_dismissed';
 
 export default function PromoBanner() {
-  const [visible, setVisible] = useState(false);
+  // Defaults to visible: most visitors are new (no dismiss flag set yet), so
+  // rendering it from the first paint avoids the layout shift that showing it
+  // late (after an effect) would cause for the majority of sessions. Only the
+  // minority who already dismissed it this session see it hide right after mount.
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    if (!sessionStorage.getItem(STORAGE_KEY)) {
-      setVisible(true);
+    if (sessionStorage.getItem(STORAGE_KEY)) {
+      setVisible(false);
     }
   }, []);
 
