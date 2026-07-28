@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { Metadata } from 'next';
 import CarCard from '@/components/CarCard';
+import QuickFilters from '@/components/QuickFilters';
 import SearchFilters from '@/components/SearchFilters';
 import Pagination from '@/components/Pagination';
 import SortSelect from '@/components/SortSelect';
@@ -117,6 +118,10 @@ export default async function ListingsPage({ searchParams }: Props) {
           <SortSelect />
         </Suspense>
       </div>
+
+      <Suspense>
+        <QuickFilters />
+      </Suspense>
 
       <div className="flex flex-col lg:flex-row gap-8">
         <Suspense>
