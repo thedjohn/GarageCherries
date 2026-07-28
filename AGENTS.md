@@ -33,8 +33,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 After implementation:
 - Build the solution.
 - Run tests.
+- View and test the change on localhost (dev server) before pushing to production.
 - Verify no existing functionality was changed.
 - Report exactly what changed.
+
+## Communication
+- Explain all responses in plain, layman's terms — avoid unexplained jargon, technical shorthand, or code-internal terminology.
+- If a technical term is necessary, briefly explain what it means in context.
 
 ## Auditing Requirements Against Code
 Whenever asked whether the code satisfies a requirement, feature claim, or prior "we fixed this" statement:
