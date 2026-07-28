@@ -72,23 +72,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           src="https://app.enzuzo.com/scripts/cookiebar/f896c694-7593-11f1-be29-f74875305e25"
           strategy="beforeInteractive"
         />
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-B36QB0J7TX"
-          strategy="afterInteractive"
-        />
-        <Script id="ga-init" strategy="afterInteractive">{`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', 'G-B36QB0J7TX');
-        `}</Script>
-        <Script id="clarity-init" strategy="afterInteractive">{`
-          (function(c,l,a,r,i,t,y){
-              c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-              t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-              y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-          })(window, document, "clarity", "script", "xr88uf1gtm");
-        `}</Script>
+        {/* Analytics only run on the real production deployment -- VERCEL_ENV is
+            'production' only there ('preview' for preview deployments, unset
+            locally), unlike NODE_ENV which is 'production' even during preview
+            builds. Without this, local/preview browsing pollutes GA and Clarity
+            with non-customer sessions. */}
+        {process.env.VERCEL_ENV === 'production' && (
+          <>
+            <Script
+              src="https://www.googletagmanager.com/gtag/js?id=G-B36QB0J7TX"
+              strategy="afterInteractive"
+            />
+            <Script id="ga-init" strategy="afterInteractive">{`
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-B36QB0J7TX');
+            `}</Script>
+            <Script id="clarity-init" strategy="afterInteractive">{`
+              (function(c,l,a,r,i,t,y){
+                  c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                  t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                  y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+              })(window, document, "clarity", "script", "xr88uf1gtm");
+            `}</Script>
+          </>
+        )}
       </body>
     </html>
   );
