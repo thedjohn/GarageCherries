@@ -213,16 +213,16 @@ describe('POST /api/listings/submit', () => {
     expect(suspendedFrom).not.toHaveBeenCalled();
   });
 
-  it('filters out image URLs that are not from our storage bucket and caps at 20', async () => {
+  it('filters out image URLs that are not from our storage bucket and caps at 30', async () => {
     const urls = [
       'https://evil.example.com/x.jpg',
       'not-a-url',
-      ...Array.from({ length: 25 }, (_, i) => `https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/cars/private/${i}.jpg`),
+      ...Array.from({ length: 35 }, (_, i) => `https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/cars/private/${i}.jpg`),
     ];
     const res: any = await POST(makeFormRequest({ ...validFields, imageUrls: JSON.stringify(urls) }));
     expect(res._status).toBe(200);
     const call = mockRpc.mock.calls[0][1];
-    expect(call.p_images).toHaveLength(20);
+    expect(call.p_images).toHaveLength(30);
     expect(call.p_images.every((u: string) => u.includes('comiuxnpvngcrvtgzpae.supabase.co'))).toBe(true);
   });
 

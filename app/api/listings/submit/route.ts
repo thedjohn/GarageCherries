@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     if (!url.includes(supabaseUrl.replace('https://', ''))) return false;
     if (!url.includes('/listing-images/')) return false;
     return true;
-  }).slice(0, 20); // cap at 20 images
+  }).slice(0, 30); // cap at 30 images -- matches the client UI and the dealer feed sync's own cap
 
   const stateVal = String(formData.get('state') ?? '').toUpperCase().trim();
   if (stateVal && !US_STATES.has(stateVal)) {
