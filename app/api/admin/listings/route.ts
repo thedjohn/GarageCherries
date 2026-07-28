@@ -327,9 +327,13 @@ export async function PATCH(req: NextRequest) {
             <div style="background:white;border:1px solid #f4f4f5;border-top:none;padding:32px;border-radius:0 0 12px 12px;">
               <h1 style="font-size:20px;font-weight:800;color:#18181b;margin:0 0 8px;">Your listing is live!</h1>
               <p style="color:#71717a;font-size:14px;margin:0 0 24px;">Hi ${sellerName}, your listing for <strong style="color:#18181b;">${listing.title}</strong> has been approved and is now visible to buyers on GarageCherries.</p>
-              <a href="${listingUrl}" style="display:block;text-align:center;background:#ef4444;color:white;font-weight:700;padding:14px 24px;border-radius:10px;text-decoration:none;font-size:15px;margin-bottom:24px;">
+              <a href="${listingUrl}" style="display:block;text-align:center;background:#ef4444;color:white;font-weight:700;padding:14px 24px;border-radius:10px;text-decoration:none;font-size:15px;margin-bottom:16px;">
                 View Your Listing →
               </a>
+              <a href="https://www.facebook.com/GarageCherries" style="display:block;text-align:center;background:#f4f4f5;color:#18181b;font-weight:700;padding:14px 24px;border-radius:10px;text-decoration:none;font-size:15px;margin-bottom:24px;">
+                Follow Us on Facebook →
+              </a>
+              <p style="color:#a1a1aa;font-size:12px;margin:0 0 16px;">We share every new listing on our Facebook Page — follow along and share yours with friends to help it get seen!</p>
               <p style="color:#a1a1aa;font-size:12px;margin:0;">You'll receive an email when a buyer first contacts you about this listing. You can manage your listing from your <a href="https://www.garagecherries.com/account" style="color:#71717a;">account page</a>.</p>
             </div>
           </div>
