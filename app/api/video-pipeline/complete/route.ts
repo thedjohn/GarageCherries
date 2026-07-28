@@ -9,7 +9,7 @@ const log = createLogger('api/video-pipeline/complete');
 // finishes (or fails) building a listing's video. Authenticated the same way
 // as the cron routes (a shared secret, not a user session) since the caller
 // is the VPS, not a browser. On success, posts the finished video as a Reel
-// to Facebook (and Instagram, once its permissions are upgraded) and marks
+// to Facebook and Instagram, and marks
 // reel_posted_at so it isn't posted again. On failure, just logs it -- same
 // tolerance as the existing photo-posting pipeline, a listing that fails to
 // get a video simply doesn't get one.
