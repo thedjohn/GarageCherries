@@ -14,12 +14,12 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   const { data: dealer } = await admin
     .from('dealers')
-    .select('id, name, phone, email, location, state, feed_url, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path')
+    .select('id, name, phone, email, location, state, feed_url, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path, feed_sftp_last_received_at')
     .eq('id', user.id)
     .single();
 
   if (!dealer) return NextResponse.json({ error: 'Dealer not found' }, { status: 403 });
-  const hasFeed = dealer.feed_url || (dealer.feed_protocol === 'sftp' && dealer.feed_host);
+  const hasFeed = dealer.feed_url || (dealer.feed_protocol === 'sftp' && dealer.feed_host) || dealer.feed_protocol === 'sftp_incoming';
   if (!hasFeed) return NextResponse.json({ error: 'No feed configured. Add one in Settings first.' }, { status: 400 });
 
   const knownMakes = new Set(MAKES.map(m => m.toLowerCase()));
@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
   await admin.from('dealers').update({
     feed_last_synced_at: new Date().toISOString(),
     feed_last_sync_summary: summary,
+    ...(result.sourceMtime ? { feed_sftp_last_received_at: result.sourceMtime } : {}),
   }).eq('id', dealer.id);
 
   return NextResponse.json({ ok: result.errors.length === 0, result, summary });

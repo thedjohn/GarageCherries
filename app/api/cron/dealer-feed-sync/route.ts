@@ -92,12 +92,18 @@ function selectRepresentativeImages(images: string[], max = 30): string[] {
 export interface FeedSyncResult {
   inserted: number; updated: number; markedSold: number; skipped: number;
   errors: string[]; unrecognizedMakes: string[];
+  // Set only by a 'sftp_incoming' sync that found and processed new content --
+  // the file's own mtime (reported by the VPS bridge), not wall-clock "now",
+  // so the next run's "since" comparison stays correct regardless of any
+  // clock skew between the VPS and wherever this cron runs.
+  sourceMtime?: string;
 }
 
 type FeedDealer = {
   id: string; name: string; phone: string | null; email: string; location: string | null; state: string | null;
   feed_protocol?: string | null; feed_host?: string | null; feed_port?: number | null;
   feed_username?: string | null; feed_password?: string | null; feed_remote_path?: string | null;
+  feed_sftp_last_received_at?: string | null;
 };
 
 // Downloads the feed file from an SFTP server instead of a plain HTTPS URL --
@@ -122,6 +128,42 @@ async function fetchViaSftp(dealer: FeedDealer): Promise<string> {
   }
 }
 
+// Reads a dealer's pushed file back from the VPS bridge (SFTPGo intake) --
+// the dealer's own system already uploaded it there via SFTP, so this is a
+// read of what's already landed rather than a pull from anywhere external.
+// `since` avoids reprocessing an unchanged file: the bridge returns 204 if
+// the file's mtime hasn't advanced past the last value we stored. Returns
+// null (not an error) when there's nothing new to sync.
+async function fetchViaSftpPush(dealer: FeedDealer): Promise<{ text: string; mtime: string } | null> {
+  const vpsUrl = process.env.VPS_URL;
+  const bridgeSecret = process.env.VPS_SFTP_BRIDGE_SECRET;
+  if (!vpsUrl || !bridgeSecret) {
+    throw new Error('SFTP push intake is not configured (VPS_URL/VPS_SFTP_BRIDGE_SECRET missing)');
+  }
+  const since = dealer.feed_sftp_last_received_at ? `?since=${encodeURIComponent(dealer.feed_sftp_last_received_at)}` : '';
+  const res = await fetch(`${vpsUrl}/dealer-feed/dealers/${encodeURIComponent(dealer.id)}/feed${since}`, {
+    headers: { Authorization: `Bearer ${bridgeSecret}` },
+  });
+  if (res.status === 204) return null;
+  if (res.status === 404) throw new Error('No feed file has been uploaded yet');
+  if (!res.ok) throw new Error(`Bridge fetch failed: HTTP ${res.status}`);
+  const data = await res.json();
+  return { text: data.text, mtime: data.mtime };
+}
+
+// Guards against a read landing mid-upload -- a real race with the push
+// model specifically, where a dealer's system could still be writing the
+// file when this cron happens to read it. A truncated read is very unlikely
+// to still contain a well-formed header with every column this parser
+// depends on, so this catches that case before processing garbage as if it
+// were a real feed (which risks incorrectly marking cars "sold" that were
+// simply cut off by the bad read). Applied to all three protocols uniformly
+// since it's a harmless no-op for an already-well-formed feed.
+const REQUIRED_FEED_COLUMNS = ['VIN', 'Stock Number', 'Year', 'Make', 'Model'];
+function isValidFeedHeader(header: string[] | undefined): boolean {
+  return !!header && REQUIRED_FEED_COLUMNS.every(col => header.includes(col));
+}
+
 // Fetches one dealer's CSV feed and syncs it: inserts new vehicles (matched by
 // VIN, falling back to Stock Number), updates existing ones, and marks as sold
 // any previously-synced VIN/Stock Number no longer present in the feed. Shared
@@ -131,7 +173,12 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
 
   let csvText: string;
   try {
-    if (dealer.feed_protocol === 'sftp') {
+    if (dealer.feed_protocol === 'sftp_incoming') {
+      const fetched = await fetchViaSftpPush(dealer);
+      if (fetched === null) return result; // nothing new since last sync -- not an error
+      csvText = fetched.text;
+      result.sourceMtime = fetched.mtime;
+    } else if (dealer.feed_protocol === 'sftp') {
       csvText = await fetchViaSftp(dealer);
     } else {
       const res = await fetch(feedUrl ?? '');
@@ -145,6 +192,10 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
 
   const rows = parseCSV(csvText.replace(/^﻿/, ''));
   const header = rows[0];
+  if (!isValidFeedHeader(header)) {
+    result.errors.push('Feed content failed validation (missing expected columns) -- possibly read mid-write, will retry next cycle');
+    return result;
+  }
   const idx = (name: string) => header.indexOf(name);
   const dataRows = rows.slice(1);
 
@@ -314,9 +365,9 @@ export async function GET(request: NextRequest) {
 
   const { data: dealers } = await admin
     .from('dealers')
-    .select('id, name, phone, email, location, state, feed_url, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path')
+    .select('id, name, phone, email, location, state, feed_url, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path, feed_sftp_last_received_at')
     .eq('feed_sync_hour', currentHour)
-    .or('feed_url.not.is.null,feed_protocol.eq.sftp');
+    .or('feed_url.not.is.null,feed_protocol.eq.sftp,feed_protocol.eq.sftp_incoming');
 
   const results: Record<string, FeedSyncResult> = {};
 
@@ -327,6 +378,7 @@ export async function GET(request: NextRequest) {
     await admin.from('dealers').update({
       feed_last_synced_at: new Date().toISOString(),
       feed_last_sync_summary: summarizeFeedSync(result),
+      ...(result.sourceMtime ? { feed_sftp_last_received_at: result.sourceMtime } : {}),
     }).eq('id', dealer.id);
   }
 

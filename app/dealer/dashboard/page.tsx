@@ -33,6 +33,7 @@ interface DbDealer {
   feed_last_synced_at?: string | null; feed_last_sync_summary?: string | null;
   feed_protocol?: string | null; feed_host?: string | null; feed_port?: number | null;
   feed_username?: string | null; feed_password?: string | null; feed_remote_path?: string | null;
+  feed_sftp_username?: string | null; feed_sftp_provisioned_at?: string | null; feed_sftp_last_received_at?: string | null;
 }
 
 function toSlug(s: string) {
@@ -477,7 +478,7 @@ export default function DealerDashboard() {
     if (!user) { router.replace('/dealer/login'); return; }
 
     const { data: dealerRow } = await supabase
-      .from('dealers').select('id, slug, name, phone, email, address, location, state, zip, description, website, specialties, since, logo, plan, beta_expires_at, feed_url, feed_sync_hour, feed_last_synced_at, feed_last_sync_summary, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path')
+      .from('dealers').select('id, slug, name, phone, email, address, location, state, zip, description, website, specialties, since, logo, plan, beta_expires_at, feed_url, feed_sync_hour, feed_last_synced_at, feed_last_sync_summary, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path, feed_sftp_username, feed_sftp_provisioned_at, feed_sftp_last_received_at')
       .or(`id.eq.${user.id},email.eq.${user.email}`)
       .single();
 
@@ -793,7 +794,7 @@ export default function DealerDashboard() {
           <span className="text-zinc-500">Inventory: <span className="font-medium text-zinc-800">{listings.length} active vehicles</span></span>
           <div className="flex items-center gap-3">
             {syncMessage && <span className="text-xs text-zinc-400">{syncMessage}</span>}
-            {(dealer?.feed_url || (dealer?.feed_protocol === 'sftp' && dealer?.feed_host)) ? (
+            {(dealer?.feed_url || (dealer?.feed_protocol === 'sftp' && dealer?.feed_host) || dealer?.feed_protocol === 'sftp_incoming') ? (
               <button onClick={handleSyncNow} disabled={syncing}
                 className="text-xs bg-zinc-800 hover:bg-zinc-900 disabled:opacity-60 text-white px-3 py-1.5 rounded-lg transition-colors">
                 {syncing ? 'Syncing…' : 'Sync now'}
@@ -1487,7 +1488,8 @@ function DealerLocations({ dealerId }: { dealerId: string }) {
 
 // ─── Dealer Feed Sync ─────────────────────────────────────────────────────────
 function DealerFeedSync({ dealer, onSaved }: { dealer: DbDealer; onSaved: () => void }) {
-  const [protocol, setProtocol] = useState<'https' | 'sftp'>(dealer.feed_protocol === 'sftp' ? 'sftp' : 'https');
+  const initialProtocol = dealer.feed_protocol === 'sftp' ? 'sftp' : dealer.feed_protocol === 'sftp_incoming' ? 'sftp_incoming' : 'https';
+  const [protocol, setProtocol] = useState<'https' | 'sftp' | 'sftp_incoming'>(initialProtocol);
   const [feedUrl, setFeedUrl] = useState(dealer.feed_url ?? '');
   const [sftpHost, setSftpHost] = useState(dealer.feed_host ?? '');
   const [sftpPort, setSftpPort] = useState(dealer.feed_port != null ? String(dealer.feed_port) : '22');
@@ -1499,6 +1501,13 @@ function DealerFeedSync({ dealer, onSaved }: { dealer: DbDealer; onSaved: () => 
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
 
+  // Newly-generated credentials, shown exactly once -- we never store the
+  // password, so this is the dealer's only chance to see it. Cleared on
+  // unmount/navigation, same as it would be if this were a one-time modal.
+  const [provisioning, setProvisioning] = useState(false);
+  const [newCredentials, setNewCredentials] = useState<{ username: string; password: string; host: string; port: number } | null>(null);
+  const [deprovisioning, setDeprovisioning] = useState(false);
+
   const handleSave = async () => {
     setSaving(true); setError(''); setSaved(false);
     const res = await fetch('/api/dealer/settings', {
@@ -1506,13 +1515,20 @@ function DealerFeedSync({ dealer, onSaved }: { dealer: DbDealer; onSaved: () => 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         dealerId: dealer.id,
-        feed_protocol: protocol,
-        feed_url: protocol === 'https' ? (feedUrl.trim() || null) : null,
-        feed_host: protocol === 'sftp' ? (sftpHost.trim() || null) : null,
-        feed_port: protocol === 'sftp' ? (Number(sftpPort) || 22) : null,
-        feed_username: protocol === 'sftp' ? (sftpUsername.trim() || null) : null,
-        feed_password: protocol === 'sftp' ? (sftpPassword || null) : null,
-        feed_remote_path: protocol === 'sftp' ? (sftpRemotePath.trim() || null) : null,
+        // sftp_incoming's protocol/credentials are only ever set via the
+        // dedicated provision/deprovision actions below, never through this
+        // generic save -- sending feed_protocol here while it's selected but
+        // not yet actually provisioned would mark the dealer as sftp_incoming
+        // in the database with no real SFTP account behind it.
+        ...(protocol === 'sftp_incoming' ? {} : {
+          feed_protocol: protocol,
+          feed_url: protocol === 'https' ? (feedUrl.trim() || null) : null,
+          feed_host: protocol === 'sftp' ? (sftpHost.trim() || null) : null,
+          feed_port: protocol === 'sftp' ? (Number(sftpPort) || 22) : null,
+          feed_username: protocol === 'sftp' ? (sftpUsername.trim() || null) : null,
+          feed_password: protocol === 'sftp' ? (sftpPassword || null) : null,
+          feed_remote_path: protocol === 'sftp' ? (sftpRemotePath.trim() || null) : null,
+        }),
         feed_sync_hour: syncHour === '' ? null : Number(syncHour),
       }),
     });
@@ -1520,6 +1536,28 @@ function DealerFeedSync({ dealer, onSaved }: { dealer: DbDealer; onSaved: () => 
     const json = await res.json();
     if (!res.ok) { setError(json.error ?? 'Save failed'); return; }
     setSaved(true);
+    onSaved();
+  };
+
+  const handleProvision = async () => {
+    setProvisioning(true); setError(''); setNewCredentials(null);
+    const res = await fetch('/api/dealer/feed-sftp/provision', { method: 'POST' });
+    const json = await res.json();
+    setProvisioning(false);
+    if (!res.ok) { setError(json.error ?? 'Failed to generate SFTP access'); return; }
+    setNewCredentials(json);
+    onSaved();
+  };
+
+  const handleDeprovision = async () => {
+    if (!confirm("Remove SFTP access? Your inventory system's export tool will no longer be able to deliver files here.")) return;
+    setDeprovisioning(true); setError('');
+    const res = await fetch('/api/dealer/feed-sftp/provision', { method: 'DELETE' });
+    const json = await res.json();
+    setDeprovisioning(false);
+    if (!res.ok) { setError(json.error ?? 'Failed to remove SFTP access'); return; }
+    setNewCredentials(null);
+    setProtocol('https');
     onSaved();
   };
 
@@ -1538,9 +1576,10 @@ function DealerFeedSync({ dealer, onSaved }: { dealer: DbDealer; onSaved: () => 
       <div className="space-y-4">
         <div>
           <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Feed Type</label>
-          <select value={protocol} onChange={e => { setProtocol(e.target.value as 'https' | 'sftp'); setSaved(false); }} className={inp}>
+          <select value={protocol} onChange={e => { setProtocol(e.target.value as 'https' | 'sftp' | 'sftp_incoming'); setSaved(false); setError(''); }} className={inp}>
             <option value="https">Direct URL (HTTPS)</option>
-            <option value="sftp">SFTP</option>
+            <option value="sftp">SFTP (your server)</option>
+            <option value="sftp_incoming">SFTP — we host</option>
           </select>
         </div>
         {protocol === 'https' ? (
@@ -1548,7 +1587,7 @@ function DealerFeedSync({ dealer, onSaved }: { dealer: DbDealer; onSaved: () => 
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Feed URL</label>
             <input type="url" value={feedUrl} onChange={e => { setFeedUrl(e.target.value); setSaved(false); }} placeholder="https://example.com/inventory-feed.csv" className={inp} />
           </div>
-        ) : (
+        ) : protocol === 'sftp' ? (
           <>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -1573,6 +1612,51 @@ function DealerFeedSync({ dealer, onSaved }: { dealer: DbDealer; onSaved: () => 
               <input type="text" value={sftpRemotePath} onChange={e => { setSftpRemotePath(e.target.value); setSaved(false); }} placeholder="/inventory/feed.csv" className={inp} />
             </div>
           </>
+        ) : (
+          <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3">
+            <p className="text-sm text-zinc-500">We host an SFTP server your inventory system can push a file to directly, instead of you hosting one for us to pull from.</p>
+
+            {newCredentials ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+                <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">Save these now — the password won't be shown again</p>
+                <div className="text-sm font-mono space-y-1 text-zinc-800">
+                  <p>Host: {newCredentials.host}</p>
+                  <p>Port: {newCredentials.port}</p>
+                  <p>Username: {newCredentials.username}</p>
+                  <p>Password: {newCredentials.password}</p>
+                </div>
+                <p className="text-xs text-zinc-500">Always upload to the filename <span className="font-mono">inventory.csv</span> — each new upload replaces the last.</p>
+              </div>
+            ) : dealer.feed_sftp_username ? (
+              <div className="space-y-2">
+                <div className="text-sm font-mono space-y-1 text-zinc-800">
+                  <p>Host: video.garagecherries.com</p>
+                  <p>Port: 2022</p>
+                  <p>Username: {dealer.feed_sftp_username}</p>
+                </div>
+                {dealer.feed_sftp_last_received_at ? (
+                  <p className="text-xs text-zinc-400">Last file received {new Date(dealer.feed_sftp_last_received_at).toLocaleString()}</p>
+                ) : (
+                  <p className="text-xs text-amber-600">No file received yet — check your export tool's connection settings.</p>
+                )}
+                <div className="flex gap-3">
+                  <button onClick={handleProvision} disabled={provisioning} type="button"
+                    className="text-xs bg-zinc-200 hover:bg-zinc-300 disabled:opacity-60 text-zinc-700 font-bold px-3 py-1.5 rounded-lg transition-colors">
+                    {provisioning ? 'Generating…' : 'Generate New Password'}
+                  </button>
+                  <button onClick={handleDeprovision} disabled={deprovisioning} type="button"
+                    className="text-xs bg-red-50 hover:bg-red-100 disabled:opacity-60 text-red-600 font-bold px-3 py-1.5 rounded-lg transition-colors">
+                    {deprovisioning ? 'Removing…' : 'Remove SFTP Access'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={handleProvision} disabled={provisioning} type="button"
+                className="bg-zinc-800 hover:bg-zinc-900 disabled:opacity-60 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors">
+                {provisioning ? 'Generating…' : 'Generate SFTP Credentials'}
+              </button>
+            )}
+          </div>
         )}
         <div>
           <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Daily Sync Time</label>

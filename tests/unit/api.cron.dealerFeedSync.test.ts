@@ -62,6 +62,7 @@ type TestDealerRow = {
   feed_url: string | null;
   feed_protocol?: string; feed_host?: string; feed_port?: number;
   feed_username?: string; feed_password?: string; feed_remote_path?: string | null;
+  feed_sftp_last_received_at?: string | null;
 };
 const DEALER: TestDealerRow = {
   id: 'dealer-1', name: 'Survivor Classic Car Services', phone: '555-1234', email: 'info@survivor-cars.com',
@@ -462,6 +463,102 @@ describe('GET /api/cron/dealer-feed-sync', () => {
       // The real query combines feed_sync_hour with an OR across feed_url/feed_protocol -- this
       // just confirms the eq() call still fires correctly now that .or() sits after it.
       expect(dealerQueryCalls[0]).toEqual({ col: 'feed_sync_hour', val: CURRENT_HOUR });
+    });
+  });
+
+  describe('push feeds (sftp_incoming)', () => {
+    const PUSH_DEALER: TestDealerRow = {
+      id: 'dealer-push', name: 'Push Motors', phone: '555-1111', email: 'inventory@pushmotors.com',
+      location: 'Reno', state: 'NV', feed_url: null, feed_protocol: 'sftp_incoming',
+      feed_sftp_last_received_at: null,
+    };
+
+    beforeEach(() => {
+      process.env.VPS_URL = 'https://video.garagecherries.com';
+      process.env.VPS_SFTP_BRIDGE_SECRET = 'bridge-secret';
+    });
+
+    it('fetches via the VPS bridge instead of HTTPS or outbound SFTP when feed_protocol is sftp_incoming', async () => {
+      makeSupabaseMock({ dealers: [PUSH_DEALER], existingListings: [] });
+      const csv = buildCsv([{ VIN: 'VIN-PUSH-1', Year: '1970', Make: 'Ford', Model: 'Mustang', BodyStyle: 'Coupe', 'List Price': '30000' }]);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true, status: 200,
+        json: async () => ({ text: csv, mtime: '2026-07-29T00:45:00.000Z' }),
+      }));
+
+      const res: any = await GET(makeRequest('Bearer cron-secret'));
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://video.garagecherries.com/dealer-feed/dealers/dealer-push/feed',
+        { headers: { Authorization: 'Bearer bridge-secret' } },
+      );
+      expect(mockSftpConnect).not.toHaveBeenCalled();
+      expect(res._data.results['inventory@pushmotors.com'].inserted).toBe(1);
+    });
+
+    it("includes a since= param built from the dealer's last received timestamp", async () => {
+      makeSupabaseMock({ dealers: [{ ...PUSH_DEALER, feed_sftp_last_received_at: '2026-07-28T12:00:00.000Z' }] });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 204 }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://video.garagecherries.com/dealer-feed/dealers/dealer-push/feed?since=2026-07-28T12%3A00%3A00.000Z',
+        { headers: { Authorization: 'Bearer bridge-secret' } },
+      );
+    });
+
+    it('treats a 204 (nothing new) as a clean no-op, not an error', async () => {
+      const { dealerUpdateCalls } = makeSupabaseMock({ dealers: [PUSH_DEALER] });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 204 }));
+
+      const res: any = await GET(makeRequest('Bearer cron-secret'));
+      expect(res._data.results['inventory@pushmotors.com'].errors).toEqual([]);
+      expect(res._data.results['inventory@pushmotors.com'].inserted).toBe(0);
+      // No new content means no mtime to stamp -- feed_sftp_last_received_at should be left alone.
+      expect(dealerUpdateCalls[0].payload).not.toHaveProperty('feed_sftp_last_received_at');
+    });
+
+    it('records an error when no file has ever been uploaded (404 from the bridge)', async () => {
+      makeSupabaseMock({ dealers: [PUSH_DEALER] });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }));
+
+      const res: any = await GET(makeRequest('Bearer cron-secret'));
+      expect(res._data.results['inventory@pushmotors.com'].errors[0]).toContain('No feed file has been uploaded yet');
+    });
+
+    it('records an error instead of calling the bridge when VPS_URL/VPS_SFTP_BRIDGE_SECRET are not configured', async () => {
+      delete process.env.VPS_URL;
+      makeSupabaseMock({ dealers: [PUSH_DEALER] });
+      vi.stubGlobal('fetch', vi.fn());
+
+      const res: any = await GET(makeRequest('Bearer cron-secret'));
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(res._data.results['inventory@pushmotors.com'].errors[0]).toContain('not configured');
+    });
+
+    it("stamps feed_sftp_last_received_at with the file's own mtime, not wall-clock time, after processing new content", async () => {
+      const { dealerUpdateCalls } = makeSupabaseMock({ dealers: [PUSH_DEALER], existingListings: [] });
+      const csv = buildCsv([{ VIN: 'VIN-PUSH-2', Year: '1970', Make: 'Ford', Model: 'Mustang', BodyStyle: 'Coupe', 'List Price': '30000' }]);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true, status: 200,
+        json: async () => ({ text: csv, mtime: '2026-07-29T00:45:00.000Z' }),
+      }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      expect(dealerUpdateCalls[0].payload.feed_sftp_last_received_at).toBe('2026-07-29T00:45:00.000Z');
+    });
+
+    it('rejects a feed missing expected columns instead of processing it as real data (guards against a mid-write read)', async () => {
+      makeSupabaseMock({ dealers: [PUSH_DEALER], existingListings: [] });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true, status: 200,
+        // Truncated/malformed: missing most of the header a real upload would have.
+        json: async () => ({ text: '"VIN","Ye', mtime: '2026-07-29T00:45:00.000Z' }),
+      }));
+
+      const res: any = await GET(makeRequest('Bearer cron-secret'));
+      expect(res._data.results['inventory@pushmotors.com'].errors[0]).toContain('failed validation');
+      expect(res._data.results['inventory@pushmotors.com'].inserted).toBe(0);
+      expect(mockRpc).not.toHaveBeenCalled();
     });
   });
 });
