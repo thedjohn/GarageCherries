@@ -121,6 +121,12 @@ GarageCherries is a classic and collector car marketplace connecting buyers with
 - "Verified History" badge on listing
 - Builds buyer trust, justifies premium pricing
 
+#### Independent Vehicle Inspection Reports (scoped 2026-07-29, not started)
+- A dealer/seller attaches a third-party inspection report (PDF + photos) to a listing; GarageCherries displays a summary card — provider, date, vehicle info, summary text, and whether the full report is available — not the full itemized checklist
+- Explicitly labeled as an independent condition assessment, not a warranty, guarantee, certification, or promise the vehicle is free of hidden defects (disclaimer copy needs legal review — see `Legal-Review-Checklist.md`)
+- Open question before building: is the report always an outside company's upload (recommended — simpler, matches "whether the full report is available"), or should dealers/inspectors fill out the full itemized checklist (exterior, drivetrain, brakes, electrical, undercarriage, road test, etc.) as structured fields inside GarageCherries itself? This changes the DB schema significantly, so needs deciding before implementation starts
+- Rough scope if built as the upload approach: new `listing_inspections` table (1:1 with `listings`), new `inspection-reports` Storage bucket, new dealer-scoped API route for attach/replace/remove, a new section in the dealer dashboard's listing edit form, a new card on the public listing detail page, and a `Legal-Review-Checklist.md` entry for the disclaimer — about 6 files
+
 ### 📅 Mid-Term (3–6 Months)
 
 #### Mobile App
