@@ -290,7 +290,8 @@ supabase/
   migrations/                      # SQL migration files
 
 docs/
-  dealer-import-sample.json        # Sample format for future Import JSON feature
+  dealer-import-sample.json        # Reference JSON shape, kept in case a dealer feed ever needs it -- every
+                                    # dealer feed so far has been CSV or XML, no JSON format built or planned yet
 ```
 
 ---

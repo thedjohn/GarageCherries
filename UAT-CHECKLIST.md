@@ -14,6 +14,8 @@
 
 *Updated 2026-07-23 — added items for: dealer Feed Sync gaining a "Feed Type" choice between the existing direct URL and a new SFTP option (host/port/username/password/remote path), for dealers whose inventory platform only exports via FTP/SFTP rather than a hosted pull URL (§4); the site nav (desktop + mobile) and footer gaining a "Shop"/"Shop Merch" link to the GarageCherries merch storefront (§1); the pricing page's 250th Promo banner and advertiser-section promo text now correctly showing the real configured promo dates instead of stale hardcoded ones, and the homepage promo popup's copy and its show/hide behavior both now driven by that same setting instead of a separate hardcoded date (§1). The sign-off below predates all of this and does not cover any of it.*
 
+*Updated 2026-07-29 (commit `4fe4714`) — added an item for the new "SFTP — we host" Feed Sync option (dealers push a file to us via SFTP, instead of only the two existing pull-based options); already live-verified end-to-end with a real dealer account and real credentials, not just written from the code.*
+
 ---
 
 ## 1. Public Browsing (no login required)
@@ -119,6 +121,7 @@
 - [ ] Settings → **Locations** — add a second location, mark it primary; confirm the dealer's own phone/address/city/state/zip/email update to match, and the public dealer page's "Our Locations" section appears (see §1); edit and delete a location
 - [ ] Settings → **Feed Sync** — enter a feed URL and pick a daily sync hour, save succeeds; "Sync now" button in the Overview header runs an immediate sync and shows a result summary (e.g. "3 inserted, 1 updated, 0 sold, 0 skipped"); button is disabled with a tooltip if no feed URL is configured yet. **Import JSON** no longer exists (removed — this vendor format never offered a JSON/API option, only a CSV/XML feed URL)
 - [ ] Settings → **Feed Sync → Feed Type: SFTP** — switching from "Direct URL (HTTPS)" swaps the URL field for Host/Port/Username/Password/Remote File Path; saving with SFTP configured (no Feed URL) still enables the "Sync now" button in the Overview header
+- [ ] Settings → **Feed Sync → Feed Type: SFTP — we host** (added 2026-07-29) — selecting it shows a "Generate SFTP Credentials" button instead of input fields; clicking it displays a one-time Host/Port/Username/Password box (password never shown again); once provisioned, the section instead shows the username, "Last file received" status, and "Generate New Password"/"Remove SFTP Access" buttons. Live-verified end-to-end with a real dealer account: generated credentials, uploaded `inventory.csv` via a real SFTP client to `video.garagecherries.com:2022`, ran "Sync now", listing appeared correctly
 - [ ] (If a test dealer account has an expired beta) — confirm redirect to `/dealer/expired` on dashboard load
 
 ---

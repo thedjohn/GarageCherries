@@ -43,6 +43,7 @@ GarageCherries is a classic and collector car marketplace connecting buyers with
 - **Inventory tab** — full CRUD for vehicle listings (add, edit, delete)
 - **Inquiries tab** — buyer messages (~~AI draft reply assistant removed 2026-07-01~~)
 - **Settings tab** — dealer profile management (name, phone, address, description, specialties)
+- **Feed Sync** — automatic daily inventory sync, three ways: a hosted CSV URL we pull from, an SFTP server the dealer hosts that we pull from, or (added 2026-07-29) an SFTP server we host that the dealer's export tool pushes to. In active use with real dealers; still maturing, not considered fully hardened yet.
 
 ### 🤖 AI Features
 > **Removed 2026-07-01** — all 5 AI routes (Smart Search, Listing Writer, Price Assessment, Inquiry Reply Assistant, Similar Cars) were removed and deferred to a future release. This section describes the planned implementation, not the current live product.
@@ -151,7 +152,6 @@ GarageCherries is a classic and collector car marketplace connecting buyers with
 #### Inventory Import
 - Bulk CSV upload for dealers with large inventories
 - DealerSocket / vAuto integration
-- Auto-sync from dealer website feeds
 - VIN decode to auto-fill specs
 
 ### 🔭 Long-Term (6–12 Months)
