@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { postListingReelToFacebook, postListingReelToInstagram } from '@/lib/facebook/postToPage';
+import { postListingReelToYouTube } from '@/lib/youtube/postShort';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('api/video-pipeline/complete');
+
+// YouTube uploads require downloading the rendered video and re-uploading it
+// to Google (unlike Facebook/Instagram, which just fetch a URL we hand them),
+// which takes longer than Vercel's default function timeout allows.
+export const maxDuration = 60;
 
 // POST /api/video-pipeline/complete — called by the InterServer VPS once it
 // finishes (or fails) building a listing's video. Authenticated the same way
@@ -32,7 +38,7 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   const { data: listing } = await admin
     .from('listings')
-    .select('id, title, make, model, year, price, slug, images, mileage, condition, location, state')
+    .select('id, title, make, model, year, price, slug, images, mileage, condition, location, state, description, description_paragraphs, hobby_segment, body_style')
     .eq('id', listingId)
     .single();
 
@@ -43,6 +49,9 @@ export async function POST(request: NextRequest) {
 
   const fbSuccess = await postListingReelToFacebook(listing, videoUrl);
   postListingReelToInstagram(listing, videoUrl).catch(() => {});
+  postListingReelToYouTube(listing, videoUrl)
+    .then(success => { if (success) admin.from('listings').update({ youtube_posted_at: new Date().toISOString() }).eq('id', listingId); })
+    .catch(() => {});
 
   if (fbSuccess) {
     await admin.from('listings').update({ reel_posted_at: new Date().toISOString() }).eq('id', listingId);
