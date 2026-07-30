@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { postListingReelToFacebook, postListingReelToInstagram } from '@/lib/facebook/postToPage';
 import { postListingReelToYouTube } from '@/lib/youtube/postShort';
+import { postListingReelToTikTok } from '@/lib/tiktok/postShort';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('api/video-pipeline/complete');
@@ -51,6 +52,9 @@ export async function POST(request: NextRequest) {
   postListingReelToInstagram(listing, videoUrl).catch(() => {});
   postListingReelToYouTube(listing, videoUrl)
     .then(success => { if (success) admin.from('listings').update({ youtube_posted_at: new Date().toISOString() }).eq('id', listingId); })
+    .catch(() => {});
+  postListingReelToTikTok(listing, videoUrl)
+    .then(success => { if (success) admin.from('listings').update({ tiktok_posted_at: new Date().toISOString() }).eq('id', listingId); })
     .catch(() => {});
 
   if (fbSuccess) {
