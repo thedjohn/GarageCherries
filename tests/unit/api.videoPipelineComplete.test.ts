@@ -117,4 +117,33 @@ describe('POST /api/video-pipeline/complete', () => {
 
     expect(res._data).toEqual({ ok: true, fbSuccess: true });
   });
+
+  it('skips re-posting to Facebook when the listing already has reel_posted_at, without calling it again', async () => {
+    mockSingle.mockResolvedValue({ data: { ...LISTING, reel_posted_at: '2026-07-29T00:00:00Z' } });
+
+    const res: any = await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
+
+    expect(mockPostReelToFacebook).not.toHaveBeenCalled();
+    expect(mockUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ reel_posted_at: expect.any(String) }));
+    expect(res._data).toEqual({ ok: true, fbSuccess: true });
+  });
+
+  it('skips re-posting to Instagram when the listing already has instagram_posted_at', async () => {
+    mockSingle.mockResolvedValue({ data: { ...LISTING, instagram_posted_at: '2026-07-29T00:00:00Z' } });
+    mockPostReelToFacebook.mockResolvedValue(true);
+
+    await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
+
+    expect(mockPostReelToInstagram).not.toHaveBeenCalled();
+  });
+
+  it('still attempts every missing platform for a listing that already has some of them', async () => {
+    mockSingle.mockResolvedValue({ data: { ...LISTING, reel_posted_at: '2026-07-29T00:00:00Z', instagram_posted_at: '2026-07-29T00:00:00Z' } });
+
+    const res: any = await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
+
+    expect(mockPostReelToFacebook).not.toHaveBeenCalled();
+    expect(mockPostReelToInstagram).not.toHaveBeenCalled();
+    expect(res._data).toEqual({ ok: true, fbSuccess: true });
+  });
 });

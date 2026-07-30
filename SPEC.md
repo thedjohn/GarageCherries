@@ -277,6 +277,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `renewal_reminder_sent_at` | timestamptz \| null | Added 2026-07-03. Set when a renewal reminder email is sent; prevents duplicate reminder sends. |
 | `youtube_posted_at` | timestamptz \| null | Added 2026-07-30. Set when the listing's auto-generated Reel is successfully uploaded to YouTube (as a Short); mirrors `reel_posted_at`, kept separate since it's an independent platform with its own success/failure outcome |
 | `tiktok_posted_at` | timestamptz \| null | Added 2026-07-30. Set when the listing's auto-generated Reel is successfully posted to TikTok; same independent-outcome reasoning as `youtube_posted_at` |
+| `instagram_posted_at` | timestamptz \| null | Added 2026-07-30. Instagram posting existed since the video pipeline was built but was fire-and-forget with no outcome ever recorded; added so `video-pipeline/complete` can check "already posted?" per platform independently instead of always re-attempting Instagram on every re-render |
 | `views` | integer | Used in dealer-report email (may be a denormalized column) |
 | `created_at` | timestamptz | Auto-managed by Supabase |
 

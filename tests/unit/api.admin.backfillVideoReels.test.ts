@@ -36,7 +36,7 @@ function makeSupabaseMock(pending: typeof LISTING[]) {
           eq: () => ({
             eq: () => ({
               not: () => ({
-                is: () => ({
+                or: () => ({
                   order: () => ({
                     limit: () => Promise.resolve({ data: pending }),
                   }),
