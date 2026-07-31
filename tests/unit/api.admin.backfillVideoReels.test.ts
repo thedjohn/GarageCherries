@@ -151,4 +151,31 @@ describe('GET /api/admin/backfill-video-reels', () => {
     expect(mockTriggerListingVideo).toHaveBeenCalledTimes(15);
     expect(res._data).toEqual({ ok: true, triggered: 15 });
   });
+
+  it('returns a clean 500 instead of crashing when the query throws (e.g. a DB timeout)', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table !== 'listings') throw new Error(`Unexpected table: ${table}`);
+      return {
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              not: () => ({
+                or: () => ({
+                  order: () => ({
+                    limit: () => Promise.reject(new Error('write ETIMEDOUT')),
+                  }),
+                }),
+              }),
+            }),
+          }),
+        }),
+      };
+    });
+
+    const res: any = await GET(makeRequest('Bearer cron-secret'));
+
+    expect(mockTriggerListingVideo).not.toHaveBeenCalled();
+    expect(res._data).toEqual({ ok: false, error: 'Query failed' });
+    expect(res._status).toBe(500);
+  });
 });

@@ -52,22 +52,36 @@ export async function GET(request: NextRequest) {
   // always goes first; tier 2 (TikTok-only stragglers) only fills
   // whatever's left over. Once TikTok works again, tier 2 sweeps them up
   // on its own -- nothing to remember to re-enable.
-  const { data: needsCore } = await baseQuery()
-    .or('reel_posted_at.is.null,instagram_posted_at.is.null,youtube_posted_at.is.null')
-    .order('created_at', { ascending: true })
-    .limit(MAX_BATCH);
-
-  const remaining = MAX_BATCH - (needsCore?.length ?? 0);
+  //
+  // Wrapped in try/catch, unlike a fire-and-forget posting call -- a
+  // transient DB timeout here (seen in production: ETIMEDOUT) would
+  // otherwise throw uncaught and crash the whole request instead of just
+  // skipping this run. The hourly workflow retries naturally next cycle,
+  // so failing loudly-but-gracefully here is enough; no need to retry
+  // inline.
+  let needsCore: { id: string; make: string; model: string; year: number; price: number; images: string[] | null }[] | null;
   let tiktokOnly: typeof needsCore = [];
-  if (remaining > 0) {
-    const { data } = await baseQuery()
-      .not('reel_posted_at', 'is', null)
-      .not('instagram_posted_at', 'is', null)
-      .not('youtube_posted_at', 'is', null)
-      .is('tiktok_posted_at', null)
+  try {
+    ({ data: needsCore } = await baseQuery()
+      .or('reel_posted_at.is.null,instagram_posted_at.is.null,youtube_posted_at.is.null')
       .order('created_at', { ascending: true })
-      .limit(remaining);
-    tiktokOnly = data ?? [];
+      .limit(MAX_BATCH));
+
+    const remaining = MAX_BATCH - (needsCore?.length ?? 0);
+    if (remaining > 0) {
+      const { data } = await baseQuery()
+        .not('reel_posted_at', 'is', null)
+        .not('instagram_posted_at', 'is', null)
+        .not('youtube_posted_at', 'is', null)
+        .is('tiktok_posted_at', null)
+        .order('created_at', { ascending: true })
+        .limit(remaining);
+      tiktokOnly = data ?? [];
+    }
+  } catch (err) {
+    log.error('Video reel backfill query failed', err instanceof Error ? err : new Error(String(err)));
+    await log.flush();
+    return NextResponse.json({ ok: false, error: 'Query failed' }, { status: 500 });
   }
 
   const pending = [...(needsCore ?? []), ...tiktokOnly];
