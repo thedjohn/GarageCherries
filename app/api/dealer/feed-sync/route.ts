@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   const { data: dealer } = await admin
     .from('dealers')
-    .select('id, name, phone, email, location, state, feed_url, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path, feed_sftp_last_received_at')
+    .select('id, name, phone, email, location, state, feed_url, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path, feed_sftp_last_received_at, feed_format')
     .eq('id', user.id)
     .single();
 

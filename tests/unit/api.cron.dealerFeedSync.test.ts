@@ -62,7 +62,7 @@ type TestDealerRow = {
   feed_url: string | null;
   feed_protocol?: string; feed_host?: string; feed_port?: number;
   feed_username?: string; feed_password?: string; feed_remote_path?: string | null;
-  feed_sftp_last_received_at?: string | null;
+  feed_sftp_last_received_at?: string | null; feed_format?: string;
 };
 const DEALER: TestDealerRow = {
   id: 'dealer-1', name: 'Survivor Classic Car Services', phone: '555-1234', email: 'info@survivor-cars.com',
@@ -561,6 +561,140 @@ describe('GET /api/cron/dealer-feed-sync', () => {
       expect(res._data.results['inventory@pushmotors.com'].errors[0]).toContain('failed validation');
       expect(res._data.results['inventory@pushmotors.com'].inserted).toBe(0);
       expect(mockRpc).not.toHaveBeenCalled();
+    });
+  });
+
+  // Real header, column names, and sample values taken directly from an actual
+  // Dealer Car Search export (buyyourride.net) rather than invented, to catch
+  // any mismatch against what that platform's dealers will really send.
+  describe('Dealer Car Search format (feed_format)', () => {
+    const HEADER_DCS = [
+      'Dealer ID', 'VIN', 'Make', 'Model', 'Trim', 'Drive Type', 'Transmission Type', 'Year', 'Stock Number',
+      'Interior Type', 'Interior Color', 'Exterior Color', 'Cylinders', 'Cost', 'Wholesale', 'Retail', 'Internet Price',
+      'Mileage', 'Purchase Date', 'Video URL', 'Options', 'Images', 'Last Modified Date', 'Body Type', 'Engine',
+      'MPG City', 'MPG Highway', 'New / Used', 'MSRP', 'Image Last Modified Date', 'Comments', 'Certified Pre Owned',
+      'Vehicle Link',
+    ];
+    function csvRowDcs(fields: Partial<Record<string, string>>) {
+      return HEADER_DCS.map(h => `"${(fields[h] ?? '').replace(/"/g, '""')}"`).join(',');
+    }
+    function buildCsvDcs(rows: Partial<Record<string, string>>[]) {
+      return [HEADER_DCS.map(h => `"${h}"`).join(','), ...rows.map(csvRowDcs)].join('\n');
+    }
+    const DEALER_DCS: TestDealerRow = { ...DEALER, id: 'dealer-dcs', email: 'inventory@buyyourride.net', feed_format: 'dealer_car_search' };
+
+    it('falls back to Retail when Internet Price is blank -- real sample row (Chevrolet SSR)', async () => {
+      makeSupabaseMock({ dealers: [DEALER_DCS], existingListings: [] });
+      const csv = buildCsvDcs([{
+        VIN: '1GCES14H76B122583', Year: '2006', Make: 'Chevrolet', Model: 'SSR', Trim: '',
+        'Stock Number': '123539C', 'Body Type': 'Truck', 'Internet Price': '', Retail: '36495', Mileage: '50655',
+      }]);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({ p_price: 36495 }));
+    });
+
+    it('falls back to Retail when Internet Price is an explicit "0" -- real sample row (Toyota 4Runner)', async () => {
+      makeSupabaseMock({ dealers: [DEALER_DCS], existingListings: [] });
+      const csv = buildCsvDcs([{
+        VIN: 'JTEBU5JR6J5553629', Year: '2018', Make: 'Toyota', Model: '4Runner', Trim: 'TRD Off-Road Premium S',
+        'Stock Number': '553629R', 'Body Type': 'SUV', 'Internet Price': '0', Retail: '40500', Mileage: '51561',
+      }]);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({ p_price: 40500 }));
+    });
+
+    it('uses Internet Price directly when it is actually populated', async () => {
+      makeSupabaseMock({ dealers: [DEALER_DCS], existingListings: [] });
+      const csv = buildCsvDcs([{
+        VIN: 'VIN-REAL-INTERNET-PRICE', Year: '2020', Make: 'Honda', Model: 'Civic', 'Stock Number': 'S1',
+        'Body Type': 'Sedan', 'Internet Price': '22000', Retail: '24000',
+      }]);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({ p_price: 22000 }));
+    });
+
+    it('splits Images on the pipe delimiter, not comma', async () => {
+      makeSupabaseMock({ dealers: [DEALER_DCS], existingListings: [] });
+      const csv = buildCsvDcs([{
+        VIN: 'VIN-PIPE-IMAGES', Year: '2020', Make: 'Honda', Model: 'Civic', 'Stock Number': 'S2', 'Body Type': 'Sedan',
+        Images: 'https://example.com/1.jpg|https://example.com/2.jpg|https://example.com/3.jpg',
+      }]);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({
+        p_images: ['https://example.com/1.jpg', 'https://example.com/2.jpg', 'https://example.com/3.jpg'],
+      }));
+    });
+
+    it('reads Trim as the sub-model, appended to the title -- real sample row (Mercedes GLC-Class)', async () => {
+      makeSupabaseMock({ dealers: [DEALER_DCS], existingListings: [] });
+      const csv = buildCsvDcs([{
+        VIN: 'WDC0G4JB6JV037393', Year: '2018', Make: 'Mercedes-Benz', Model: 'GLC-Class', Trim: '300',
+        'Stock Number': '037393C', 'Body Type': 'SUV', 'Internet Price': '', Retail: '26995',
+      }]);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({ p_title: '2018 Mercedes-Benz GLC-Class 300' }));
+    });
+
+    it('strips the repeated reconditioning boilerplate off the end of Comments, keeping the real per-vehicle text', async () => {
+      makeSupabaseMock({ dealers: [DEALER_DCS], existingListings: [] });
+      const realDescription = "The 2018 Mercedes-Benz GLC-Class sets a high bar for the compact luxury crossover class.";
+      const boilerplate = "Maintenance and Reconditioning:Every one of our vehicles goes through a thorough safety inspection.";
+      const csv = buildCsvDcs([{
+        VIN: 'VIN-STRIP-TEST', Year: '2018', Make: 'Mercedes-Benz', Model: 'GLC-Class', 'Stock Number': 'S3',
+        'Body Type': 'SUV', Comments: `${realDescription} ${boilerplate}`,
+      }]);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      const call = mockRpc.mock.calls.find(c => c[1].p_vin === 'VIN-STRIP-TEST');
+      expect(call![1].p_description).toBe(realDescription);
+      expect(call![1].p_description).not.toContain('Maintenance and Reconditioning');
+    });
+
+    it('passes Comments through unstripped when the boilerplate marker is not present', async () => {
+      makeSupabaseMock({ dealers: [DEALER_DCS], existingListings: [] });
+      const csv = buildCsvDcs([{
+        VIN: 'VIN-NO-MARKER', Year: '2020', Make: 'Honda', Model: 'Civic', 'Stock Number': 'S4', 'Body Type': 'Sedan',
+        Comments: 'A totally different dealer wrote their own unique comments here.',
+      }]);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({
+        p_description: 'A totally different dealer wrote their own unique comments here.',
+      }));
+    });
+
+    it('reads Exterior Color, Engine, and Transmission Type using this format\'s column names', async () => {
+      makeSupabaseMock({ dealers: [DEALER_DCS], existingListings: [] });
+      const csv = buildCsvDcs([{
+        VIN: 'VIN-FIELDS', Year: '2018', Make: 'McLaren', Model: '720s', 'Stock Number': 'S5', 'Body Type': 'Coupe',
+        'Exterior Color': 'BLUE', Engine: '4.0L', 'Transmission Type': 'Automatic',
+      }]);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({
+        p_color: 'BLUE', p_engine: '4.0L', p_transmission: 'Automatic',
+      }));
+    });
+
+    it('still validates on the shared required columns (VIN, Stock Number, Year, Make, Model) for this format', async () => {
+      makeSupabaseMock({ dealers: [DEALER_DCS], existingListings: [] });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => '"VIN","Year' }));
+
+      const res: any = await GET(makeRequest('Bearer cron-secret'));
+      expect(res._data.results['inventory@buyyourride.net'].errors[0]).toContain('failed validation');
     });
   });
 });

@@ -51,6 +51,66 @@ function mapTransmission(raw: string): string {
   return /manual/i.test(raw) ? 'Manual' : 'Automatic';
 }
 
+// Per-vendor column-name mapping. Different dealer inventory platforms export
+// the same underlying data under different header names -- this is the only
+// thing that varies by `dealer.feed_format`; the matching/insert/update/sold
+// logic below is 100% shared and format-agnostic (both vendors seen so far
+// happen to share identical names for the 5 REQUIRED_FEED_COLUMNS).
+interface FeedFormatColumns {
+  subModel: string;
+  price: string;
+  // Tried first; falls back to `price` if blank/zero. Dealer Car Search's
+  // "Internet Price" was found empty/zero on every real sample row for the
+  // one dealer checked -- "Retail" is what actually holds the asking price
+  // for that export. Not assumed from the field name; confirmed by reading
+  // real rows.
+  priceFallback?: string;
+  transmission: string;
+  engine: string;
+  // Tried in order, first non-blank wins.
+  color: string[];
+  images: string;
+  imagesDelimiter: string;
+  bodyStyle: string;
+  // null = this vendor has no per-vehicle description field at all.
+  description: string | null;
+  // If set and found in the raw description text, everything from that
+  // marker onward is cut off before storing. Dealer Car Search's "Comments"
+  // field mixes real per-vehicle copy with an identical reconditioning
+  // paragraph appended to every listing -- this strips just that paragraph.
+  // Safe no-op if the marker isn't present (e.g. a future dealer on the same
+  // platform phrases their boilerplate differently, or has none): the full
+  // text just passes through unstripped rather than silently losing content.
+  descriptionStripMarker?: string;
+}
+
+const FEED_FORMATS: Record<string, FeedFormatColumns> = {
+  speed_digital: {
+    subModel: 'Sub-Model',
+    price: 'List Price',
+    transmission: 'Transmission',
+    engine: 'Engine Size',
+    color: ['Basic Exterior Color', 'Factory Exterior Color'],
+    images: 'Images Urls',
+    imagesDelimiter: ',',
+    bodyStyle: 'BodyStyle',
+    description: 'Long Description',
+  },
+  dealer_car_search: {
+    subModel: 'Trim',
+    price: 'Internet Price',
+    priceFallback: 'Retail',
+    transmission: 'Transmission Type',
+    engine: 'Engine',
+    color: ['Exterior Color'],
+    images: 'Images',
+    imagesDelimiter: '|',
+    bodyStyle: 'Body Type',
+    description: 'Comments',
+    descriptionStripMarker: 'Maintenance and Reconditioning:',
+  },
+};
+
 const STATE_NAME_TO_ABBR: Record<string, string> = {
   alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR', california: 'CA',
   colorado: 'CO', connecticut: 'CT', delaware: 'DE', florida: 'FL', georgia: 'GA',
@@ -103,7 +163,7 @@ type FeedDealer = {
   id: string; name: string; phone: string | null; email: string; location: string | null; state: string | null;
   feed_protocol?: string | null; feed_host?: string | null; feed_port?: number | null;
   feed_username?: string | null; feed_password?: string | null; feed_remote_path?: string | null;
-  feed_sftp_last_received_at?: string | null;
+  feed_sftp_last_received_at?: string | null; feed_format?: string | null;
 };
 
 // Downloads the feed file from an SFTP server instead of a plain HTTPS URL --
@@ -198,6 +258,7 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
   }
   const idx = (name: string) => header.indexOf(name);
   const dataRows = rows.slice(1);
+  const format = FEED_FORMATS[dealer.feed_format ?? 'speed_digital'] ?? FEED_FORMATS.speed_digital;
 
   const { data: existingListings } = await admin
     .from('listings')
@@ -216,7 +277,7 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
   const seenIds = new Set<string>();
 
   for (const r of dataRows) {
-    const bodyStyleRaw = r[idx('BodyStyle')]?.trim();
+    const bodyStyleRaw = r[idx(format.bodyStyle)]?.trim();
     if (SKIP_BODY_STYLES.has(bodyStyleRaw)) { result.skipped++; continue; }
 
     const vin = r[idx('VIN')]?.trim() || null;
@@ -232,16 +293,22 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
       result.unrecognizedMakes.push(make);
     }
     const model = r[idx('Model')]?.trim();
-    const subModel = r[idx('Sub-Model')]?.trim();
-    const price = parseInt(r[idx('List Price')], 10) || 0;
+    const subModel = r[idx(format.subModel)]?.trim();
+    const price = parseInt(r[idx(format.price)], 10)
+      || (format.priceFallback ? parseInt(r[idx(format.priceFallback)], 10) : 0)
+      || 0;
     const mileage = parseInt(r[idx('Mileage')], 10) || null;
     const bodyStyle = BODY_STYLE_MAP[bodyStyleRaw] ?? bodyStyleRaw;
-    const transmission = mapTransmission(r[idx('Transmission')] ?? '');
-    const engine = r[idx('Engine Size')]?.trim() || null;
-    const color = r[idx('Basic Exterior Color')]?.trim() || r[idx('Factory Exterior Color')]?.trim() || null;
-    const rawImages = (r[idx('Images Urls')] ?? '').split(',').map(s => s.trim()).filter(Boolean);
+    const transmission = mapTransmission(r[idx(format.transmission)] ?? '');
+    const engine = r[idx(format.engine)]?.trim() || null;
+    const color = format.color.map(col => r[idx(col)]?.trim()).find(Boolean) ?? null;
+    const rawImages = (r[idx(format.images)] ?? '').split(format.imagesDelimiter).map(s => s.trim()).filter(Boolean);
     const images = selectRepresentativeImages(rawImages, 30);
-    const description = r[idx('Long Description')]?.trim() ?? '';
+    let description = format.description ? (r[idx(format.description)]?.trim() ?? '') : '';
+    if (format.descriptionStripMarker) {
+      const cut = description.indexOf(format.descriptionStripMarker);
+      if (cut !== -1) description = description.slice(0, cut).trim();
+    }
     const title = `${year} ${make} ${model}${subModel ? ` ${subModel}` : ''}`;
 
     // Multi-location dealers (e.g. Survivor: Tampa/Chicago/Atlanta) have genuinely
@@ -365,7 +432,7 @@ export async function GET(request: NextRequest) {
 
   const { data: dealers } = await admin
     .from('dealers')
-    .select('id, name, phone, email, location, state, feed_url, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path, feed_sftp_last_received_at')
+    .select('id, name, phone, email, location, state, feed_url, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path, feed_sftp_last_received_at, feed_format')
     .eq('feed_sync_hour', currentHour)
     .or('feed_url.not.is.null,feed_protocol.eq.sftp,feed_protocol.eq.sftp_incoming');
 
