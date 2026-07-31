@@ -1,0 +1,26 @@
+name: Video Backfill
+
+# Runs hourly to catch listings up on any social platform (Facebook Reel,
+# Instagram, YouTube, TikTok) missing a video, in small batches (see
+# MAX_BATCH in app/api/admin/backfill-video-reels/route.ts) so it never
+# floods the VPS's single-render queue or posts in a burst that looks like
+# spam / trips platform rate limits. Same pattern as facebook-post-queue.yml.
+on:
+  schedule:
+    - cron: '30 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call backfill-video-reels endpoint
+        run: |
+          status=$(curl -s -o response.txt -w "%{http_code}" -X GET "https://www.garagecherries.com/api/admin/backfill-video-reels" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "HTTP status: $status"
+          echo "Response body:"
+          cat response.txt
+          if [ "$status" -ge 400 ]; then
+            exit 1
+          fi

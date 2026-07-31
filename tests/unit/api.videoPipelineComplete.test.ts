@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
-const { mockSingle, mockEq, mockSelect, mockFrom, mockUpdateEq, mockUpdate, mockPostReelToFacebook, mockPostReelToInstagram, mockLoggerWarn } = vi.hoisted(() => ({
+const { mockSingle, mockEq, mockSelect, mockFrom, mockUpdateEq, mockUpdate, mockPostReelToFacebook, mockPostReelToInstagram, mockPostReelToYouTube, mockPostReelToTikTok, mockLoggerWarn } = vi.hoisted(() => ({
   mockSingle: vi.fn(),
   mockEq: vi.fn(),
   mockSelect: vi.fn(),
@@ -10,6 +10,8 @@ const { mockSingle, mockEq, mockSelect, mockFrom, mockUpdateEq, mockUpdate, mock
   mockUpdate: vi.fn(),
   mockPostReelToFacebook: vi.fn(),
   mockPostReelToInstagram: vi.fn(),
+  mockPostReelToYouTube: vi.fn(),
+  mockPostReelToTikTok: vi.fn(),
   mockLoggerWarn: vi.fn(),
 }));
 
@@ -19,6 +21,12 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/facebook/postToPage', () => ({
   postListingReelToFacebook: mockPostReelToFacebook,
   postListingReelToInstagram: mockPostReelToInstagram,
+}));
+vi.mock('@/lib/youtube/postShort', () => ({
+  postListingReelToYouTube: mockPostReelToYouTube,
+}));
+vi.mock('@/lib/tiktok/postShort', () => ({
+  postListingReelToTikTok: mockPostReelToTikTok,
 }));
 vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: mockLoggerWarn, error: vi.fn(), flush: vi.fn().mockResolvedValue(undefined) }),
@@ -54,6 +62,10 @@ beforeEach(() => {
   });
   mockSingle.mockResolvedValue({ data: LISTING });
   mockUpdateEq.mockResolvedValue({ error: null });
+  mockPostReelToFacebook.mockResolvedValue(false);
+  mockPostReelToInstagram.mockResolvedValue(false);
+  mockPostReelToYouTube.mockResolvedValue(false);
+  mockPostReelToTikTok.mockResolvedValue(false);
 });
 
 describe('POST /api/video-pipeline/complete', () => {
@@ -95,8 +107,9 @@ describe('POST /api/video-pipeline/complete', () => {
     expect(mockPostReelToFacebook).toHaveBeenCalledWith(LISTING, 'https://x/y.mp4');
     expect(mockPostReelToInstagram).toHaveBeenCalledWith(LISTING, 'https://x/y.mp4');
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ reel_posted_at: expect.any(String) }));
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ instagram_posted_at: expect.any(String) }));
     expect(mockUpdateEq).toHaveBeenCalledWith('id', 'l1');
-    expect(res._data).toEqual({ ok: true, fbSuccess: true });
+    expect(res._data).toEqual({ ok: true, fbSuccess: true, igSuccess: true, ytSuccess: false, ttSuccess: false });
   });
 
   it('does not stamp reel_posted_at when the Facebook post fails', async () => {
@@ -105,8 +118,8 @@ describe('POST /api/video-pipeline/complete', () => {
 
     const res: any = await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
 
-    expect(mockUpdate).not.toHaveBeenCalled();
-    expect(res._data).toEqual({ ok: true, fbSuccess: false });
+    expect(mockUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ reel_posted_at: expect.any(String) }));
+    expect(res._data).toEqual({ ok: true, fbSuccess: false, igSuccess: false, ytSuccess: false, ttSuccess: false });
   });
 
   it('does not let an Instagram failure block the Facebook success response', async () => {
@@ -115,7 +128,7 @@ describe('POST /api/video-pipeline/complete', () => {
 
     const res: any = await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
 
-    expect(res._data).toEqual({ ok: true, fbSuccess: true });
+    expect(res._data).toEqual({ ok: true, fbSuccess: true, igSuccess: false, ytSuccess: false, ttSuccess: false });
   });
 
   it('skips re-posting to Facebook when the listing already has reel_posted_at, without calling it again', async () => {
@@ -125,7 +138,7 @@ describe('POST /api/video-pipeline/complete', () => {
 
     expect(mockPostReelToFacebook).not.toHaveBeenCalled();
     expect(mockUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ reel_posted_at: expect.any(String) }));
-    expect(res._data).toEqual({ ok: true, fbSuccess: true });
+    expect(res._data).toEqual({ ok: true, fbSuccess: true, igSuccess: false, ytSuccess: false, ttSuccess: false });
   });
 
   it('skips re-posting to Instagram when the listing already has instagram_posted_at', async () => {
@@ -144,6 +157,77 @@ describe('POST /api/video-pipeline/complete', () => {
 
     expect(mockPostReelToFacebook).not.toHaveBeenCalled();
     expect(mockPostReelToInstagram).not.toHaveBeenCalled();
-    expect(res._data).toEqual({ ok: true, fbSuccess: true });
+    expect(res._data).toEqual({ ok: true, fbSuccess: true, igSuccess: true, ytSuccess: false, ttSuccess: false });
+  });
+
+  it('awaits the YouTube post and stamps youtube_posted_at before returning on success', async () => {
+    mockPostReelToFacebook.mockResolvedValue(true);
+    mockPostReelToYouTube.mockResolvedValue(true);
+
+    const res: any = await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
+
+    expect(mockPostReelToYouTube).toHaveBeenCalledWith(LISTING, 'https://x/y.mp4');
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ youtube_posted_at: expect.any(String) }));
+    expect(res._data).toEqual({ ok: true, fbSuccess: true, igSuccess: false, ytSuccess: true, ttSuccess: false });
+  });
+
+  it('does not stamp youtube_posted_at when the YouTube post fails', async () => {
+    mockPostReelToYouTube.mockResolvedValue(false);
+
+    const res: any = await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
+
+    expect(mockUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ youtube_posted_at: expect.any(String) }));
+    expect(res._data).toEqual({ ok: true, fbSuccess: false, igSuccess: false, ytSuccess: false, ttSuccess: false });
+  });
+
+  it('skips re-posting to YouTube when the listing already has youtube_posted_at', async () => {
+    mockSingle.mockResolvedValue({ data: { ...LISTING, youtube_posted_at: '2026-07-29T00:00:00Z' } });
+
+    const res: any = await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
+
+    expect(mockPostReelToYouTube).not.toHaveBeenCalled();
+    expect(res._data).toEqual(expect.objectContaining({ ytSuccess: true }));
+  });
+
+  it('awaits the TikTok post and stamps tiktok_posted_at before returning on success', async () => {
+    mockPostReelToTikTok.mockResolvedValue(true);
+
+    const res: any = await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
+
+    expect(mockPostReelToTikTok).toHaveBeenCalledWith(LISTING, 'https://x/y.mp4', 'PUBLIC_TO_EVERYONE');
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ tiktok_posted_at: expect.any(String) }));
+    expect(res._data).toEqual({ ok: true, fbSuccess: false, igSuccess: false, ytSuccess: false, ttSuccess: true });
+  });
+
+  it('does not let a rejected TikTok post throw or block the response', async () => {
+    mockPostReelToTikTok.mockRejectedValue(new Error('unaudited_client_can_only_post_to_private_accounts'));
+
+    const res: any = await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
+
+    expect(mockUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ tiktok_posted_at: expect.any(String) }));
+    expect(res._data).toEqual({ ok: true, fbSuccess: false, igSuccess: false, ytSuccess: false, ttSuccess: false });
+  });
+
+  it('skips re-posting to TikTok when the listing already has tiktok_posted_at', async () => {
+    mockSingle.mockResolvedValue({ data: { ...LISTING, tiktok_posted_at: '2026-07-29T00:00:00Z' } });
+
+    await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
+
+    expect(mockPostReelToTikTok).not.toHaveBeenCalled();
+  });
+
+  it('posts to all four platforms independently when none are already posted', async () => {
+    mockPostReelToFacebook.mockResolvedValue(true);
+    mockPostReelToInstagram.mockResolvedValue(true);
+    mockPostReelToYouTube.mockResolvedValue(true);
+    mockPostReelToTikTok.mockResolvedValue(true);
+
+    const res: any = await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
+
+    expect(res._data).toEqual({ ok: true, fbSuccess: true, igSuccess: true, ytSuccess: true, ttSuccess: true });
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ reel_posted_at: expect.any(String) }));
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ instagram_posted_at: expect.any(String) }));
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ youtube_posted_at: expect.any(String) }));
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ tiktok_posted_at: expect.any(String) }));
   });
 });

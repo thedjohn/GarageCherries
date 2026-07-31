@@ -61,21 +61,29 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (!listing.instagram_posted_at) {
-    postListingReelToInstagram(listing, videoUrl)
-      .then(success => { if (success) admin.from('listings').update({ instagram_posted_at: new Date().toISOString() }).eq('id', listingId); })
-      .catch(() => {});
-  }
-  if (!listing.youtube_posted_at) {
-    postListingReelToYouTube(listing, videoUrl)
-      .then(success => { if (success) admin.from('listings').update({ youtube_posted_at: new Date().toISOString() }).eq('id', listingId); })
-      .catch(() => {});
-  }
-  if (!listing.tiktok_posted_at) {
-    postListingReelToTikTok(listing, videoUrl)
-      .then(success => { if (success) admin.from('listings').update({ tiktok_posted_at: new Date().toISOString() }).eq('id', listingId); })
-      .catch(() => {});
+  // Awaited (not fire-and-forget) so the *_posted_at write always completes
+  // before the function returns -- Vercel can freeze/tear down execution
+  // right after the response is sent, which was silently dropping these
+  // updates even when the underlying post succeeded. Run in parallel so the
+  // combined wait stays within maxDuration instead of summing three uploads.
+  async function postAndRecord(
+    alreadyPosted: string | null,
+    poster: () => Promise<boolean>,
+    column: 'instagram_posted_at' | 'youtube_posted_at' | 'tiktok_posted_at'
+  ): Promise<boolean> {
+    if (alreadyPosted) return true;
+    const success = await poster().catch(() => false);
+    if (success) {
+      await admin.from('listings').update({ [column]: new Date().toISOString() }).eq('id', listingId);
+    }
+    return success;
   }
 
-  return NextResponse.json({ ok: true, fbSuccess });
+  const [igSuccess, ytSuccess, ttSuccess] = await Promise.all([
+    postAndRecord(listing.instagram_posted_at, () => postListingReelToInstagram(listing, videoUrl), 'instagram_posted_at'),
+    postAndRecord(listing.youtube_posted_at, () => postListingReelToYouTube(listing, videoUrl), 'youtube_posted_at'),
+    postAndRecord(listing.tiktok_posted_at, () => postListingReelToTikTok(listing, videoUrl, process.env.TIKTOK_DEMO_PRIVACY_LEVEL || 'PUBLIC_TO_EVERYONE'), 'tiktok_posted_at'),
+  ]);
+
+  return NextResponse.json({ ok: true, fbSuccess, igSuccess, ytSuccess, ttSuccess });
 }

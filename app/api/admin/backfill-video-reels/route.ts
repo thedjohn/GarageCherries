@@ -4,12 +4,12 @@ import { triggerListingVideo } from '@/lib/videoPipeline';
 import { createLogger } from '@/lib/logger';
 
 const log = createLogger('admin/backfill-video-reels');
-// Safety ceiling, not a pacing mechanism -- unlike the hourly cron's small
-// batch size, this doesn't need to self-limit for burst avoidance: the VPS's
-// own render queue (2 concurrent) already spreads the resulting Reel posts
-// out over time as each video finishes. This cap just guards against an
-// unbounded query if something's misconfigured.
-const MAX_BATCH = 200;
+// The VPS renders one video at a time (MAX_CONCURRENT_JOBS = 1 in
+// server.js) and hard-rejects anything beyond ~20 queued jobs with a 429
+// that triggerListingVideo() does not retry. Keep this batch comfortably
+// under that ceiling so a single run -- or the hourly workflow -- never
+// floods the VPS or gets silently dropped.
+const MAX_BATCH = 15;
 
 // GET /api/admin/backfill-video-reels — one-off, manually-triggered endpoint
 // (not on a schedule) for listings that are missing a video on at least one
