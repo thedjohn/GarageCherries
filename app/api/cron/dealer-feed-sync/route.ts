@@ -335,7 +335,7 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
   // Anything previously synced for this dealer but missing from today's feed is sold/removed.
   for (const l of existingListings ?? []) {
     if (!seenIds.has(l.id)) {
-      const { error } = await admin.from('listings').update({ is_sold: true }).eq('id', l.id);
+      const { error } = await admin.from('listings').update({ is_sold: true, sold_at: new Date().toISOString() }).eq('id', l.id);
       if (error) result.errors.push(`Mark-sold failed for listing ${l.id}: ${error.message}`);
       else result.markedSold++;
     }

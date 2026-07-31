@@ -356,7 +356,9 @@ describe('GET /api/cron/dealer-feed-sync', () => {
 
     const res: any = await GET(makeRequest('Bearer cron-secret'));
     expect(res._data.results['info@survivor-cars.com'].markedSold).toBe(1);
-    expect(listingUpdateCalls[0]).toEqual({ id: 'listing-gone', payload: { is_sold: true } });
+    expect(listingUpdateCalls[0].id).toBe('listing-gone');
+    expect(listingUpdateCalls[0].payload.is_sold).toBe(true);
+    expect(listingUpdateCalls[0].payload.sold_at).toEqual(expect.any(String));
   });
 
   it('skips rows with neither a VIN nor a stock number rather than crashing', async () => {
