@@ -31,22 +31,53 @@ export async function GET(request: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const { data: pending } = await admin
-    .from('listings')
-    .select('id, make, model, year, price, images')
-    .eq('status', 'approved')
-    .eq('is_sold', false)
-    .not('fb_posted_at', 'is', null)
-    .or('reel_posted_at.is.null,instagram_posted_at.is.null,youtube_posted_at.is.null,tiktok_posted_at.is.null')
+  // A fresh builder per tier, not a shared one -- Supabase's query builder
+  // mutates and returns `this` on each filter call, so reusing one instance
+  // across two branches would stack the first branch's filters onto the
+  // second instead of giving it a clean slate.
+  const baseQuery = () =>
+    admin
+      .from('listings')
+      .select('id, make, model, year, price, images')
+      .eq('status', 'approved')
+      .eq('is_sold', false)
+      .not('fb_posted_at', 'is', null);
+
+  // Two tiers, not one combined query -- TikTok can stay broken for weeks at
+  // a time (audit/quota), and a listing stuck only on TikTok never stops
+  // matching a single "missing anything" query. Oldest-first ordering would
+  // then let that listing occupy the batch every single run forever,
+  // starving newer listings that still need their very first Instagram/
+  // YouTube post. Tier 1 (genuinely needs a platform other than TikTok)
+  // always goes first; tier 2 (TikTok-only stragglers) only fills
+  // whatever's left over. Once TikTok works again, tier 2 sweeps them up
+  // on its own -- nothing to remember to re-enable.
+  const { data: needsCore } = await baseQuery()
+    .or('reel_posted_at.is.null,instagram_posted_at.is.null,youtube_posted_at.is.null')
     .order('created_at', { ascending: true })
     .limit(MAX_BATCH);
 
-  for (const listing of pending ?? []) {
+  const remaining = MAX_BATCH - (needsCore?.length ?? 0);
+  let tiktokOnly: typeof needsCore = [];
+  if (remaining > 0) {
+    const { data } = await baseQuery()
+      .not('reel_posted_at', 'is', null)
+      .not('instagram_posted_at', 'is', null)
+      .not('youtube_posted_at', 'is', null)
+      .is('tiktok_posted_at', null)
+      .order('created_at', { ascending: true })
+      .limit(remaining);
+    tiktokOnly = data ?? [];
+  }
+
+  const pending = [...(needsCore ?? []), ...tiktokOnly];
+
+  for (const listing of pending) {
     triggerListingVideo(listing).catch(() => {});
   }
 
-  log.info('Video reel backfill batch triggered', { triggered: pending?.length ?? 0 });
+  log.info('Video reel backfill batch triggered', { triggered: pending.length, needsCore: needsCore?.length ?? 0, tiktokOnly: tiktokOnly.length });
   await log.flush();
 
-  return NextResponse.json({ ok: true, triggered: pending?.length ?? 0 });
+  return NextResponse.json({ ok: true, triggered: pending.length });
 }
