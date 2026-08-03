@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'comiuxnpvngcrvtgzpae.supabase.co' },
       { protocol: 'https', hostname: 'lirp.cdn-website.com' },
       { protocol: 'https', hostname: 'cdn.dealeraccelerate.com' },
+      { protocol: 'https', hostname: 'classiccarcenter.net' },
     ],
   },
   async redirects() {
