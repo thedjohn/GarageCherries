@@ -314,6 +314,20 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `feed_format` | text | Added 2026-07-31, default `'speed_digital'`. Selects which dealer-inventory-platform's column-naming convention `syncDealerFeed()` (`app/api/cron/dealer-feed-sync/route.ts`) uses to read the feed — orthogonal to `feed_protocol` above (that's *transport*: URL/SFTP-pull/SFTP-push; this is *column names*, since different platforms export the same data under different headers, e.g. price is `List Price` for Speed Digital but `Internet Price`/`Retail` for Dealer Car Search). Admin-set only for now (no dealer-facing UI) — set directly when onboarding a dealer on a new platform. `'dealer_car_search'` is the only other value currently supported. |
 | `created_at` | timestamptz | |
 
+#### Current Dealers & Feed Setup (snapshot as of 2026-08-01, query `dealers` directly for current state — this goes stale fast, see the standing note at the top of `IMPLEMENTATION_STATUS.md` about this project's pace)
+
+| Dealer | Feed Protocol | Format | Status |
+|---|---|---|---|
+| RK Motors LLC | `https` (we pull, hourly at :01 UTC) | `speed_digital` | Live, syncing daily — last run: 2 inserted, 58 updated, 3 sold |
+| Survivor Classic Car Services | `https` (we pull, hourly at :01 UTC) | `speed_digital` | Live, syncing daily — last run: 1 inserted, 79 updated, 10 sold, 2 skipped |
+| Ohio Corvettes and Muscle Cars | `https` (we pull, hourly at :01 UTC) | `speed_digital` | Live, syncing daily — last run: 0 inserted, 83 updated, 1 sold |
+| McGinty Motorcars | `sftp_incoming` (we host, DDC/Dealer.com pushes) | `speed_digital` | Provisioned, not yet receiving — last sync attempt errored "No feed file has been uploaded yet"; DDC still needs to complete the export setup on their end |
+| Vaughns Classic Cars | `sftp_incoming` (we host, Dealer Car Search pushes) | `dealer_car_search` | Provisioned, not yet synced — Dealer Car Search's export tool needed FTP (port 21) added to the VPS's SFTPGo instance since it doesn't support the intake's default port 2022; awaiting their first successful connection (see `IMPLEMENTATION_STATUS.md`, 2026-07-31) |
+| AutoArcheologist | None configured | `speed_digital` (unused default) | Manual listing management only |
+| Platt Motors Inc | None configured | `speed_digital` (unused default) | Manual listing management only |
+| Sterling Motors Inc. | None configured | `speed_digital` (unused default) | Manual listing management only |
+| Zoom Classic Cars, LLC | None configured | `speed_digital` (unused default) | Manual listing management only — data feed setup in progress with their provider, JTZ Enterprise |
+
 ### `dealer_locations`
 
 Added 2026-07-22 for dealers with more than one physical showroom (e.g. Survivor Classic Car Services — Tampa/Chicago/Atlanta). One-to-many with `dealers`. RLS: public read; owner-only write, matched via `dealer_id = auth.uid()::text` (since `dealers.id` is text, not uuid).
