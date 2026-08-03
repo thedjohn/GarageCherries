@@ -66,12 +66,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/terms`, lastModified: new Date(), changeFrequency: 'yearly', priority: 0.3 },
   ];
 
-  const listingPages: MetadataRoute.Sitemap = (cars ?? []).map(car => ({
-    url: `${BASE_URL}/listings/${toSegment(car.make)}/${toSegment(car.model)}/${car.id}/${car.slug}`,
-    lastModified: new Date(car.created_at ?? car.listed_at ?? new Date()),
-    changeFrequency: 'weekly' as const,
-    priority: car.featured ? 0.9 : 0.8,
-  }));
+  // A blank make/model (bad import data) would otherwise produce a broken
+  // double-slash URL -- confirmed live via the sitemap-health cron catching
+  // a listing whose empty model field 404'd.
+  const listingPages: MetadataRoute.Sitemap = (cars ?? [])
+    .filter(car => car.make && car.model)
+    .map(car => ({
+      url: `${BASE_URL}/listings/${toSegment(car.make)}/${toSegment(car.model)}/${car.id}/${car.slug}`,
+      lastModified: new Date(car.created_at ?? car.listed_at ?? new Date()),
+      changeFrequency: 'weekly' as const,
+      priority: car.featured ? 0.9 : 0.8,
+    }));
 
   // Only advertise a make-browse page for makes the site actually recognizes --
   // /listings/[make] resolves the URL segment against MAKES (see makeFromSegment
