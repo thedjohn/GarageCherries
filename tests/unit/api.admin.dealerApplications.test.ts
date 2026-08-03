@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
-const { mockGetUser, mockFrom, mockRequireAdmin, mockGenerateLink, mockCreateUser, mockDeleteUser, mockSend, mockGetSiteSettings } = vi.hoisted(() => ({
+const { mockGetUser, mockFrom, mockRequireAdmin, mockGenerateLink, mockCreateUser, mockDeleteUser, mockSend, mockGetSiteSettings, mockNotifyAdmin } = vi.hoisted(() => ({
   mockGetUser:      vi.fn(),
   mockFrom:         vi.fn(),
   mockRequireAdmin: vi.fn(),
@@ -10,6 +10,7 @@ const { mockGetUser, mockFrom, mockRequireAdmin, mockGenerateLink, mockCreateUse
   mockDeleteUser:   vi.fn(),
   mockSend:         vi.fn().mockResolvedValue({ id: 'email-1' }),
   mockGetSiteSettings: vi.fn(),
+  mockNotifyAdmin:  vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -25,6 +26,7 @@ vi.mock('@/lib/admin', () => ({ requireAdmin: mockRequireAdmin, hasRole: vi.fn((
 }) }));
 vi.mock('resend', () => ({ Resend: vi.fn(function (this: any) { return { emails: { send: mockSend } }; }) }));
 vi.mock('@/lib/siteSettings', () => ({ getSiteSettings: mockGetSiteSettings }));
+vi.mock('@/lib/notifyAdmin', () => ({ notifyAdmin: mockNotifyAdmin }));
 vi.mock('next/server', () => ({
   NextResponse: {
     json: vi.fn((data: unknown, init?: { status?: number }) => ({ _data: data, _status: init?.status ?? 200 })),
@@ -247,6 +249,15 @@ describe('PATCH /api/admin/dealer-applications', () => {
         options: { redirectTo: 'https://www.garagecherries.com/dealer/login' },
       }));
     });
+
+    it('returns 500 with the real error when Resend reports a send failure (rather than a false success)', async () => {
+      mockRequireAdmin.mockResolvedValue('admin');
+      setupAppFetch({ ...baseApp, status: 'approved' });
+      mockSend.mockResolvedValueOnce({ error: { message: 'Daily quota exceeded' } });
+      const res: any = await PATCH(makeRequest({ id: 'app-1', action: 'resend' }));
+      expect(res._status).toBe(500);
+      expect(res._data.error).toContain('Daily quota exceeded');
+    });
   });
 
   it('returns 409 when the application is no longer pending for approve/reject', async () => {
@@ -288,12 +299,30 @@ describe('PATCH /api/admin/dealer-applications', () => {
       expect(res._status).toBe(500);
     });
 
-    it('does not throw when the rejection email send rejects', async () => {
+    it('does not throw when the rejection email send rejects, and still notifies admin (not silently dropped)', async () => {
       mockRequireAdmin.mockResolvedValue('admin');
       setupAppFetch(baseApp);
       mockSend.mockRejectedValueOnce(new Error('resend down'));
       const res: any = await PATCH(makeRequest({ id: 'app-1', action: 'reject' }));
       expect(res._status).toBe(200);
+      await new Promise(resolve => setImmediate(resolve)); // flush the fire-and-forget .then/.catch chain
+      expect(mockNotifyAdmin).toHaveBeenCalledWith(
+        'Dealer rejection email failed to send',
+        expect.stringContaining('resend down')
+      );
+    });
+
+    it('notifies admin when the rejection email send resolves with an error (the SDK does not throw for most failures)', async () => {
+      mockRequireAdmin.mockResolvedValue('admin');
+      setupAppFetch(baseApp);
+      mockSend.mockResolvedValueOnce({ error: { message: 'Daily quota exceeded' } });
+      const res: any = await PATCH(makeRequest({ id: 'app-1', action: 'reject' }));
+      expect(res._status).toBe(200);
+      await new Promise(resolve => setImmediate(resolve));
+      expect(mockNotifyAdmin).toHaveBeenCalledWith(
+        'Dealer rejection email failed to send',
+        expect.stringContaining('Daily quota exceeded')
+      );
     });
   });
 
@@ -413,6 +442,20 @@ describe('PATCH /api/admin/dealer-applications', () => {
         type: 'recovery',
         options: { redirectTo: 'https://www.garagecherries.com/dealer/login' },
       }));
+    });
+
+    it('still returns success (account already created) but alerts admin when the approval email fails to send', async () => {
+      mockRequireAdmin.mockResolvedValue('admin');
+      mockCreateUser.mockResolvedValue({ data: { user: { id: 'new-user-1' } }, error: null });
+      setupAppFetch(baseApp);
+      mockSend.mockResolvedValueOnce({ error: { message: 'Daily quota exceeded' } });
+      const res: any = await PATCH(makeRequest({ id: 'app-1', action: 'approve' }));
+      expect(res._status).toBe(200);
+      expect(res._data.userId).toBe('new-user-1');
+      expect(mockNotifyAdmin).toHaveBeenCalledWith(
+        'Dealer approval email failed to send',
+        expect.stringContaining('Daily quota exceeded')
+      );
     });
   });
 });

@@ -4,6 +4,7 @@ import { requireAdmin, hasRole } from '@/lib/admin';
 import { Resend } from 'resend';
 import { emailWrap } from '@/lib/emailBranding';
 import { getSiteSettings } from '@/lib/siteSettings';
+import { notifyAdmin } from '@/lib/notifyAdmin';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -76,7 +77,7 @@ export async function PATCH(req: NextRequest) {
     });
     const actionLink = linkData?.properties?.action_link;
     if (!actionLink) return NextResponse.json({ error: 'Failed to generate reset link' }, { status: 500 });
-    await resend.emails.send({
+    const { error: sendErr } = await resend.emails.send({
       from: 'GarageCherries <no-reply@garagecherries.com>',
       to: app.email,
       subject: 'Set Up Your GarageCherries Dealer Password',
@@ -93,6 +94,10 @@ export async function PATCH(req: NextRequest) {
           </p>
       `),
     });
+    // The Resend SDK returns { error } rather than throwing on most send
+    // failures (quota exhausted, invalid domain, etc.) -- surface it instead
+    // of reporting success while the email silently never went out.
+    if (sendErr) return NextResponse.json({ error: `Failed to send email: ${sendErr.message}` }, { status: 500 });
     return NextResponse.json({ success: true });
   }
 
@@ -106,6 +111,11 @@ export async function PATCH(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     const note = rejection_note?.trim();
+    // Fire-and-forget (not awaited) -- a slow/failed notification email
+    // shouldn't hold up the rejection response. Still surfaces failures
+    // instead of silently dropping them: the Resend SDK returns { error }
+    // rather than throwing for most send failures, so both that case and an
+    // actual thrown/rejected promise alert admin the same way.
     resend.emails.send({
       from: 'GarageCherries <no-reply@garagecherries.com>',
       to: app.email,
@@ -125,7 +135,19 @@ export async function PATCH(req: NextRequest) {
             <a href="mailto:support@garagecherries.com" style="color:#dc2626;">support@garagecherries.com</a>.
           </p>
       `),
-    }).catch(() => {});
+    }).then(({ error: sendErr }) => {
+      if (sendErr) {
+        notifyAdmin(
+          'Dealer rejection email failed to send',
+          `Rejection email to <strong>${app.email}</strong> for <strong>${app.dealer_name}</strong> failed: ${sendErr.message}`
+        );
+      }
+    }).catch((err) => {
+      notifyAdmin(
+        'Dealer rejection email failed to send',
+        `Rejection email to <strong>${app.email}</strong> for <strong>${app.dealer_name}</strong> threw: ${err instanceof Error ? err.message : String(err)}`
+      );
+    });
 
     return NextResponse.json({ success: true });
   }
@@ -207,12 +229,23 @@ export async function PATCH(req: NextRequest) {
       This link expires in 24 hours. If you didn't apply for a dealer account, you can ignore this email.
     </p>
   `);
-  await resend.emails.send({
+  const { error: sendErr } = await resend.emails.send({
     from: 'GarageCherries <no-reply@garagecherries.com>',
     to: app.email,
     subject: 'Your GarageCherries Dealer Account is Approved',
     html: approveHtml,
   });
+  // Account creation above already succeeded -- a failed notification email
+  // shouldn't roll that back, but it also shouldn't fail silently (the SDK
+  // returns { error } rather than throwing for most send failures), so alert
+  // admin directly instead of only finding out when the dealer says they
+  // never got it.
+  if (sendErr) {
+    notifyAdmin(
+      'Dealer approval email failed to send',
+      `Approval email to <strong>${app.email}</strong> for <strong>${app.dealer_name}</strong> failed: ${sendErr.message}`
+    );
+  }
 
   // Mark application as approved, linked to the exact dealer row it created
   await admin.from('dealer_applications').update({
