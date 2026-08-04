@@ -104,7 +104,10 @@ const FEED_FORMATS: Record<string, FeedFormatColumns> = {
     engine: 'Engine',
     color: ['Exterior Color'],
     images: 'Images',
-    imagesDelimiter: '|',
+    // Confirmed against Vaughns Classic Cars' real production export -- every
+    // sampled row uses comma, never pipe, despite the original demo/test file
+    // (used when this format was first built) being pipe-delimited.
+    imagesDelimiter: ',',
     bodyStyle: 'Body Type',
     description: 'Comments',
     descriptionStripMarker: 'Maintenance and Reconditioning:',

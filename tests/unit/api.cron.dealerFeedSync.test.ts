@@ -619,11 +619,11 @@ describe('GET /api/cron/dealer-feed-sync', () => {
       expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({ p_price: 22000 }));
     });
 
-    it('splits Images on the pipe delimiter, not comma', async () => {
+    it('splits Images on the comma delimiter, not pipe -- confirmed against Vaughns\' real production export', async () => {
       makeSupabaseMock({ dealers: [DEALER_DCS], existingListings: [] });
       const csv = buildCsvDcs([{
-        VIN: 'VIN-PIPE-IMAGES', Year: '2020', Make: 'Honda', Model: 'Civic', 'Stock Number': 'S2', 'Body Type': 'Sedan',
-        Images: 'https://example.com/1.jpg|https://example.com/2.jpg|https://example.com/3.jpg',
+        VIN: 'VIN-COMMA-IMAGES', Year: '2020', Make: 'Honda', Model: 'Civic', 'Stock Number': 'S2', 'Body Type': 'Sedan',
+        Images: 'https://example.com/1.jpg,https://example.com/2.jpg,https://example.com/3.jpg',
       }]);
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
 
