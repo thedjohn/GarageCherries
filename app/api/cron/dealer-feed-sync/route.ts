@@ -70,7 +70,6 @@ interface FeedFormatColumns {
   // Tried in order, first non-blank wins.
   color: string[];
   images: string;
-  imagesDelimiter: string;
   bodyStyle: string;
   // null = this vendor has no per-vehicle description field at all.
   description: string | null;
@@ -92,7 +91,6 @@ const FEED_FORMATS: Record<string, FeedFormatColumns> = {
     engine: 'Engine Size',
     color: ['Basic Exterior Color', 'Factory Exterior Color'],
     images: 'Images Urls',
-    imagesDelimiter: ',',
     bodyStyle: 'BodyStyle',
     description: 'Long Description',
   },
@@ -104,10 +102,6 @@ const FEED_FORMATS: Record<string, FeedFormatColumns> = {
     engine: 'Engine',
     color: ['Exterior Color'],
     images: 'Images',
-    // Confirmed against Vaughns Classic Cars' real production export -- every
-    // sampled row uses comma, never pipe, despite the original demo/test file
-    // (used when this format was first built) being pipe-delimited.
-    imagesDelimiter: ',',
     bodyStyle: 'Body Type',
     description: 'Comments',
     descriptionStripMarker: 'Maintenance and Reconditioning:',
@@ -138,6 +132,20 @@ function parseDealerNameLocation(dealerName: string): { city: string; state: str
   const abbr = STATE_NAME_TO_ABBR[stateName.toLowerCase()];
   if (!city || !abbr) return null;
   return { city, state: abbr };
+}
+
+// Extracts every http(s) URL directly out of the raw field, rather than
+// splitting on an assumed delimiter character. Different vendors -- and
+// apparently even different dealers on the *same* vendor platform -- have
+// been seen separating multiple image URLs with different characters (comma,
+// pipe); a fixed per-format delimiter broke silently for Vaughns Classic
+// Cars when their real export turned out to use a different one than the
+// demo file the format was originally built against. A URL itself won't
+// contain a comma, pipe, semicolon, or whitespace unencoded, so matching the
+// URLs themselves is delimiter-agnostic by construction and needs no
+// per-vendor configuration at all.
+function extractImageUrls(raw: string): string[] {
+  return raw.match(/https?:\/\/[^\s,|;]+/g) ?? [];
 }
 
 // Picks `max` images spread evenly across the full sequence, rather than the
@@ -305,7 +313,7 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     const transmission = mapTransmission(r[idx(format.transmission)] ?? '');
     const engine = r[idx(format.engine)]?.trim() || null;
     const color = format.color.map(col => r[idx(col)]?.trim()).find(Boolean) ?? null;
-    const rawImages = (r[idx(format.images)] ?? '').split(format.imagesDelimiter).map(s => s.trim()).filter(Boolean);
+    const rawImages = extractImageUrls(r[idx(format.images)] ?? '');
     const images = selectRepresentativeImages(rawImages, 30);
     let description = format.description ? (r[idx(format.description)]?.trim() ?? '') : '';
     if (format.descriptionStripMarker) {

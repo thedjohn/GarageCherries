@@ -619,7 +619,7 @@ describe('GET /api/cron/dealer-feed-sync', () => {
       expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({ p_price: 22000 }));
     });
 
-    it('splits Images on the comma delimiter, not pipe -- confirmed against Vaughns\' real production export', async () => {
+    it('extracts Images URLs when comma-separated -- confirmed against Vaughns\' real production export', async () => {
       makeSupabaseMock({ dealers: [DEALER_DCS], existingListings: [] });
       const csv = buildCsvDcs([{
         VIN: 'VIN-COMMA-IMAGES', Year: '2020', Make: 'Honda', Model: 'Civic', 'Stock Number': 'S2', 'Body Type': 'Sedan',
@@ -630,6 +630,28 @@ describe('GET /api/cron/dealer-feed-sync', () => {
       await GET(makeRequest('Bearer cron-secret'));
       expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({
         p_images: ['https://example.com/1.jpg', 'https://example.com/2.jpg', 'https://example.com/3.jpg'],
+      }));
+    });
+
+    // Extraction is delimiter-agnostic by design (matches URLs directly rather
+    // than splitting on an assumed separator character) -- this proves a
+    // *different* dealer on the same feed_format using pipe instead of comma
+    // (the original, wrong assumption Vaughns' real data broke) now works
+    // too, without any per-dealer or per-format configuration.
+    it('extracts Images URLs regardless of separator character -- pipe, semicolon, and whitespace all work with no per-format config', async () => {
+      makeSupabaseMock({ dealers: [DEALER_DCS], existingListings: [] });
+      const csv = buildCsvDcs([{
+        VIN: 'VIN-MIXED-SEP-IMAGES', Year: '2021', Make: 'Toyota', Model: 'Camry', 'Stock Number': 'S3', 'Body Type': 'Sedan',
+        Images: 'https://example.com/1.jpg|https://example.com/2.jpg; https://example.com/3.jpg https://example.com/4.jpg',
+      }]);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({
+        p_images: [
+          'https://example.com/1.jpg', 'https://example.com/2.jpg',
+          'https://example.com/3.jpg', 'https://example.com/4.jpg',
+        ],
       }));
     });
 
