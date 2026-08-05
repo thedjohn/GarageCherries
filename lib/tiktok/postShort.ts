@@ -170,11 +170,16 @@ export async function postListingReelToTikTok(
       log.error('TikTok post failed to query creator info', new Error('creator_info/query failed'), { listingId: listing.id });
       return false;
     }
+    // A missing privacy level here is expected, not exceptional, while our
+    // Content Posting API audit is pending (unaudited apps can't post
+    // PUBLIC_TO_EVERYONE) -- warn (Axiom only) rather than error (which pages
+    // via Sentry), so the daily automated retries don't alert on a known,
+    // already-tracked condition. This naturally stops firing the moment the
+    // audit is approved and the requested level becomes available.
     if (!availableLevels.includes(privacyLevel)) {
-      log.error(
-        'TikTok post failed — requested privacy level not available for this creator',
-        new Error(`${privacyLevel} not in [${availableLevels.join(',')}]`),
-        { listingId: listing.id }
+      log.warn(
+        'TikTok post skipped — requested privacy level not available for this creator (Content Posting API audit likely still pending)',
+        { listingId: listing.id, requestedLevel: privacyLevel, availableLevels: availableLevels.join(',') }
       );
       return false;
     }
@@ -211,8 +216,13 @@ export async function postListingReelToTikTok(
     });
     const initData = await initRes.json();
 
+    // Same reasoning as the privacy-level check above: while unaudited, TikTok
+    // rejects every real init attempt (unaudited_client_can_only_post_to_private_accounts,
+    // and -- once enough attempts stack up in a day -- a separate "exceeded
+    // the number of videos" limit). Both are the same known, already-tracked
+    // condition, not a new bug each time -- warn rather than error.
     if (!initRes.ok || initData.error?.code !== 'ok' || !initData.data?.publish_id || !initData.data?.upload_url) {
-      log.error('TikTok post init failed', new Error(initData.error?.message ?? `HTTP ${initRes.status}`), { listingId: listing.id });
+      log.warn('TikTok post init failed (Content Posting API audit likely still pending)', { listingId: listing.id, error: initData.error?.message ?? `HTTP ${initRes.status}` });
       return false;
     }
 

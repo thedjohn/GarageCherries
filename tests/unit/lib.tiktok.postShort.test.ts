@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+const { mockWarn, mockError } = vi.hoisted(() => ({ mockWarn: vi.fn(), mockError: vi.fn() }));
 vi.mock('@/lib/logger', () => ({
-  createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), flush: vi.fn().mockResolvedValue(undefined) }),
+  createLogger: () => ({ info: vi.fn(), warn: mockWarn, error: mockError, flush: vi.fn().mockResolvedValue(undefined) }),
 }));
 
 import { postListingReelToTikTok } from '@/lib/tiktok/postShort';
@@ -66,13 +67,15 @@ describe('postListingReelToTikTok', () => {
     expect(result).toBe(false);
   });
 
-  it('returns false when the requested privacy level is not available for this creator', async () => {
+  it('returns false when the requested privacy level is not available for this creator, warning (not erroring) since this is expected while the Content Posting API audit is pending', async () => {
     (fetch as any)
       .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'access-token' }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ error: { code: 'ok' }, data: { privacy_level_options: ['SELF_ONLY'] } }) });
     const result = await postListingReelToTikTok(LISTING, VIDEO_URL, 'PUBLIC_TO_EVERYONE');
     expect(result).toBe(false);
     expect(fetch).toHaveBeenCalledTimes(2); // never reaches the video download/init/upload
+    expect(mockWarn).toHaveBeenCalled();
+    expect(mockError).not.toHaveBeenCalled();
   });
 
   it('returns false when fetching the source video fails', async () => {
@@ -84,7 +87,7 @@ describe('postListingReelToTikTok', () => {
     expect(result).toBe(false);
   });
 
-  it('returns false when video/init fails', async () => {
+  it('returns false when video/init fails, warning (not erroring) since this covers the known unaudited-app and daily-limit responses', async () => {
     (fetch as any)
       .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'access-token' }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ error: { code: 'ok' }, data: { privacy_level_options: ['PUBLIC_TO_EVERYONE'] } }) })
@@ -92,6 +95,8 @@ describe('postListingReelToTikTok', () => {
       .mockResolvedValueOnce({ ok: false, json: async () => ({ error: { code: 'internal_error', message: 'boom' } }) });
     const result = await postListingReelToTikTok(LISTING, VIDEO_URL);
     expect(result).toBe(false);
+    expect(mockWarn).toHaveBeenCalled();
+    expect(mockError).not.toHaveBeenCalled();
   });
 
   it('returns false when video/init succeeds at the HTTP level but has no publish_id/upload_url', async () => {
