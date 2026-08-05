@@ -181,7 +181,19 @@ export async function postListingReelToYouTube(
     const uploadUrl = initRes.headers.get('location');
     if (!initRes.ok || !uploadUrl) {
       const errBody = await initRes.text().catch(() => '');
-      log.error('YouTube upload session init failed', new Error(errBody || `HTTP ${initRes.status}`), { listingId: listing.id });
+      // Hitting the daily upload cap is a known, already-tracked condition
+      // (quota increase requested, pending Google's review) rather than a
+      // new bug each time -- warn (Axiom only) instead of error (which pages
+      // via Sentry) so the automated retries don't alert on it every day.
+      // Matched by reason code, not just message text, since Google returns
+      // slightly different wording for different quota mechanisms
+      // (rateLimitExceeded, uploadLimitExceeded, quotaExceeded have all been
+      // seen in production). Any other init failure still errors normally.
+      if (/rateLimitExceeded|uploadLimitExceeded|quotaExceeded|dailyLimitExceeded/.test(errBody)) {
+        log.warn('YouTube upload session init failed (daily quota likely exceeded, increase request pending)', { listingId: listing.id, error: errBody || `HTTP ${initRes.status}` });
+      } else {
+        log.error('YouTube upload session init failed', new Error(errBody || `HTTP ${initRes.status}`), { listingId: listing.id });
+      }
       return false;
     }
 

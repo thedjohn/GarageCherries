@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+const { mockWarn, mockError } = vi.hoisted(() => ({ mockWarn: vi.fn(), mockError: vi.fn() }));
 vi.mock('@/lib/logger', () => ({
-  createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), flush: vi.fn().mockResolvedValue(undefined) }),
+  createLogger: () => ({ info: vi.fn(), warn: mockWarn, error: mockError, flush: vi.fn().mockResolvedValue(undefined) }),
 }));
 
 import { postListingReelToYouTube } from '@/lib/youtube/postShort';
@@ -64,13 +65,29 @@ describe('postListingReelToYouTube', () => {
     expect(result).toBe(false);
   });
 
-  it('returns false when the resumable session init fails', async () => {
+  it('returns false when the resumable session init fails for a genuine (non-quota) reason, still erroring normally', async () => {
     (fetch as any)
       .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'access-token' }) })
       .mockResolvedValueOnce({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) })
       .mockResolvedValueOnce({ ok: false, status: 400, headers: { get: () => null }, text: async () => 'bad request' });
     const result = await postListingReelToYouTube(LISTING, VIDEO_URL);
     expect(result).toBe(false);
+    expect(mockError).toHaveBeenCalled();
+    expect(mockWarn).not.toHaveBeenCalled();
+  });
+
+  it('returns false when the resumable session init fails due to the daily upload cap, warning (not erroring) since this is expected while the quota increase is pending', async () => {
+    (fetch as any)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'access-token' }) })
+      .mockResolvedValueOnce({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) })
+      .mockResolvedValueOnce({
+        ok: false, status: 400, headers: { get: () => null },
+        text: async () => JSON.stringify({ error: { code: 400, message: 'The user has exceeded the number of videos they may upload.', errors: [{ message: 'The user has exceeded the number of videos they may upload.', domain: 'youtube.video', reason: 'uploadLimitExceeded' }] } }),
+      });
+    const result = await postListingReelToYouTube(LISTING, VIDEO_URL);
+    expect(result).toBe(false);
+    expect(mockWarn).toHaveBeenCalled();
+    expect(mockError).not.toHaveBeenCalled();
   });
 
   it('returns false when the byte upload step fails', async () => {
