@@ -338,7 +338,16 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     if (existingId) {
       seenIds.add(existingId);
       const { error } = await admin.from('listings').update({
-        title, year, make, model, price, mileage,
+        title, year, price, mileage,
+        // A blank make/model from the feed shouldn't erase a value that's
+        // already correct in our DB -- a vendor's own export can genuinely
+        // have this blank for a given row (seen in production: a Glassic
+        // replica with no Model value in Survivor's feed) even though we've
+        // since corrected it on our end, and unconditionally overwriting on
+        // every sync just kept re-blanking it. Only touch these columns when
+        // the feed actually sent something for them.
+        ...(make ? { make } : {}),
+        ...(model ? { model } : {}),
         location: listingLocation, state: listingState,
         condition: 'Good',
         body_style: bodyStyle,

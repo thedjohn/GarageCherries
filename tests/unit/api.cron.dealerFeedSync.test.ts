@@ -347,6 +347,33 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     expect(listingUpdateCalls[0].payload.is_feed_managed).toBe(true);
   });
 
+  it('does not overwrite make/model with a blank value from the feed, so a manually-corrected listing does not get re-blanked on the next sync', async () => {
+    const { listingUpdateCalls } = makeSupabaseMock({
+      dealers: [DEALER],
+      existingListings: [{ id: 'listing-existing', vin: 'VIN-EXIST' }],
+    });
+    const csv = buildCsv([{ VIN: 'VIN-EXIST', Year: '1969', Make: '', Model: '', BodyStyle: 'Convertible', 'List Price': '12995', Transmission: 'Manual' }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+    const res: any = await GET(makeRequest('Bearer cron-secret'));
+    expect(res._data.results['info@survivor-cars.com'].updated).toBe(1);
+    expect(listingUpdateCalls[0].payload).not.toHaveProperty('make');
+    expect(listingUpdateCalls[0].payload).not.toHaveProperty('model');
+  });
+
+  it('still updates make/model normally when the feed actually has a value', async () => {
+    const { listingUpdateCalls } = makeSupabaseMock({
+      dealers: [DEALER],
+      existingListings: [{ id: 'listing-existing', vin: 'VIN-EXIST' }],
+    });
+    const csv = buildCsv([{ VIN: 'VIN-EXIST', Year: '1969', Make: 'Chevrolet', Model: 'Camaro', BodyStyle: 'Coupe', 'List Price': '55000', Transmission: 'Manual' }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+    await GET(makeRequest('Bearer cron-secret'));
+    expect(listingUpdateCalls[0].payload.make).toBe('Chevrolet');
+    expect(listingUpdateCalls[0].payload.model).toBe('Camaro');
+  });
+
   it('marks a previously-synced VIN as sold when it no longer appears in the feed', async () => {
     const { listingUpdateCalls } = makeSupabaseMock({
       dealers: [DEALER],
