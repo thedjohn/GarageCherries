@@ -415,6 +415,12 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                     </a>
                     {dealer.since && <p className="text-xs text-zinc-400 mt-0.5">Est. {dealer.since}</p>}
                     <p className="text-sm text-zinc-500 mt-1">{formatPhone(car.sellerPhone)}</p>
+                    {(dealer as any).website && (
+                      <a href={(dealer as any).website} target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-zinc-400 hover:text-red-600 transition-colors mt-1 inline-block">
+                        Visit website ↗
+                      </a>
+                    )}
                   </>
                 ) : (
                   <p className="text-sm text-zinc-500">{car.location}{car.state ? `, ${car.state}` : ''}</p>
