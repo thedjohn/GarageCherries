@@ -9,6 +9,7 @@ import ViewTracker from '@/components/ViewTracker';
 import AdSlot from '@/components/AdSlot';
 import MakeOfferButton from '@/components/MakeOfferButton';
 import FinancingCalculator from '@/components/FinancingCalculator';
+import YouTubeEmbed from '@/components/YouTubeEmbed';
 import {
   getCar, getDealerById, formatPrice, formatListingPrice, formatMileage, formatPhone,
   toSegment, makeFromSegment, CARS,
@@ -142,6 +143,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
         lotNumber: data.lot_number,
         descriptionParagraphs: data.description_paragraphs,
         isSold: data.is_sold ?? false,
+        youtubeVideoId: data.youtube_video_id ?? undefined,
       } as any;
     }
     if (!car) notFound();
@@ -316,6 +318,10 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                 <p className="text-zinc-600 leading-relaxed">{car.description}</p>
               )}
             </div>
+
+            {(car as any).youtubeVideoId && (
+              <YouTubeEmbed videoId={(car as any).youtubeVideoId} title={car.title} />
+            )}
 
             {/* Specs — 4-column layout */}
             <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">

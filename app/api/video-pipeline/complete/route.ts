@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   const { data: listing } = await admin
     .from('listings')
-    .select('id, title, make, model, year, price, slug, images, mileage, condition, location, state, description, description_paragraphs, hobby_segment, body_style, reel_posted_at, instagram_posted_at, youtube_posted_at, tiktok_posted_at')
+    .select('id, title, make, model, year, price, slug, images, mileage, condition, location, state, description, description_paragraphs, hobby_segment, body_style, reel_posted_at, instagram_posted_at, youtube_posted_at, youtube_video_id, tiktok_posted_at')
     .eq('id', listingId)
     .single();
 
@@ -79,9 +79,18 @@ export async function POST(request: NextRequest) {
     return success;
   }
 
+  const postAndRecordYouTube = async (alreadyPosted: string | null): Promise<boolean> => {
+    if (alreadyPosted) return true;
+    const videoId = await postListingReelToYouTube(listing, videoUrl).catch(() => null);
+    if (videoId) {
+      await admin.from('listings').update({ youtube_posted_at: new Date().toISOString(), youtube_video_id: videoId }).eq('id', listingId);
+    }
+    return Boolean(videoId);
+  };
+
   const [igSuccess, ytSuccess, ttSuccess] = await Promise.all([
     postAndRecord(listing.instagram_posted_at, () => postListingReelToInstagram(listing, videoUrl), 'instagram_posted_at'),
-    postAndRecord(listing.youtube_posted_at, () => postListingReelToYouTube(listing, videoUrl), 'youtube_posted_at'),
+    postAndRecordYouTube(listing.youtube_posted_at),
     postAndRecord(listing.tiktok_posted_at, () => postListingReelToTikTok(listing, videoUrl, process.env.TIKTOK_DEMO_PRIVACY_LEVEL || 'PUBLIC_TO_EVERYONE'), 'tiktok_posted_at'),
   ]);
 

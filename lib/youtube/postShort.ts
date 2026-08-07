@@ -145,18 +145,18 @@ export async function postListingReelToYouTube(
   listing: ListingPostInput,
   videoUrl: string,
   privacyStatus: 'public' | 'unlisted' | 'private' = 'public'
-): Promise<boolean> {
+): Promise<string | null> {
   try {
     const accessToken = await getAccessToken();
     if (!accessToken) {
       log.info('YouTube upload skipped — YOUTUBE_CLIENT_ID/YOUTUBE_CLIENT_SECRET/YOUTUBE_REFRESH_TOKEN not configured');
-      return false;
+      return null;
     }
 
     const videoRes = await fetch(videoUrl);
     if (!videoRes.ok) {
       log.error('YouTube upload failed to fetch source video', new Error(`HTTP ${videoRes.status}`), { listingId: listing.id });
-      return false;
+      return null;
     }
     const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
 
@@ -194,7 +194,7 @@ export async function postListingReelToYouTube(
       } else {
         log.error('YouTube upload session init failed', new Error(errBody || `HTTP ${initRes.status}`), { listingId: listing.id });
       }
-      return false;
+      return null;
     }
 
     const uploadRes = await fetch(uploadUrl, {
@@ -205,13 +205,13 @@ export async function postListingReelToYouTube(
     const uploadData = await uploadRes.json();
     if (!uploadRes.ok || !uploadData.id) {
       log.error('YouTube upload failed', new Error(uploadData.error?.message ?? `HTTP ${uploadRes.status}`), { listingId: listing.id });
-      return false;
+      return null;
     }
 
     log.info('YouTube upload succeeded', { listingId: listing.id, videoId: uploadData.id });
-    return true;
+    return uploadData.id as string;
   } catch (err) {
     log.error('postListingReelToYouTube threw', err instanceof Error ? err : new Error(String(err)), { listingId: listing.id });
-    return false;
+    return null;
   }
 }

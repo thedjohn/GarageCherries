@@ -37,6 +37,7 @@ export interface Car {
   rearWheelSpec?: string;
   options?: string[];
   descriptionParagraphs?: string[];
+  youtubeVideoId?: string;
 }
 
 export interface Dealer {

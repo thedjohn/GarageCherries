@@ -64,7 +64,7 @@ beforeEach(() => {
   mockUpdateEq.mockResolvedValue({ error: null });
   mockPostReelToFacebook.mockResolvedValue(false);
   mockPostReelToInstagram.mockResolvedValue(false);
-  mockPostReelToYouTube.mockResolvedValue(false);
+  mockPostReelToYouTube.mockResolvedValue(null);
   mockPostReelToTikTok.mockResolvedValue(false);
 });
 
@@ -160,19 +160,19 @@ describe('POST /api/video-pipeline/complete', () => {
     expect(res._data).toEqual({ ok: true, fbSuccess: true, igSuccess: true, ytSuccess: false, ttSuccess: false });
   });
 
-  it('awaits the YouTube post and stamps youtube_posted_at before returning on success', async () => {
+  it('awaits the YouTube post and stamps youtube_posted_at and youtube_video_id before returning on success', async () => {
     mockPostReelToFacebook.mockResolvedValue(true);
-    mockPostReelToYouTube.mockResolvedValue(true);
+    mockPostReelToYouTube.mockResolvedValue('yt-video-1');
 
     const res: any = await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
 
     expect(mockPostReelToYouTube).toHaveBeenCalledWith(LISTING, 'https://x/y.mp4');
-    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ youtube_posted_at: expect.any(String) }));
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ youtube_posted_at: expect.any(String), youtube_video_id: 'yt-video-1' }));
     expect(res._data).toEqual({ ok: true, fbSuccess: true, igSuccess: false, ytSuccess: true, ttSuccess: false });
   });
 
   it('does not stamp youtube_posted_at when the YouTube post fails', async () => {
-    mockPostReelToYouTube.mockResolvedValue(false);
+    mockPostReelToYouTube.mockResolvedValue(null);
 
     const res: any = await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
 
@@ -219,7 +219,7 @@ describe('POST /api/video-pipeline/complete', () => {
   it('posts to all four platforms independently when none are already posted', async () => {
     mockPostReelToFacebook.mockResolvedValue(true);
     mockPostReelToInstagram.mockResolvedValue(true);
-    mockPostReelToYouTube.mockResolvedValue(true);
+    mockPostReelToYouTube.mockResolvedValue('yt-video-1');
     mockPostReelToTikTok.mockResolvedValue(true);
 
     const res: any = await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));

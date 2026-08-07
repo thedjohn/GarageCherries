@@ -47,14 +47,14 @@ describe('postListingReelToYouTube', () => {
   it('skips and returns false when YouTube env vars are not configured', async () => {
     delete process.env.YOUTUBE_CLIENT_ID;
     const result = await postListingReelToYouTube(LISTING, VIDEO_URL);
-    expect(result).toBe(false);
+    expect(result).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
   });
 
   it('returns false when the token refresh fails', async () => {
     (fetch as any).mockResolvedValueOnce({ ok: false, json: async () => ({ error_description: 'invalid_grant' }) });
     const result = await postListingReelToYouTube(LISTING, VIDEO_URL);
-    expect(result).toBe(false);
+    expect(result).toBeNull();
   });
 
   it('returns false when fetching the source video fails', async () => {
@@ -62,7 +62,7 @@ describe('postListingReelToYouTube', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'access-token' }) })
       .mockResolvedValueOnce({ ok: false, status: 404 });
     const result = await postListingReelToYouTube(LISTING, VIDEO_URL);
-    expect(result).toBe(false);
+    expect(result).toBeNull();
   });
 
   it('returns false when the resumable session init fails for a genuine (non-quota) reason, still erroring normally', async () => {
@@ -71,7 +71,7 @@ describe('postListingReelToYouTube', () => {
       .mockResolvedValueOnce({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) })
       .mockResolvedValueOnce({ ok: false, status: 400, headers: { get: () => null }, text: async () => 'bad request' });
     const result = await postListingReelToYouTube(LISTING, VIDEO_URL);
-    expect(result).toBe(false);
+    expect(result).toBeNull();
     expect(mockError).toHaveBeenCalled();
     expect(mockWarn).not.toHaveBeenCalled();
   });
@@ -85,7 +85,7 @@ describe('postListingReelToYouTube', () => {
         text: async () => JSON.stringify({ error: { code: 400, message: 'The user has exceeded the number of videos they may upload.', errors: [{ message: 'The user has exceeded the number of videos they may upload.', domain: 'youtube.video', reason: 'uploadLimitExceeded' }] } }),
       });
     const result = await postListingReelToYouTube(LISTING, VIDEO_URL);
-    expect(result).toBe(false);
+    expect(result).toBeNull();
     expect(mockWarn).toHaveBeenCalled();
     expect(mockError).not.toHaveBeenCalled();
   });
@@ -97,13 +97,13 @@ describe('postListingReelToYouTube', () => {
       .mockResolvedValueOnce({ ok: true, headers: { get: () => 'https://upload.example.com/session-1' } })
       .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({ error: { message: 'server error' } }) });
     const result = await postListingReelToYouTube(LISTING, VIDEO_URL);
-    expect(result).toBe(false);
+    expect(result).toBeNull();
   });
 
-  it('uploads successfully and returns true, defaulting to public visibility', async () => {
+  it('uploads successfully and returns the video ID, defaulting to public visibility', async () => {
     mockSuccessfulUploadChain();
     const result = await postListingReelToYouTube(LISTING, VIDEO_URL);
-    expect(result).toBe(true);
+    expect(result).toBe('yt-video-1');
 
     const initCall = (fetch as any).mock.calls[2];
     const body = JSON.parse(initCall[1].body);
@@ -254,13 +254,13 @@ describe('postListingReelToYouTube', () => {
   it('returns false and does not throw if fetch itself throws', async () => {
     (fetch as any).mockRejectedValueOnce(new Error('network down'));
     const result = await postListingReelToYouTube(LISTING, VIDEO_URL);
-    expect(result).toBe(false);
+    expect(result).toBeNull();
   });
 
   it('returns false and does not throw when a non-Error value is thrown', async () => {
     (fetch as any).mockRejectedValueOnce('network down');
     const result = await postListingReelToYouTube(LISTING, VIDEO_URL);
-    expect(result).toBe(false);
+    expect(result).toBeNull();
   });
 
   it('still returns false cleanly if the failed init response body cannot be read', async () => {
@@ -269,7 +269,7 @@ describe('postListingReelToYouTube', () => {
       .mockResolvedValueOnce({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) })
       .mockResolvedValueOnce({ ok: false, status: 400, headers: { get: () => null }, text: () => Promise.reject(new Error('stream error')) });
     const result = await postListingReelToYouTube(LISTING, VIDEO_URL);
-    expect(result).toBe(false);
+    expect(result).toBeNull();
   });
 
   it('falls back to an HTTP-status error when the failed init response body is empty', async () => {
@@ -278,7 +278,7 @@ describe('postListingReelToYouTube', () => {
       .mockResolvedValueOnce({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) })
       .mockResolvedValueOnce({ ok: false, status: 400, headers: { get: () => null }, text: async () => '' });
     const result = await postListingReelToYouTube(LISTING, VIDEO_URL);
-    expect(result).toBe(false);
+    expect(result).toBeNull();
   });
 
   it('falls back to an HTTP-status error when the failed upload response has no error message', async () => {
@@ -288,6 +288,6 @@ describe('postListingReelToYouTube', () => {
       .mockResolvedValueOnce({ ok: true, headers: { get: () => 'https://upload.example.com/session-1' } })
       .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) });
     const result = await postListingReelToYouTube(LISTING, VIDEO_URL);
-    expect(result).toBe(false);
+    expect(result).toBeNull();
   });
 });
