@@ -48,6 +48,18 @@ const BODY_STYLE_MAP: Record<string, string> = {
 // Not cars -- these are the vendor's motorcycle body-style terms, skipped entirely.
 const SKIP_BODY_STYLES = new Set(['cruiser', 'touring']);
 
+// A handful of dealer feeds spell the same manufacturer differently than our
+// canonical MAKES list. Normalized here at ingestion, not just left for a
+// one-off DB correction, since the next sync would otherwise just overwrite
+// a manual fix with whatever the feed sends every time (see the `make ? ... : {}`
+// comment below).
+const MAKE_ALIASES: Record<string, string> = {
+  'mercedes-benz': 'Mercedes',
+};
+function normalizeMake(make: string): string {
+  return MAKE_ALIASES[make.toLowerCase()] ?? make;
+}
+
 function mapTransmission(raw: string): string {
   return /manual/i.test(raw) ? 'Manual' : 'Automatic';
 }
@@ -297,7 +309,7 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     if (!vin && !stockNumber) { result.skipped++; continue; }
 
     const year = parseInt(r[idx('Year')], 10);
-    const make = r[idx('Make')]?.trim();
+    const make = normalizeMake(r[idx('Make')]?.trim());
     // Import the car regardless -- a make not yet in our official MAKES list is a
     // real data-review item, not a reason to drop otherwise-sellable inventory.
     // Flagged here so it surfaces for a deliberate add/reject decision.

@@ -71,10 +71,10 @@ export interface SearchFilters {
 
 export const MAKES = [
   'All Makes',
-  'Alfa Romeo','AMC','Auburn','Austin Healey','BMW','Buick','Cadillac','Chevrolet','Chrysler','Datsun','De Tomaso','DeSoto','Dodge','Factory Five','Fiberfab','Ford',
+  'Alfa Romeo','AMC','Auburn','Austin','Austin Healey','BMW','Buick','Cadillac','Chevrolet','Chrysler','Datsun','De Tomaso','DeSoto','Dodge','Factory Five','Fiberfab','Ford',
   'GMC','Hudson','International','Jaguar','Jeep','Kaiser','Land Rover','Lincoln','Lotus','Mazda',
   'Mercedes','Mercury','MG','Mitsubishi','Mitsuoka','Nash','Nissan','Oldsmobile','Packard',
-  'Plymouth','Pontiac','Porsche','Ram','Rover','Shelby','Studebaker','Toyota','Triumph','Tucker','Volkswagen','Willys',
+  'Plymouth','Pontiac','Porsche','Ram','Rover','Shelby','Studebaker','Subaru','Toyota','Triumph','Tucker','Volkswagen','Willys',
 ];
 
 export const BODY_STYLES = [

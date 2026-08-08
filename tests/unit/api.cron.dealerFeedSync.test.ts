@@ -380,6 +380,28 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     expect(listingUpdateCalls[0].payload.model).toBe('Camaro');
   });
 
+  it('normalizes "Mercedes-Benz" to "Mercedes" on insert, so it is never flagged as unrecognized', async () => {
+    makeSupabaseMock({ dealers: [DEALER], existingListings: [] });
+    const csv = buildCsv([{ VIN: 'VIN-MB', Year: '2008', Make: 'Mercedes-Benz', Model: 'CLK350', BodyStyle: 'Convertible', 'List Price': '18000' }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+    const res: any = await GET(makeRequest('Bearer cron-secret'));
+    expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({ p_make: 'Mercedes' }));
+    expect(res._data.results['info@survivor-cars.com'].unrecognizedMakes).toEqual([]);
+  });
+
+  it('normalizes "Mercedes-Benz" to "Mercedes" on update too, so a corrected listing does not get re-split by the next sync', async () => {
+    const { listingUpdateCalls } = makeSupabaseMock({
+      dealers: [DEALER],
+      existingListings: [{ id: 'listing-existing', vin: 'VIN-EXIST' }],
+    });
+    const csv = buildCsv([{ VIN: 'VIN-EXIST', Year: '1987', Make: 'Mercedes-Benz', Model: '560 SL', BodyStyle: 'Convertible', 'List Price': '45000' }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+    await GET(makeRequest('Bearer cron-secret'));
+    expect(listingUpdateCalls[0].payload.make).toBe('Mercedes');
+  });
+
   it('marks a previously-synced VIN as sold when it no longer appears in the feed', async () => {
     const { listingUpdateCalls } = makeSupabaseMock({
       dealers: [DEALER],
@@ -688,7 +710,7 @@ describe('GET /api/cron/dealer-feed-sync', () => {
       }));
     });
 
-    it('reads Trim as the sub-model, appended to the title -- real sample row (Mercedes GLC-Class)', async () => {
+    it('reads Trim as the sub-model, appended to the title -- real sample row (Mercedes GLC-Class), and normalizes "Mercedes-Benz" to "Mercedes"', async () => {
       makeSupabaseMock({ dealers: [DEALER_DCS], existingListings: [] });
       const csv = buildCsvDcs([{
         VIN: 'WDC0G4JB6JV037393', Year: '2018', Make: 'Mercedes-Benz', Model: 'GLC-Class', Trim: '300',
@@ -697,7 +719,7 @@ describe('GET /api/cron/dealer-feed-sync', () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
 
       await GET(makeRequest('Bearer cron-secret'));
-      expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({ p_title: '2018 Mercedes-Benz GLC-Class 300' }));
+      expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({ p_make: 'Mercedes', p_title: '2018 Mercedes GLC-Class 300' }));
     });
 
     it('strips the repeated reconditioning boilerplate off the end of Comments, keeping the real per-vehicle text', async () => {
