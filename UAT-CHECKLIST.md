@@ -16,7 +16,7 @@
 
 *Updated 2026-07-29 (commit `4fe4714`) — added an item for the new "SFTP — we host" Feed Sync option (dealers push a file to us via SFTP, instead of only the two existing pull-based options); already live-verified end-to-end with a real dealer account and real credentials, not just written from the code.*
 
-*Updated 2026-08-08 — added items for: the homepage stats bar showing real Active Listings/Dealers/Cars Sold counts (§1); the new `/dmca` and `/affiliate-disclosure` pages and their footer links (§1); the Financing Calculator's strengthened disclaimer text (§1, existing item); the "car sold" watcher email now including a leave-a-review link, firing for feed-sync-marked-sold listings (not just manually-marked ones), and including a working unsubscribe link (§7); a fixed Oldsmobile 4-4-2 Live Inventory bug and 9 new Classic Car Encyclopedia model pages, in two batches (§1). The sign-off below predates all of this and does not cover any of it.*
+*Updated 2026-08-08 — added items for: the homepage stats bar showing real Active Listings/Dealers/Cars Sold counts (§1); the new `/dmca` and `/affiliate-disclosure` pages and their footer links (§1); the Financing Calculator's strengthened disclaimer text (§1, existing item); the "car sold" watcher email now including a leave-a-review link, firing for feed-sync-marked-sold listings (not just manually-marked ones), and including a working unsubscribe link (§7); a fixed Oldsmobile 4-4-2 Live Inventory bug, 9 new Classic Car Encyclopedia model pages in two batches, and a follow-up fix so Ford F-250 and GMC Sierra each match a second real-listing spelling variant (§1). The sign-off below predates all of this and does not cover any of it.*
 
 ---
 

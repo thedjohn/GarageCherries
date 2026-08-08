@@ -3,8 +3,10 @@ export interface EncyclopediaEntry {
   model: string;
   /** Overrides `model` when deriving the Live Inventory prefix match, for cases where
    *  the display name (and URL slug) differs from how the model is actually stored on
-   *  real listings — e.g. "4-4-2" displays with dashes but listings store "442". */
-  matchModel?: string;
+   *  real listings — e.g. "4-4-2" displays with dashes but listings store "442". Accepts
+   *  an array when real listings spell the same model inconsistently (e.g. "F250" and
+   *  "F-250"), or when one entry's era covers more than one real naming convention. */
+  matchModel?: string | string[];
   years: string;
   tagline: string;
   overview: string;
@@ -4322,7 +4324,7 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
   {
     make: 'Ford',
     model: 'F-250',
-    matchModel: 'F250',
+    matchModel: ['F250', 'F-250'],
     years: '1953–1966',
     tagline: "The F-100's heavier-duty 3/4-ton sibling — the same classic Ford truck styling, built for real work.",
     overview: "The F-250 shared its cab, chassis design, and styling with the F-100 across the same generations, but rode on a heavier-duty frame and running gear rated for 3/4-ton payloads. It's a less common find today than the F-100 — many were used hard and not preserved — which makes clean survivors and well-done restorations genuinely harder to source.",
@@ -4380,6 +4382,7 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
   {
     make: 'GMC',
     model: 'Sierra',
+    matchModel: ['Sierra', 'C1500'],
     years: '1973–1998',
     tagline: "From a top-tier trim package to GMC's flagship truck name — the Sierra identity that still leads their lineup today.",
     overview: "Sierra began in 1973 as GMC's top trim package on the C/K pickup — the direct counterpart to Chevrolet's Cheyenne, and part of the same badge-engineered platform. Ford-fighting positioning aside, GMC leaned on Sierra to differentiate its trucks as the more upscale alternative to Chevrolet's version of the same vehicle, and by 1988 (with the GMT400 generation) Sierra had grown from a trim option into the model name itself, a position it still holds today.",

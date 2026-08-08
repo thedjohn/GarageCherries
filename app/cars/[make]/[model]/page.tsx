@@ -54,14 +54,17 @@ export default async function ModelPage({ params, searchParams }: Props) {
   // titles are almost always more specific than a general model name (e.g. a listing's
   // model might be "Challenger SRT Hellcat" while the model family is just "Challenger"),
   // so an exact match would miss nearly everything. Matches fetchCars()'s existing logic.
-  const firstWord = (entry.matchModel ?? entry.model).trim().split(/\s+/)[0];
+  // matchModel may list more than one prefix, for cases where real listings spell the
+  // same model inconsistently (e.g. "F250" vs "F-250").
+  const matchWords = (Array.isArray(entry.matchModel) ? entry.matchModel : [entry.matchModel ?? entry.model])
+    .map(m => m.trim().split(/\s+/)[0]);
   const { data: dbRows, count } = await supabase
     .from('listings')
     .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at', { count: 'exact' })
     .eq('status', 'approved')
     .eq('is_sold', false)
     .eq('make', entry.make)
-    .ilike('model', `${firstWord}%`)
+    .or(matchWords.map(w => `model.ilike.${w}%`).join(','))
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
     .order('created_at', { ascending: false })
     .order('id', { ascending: true }) // tiebreaker for stable pagination -- see app/listings/page.tsx
