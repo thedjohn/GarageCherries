@@ -8,6 +8,7 @@ const UNSUBSCRIBE_PAGES = [
   { path: '/unsubscribe/price-drops',  name: 'price drops' },
   { path: '/unsubscribe/alerts',       name: 'alerts' },
   { path: '/unsubscribe/dealer-report', name: 'dealer report' },
+  { path: '/unsubscribe/car-sold',     name: 'car sold' },
 ];
 
 for (const { path, name } of UNSUBSCRIBE_PAGES) {

@@ -163,14 +163,16 @@ These become legally required once payment processing and dealer accounts go liv
 
 ### 11. CAN-SPAM Compliance
 
+**Status: verified and mostly closed as of 2026-08-08.** Checked the real email code directly rather than assuming compliance either way (per this item's own "already partially compliant... needs verification" note). Found: unsubscribe was already solid (digest, price-drops, saved-search alerts, dealer monthly reports all have working, tested unsubscribe links) except for one gap — the "your watched car sold" notification had none, now fixed. Physical address was genuinely missing from every single email — also now fixed, added to the shared `emailWrap()` wrapper so it applies everywhere automatically rather than needing to touch each email individually.
+
 **What it is:** Federal law governing commercial email. Already partially compliant based on how email alerts are built, but a few specifics need verification.
 
 **What's needed:**
-- [ ] Every commercial email must include a physical mailing address (the `[Your Address]` placeholder in Privacy applies here too)
-- [ ] Unsubscribe requests must be honored within 10 business days
-- [ ] Subject lines must not be deceptive
-- [ ] "From" name and address must accurately identify the sender
-- [ ] Car alert emails — confirm they qualify as transactional (user-initiated) rather than commercial, as transactional emails have lighter requirements
+- [x] Every commercial email must include a physical mailing address — added to `lib/emailBranding.ts`'s `emailWrap()`, which every email in the codebase uses, so this is fixed everywhere at once (verified directly: the function's actual output now contains the address, not just assumed from the source)
+- [x] Unsubscribe requests must be honored — confirmed already true for digest/price-drops/alerts/dealer-report (real pages, real tests); added the one missing case (car-sold notification: new `app/unsubscribe/car-sold/page.tsx`, mirrors the existing price-drops pattern exactly, sets a `car_sold_opt_out` flag checked before every send)
+- [ ] Subject lines must not be deceptive — not specifically audited this session
+- [ ] "From" name and address must accurately identify the sender — not specifically audited this session
+- [ ] Car alert emails — confirm they qualify as transactional (user-initiated) rather than commercial — not resolved; still worth an attorney's read given they have promotional elements (browse-more-listings CTAs)
 
 ---
 

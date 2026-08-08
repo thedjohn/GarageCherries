@@ -17,5 +17,8 @@ export function emailWrap(body: string): string {
   <div style="background:#fff;border:1px solid #e4e4e7;border-top:none;padding:32px 24px;border-radius:0 0 12px 12px">
     ${body}
   </div>
+  <p style="text-align:center;color:#a1a1aa;font-size:11px;margin-top:16px">
+    GarageCherries LLC &middot; 417 Beaver Lake Dr, Saint Charles, MO 63303
+  </p>
 </div>`;
 }

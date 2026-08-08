@@ -21,10 +21,11 @@ export async function notifyWatchersCarSold(
 
   const userIds = watchers.map((w: { user_id: string }) => w.user_id);
   const { data: { users } } = await admin.auth.admin.listUsers();
-  const emails = users
-    .filter((u: { id: string; email?: string }) => userIds.includes(u.id) && u.email)
-    .map((u: { email?: string }) => u.email!);
-  if (!emails.length) return;
+  const recipients = users
+    .filter((u: { id: string; email?: string; user_metadata?: { car_sold_opt_out?: boolean } }) =>
+      userIds.includes(u.id) && u.email && !u.user_metadata?.car_sold_opt_out)
+    .map((u: { id: string; email?: string }) => ({ id: u.id, email: u.email! }));
+  if (!recipients.length) return;
 
   const { data: dealer } = await admin.from('dealers').select('slug, name').eq('id', dealerId).maybeSingle();
 
@@ -38,8 +39,9 @@ export async function notifyWatchersCarSold(
     : '';
 
   const resend = new Resend(process.env.RESEND_API_KEY);
-  await Promise.allSettled(emails.map((email: string) =>
-    resend.emails.send({
+  await Promise.allSettled(recipients.map(({ id, email }: { id: string; email: string }) => {
+    const unsubscribeUrl = `https://www.garagecherries.com/unsubscribe/car-sold?uid=${id}`;
+    return resend.emails.send({
       from: 'GarageCherries <noreply@garagecherries.com>',
       to: email,
       subject: `${carTitle} has sold`,
@@ -52,7 +54,11 @@ export async function notifyWatchersCarSold(
             Browse Listings
           </a>
           ${reviewSection}
+          <p style="color:#a1a1aa;font-size:12px;margin-top:24px">
+            You're receiving this because you're watching this listing on GarageCherries.<br/>
+            <a href="${unsubscribeUrl}" style="color:#a1a1aa;">Unsubscribe from &quot;car sold&quot; notifications</a>
+          </p>
         `),
-    })
-  ));
+    });
+  }));
 }

@@ -16,7 +16,7 @@ function makeAdmin() {
 
 function mockTables(opts: {
   watchers?: { user_id: string }[];
-  users?: { id: string; email?: string }[];
+  users?: { id: string; email?: string; user_metadata?: { car_sold_opt_out?: boolean } }[];
   dealer?: { slug: string; name: string } | null;
 }) {
   mockFrom.mockImplementation((table: string) => {
@@ -85,5 +85,38 @@ describe('notifyWatchersCarSold', () => {
     await notifyWatchersCarSold(makeAdmin(), 'car-1', 'Nice Car', 'dealer-1');
     expect(mockSend).toHaveBeenCalledOnce();
     expect(mockSend.mock.calls[0][0].to).toBe('buyer1@x.com');
+  });
+
+  it('skips users who have opted out of car-sold notifications', async () => {
+    mockTables({
+      watchers: [{ user_id: 'buyer-1' }, { user_id: 'buyer-2' }],
+      users: [
+        { id: 'buyer-1', email: 'optedout@x.com', user_metadata: { car_sold_opt_out: true } },
+        { id: 'buyer-2', email: 'buyer2@x.com' },
+      ],
+      dealer: { slug: 'some-dealer', name: 'Some Dealer' },
+    });
+    await notifyWatchersCarSold(makeAdmin(), 'car-1', 'Nice Car', 'dealer-1');
+    expect(mockSend).toHaveBeenCalledOnce();
+    expect(mockSend.mock.calls[0][0].to).toBe('buyer2@x.com');
+  });
+
+  it('sends nothing when every watcher has opted out', async () => {
+    mockTables({
+      watchers: [{ user_id: 'buyer-1' }],
+      users: [{ id: 'buyer-1', email: 'optedout@x.com', user_metadata: { car_sold_opt_out: true } }],
+    });
+    await notifyWatchersCarSold(makeAdmin(), 'car-1', 'Nice Car', 'dealer-1');
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it('includes an unsubscribe link scoped to the recipient\'s user id', async () => {
+    mockTables({
+      watchers: [{ user_id: 'buyer-1' }],
+      users: [{ id: 'buyer-1', email: 'buyer1@x.com' }],
+    });
+    await notifyWatchersCarSold(makeAdmin(), 'car-1', 'Nice Car', 'dealer-1');
+    const html = mockSend.mock.calls[0][0].html;
+    expect(html).toContain('/unsubscribe/car-sold?uid=buyer-1');
   });
 });
