@@ -10,15 +10,17 @@ These items are either legally required or create significant liability exposure
 
 ### 1. DMCA Safe Harbor (17 U.S.C. § 512)
 
+**Status: Complete as of 2026-08-08.** Registered with the U.S. Copyright Office (Registration Number **DMCA-1077785**, status **Active**, filed under Login.gov account contact-us@garagecherries.com). Renews every 3 years — next renewal due ~2029-08.
+
 **What it is:** Federal copyright law provides a liability shield ("safe harbor") for platforms that host user-generated content — but only if the platform registers a DMCA agent with the U.S. Copyright Office and publishes a compliant takedown policy.
 
 **Why it matters:** Dealers upload photos and listing descriptions. If a photo is copyrighted by a third party (e.g., a photographer, another marketplace), GarageCherries could be liable for infringement without this protection.
 
 **What's needed:**
-- [ ] Register a DMCA agent at copyright.gov/dmca-agent ($6 fee, renews every 3 years)
-- [ ] Add a DMCA takedown procedure to the Terms of Service (counter-notice process, 10/14-day response window)
-- [ ] Publish the agent's contact information on the Site (typically in Terms or a `/dmca` page)
-- [ ] Implement a repeat infringer policy — required to maintain safe harbor
+- [x] Register a DMCA agent at copyright.gov/dmca-agent ($6 fee, renews every 3 years) — done, DMCA-1077785
+- [x] Add a DMCA takedown procedure to the Terms of Service (counter-notice process, 10/14-day response window) — `app/terms/page.tsx`, links to `/dmca`
+- [x] Publish the agent's contact information on the Site (typically in Terms or a `/dmca` page) — new `app/dmca/page.tsx`, deliberately shows only name + email (Copyright Agent / contact-us@garagecherries.com), not the full street address/phone also on file with the Copyright Office, to limit public exposure beyond the legal minimum
+- [x] Implement a repeat infringer policy — required to maintain safe harbor — included on `/dmca` page
 
 ---
 
@@ -348,7 +350,7 @@ These measures validate that a seller actually possesses the vehicle listed, pro
 
 1. **Retain an attorney** experienced in internet/marketplace law and automotive transactions. DMCA registration, FTC affiliate disclosures, and state dealer licensing are the three areas where errors create the most acute liability.
 
-2. **Register the DMCA agent** immediately — it is a $6 federal filing and there is no downside to doing it now.
+2. ~~**Register the DMCA agent** immediately — it is a $6 federal filing and there is no downside to doing it now.~~ **Done 2026-08-08** — see item 1 above.
 
 3. **Fill in the placeholder text** in Terms and Privacy before any public promotion.
 

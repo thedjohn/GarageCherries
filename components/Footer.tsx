@@ -149,6 +149,7 @@ export default function Footer() {
               <li><Link href="/feedback" className="hover:text-white transition-colors">Give Feedback</Link></li>
               <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
               <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
+              <li><Link href="/dmca" className="hover:text-white transition-colors">DMCA Policy</Link></li>
               <li><Link href="/advertiser/signup" className="hover:text-white transition-colors">Advertise With Us</Link></li>
               <li><Link href="/advertiser/login" className="hover:text-white transition-colors">Advertiser Login</Link></li>
               <li><a href="https://garage-cherries-shop.fourthwall.com/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Shop Merch</a></li>
