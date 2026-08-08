@@ -4410,4 +4410,36 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
     ],
     priceRange: { project: '$5,500–$13,000', driver: '$15,000–$28,000', show: '$30,000–$65,000+ (low-mile GMT400 Sierra Classic and dually 3500 higher)' },
   },
+  {
+    make: 'Ford',
+    model: 'F-150',
+    matchModel: ['F150', 'F-150'],
+    years: '1975–1996',
+    tagline: 'The half-ton that became Ford\'s flagship — introduced to slip past a regulatory line, and never looked back.',
+    overview: 'The F-150 debuted in 1975 as a slightly heavier half-ton, positioned just above the existing F-100 specifically to fall outside a GVWR threshold that new federal emissions equipment requirements applied to at the time. What began as a regulatory workaround quickly became the truck buyers actually wanted, and by 1983 Ford dropped the F-100 entirely — the F-150 has been Ford\'s sole half-ton, and the best-selling vehicle (not just truck) in America for decades, ever since.',
+    history: [
+      "The 1975 F-150 launched using the same \"Dentside\" body as the contemporary F-100, differing mainly in its heavier-duty frame, springs, and axle — a real mechanical distinction, not just a badge. The two nameplates were sold side by side for eight years while the F-150 steadily took over as the volume seller.",
+      "The 1980 redesign (nicknamed \"Bullnose\" for its rounded front-end styling) marked the F-150's first generation built without an F-100 sibling to share development with, and by the time Ford discontinued the F-100 in 1983, the F-150 was already established as the truck's primary identity.",
+      "The 1987 facelift smoothed out the Bullnose styling and the lineup continued evolving through the early 1990s, but the core formula — a simple, durable half-ton body-on-frame truck — remained recognizable across this entire window, which is part of why these years share such a strong collector and restomod following today.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '300 I6, 302, 351, 400, 460 V8 (varies by year)' },
+      { label: 'Horsepower', value: '117–245 hp (varies by year/engine)' },
+      { label: 'Wheelbase', value: '117–155 in (varies by cab/bed configuration)' },
+      { label: 'Payload', value: '~1,900–2,100 lbs (half-ton rating)' },
+      { label: 'Transmission', value: '3/4-spd manual, C6/E4OD auto (varies by year)' },
+      { label: 'Drivetrain', value: 'RWD or 4WD' },
+    ],
+    notableVersions: [
+      { name: 'XLT Lariat', description: 'The top comfort/trim package of the era, adding upgraded upholstery, extra sound insulation, and additional chrome trim over base and Custom trim levels.' },
+      { name: 'Bullnose (1980–86)', description: 'The rounded-front redesign that established the F-150\'s own visual identity, separate from the discontinued F-100.' },
+      { name: '4x4 F-150', description: 'Four-wheel-drive versions, increasingly popular through the 1980s, command a premium over 2WD examples today.' },
+    ],
+    buyingTips: [
+      { title: 'Cab corners, rocker panels, and bed floor are the primary rust spots', detail: 'Same inspection priorities as the C10 and F-100 — these were work trucks, and rust is the #1 value killer on unrestored examples.' },
+      { title: 'Confirm the frame and drivetrain are period-correct for the year', detail: 'These trucks are popular engine-swap and restomod platforms; verify what\'s original if you\'re buying for numbers-matching value rather than as a driver.' },
+      { title: 'Parts support is excellent', detail: 'As Ford\'s highest-volume truck for decades, F-150 parts (mechanical and reproduction trim) are among the easiest classic-truck parts to source.' },
+    ],
+    priceRange: { project: '$5,000–$11,000', driver: '$13,000–$26,000', show: '$28,000–$55,000+ (low-mile 4x4 XLT Lariat examples higher)' },
+  },
 ];
