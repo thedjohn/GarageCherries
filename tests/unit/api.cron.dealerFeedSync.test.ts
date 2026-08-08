@@ -103,6 +103,12 @@ function makeSupabaseMock({ dealers, existingListings = [] as { id: string; vin:
         }),
       };
     }
+    // Mark-sold fires a fire-and-forget watcher notification (notifyWatchersCarSold);
+    // no watchlist rows in these tests means it safely no-ops before touching
+    // anything else (auth.admin.listUsers, dealers), so an empty result is enough.
+    if (table === 'watchlists') {
+      return { select: () => ({ eq: () => Promise.resolve({ data: [] }) }) };
+    }
     throw new Error(`Unexpected table: ${table}`);
   });
   return { listingUpdateCalls, dealerUpdateCalls, dealerQueryCalls };

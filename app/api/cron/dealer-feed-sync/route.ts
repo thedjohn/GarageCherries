@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { notifyAdmin } from '@/lib/notifyAdmin';
 import { createLogger } from '@/lib/logger';
 import { submitToIndexNow } from '@/lib/indexNow';
+import { notifyWatchersCarSold } from '@/lib/notifyCarSold';
 import { MAKES } from '@/lib/types';
 import Client from 'ssh2-sftp-client';
 
@@ -273,7 +274,7 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
 
   const { data: existingListings } = await admin
     .from('listings')
-    .select('id, vin, stock_number')
+    .select('id, vin, stock_number, title')
     .eq('seller_id', dealer.id);
   // VIN is the primary match key (globally unique). Stock number is a fallback --
   // only unique *within* this dealer's own inventory, which is fine here since
@@ -424,7 +425,10 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     if (!seenIds.has(l.id)) {
       const { error } = await admin.from('listings').update({ is_sold: true, sold_at: new Date().toISOString() }).eq('id', l.id);
       if (error) result.errors.push(`Mark-sold failed for listing ${l.id}: ${error.message}`);
-      else result.markedSold++;
+      else {
+        result.markedSold++;
+        void notifyWatchersCarSold(admin, l.id, l.title, dealer.id);
+      }
     }
   }
 

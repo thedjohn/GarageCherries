@@ -81,7 +81,7 @@ describe('POST /api/cars/sold', () => {
     expect(res._status).toBe(500);
   });
 
-  it('marks sold, and notifies watchlist users fire-and-forget', async () => {
+  it('marks sold, and notifies watchlist users fire-and-forget, with a review link when the dealer is found', async () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'listings') {
         return {
@@ -90,6 +90,7 @@ describe('POST /api/cars/sold', () => {
         };
       }
       if (table === 'watchlists') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [{ user_id: 'buyer-1' }] }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { slug: 'survivor-classic', name: 'Survivor Classic Car Services' } }) }) }) };
       return {};
     });
     mockListUsers.mockResolvedValue({ data: { users: [{ id: 'buyer-1', email: 'buyer@x.com' }] } });
@@ -97,6 +98,9 @@ describe('POST /api/cars/sold', () => {
     expect(res._status).toBe(200);
     await new Promise(process.nextTick);
     expect(mockSend).toHaveBeenCalledOnce();
+    const sentHtml = mockSend.mock.calls[0][0].html;
+    expect(sentHtml).toContain('Leave a Review');
+    expect(sentHtml).toContain('/dealers/survivor-classic#reviews');
   });
 
   it('skips notification entirely when there are no watchers', async () => {

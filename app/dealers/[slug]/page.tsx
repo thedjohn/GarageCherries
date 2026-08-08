@@ -250,7 +250,9 @@ export default async function DealerPage({ params }: { params: Promise<{ slug: s
         </div>
       )}
 
-      <DealerReviews dealerId={dealer.id} isLoggedIn={isLoggedIn} />
+      <div id="reviews">
+        <DealerReviews dealerId={dealer.id} isLoggedIn={isLoggedIn} />
+      </div>
     </div>
     </>
   );
