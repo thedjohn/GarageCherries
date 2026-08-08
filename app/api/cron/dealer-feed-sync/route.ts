@@ -56,8 +56,25 @@ const SKIP_BODY_STYLES = new Set(['cruiser', 'touring']);
 const MAKE_ALIASES: Record<string, string> = {
   'mercedes-benz': 'Mercedes',
 };
-function normalizeMake(make: string): string {
-  return MAKE_ALIASES[make.toLowerCase()] ?? make;
+// Some vendors mis-categorize an obscure marque under a generic bucket, with the
+// real manufacturer only ever appearing in free text (confirmed for Survivor's
+// "Classic"-badged Glassic replicas -- both their feed and their own website
+// categorize it as "Classic"). Scoped to require the giveaway word actually
+// appear in Sub-Model, so this can't misfire on some other dealer's genuinely
+// different "Classic"-labeled listing.
+const CONDITIONAL_MAKE_ALIASES: { from: string; giveaway: RegExp; to: string }[] = [
+  { from: 'classic', giveaway: /glassic/i, to: 'Glassic' },
+];
+// Checks both Sub-Model and the vendor's own VDP URL (when present) for the
+// giveaway word -- Survivor's real feed has "glassic" in both, and matching
+// either one is more robust than depending on a single column.
+function normalizeMake(make: string, subModel: string, vdpUrl: string): string {
+  const aliased = MAKE_ALIASES[make.toLowerCase()];
+  if (aliased) return aliased;
+  const conditional = CONDITIONAL_MAKE_ALIASES.find(
+    c => c.from === make.toLowerCase() && (c.giveaway.test(subModel) || c.giveaway.test(vdpUrl))
+  );
+  return conditional ? conditional.to : make;
 }
 
 function mapTransmission(raw: string): string {
@@ -309,15 +326,19 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     if (!vin && !stockNumber) { result.skipped++; continue; }
 
     const year = parseInt(r[idx('Year')], 10);
-    const make = normalizeMake(r[idx('Make')]?.trim());
+    const model = r[idx('Model')]?.trim();
+    const subModel = r[idx(format.subModel)]?.trim();
+    // Not every vendor's export has this column; idx() returns -1 when absent,
+    // and r[-1] is safely undefined -- ?.trim() handles that the same as any
+    // other optional column.
+    const vdpUrl = r[idx('VDP URL')]?.trim() ?? '';
+    const make = normalizeMake(r[idx('Make')]?.trim(), subModel, vdpUrl);
     // Import the car regardless -- a make not yet in our official MAKES list is a
     // real data-review item, not a reason to drop otherwise-sellable inventory.
     // Flagged here so it surfaces for a deliberate add/reject decision.
     if (make && !knownMakes.has(make.toLowerCase()) && !result.unrecognizedMakes.includes(make)) {
       result.unrecognizedMakes.push(make);
     }
-    const model = r[idx('Model')]?.trim();
-    const subModel = r[idx(format.subModel)]?.trim();
     const price = parseInt(r[idx(format.price)], 10)
       || (format.priceFallback ? parseInt(r[idx(format.priceFallback)], 10) : 0)
       || 0;

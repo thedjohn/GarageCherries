@@ -390,6 +390,44 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     expect(res._data.results['info@survivor-cars.com'].unrecognizedMakes).toEqual([]);
   });
 
+  it('normalizes "Classic" to "Glassic" only when Sub-Model also says "Glassic" -- real Survivor pattern', async () => {
+    makeSupabaseMock({ dealers: [DEALER], existingListings: [] });
+    const csv = buildCsv([{
+      VIN: 'VIN-GLASSIC', Year: '1969', Make: 'Classic', Model: '', 'Sub-Model': '1929 Ford Phaeton Glassic Replica',
+      BodyStyle: 'Convertible', 'List Price': '12995',
+    }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+    await GET(makeRequest('Bearer cron-secret'));
+    expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({ p_make: 'Glassic' }));
+  });
+
+  it('does not touch an unrelated "Classic"-labeled listing that has no Glassic giveaway anywhere', async () => {
+    makeSupabaseMock({ dealers: [DEALER], existingListings: [] });
+    const csv = buildCsv([{
+      VIN: 'VIN-UNRELATED-CLASSIC', Year: '1958', Make: 'Classic', Model: 'Something', 'Sub-Model': 'Base Trim', 'VDP URL': 'https://example.com/1958-classic-something',
+      BodyStyle: 'Sedan', 'List Price': '10000',
+    }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+    const res: any = await GET(makeRequest('Bearer cron-secret'));
+    expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({ p_make: 'Classic' }));
+    expect(res._data.results['info@survivor-cars.com'].unrecognizedMakes).toEqual(['Classic']);
+  });
+
+  it('normalizes "Classic" to "Glassic" when only the VDP URL carries the giveaway word, not Sub-Model', async () => {
+    makeSupabaseMock({ dealers: [DEALER], existingListings: [] });
+    const csv = buildCsv([{
+      VIN: 'VIN-GLASSIC-URL', Year: '1969', Make: 'Classic', Model: '', 'Sub-Model': '',
+      'VDP URL': 'https://www.survivor-cars.com/vehicles/1585/1969-classic-1929-ford-phaeton-glassic-replica',
+      BodyStyle: 'Convertible', 'List Price': '12995',
+    }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+    await GET(makeRequest('Bearer cron-secret'));
+    expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({ p_make: 'Glassic' }));
+  });
+
   it('normalizes "Mercedes-Benz" to "Mercedes" on update too, so a corrected listing does not get re-split by the next sync', async () => {
     const { listingUpdateCalls } = makeSupabaseMock({
       dealers: [DEALER],

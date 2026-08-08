@@ -13,7 +13,7 @@ import YouTubeEmbed from '@/components/YouTubeEmbed';
 import InspectionReportCard from '@/components/InspectionReportCard';
 import {
   getCar, getDealerById, formatPrice, formatListingPrice, formatMileage, formatPhone,
-  toSegment, makeFromSegment, CARS,
+  toSegment, CARS,
 } from '@/lib/data';
 import { getListingsIntro } from '@/lib/listingsMakeContent';
 import { getMakeSlugs } from '@/lib/encyclopedia';
@@ -55,11 +55,14 @@ export async function generateMetadata({ params }: { params: Promise<{ segments:
 
   // Model page
   if (segments.length === 2) {
-    const make = makeFromSegment(segments[0]);
-    if (!make) return {};
-
     const { createClient } = await import('@/lib/supabase/server');
     const supabase = await createClient();
+    // Resolve against real listings, not a hardcoded list -- any real make in
+    // inventory should work here, same reasoning as the model lookup below.
+    const { data: makeNames } = await supabase.from('listings').select('make').eq('status', 'approved');
+    const make = [...new Set((makeNames ?? []).map(r => r.make))].find(m => toSegment(m) === segments[0]);
+    if (!make) return {};
+
     const { data: modelNames } = await supabase.from('listings').select('model').eq('status', 'approved').eq('make', make);
     const model = (modelNames ?? []).find(r => toSegment(r.model) === segments[1])?.model;
     if (!model) return {};
@@ -82,7 +85,10 @@ export async function generateMetadata({ params }: { params: Promise<{ segments:
 
   // Make page
   if (segments.length === 1) {
-    const make = makeFromSegment(segments[0]);
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = await createClient();
+    const { data: makeNamesForMakePage } = await supabase.from('listings').select('make').eq('status', 'approved');
+    const make = [...new Set((makeNamesForMakePage ?? []).map(r => r.make))].find(m => toSegment(m) === segments[0]);
     if (!make) return {};
     const count = CARS.filter(c => c.make === make).length;
     return {
@@ -527,11 +533,14 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
 
   // ── Make page: /listings/dodge ──
   if (segments.length === 1) {
-    const make = makeFromSegment(segments[0]);
-    if (!make) notFound();
-
     const { createClient: createForMake } = await import('@/lib/supabase/server');
     const supabaseForMake = await createForMake();
+    // Resolve against real listings, not a hardcoded list -- see the matching
+    // comment on the model lookup in the make+model branch below.
+    const { data: makeNamesForMakePage } = await supabaseForMake.from('listings').select('make').eq('status', 'approved');
+    const make = [...new Set((makeNamesForMakePage ?? []).map(r => r.make))].find(m => toSegment(m) === segments[0]);
+    if (!make) notFound();
+
     const { data: makeRows } = await supabaseForMake
       .from('listings')
       .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,images,featured,listed_at,transmission,engine,color,description,seller_name,seller_phone')
@@ -603,11 +612,15 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
 
   // ── Make + Model page: /listings/dodge/charger ──
   if (segments.length === 2) {
-    const make = makeFromSegment(segments[0]);
-    if (!make) notFound();
-
     const { createClient: createForModel } = await import('@/lib/supabase/server');
     const supabaseForModel = await createForModel();
+
+    // Resolve the real, canonically-cased make for this URL segment against live
+    // listings, not a hardcoded list -- any real make in inventory should work
+    // here, same reasoning as the model lookup just below.
+    const { data: makeNames } = await supabaseForModel.from('listings').select('make').eq('status', 'approved');
+    const make = [...new Set((makeNames ?? []).map(r => r.make))].find(m => toSegment(m) === segments[0]);
+    if (!make) notFound();
 
     // Resolve the real, canonically-cased model name for this URL segment against
     // live listings — real inventory models don't come from the mock CARS array.
