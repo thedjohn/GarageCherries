@@ -80,11 +80,12 @@ export default function FinancingCalculator({ price }: { price: number }) {
           </div>
 
           <p className="text-xs text-zinc-400">
-            Estimates only. Contact a lender for exact rates.{' '}
+            This is an estimate only and not an offer of credit. Actual rates and terms are subject to credit
+            approval and may vary. GarageCherries is not a lender.{' '}
             <a href="https://www.jjbest.com" target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">JJ Best</a>
             {' '}and{' '}
             <a href="https://www.woodsidecredit.com" target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">Woodside Credit</a>
-            {' '}specialize in classic car loans.
+            {' '}specialize in classic car loans — contact them directly for your actual rate.
           </p>
         </div>
       )}

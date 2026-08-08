@@ -106,13 +106,15 @@ These become legally required once payment processing and dealer accounts go liv
 
 ### 7. Truth in Lending Act (TILA) / Regulation Z
 
+**Note (2026-08-08):** `components/FinancingCalculator.tsx` (live on every listing page, showing down payment, monthly payment, loan term, and APR together — exactly the "triggering terms" combination Regulation Z's advertising rule is built around) had its disclaimer strengthened: now explicitly states this is an estimate only, not an offer of credit, rates are subject to credit approval, and GarageCherries is not a lender. This reduces risk but does **not** resolve the underlying structural question — whether showing APR alongside payment/term amounts at all requires the fuller Reg Z disclosure set, or whether the adjustable-estimate + disclaimer + third-party-lender-links design is low-risk enough as-is. That's still an open, genuinely fact-specific question for an attorney, same as the "affiliate links with no on-site rate display are lower risk" item below — not resolved just by better wording.
+
 **What it is:** If GarageCherries facilitates or advertises financing — even by linking to lenders — TILA requires certain disclosures about loan terms (APR, total cost, payment schedule).
 
 **Why it matters:** Planned financing referral partnerships with JJ Best Banc and Woodside Credit will trigger this if GarageCherries shows any rate or payment estimate.
 
 **What's needed:**
-- [ ] Do not display financing estimates or "monthly payment" calculators without compliant TILA disclosures
-- [ ] Affiliate links to lenders with no on-site rate display are generally lower risk — have an attorney confirm
+- [x] Do not display financing estimates or "monthly payment" calculators without *some* disclosure — strengthened 2026-08-08 (see note above); whether it's sufficient is still an open attorney question, not fully resolved
+- [ ] Affiliate links to lenders with no on-site rate display are generally lower risk — have an attorney confirm (still open; the calculator still displays APR)
 - [ ] Review lender affiliate agreements for compliance obligations they pass to referrers
 
 ---
