@@ -7,6 +7,10 @@ export interface EncyclopediaEntry {
    *  an array when real listings spell the same model inconsistently (e.g. "F250" and
    *  "F-250"), or when one entry's era covers more than one real naming convention. */
   matchModel?: string | string[];
+  /** Overrides `make` when deriving the Live Inventory match, for cases where real
+   *  listings store an alternate spelling of the same manufacturer (e.g. "Mercedes-Benz"
+   *  vs "Mercedes"). Does not affect the entry's own URL/slug, which always uses `make`. */
+  matchMake?: string | string[];
   years: string;
   tagline: string;
   overview: string;
@@ -2805,6 +2809,7 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
   },
   {
     make: 'Mercedes',
+    matchMake: ['Mercedes', 'Mercedes-Benz'],
     model: '300SL Gullwing',
     years: '1954–1963',
     tagline: 'The engineering tour de force that remains one of the most desirable cars ever built.',
@@ -2835,6 +2840,7 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
   },
   {
     make: 'Mercedes',
+    matchMake: ['Mercedes', 'Mercedes-Benz'],
     model: '190SL',
     years: '1955–1963',
     tagline: 'The elegant, more attainable companion to the legendary 300SL.',
@@ -2865,6 +2871,7 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
   },
   {
     make: 'Mercedes',
+    matchMake: ['Mercedes', 'Mercedes-Benz'],
     model: 'W123',
     years: '1976–1985',
     tagline: 'The car that defined "built like a tank" — over-engineered, over-built, and nearly indestructible.',
@@ -2895,6 +2902,7 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
   },
   {
     make: 'Mercedes',
+    matchMake: ['Mercedes', 'Mercedes-Benz'],
     model: 'R107 SL',
     years: '1971–1989',
     tagline: 'The SL that outlasted its era, remaining in production for eighteen years of understated luxury.',
@@ -4620,5 +4628,122 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       { title: 'Rust in the frame and floor is common', detail: 'Same inspection priorities as any classic Jeep of this era — these are genuinely old, often-neglected vehicles.' },
     ],
     priceRange: { project: '$6,000–$14,000', driver: '$16,000–$30,000', show: '$32,000–$60,000+' },
+  },
+  {
+    make: 'Mercedes',
+    matchMake: ['Mercedes', 'Mercedes-Benz'],
+    model: '250SL',
+    matchModel: '250',
+    years: '1963–1971',
+    tagline: 'The "Pagoda" — nicknamed for its distinctive concave hardtop roofline, and widely considered the last hand-built Mercedes SL.',
+    overview: 'The W113 generation (sold as the 230SL, 250SL, and 280SL across its run) bridged the 190SL and the later, more mass-produced R107 SL. Its nickname comes from the concave curve of its optional removable hardtop, reminiscent of a pagoda roofline — a deliberate engineering choice that improved visibility and rollover strength, not just a styling flourish.',
+    history: [
+      "Introduced in 1963 as the 230SL, the W113 replaced both the sporting 300SL and the entry-level 190SL with a single model positioned between them — a genuine engineering achievement for the era, emphasizing safety (a rigid passenger cell with crumple zones front and rear) alongside performance.",
+      "The 250SL (1967 only) and 280SL (1968–71) that followed increased displacement and torque while keeping the same basic body and chassis, making the final 280SL the most powerful and generally most sought-after of the three engine variants.",
+    ],
+    specs: [
+      { label: 'Engine', value: '2.3L–2.8L SOHC I6' },
+      { label: 'Horsepower', value: '150–170 hp (varies by engine variant)' },
+      { label: 'Wheelbase', value: '94.5 in' },
+      { label: 'Weight', value: '~2,900–3,000 lbs' },
+      { label: 'Transmission', value: '4-spd manual, 4-spd automatic (later years)' },
+    ],
+    notableVersions: [
+      { name: '280SL (1968–71)', description: 'The final and most powerful W113 variant, generally the most desirable to collectors for its combination of performance and refinement.' },
+      { name: 'Pagoda hardtop', description: 'The removable, concave-roofed hardtop the generation is nicknamed for — cars with a matching, original hardtop present command a real premium.' },
+    ],
+    buyingTips: [
+      { title: 'Confirm the hardtop (if present) is original to the car', detail: 'Pagoda hardtops were sometimes separated from their original car over the decades — matching numbers and documentation matter to value.' },
+      { title: 'Rust in the floor pans and rear frame rails is common', detail: 'These are 50+ year old unibody cars; structural rust is a serious and expensive repair — inspect thoroughly before buying.' },
+      { title: 'Mechanical fuel injection needs a specialist', detail: 'The Bosch mechanical injection system used on these cars is well-engineered but not something a generalist mechanic should service without experience on the specific system.' },
+    ],
+    priceRange: { project: '$25,000–$45,000', driver: '$50,000–$90,000', show: '$95,000–$180,000+ (documented 280SL with original hardtop higher)' },
+  },
+  {
+    make: 'Mercedes',
+    matchMake: ['Mercedes', 'Mercedes-Benz'],
+    model: 'SL500',
+    years: '1989–2001',
+    tagline: 'The R129 — a completely reengineered SL that introduced an automatic rollover bar and set the template for every SL that followed.',
+    overview: 'The R129 generation replaced the long-running R107 in 1989 with a thoroughly modern design, most famously introducing an automatic pop-up rollover bar that deployed in milliseconds if the car sensed an impending rollover — a genuine engineering first for a convertible at the time. It remained in production for twelve years with relatively modest changes, a testament to how right Mercedes got the original design.',
+    history: [
+      "Launched for 1990 (as a 1989 introduction) with a choice of inline-six, V8, and later V12 engines, the R129 was engineered alongside Porsche on certain chassis and suspension elements — a genuine cross-manufacturer collaboration unusual for either company.",
+      "A 1996 facelift brought revised headlights, taillights, and interior trim, along with the option of Mercedes' first electronic stability control on the SL — incremental but meaningful updates that extended the platform's competitiveness through the end of its run in 2001.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '3.0L I6, 5.0L–6.0L V8, 6.0L V12 (varies by year/trim)' },
+      { label: 'Horsepower', value: '228–389 hp (varies by engine)' },
+      { label: 'Wheelbase', value: '99 in' },
+      { label: 'Weight', value: '~3,800–4,300 lbs' },
+      { label: 'Transmission', value: '4/5-spd automatic (manual offered on early SL300/320)' },
+    ],
+    notableVersions: [
+      { name: 'SL500 / SL600', description: 'The V8 and V12 flagship variants respectively, the most powerful and most collected of the R129 range today.' },
+      { name: 'AMG-tuned variants (SL60/70/73 AMG)', description: 'Factory AMG performance versions offering significantly more power, genuinely rare and increasingly collectible.' },
+    ],
+    buyingTips: [
+      { title: 'The automatic rollover bar mechanism should be tested', detail: 'A functioning pop-up roll bar is both a safety feature and an originality point — confirm it deploys and resets correctly.' },
+      { title: 'Convertible top hydraulics are a known maintenance item', detail: 'The complex power-top mechanism can develop hydraulic leaks with age — budget for this on a car with unknown service history.' },
+      { title: 'V12 models carry meaningfully higher running costs', detail: 'The SL600\'s V12 is more complex and more expensive to service than the I6/V8 variants — factor this into total ownership cost, not just purchase price.' },
+    ],
+    priceRange: { project: '$8,000–$16,000', driver: '$18,000–$32,000', show: '$35,000–$65,000+ (low-mile SL600/AMG variants higher)' },
+  },
+  {
+    make: 'Mercedes',
+    matchMake: ['Mercedes', 'Mercedes-Benz'],
+    model: 'CLK',
+    years: '1997–2009',
+    tagline: 'A compact coupe/convertible built to share its most visible styling cues with the flagship SL, at a more accessible price.',
+    overview: "The CLK slotted below the SL and E-Class as Mercedes' compact luxury coupe and convertible, sharing its underlying platform with the contemporary C-Class while adopting the SL's twin-headlight, four-eye front-end styling — a deliberate design choice to make the CLK read as a smaller sibling to the flagship rather than a dressed-up C-Class.",
+    history: [
+      "The first-generation CLK (C208 coupe, A208 convertible, 1997–2003) established the model as a genuine style leader in its segment, offered with four- and six-cylinder engines alongside AMG-tuned V8 performance variants.",
+      "The second-generation CLK (C209 coupe, A209 convertible, 2003–09) grew slightly larger and more powerful, continuing through 2009 before Mercedes discontinued the CLK nameplate in favor of folding its role into the E-Class Coupe/Cabriolet line.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '2.0L–3.2L I4/V6, 5.4L–6.2L AMG V8 (varies by year/trim)' },
+      { label: 'Horsepower', value: '168–500 hp (AMG CLK63 Black Series)' },
+      { label: 'Wheelbase', value: '105.9–106.9 in' },
+      { label: 'Transmission', value: '5/7-spd automatic, 6-spd manual (select trims)' },
+    ],
+    notableVersions: [
+      { name: 'CLK55 / CLK63 AMG', description: 'Factory AMG V8 performance variants offering significantly more power than the standard CLK — the CLK63 Black Series in particular is a genuine modern collectible.' },
+      { name: 'CLK Cabriolet', description: 'The convertible body style, offered alongside the coupe across both generations, generally commanding a premium over an equivalent coupe today.' },
+    ],
+    buyingTips: [
+      { title: 'Confirm the convertible top mechanism functions correctly on Cabriolet models', detail: 'Power-top hydraulics and electronics are a known maintenance item on cars of this age — test thoroughly before buying.' },
+      { title: 'AMG models require AMG-specific service knowledge', detail: 'Performance variants have unique drivetrain and suspension components that a generalist Mercedes mechanic may not be familiar with.' },
+      { title: 'Check for rust in typical unibody problem areas', detail: 'Wheel arches, floor pans, and trunk floor are the usual inspection points on a car of this age, same as most unibody Mercedes models.' },
+    ],
+    priceRange: { project: '$4,000–$9,000', driver: '$10,000–$20,000', show: '$22,000–$50,000+ (AMG variants and Black Series significantly higher)' },
+  },
+  {
+    make: 'Mercedes',
+    matchMake: ['Mercedes', 'Mercedes-Benz'],
+    model: 'GL Class',
+    matchModel: ['GL', 'AMG'],
+    years: '2006–2016',
+    tagline: "Mercedes' full-size, three-row SUV — a genuine alternative to the Range Rover and Cadillac Escalade with real off-road-derived engineering underneath.",
+    overview: "The GL-Class launched in 2006 as Mercedes' answer to the growing full-size luxury SUV segment, sharing its platform and much of its engineering with the contemporary M-Class and the Dodge/Jeep-adjacent GL550's driveline heritage, while offering genuine three-row seating and real towing capability alongside luxury-SUV comfort.",
+    history: [
+      "The first generation (X164, 2006–12) established the GL-Class as a genuine full-size alternative to the Range Rover and Cadillac Escalade, with air suspension and available AMG performance variants bringing real capability across a wide range of buyer priorities.",
+      "The second generation (X166, 2012–16) refined the formula with updated styling and technology before Mercedes renamed the nameplate GLS for 2017 onward, aligning it with the brand's newer SUV naming convention (GLA/GLC/GLE/GLS).",
+    ],
+    specs: [
+      { label: 'Engine options', value: '3.0L–5.5L V6/V8, AMG-tuned V8 variants' },
+      { label: 'Horsepower', value: '210–550 hp (AMG variants)' },
+      { label: 'Seating', value: 'Up to 7 (three rows)' },
+      { label: 'Transmission', value: '7-spd automatic' },
+      { label: 'Drivetrain', value: '4MATIC AWD (standard)' },
+    ],
+    notableVersions: [
+      { name: 'GL550 / GL63 AMG', description: 'The V8 flagship and AMG-tuned performance variants, offering significantly more power than the base six-cylinder models.' },
+      { name: 'GL350 BlueTEC (diesel)', description: 'A diesel-powered variant offering significantly better towing torque and highway range than the gas six-cylinder option.' },
+    ],
+    buyingTips: [
+      { title: 'Air suspension is a known, expensive maintenance item', detail: 'Air struts and compressors on these SUVs can fail with age — a pre-purchase inspection specifically checking suspension function is worthwhile.' },
+      { title: 'Confirm service history, especially for AMG variants', detail: 'These are complex, electronics-heavy SUVs — a documented maintenance history matters more here than on a simpler classic.' },
+      { title: 'Third-row usability varies by generation', detail: 'Confirm the specific configuration and condition of the third-row seating if that\'s a priority for your intended use.' },
+    ],
+    priceRange: { project: '$6,000–$12,000', driver: '$14,000–$25,000', show: '$27,000–$50,000+ (GL63 AMG and low-mile diesel examples higher)' },
   },
 ];

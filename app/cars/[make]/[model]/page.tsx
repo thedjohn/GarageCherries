@@ -55,15 +55,18 @@ export default async function ModelPage({ params, searchParams }: Props) {
   // model might be "Challenger SRT Hellcat" while the model family is just "Challenger"),
   // so an exact match would miss nearly everything. Matches fetchCars()'s existing logic.
   // matchModel may list more than one prefix, for cases where real listings spell the
-  // same model inconsistently (e.g. "F250" vs "F-250").
+  // same model inconsistently (e.g. "F250" vs "F-250"). matchMake similarly overrides
+  // make, for cases where real listings use an alternate manufacturer spelling (e.g.
+  // "Mercedes-Benz" vs "Mercedes") -- does not affect the entry's own URL/slug.
   const matchWords = (Array.isArray(entry.matchModel) ? entry.matchModel : [entry.matchModel ?? entry.model])
     .map(m => m.trim().split(/\s+/)[0]);
+  const matchMakes = Array.isArray(entry.matchMake) ? entry.matchMake : [entry.matchMake ?? entry.make];
   const { data: dbRows, count } = await supabase
     .from('listings')
     .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at', { count: 'exact' })
     .eq('status', 'approved')
     .eq('is_sold', false)
-    .eq('make', entry.make)
+    .in('make', matchMakes)
     .or(matchWords.map(w => `model.ilike.${w}%`).join(','))
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
     .order('created_at', { ascending: false })
