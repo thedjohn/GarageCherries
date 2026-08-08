@@ -10,6 +10,7 @@ import AdSlot from '@/components/AdSlot';
 import MakeOfferButton from '@/components/MakeOfferButton';
 import FinancingCalculator from '@/components/FinancingCalculator';
 import YouTubeEmbed from '@/components/YouTubeEmbed';
+import InspectionReportCard from '@/components/InspectionReportCard';
 import {
   getCar, getDealerById, formatPrice, formatListingPrice, formatMileage, formatPhone,
   toSegment, makeFromSegment, CARS,
@@ -194,6 +195,14 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
       transmission: '', engine: null, color: null, description: '',
     }));
 
+    const { createClient: createForInspection } = await import('@/lib/supabase/server');
+    const supabaseForInspection = await createForInspection();
+    const { data: inspectionRow } = await supabaseForInspection
+      .from('listing_inspections')
+      .select('provider_name, report_date, summary, report_url')
+      .eq('listing_id', car.id)
+      .maybeSingle();
+
     const mapAddressParts = [(dealer as any)?.address, (dealer as any)?.location ?? car.location, (dealer as any)?.state ?? car.state, (dealer as any)?.zip].filter(Boolean);
     const mapQuery = encodeURIComponent(mapAddressParts.join(', '));
     const mapSrc = `https://maps.google.com/maps?q=${mapQuery}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
@@ -321,6 +330,15 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
 
             {(car as any).youtubeVideoId && (
               <YouTubeEmbed videoId={(car as any).youtubeVideoId} title={car.title} />
+            )}
+
+            {inspectionRow && (
+              <InspectionReportCard
+                providerName={inspectionRow.provider_name}
+                reportDate={inspectionRow.report_date}
+                summary={inspectionRow.summary}
+                reportUrl={inspectionRow.report_url}
+              />
             )}
 
             {/* Specs — 4-column layout */}

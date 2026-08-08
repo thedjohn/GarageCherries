@@ -13,6 +13,18 @@ export default function TermsPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
       <div id="__enzuzo-root" />
+      <div className="mt-8 pt-8 border-t border-zinc-200">
+        <h2 className="text-2xl font-bold text-zinc-900 mb-4">Independent Inspection Reports</h2>
+        <p className="text-zinc-700 leading-relaxed">
+          Some listings may include an independent inspection report submitted by the dealer or seller from a
+          third-party inspection provider. Any such report is prepared solely by the named third party and is
+          provided &quot;as-is&quot; for informational purposes only. GarageCherries did not commission, participate
+          in, or verify any such inspection, and makes no representation or warranty as to its accuracy,
+          completeness, or currency. An inspection report does not constitute a warranty, guarantee, or
+          certification of the vehicle&apos;s condition. Buyers are solely responsible for independently verifying
+          the vehicle&apos;s condition before purchase.
+        </p>
+      </div>
     </div>
   );
 }

@@ -312,6 +312,19 @@ These measures validate that a seller actually possesses the vehicle listed, pro
 
 ---
 
+### 23. Independent Inspection Report Disclaimer
+
+**What it is:** The "Independent Inspection Report" feature (`listing_inspections` table, `components/InspectionReportCard.tsx`) lets a dealer attach a third-party inspection PDF to a listing, shown to buyers as a summary card — provider name, date, summary text, and a link to the full report.
+
+**Why it matters:** Without careful wording, a buyer could reasonably read the card as GarageCherries itself certifying or guaranteeing the vehicle's condition, creating liability if the vehicle later has undisclosed issues the inspection missed or never covered.
+
+**What's needed:**
+- [ ] Disclaimer copy shown on every inspection card (`InspectionReportCard.tsx`: "This report was prepared solely by [Provider] and is provided \"as-is\" for informational purposes only. GarageCherries did not commission, participate in, or verify this inspection, and makes no representation or warranty as to its accuracy, completeness, or currency. This report does not constitute a warranty, guarantee, or certification of the vehicle's condition. Buyers are solely responsible for independently verifying the vehicle's condition before purchase.") — attorney review still recommended before this is relied on
+- [x] Matching disclaimer added to Terms of Service (`app/terms/page.tsx`, hardcoded section below the Enzuzo-rendered content, same pattern as the YouTube API Services section on `/privacy`) — still not attorney-reviewed
+- [ ] Attorney review of whether displaying "whether the full report is available" implies any GarageCherries endorsement of the report's completeness or accuracy
+
+---
+
 ## Recommended Next Steps
 
 1. **Retain an attorney** experienced in internet/marketplace law and automotive transactions. DMCA registration, FTC affiliate disclosures, and state dealer licensing are the three areas where errors create the most acute liability.

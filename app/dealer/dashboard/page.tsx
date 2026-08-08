@@ -9,6 +9,7 @@ import { formatListingPrice } from '@/lib/data';
 import { resizeImageFiles } from '@/lib/resizeImage';
 import VehicleFieldsForm, { type VehicleFieldsValues } from '@/components/VehicleFieldsForm';
 import TrendChart, { type TrendPoint } from '@/components/TrendChart';
+import InspectionReportSection from '@/components/InspectionReportSection';
 
 interface DbCar {
   id: string; slug: string; title: string; year: number;
@@ -395,6 +396,8 @@ function VehicleModal({ dealerId, dealerName, dealerLocation, dealerState, car, 
               <p className="text-xs text-zinc-400">Appears on homepage and gets a Featured badge</p>
             </div>
           </label>
+
+          {isEdit && car && <InspectionReportSection carId={car.id} />}
 
           {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2">{error}</p>}
 
