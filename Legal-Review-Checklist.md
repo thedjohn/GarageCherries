@@ -42,14 +42,16 @@ These items are either legally required or create significant liability exposure
 
 ### 3. Fill In All Placeholder Text
 
+**Status: Complete as of 2026-08-08.** Verified live — this item was already stale by the time it was checked; no bracket placeholders exist in either document anymore.
+
 The current Terms of Service and Privacy Policy contain unfilled placeholders that make them legally incoherent.
 
 **What's needed:**
-- [ ] `[Your State]` in Terms § 12 (Governing Law) — insert actual state of incorporation/operation
-- [ ] `[Your City, State]` in Terms § 12 (Arbitration venue) — insert actual city
-- [ ] `[Your Address]` in Privacy Policy § 9 (Contact) — insert registered business address
-- [ ] Confirm `GarageCherries LLC` matches the actual registered legal entity name
-- [ ] Confirm the registered agent address is correct for legal notices
+- [x] `[Your State]` in Terms (Governing Law) — already filled in with "State of Missouri," not a placeholder (checklist's original "§ 12" reference is stale; it's under Governing Law in the current document)
+- [x] `[Your City, State]` (Arbitration venue) — the current Terms document no longer has a separate arbitration-venue clause at all; not applicable
+- [x] `[Your Address]` in Privacy Policy (Contact) — already filled in with the real address, "417 Beaver Lake Dr, Saint Charles, MO, 63303"
+- [x] Confirm `GarageCherries LLC` matches the actual registered legal entity name — checked against the real Missouri Secretary of State business search: the official filing is **"Garage Cherries LLC"** (with a space), while the Site consistently uses "GarageCherries LLC" (no space, matching the brand). Derek's explicit decision: leave as-is — the difference is cosmetic (brand name vs. legal filing spacing) and not worth changing across the Site.
+- [x] Confirm the registered agent address is correct for legal notices — confirmed against the same official state record: registered agent is Derek Lee Johnson himself (not a third-party registered-agent service), address 417 Beaver Lake Dr, 63303 — matches what's already published in the Privacy Policy exactly.
 
 ---
 
