@@ -1,6 +1,10 @@
 export interface EncyclopediaEntry {
   make: string;
   model: string;
+  /** Overrides `model` when deriving the Live Inventory prefix match, for cases where
+   *  the display name (and URL slug) differs from how the model is actually stored on
+   *  real listings — e.g. "4-4-2" displays with dashes but listings store "442". */
+  matchModel?: string;
   years: string;
   tagline: string;
   overview: string;
@@ -552,6 +556,7 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
   {
     make: 'Oldsmobile',
     model: '4-4-2',
+    matchModel: '442',
     years: '1964–1980',
     tagline: "Named for its spec — four-barrel, four-speed, dual exhaust — and built to back it up.",
     overview: "The 4-4-2 was Oldsmobile's muscle car answer and one of the best-balanced performance cars of the era. The W-30 Force-Air induction option, with its twin cold-air scoops and special components, is particularly sought after. Unlike many muscle cars, the 4-4-2 was praised for its handling as well as its straight-line speed.",
@@ -4133,5 +4138,185 @@ export const ENCYCLOPEDIA: EncyclopediaEntry[] = [
       { title: 'Prices have risen dramatically — research current comparable sales', detail: 'The A80 Supra market has moved significantly in recent years; don\'t rely on older price guides when evaluating value.' },
     ],
     priceRange: { project: '$25,000–$40,000', driver: '$50,000–$80,000', show: '$85,000–$150,000+ (low-mileage manual Twin Turbo higher)' },
+  },
+  {
+    make: 'Chevrolet',
+    model: 'C10',
+    years: '1960–1987',
+    tagline: 'The archetypal classic Chevy pickup — three distinct generations, all with strong collector followings.',
+    overview: "The C10 name covers Chevrolet's half-ton, two-wheel-drive pickup across three very different-looking generations: the 1960–66 first generation, the 1967–72 \"Action Line\" trucks (widely considered the best-looking of the bunch), and the 1973–87 \"Square Body\" generation. All three share the same basic recipe — a simple, durable body-on-frame truck with wide aftermarket support — which has made the C10 one of the most accessible entry points into classic-truck ownership.",
+    history: [
+      "The first-generation C10 (1960–66) introduced Chevrolet's new independent front suspension for trucks and a lower, wider stance than the previous generation. Early years used a torsion-bar front end that was replaced by coil springs partway through the run.",
+      "The 1967–72 \"Action Line\" generation is the most collected today, prized for its clean, uncluttered styling — flatter hood, thinner pillars, and a dash design shared loosely with the period Camaro. The CST (Custom Sport Truck) package added bucket seats and extra brightwork for buyers who wanted a truck that didn't look like one.",
+      "The 1973–87 \"Square Body\" generation (badged C10 through 1987, later renamed C1500) moved to a boxier, more modern-looking cab and became the best-selling generation by volume, which keeps parts support excellent today. Square Bodies were slower to appreciate than the 1967–72 trucks but have become highly sought after in the last decade.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '235–292 I6, 283–454 V8 (varies by year)' },
+      { label: 'Horsepower', value: '135–245 hp (varies by year/engine)' },
+      { label: 'Wheelbase', value: '115–133 in (short vs. long bed)' },
+      { label: 'Payload', value: '~1,000–2,000 lbs (half-ton rating)' },
+      { label: 'Transmission', value: '3-spd manual, 4-spd manual (SM465), Powerglide/TH350/400 auto' },
+      { label: 'Drivetrain', value: 'RWD (4WD trucks badged K10, not C10)' },
+    ],
+    notableVersions: [
+      { name: 'CST / CST-10', description: 'Upscale trim package with bucket seats, extra brightwork, and better sound insulation — the most desirable trim on 1967–72 trucks.' },
+      { name: 'Cheyenne / Cheyenne Super', description: 'The top-tier trim on Square Body trucks, comparable in spirit to the CST — chrome bumpers, upgraded interior, exterior badging.' },
+      { name: 'Big Ten / Big Dooley', description: 'Heavier-duty half-ton variants offered in the 1970s with reinforced frames and suspension for higher payload.' },
+    ],
+    buyingTips: [
+      { title: 'Cab corners and bed floor are the primary rust spots', detail: 'Check cab corners, rocker panels, and the wood/steel bed floor closely — these trucks were work vehicles and rust is the #1 value killer.' },
+      { title: 'Confirm the frame matches the generation', detail: 'Frame swaps between generations are common in the restomod community; if originality matters to you, verify the frame and body are period-correct together.' },
+      { title: 'Parts support varies significantly by generation', detail: 'Square Body (1973–87) parts are the most plentiful and cheapest; first-gen (1960–66) parts are the hardest to source.' },
+      { title: 'Check for prior 4WD-to-2WD or engine swaps', detail: 'These trucks are popular swap platforms — confirm what\'s original if you\'re buying for numbers-matching value rather than as a driver.' },
+    ],
+    priceRange: { project: '$5,000–$12,000', driver: '$15,000–$30,000', show: '$35,000–$80,000+ (low-mile CST/Cheyenne higher)' },
+  },
+  {
+    make: 'Chevrolet',
+    model: '3100',
+    years: '1947–1955',
+    tagline: 'The "Advance Design" pickup — rounded fenders and a face that defines the classic American truck look.',
+    overview: 'The 3100 was the half-ton model in Chevrolet\'s first fully redesigned postwar truck line, known collectively as "Advance Design." Its rounded fenders, five-bar horizontal grille, and wide, low-set headlights gave it an instantly recognizable look that remains one of the most popular vintage-truck restoration and hot-rod platforms today.',
+    history: [
+      "Introduced in 1947 as Chevrolet's first all-new postwar truck design, the Advance Design line replaced the prewar-based AK Series. The 3100 (half-ton) sat below the 3600 (3/4-ton) and 3800 (1-ton) in the lineup, sharing the same basic cab and styling.",
+      "A one-piece curved windshield replaced the earlier two-piece flat design starting in 1954, and a wraparound rear window became optional the same year — both changes are commonly used to help date a truck when records are incomplete. Production continued through 1955's \"first series\" before the all-new Task Force generation replaced it.",
+    ],
+    specs: [
+      { label: 'Engine', value: '216.5 cu in "Thriftmaster" I6 (later 235 cu in "Loadmaster" I6)' },
+      { label: 'Horsepower', value: '90–92 hp' },
+      { label: 'Wheelbase', value: '116 in' },
+      { label: 'Payload', value: '~1,000 lbs (half-ton rating)' },
+      { label: 'Transmission', value: '3-spd or 4-spd manual (column or floor shift)' },
+      { label: 'Brakes', value: 'Hydraulic drum, 4-wheel' },
+    ],
+    notableVersions: [
+      { name: '1954–55 One-Piece Windshield', description: 'The final "first series" trucks with the curved one-piece windshield and optional wraparound rear glass — the most refined and often most desirable Advance Design years.' },
+      { name: '5-Window Cab', description: 'A rear-quarter-window cab option offering better visibility, more desirable to collectors than the standard 3-window cab.' },
+    ],
+    buyingTips: [
+      { title: 'Wood bed floors need close inspection', detail: 'Original bed floors were wood strips over steel crossmembers; rot and rusted-through crossmembers underneath are common and not always visible from above.' },
+      { title: 'Cab corners, rockers, and floor pans rust extensively', detail: 'These trucks are 70+ years old and were rarely garaged as work vehicles — budget for sheet metal work on most unrestored examples.' },
+      { title: 'Many are LS-swapped or otherwise modified', detail: 'The 3100 is a hugely popular resto-mod platform; confirm whether you\'re buying an original driveline or a modernized build, since this significantly affects value and market.' },
+      { title: 'Verify the cab and bed are numbers-correct for the year', detail: 'Cabs, beds, and grilles were shared and swapped across the 1947–55 run — a mixed-year truck is common and not necessarily a problem, but affects originality-focused value.' },
+    ],
+    priceRange: { project: '$6,000–$15,000', driver: '$18,000–$35,000', show: '$40,000–$90,000+ (professional resto-mod builds can exceed this)' },
+  },
+  {
+    make: 'Chevrolet',
+    model: 'Suburban',
+    matchModel: 'Suburban',
+    years: '1967–1972',
+    tagline: 'The "Action Line" era Suburban — Chevrolet\'s three-door wagon-on-a-truck-chassis, the direct ancestor of every SUV that followed.',
+    overview: 'Sharing its platform and mechanicals with the GMC Suburban of the same era, the 1967–72 "Action Line" Chevrolet Suburban paired genuine truck-based capability with wagon-style passenger space, decades before "SUV" was a common term. It was Chevrolet\'s more common, work-truck-positioned counterpart to the more upscale GMC version, and remains the more affordable and more frequently seen of the two on the collector market today.',
+    history: [
+      "The Suburban nameplate dates back to 1935, but the 1967–72 Action Line generation is the one most associated with the classic three-door (two front doors plus a rear cargo door) body style before Chevrolet moved to a four-door layout starting with the following generation.",
+      "Built on the same C/K truck chassis as the contemporary C10 pickup, the Suburban offered removable middle and rear seats, making it genuinely useful as either a family hauler or a cargo vehicle — a flexibility that made it popular with large families, outdoorsmen, and fleet buyers alike.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '250 I6, 283–396 V8' },
+      { label: 'Horsepower', value: '155–325 hp (varies by engine)' },
+      { label: 'Wheelbase', value: '127 in' },
+      { label: 'Seating', value: 'Up to 9 (removable middle/rear bench seats)' },
+      { label: 'Transmission', value: '3-spd manual, TH350/400 auto' },
+      { label: 'Drivetrain', value: 'RWD or 4WD' },
+    ],
+    notableVersions: [
+      { name: 'Custom / CST trim', description: 'Upscale interior and exterior trim package, comparable in spirit to the C10 pickup\'s CST option.' },
+      { name: '4WD models', description: 'Four-wheel-drive versions are meaningfully rarer than 2WD and command a premium, especially with the 396 V8.' },
+    ],
+    buyingTips: [
+      { title: 'Rust is the primary concern, especially in the rear cargo area', detail: 'Check the rear door surround, floor pans, and rocker panels closely — these were work/family vehicles, rarely garaged.' },
+      { title: 'Confirm original seating configuration is present', detail: 'Middle and rear seats were frequently removed for cargo use and not always kept with the truck — missing seats affect both usability and value.' },
+      { title: 'Parts overlap heavily with the C10/K10 pickup', detail: 'Mechanical and drivetrain parts are readily available thanks to the shared platform with the C10 pickup, even though body panels are Suburban-specific.' },
+    ],
+    priceRange: { project: '$8,000–$18,000', driver: '$20,000–$40,000', show: '$45,000–$85,000+ (4WD and big-block examples higher)' },
+  },
+  {
+    make: 'Chevrolet',
+    model: '210',
+    years: '1953–1957',
+    tagline: 'The Bel Air\'s more affordable sibling — same iconic Tri-Five styling, a fraction of the price.',
+    overview: 'The Two-Ten (210) was the mid-range trim of Chevrolet\'s full-size "Tri-Five" lineup, sitting between the base 150 and the top-tier Bel Air. It shares the same body, chassis, and engine options as the more famous Bel Air, making it an appealing lower-cost entry into Tri-Five ownership for buyers who care more about the era\'s iconic styling and V8 options than about having the top trim badge.',
+    history: [
+      "Introduced for 1953 alongside the 150 and Bel Air as Chevrolet's completely redesigned postwar full-size line, the 210 offered more brightwork and interior trim than the stripped-down 150 while remaining well below the Bel Air's price and equipment level.",
+      "The 1955 introduction of Chevrolet's new small-block V8 transformed the entire Tri-Five lineup, the 210 included — a 210 with the 265 V8 offered genuine performance at a fraction of a loaded Bel Air's price, and two-door 210 sedans in particular became popular budget-conscious hot rod and drag-race platforms in period.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '235 I6, 265–283 V8 (1955–57)' },
+      { label: 'Horsepower', value: '115–283 hp (fuel-injected 283, 1957)' },
+      { label: 'Wheelbase', value: '115 in' },
+      { label: 'Weight', value: '~3,000–3,300 lbs' },
+      { label: 'Transmission', value: '3-spd manual, Powerglide auto' },
+    ],
+    notableVersions: [
+      { name: '210 Delray', description: 'A sportier 1955–57 sub-trim with unique interior trim, originally offered as a nod to the show car of the same name.' },
+      { name: '210 with 283 "Power Pack" (1957)', description: 'Dual four-barrel or fuel-injected 283 V8 options brought genuine performance to the mid-trim car, popular with period racers seeking less weight than a loaded Bel Air.' },
+    ],
+    buyingTips: [
+      { title: 'Confirm trim badging matches the actual specification', detail: '150/210/Bel Air trim pieces were frequently swapped over the decades — verify the car\'s trim level is consistent throughout, not a mix of parts.' },
+      { title: 'Floor pans, trunk floor, and lower quarters are common rust areas', detail: 'Same body as the Bel Air, so the same rust-prone areas apply — inspect closely regardless of trim level.' },
+      { title: 'Numbers-matching is less critical to value than on a Bel Air', detail: 'The 210 market is more driver-focused; a healthy, period-correct V8 swap is broadly accepted and doesn\'t hurt value the way it would on a numbers-matching Bel Air.' },
+    ],
+    priceRange: { project: '$8,000–$18,000', driver: '$20,000–$38,000', show: '$40,000–$75,000+ (fuel-injected 283 cars higher)' },
+  },
+  {
+    make: 'Ford',
+    model: 'F-100',
+    matchModel: 'F100',
+    years: '1953–1966',
+    tagline: 'The truck that gave the F-Series its modern identity — round fenders through 1960, then Ford\'s first unibody pickup.',
+    overview: "The F-100 nameplate replaced the original F-1 in 1953, kicking off decades of Ford's best-selling truck lineage. The 1953–56 second generation carried the classic rounded postwar look; the 1957–60 third generation introduced Ford's distinctive Styleside slab-sided bed alongside the older Flareside; and the 1961–66 fourth generation briefly experimented with a unibody design before reverting to a separate frame partway through the run.",
+    history: [
+      "The 1953 F-100 arrived as part of Ford's 50th-anniversary truck redesign, replacing the F-1 with a wider cab, curved one-piece windshield, and the option of an automatic transmission for the first time in a Ford truck.",
+      "The 1957 redesign introduced the Styleside bed — a flat-sided bed integrated with the cab's design line, offered alongside the traditional stepside Flareside — giving buyers a genuine styling choice that F-Series trucks still offer in spirit today.",
+      "The 1961–63 F-100 briefly used a unibody design that welded the cab and bed together as one structure, intended to reduce flex and improve appearance; it proved impractical when the bed and cab expanded at different rates under load, and Ford reverted to a conventional separate bed for 1964.",
+    ],
+    specs: [
+      { label: 'Engine options', value: '223 I6, 272–352 V8 (varies by year)' },
+      { label: 'Horsepower', value: '101–208 hp (varies by year/engine)' },
+      { label: 'Wheelbase', value: '110–118 in (varies by bed length)' },
+      { label: 'Payload', value: '~1,200 lbs (half-ton rating)' },
+      { label: 'Transmission', value: '3-spd manual, 4-spd manual, Ford-O-Matic/Cruise-O-Matic auto' },
+    ],
+    notableVersions: [
+      { name: 'Styleside (1957+)', description: 'The smooth-sided bed design that became Ford\'s signature look, offered alongside the fender-flared Flareside.' },
+      { name: 'Custom Cab', description: 'Upgraded trim package with more chrome and interior comfort, the F-100\'s equivalent of a top-tier option level.' },
+    ],
+    buyingTips: [
+      { title: 'Cab corners, rocker panels, and bed wood need close inspection', detail: 'Original wood bed floors and the steel underneath both deteriorate; budget for wood replacement on most unrestored trucks.' },
+      { title: 'Unibody (1961–63) trucks have unique repair considerations', detail: 'The welded cab/bed structure of these three model years is less common and less well supported by the aftermarket than the conventional-frame years around it.' },
+      { title: 'Engine and trim options varied significantly year to year', detail: 'Research the correct specification for the exact model year before buying if originality and numbers-matching value matter to you.' },
+    ],
+    priceRange: { project: '$6,000–$14,000', driver: '$16,000–$32,000', show: '$35,000–$75,000+ (Styleside, low-mile originals higher)' },
+  },
+  {
+    make: 'Ford',
+    model: 'Model A',
+    years: '1927–1931',
+    tagline: 'The car that proved Ford could follow the Model T — simple, durable, and still one of the most accessible entry points into pre-war collecting.',
+    overview: "Introduced in December 1927 to replace the aging Model T after nearly two decades of production, the Model A was a completely new design with conventional three-pedal controls (the Model T used unusual pedal-operated planetary gears), giving it broad appeal to drivers already used to other makes. Over 4.8 million were built in just over four years, making surviving examples relatively plentiful and parts support excellent even a century later.",
+    history: [
+      "Ford halted all production for roughly six months in 1927 to retool for the Model A, an enormous undertaking for the time. The result was a genuinely modern car for its era: a standard sliding-gear transmission, four-wheel mechanical brakes, and a more powerful engine than the outgoing Model T.",
+      "The Model A was offered in an unusually wide range of body styles for the period — roadster, phaeton, coupe, sedan, Tudor, Fordor, pickup, and more — many of which are represented in today's classic-car and hot-rod communities, since the Model A remains one of the most popular platforms for period-style hot rods and street rods.",
+    ],
+    specs: [
+      { label: 'Engine', value: '200.5 cu in L-head I4' },
+      { label: 'Horsepower', value: '40 hp' },
+      { label: 'Wheelbase', value: '103.5 in' },
+      { label: 'Weight', value: '~2,000–2,300 lbs (varies by body style)' },
+      { label: 'Transmission', value: '3-spd manual (sliding gear)' },
+      { label: 'Top speed', value: '~65 mph' },
+    ],
+    notableVersions: [
+      { name: 'Roadster / Roadster Pickup', description: 'The open-top body styles most commonly used as period-style hot rod platforms today, highly sought after.' },
+      { name: 'Deluxe trim', description: 'Higher-equipment versions of each body style with additional brightwork and interior appointments.' },
+    ],
+    buyingTips: [
+      { title: 'Confirm whether the car is original, restored, or a hot-rod build', detail: 'The Model A market spans everything from museum-correct restorations to heavily modified street rods — know which category you\'re buying and price accordingly.' },
+      { title: 'Wood body framing (on applicable body styles) needs inspection', detail: 'Some Model A body styles used wood framing under the sheet metal, which can rot; budget for this on unrestored examples.' },
+      { title: 'Parts support is excellent, which keeps restoration costs more predictable', detail: 'Thanks to the huge original production run and an active national club (the Model A Ford Club of America), reproduction parts are widely available for nearly every component.' },
+      { title: 'Mechanical brakes require different driving habits and maintenance', detail: 'Four-wheel mechanical brakes are less forgiving than later hydraulic systems — make sure they\'re correctly adjusted before a test drive, and factor this into how you plan to use the car.' },
+    ],
+    priceRange: { project: '$5,000–$12,000', driver: '$14,000–$25,000', show: '$28,000–$55,000+ (professional hot-rod builds vary widely)' },
   },
 ];

@@ -54,7 +54,7 @@ export default async function ModelPage({ params, searchParams }: Props) {
   // titles are almost always more specific than a general model name (e.g. a listing's
   // model might be "Challenger SRT Hellcat" while the model family is just "Challenger"),
   // so an exact match would miss nearly everything. Matches fetchCars()'s existing logic.
-  const firstWord = entry.model.trim().split(/\s+/)[0];
+  const firstWord = (entry.matchModel ?? entry.model).trim().split(/\s+/)[0];
   const { data: dbRows, count } = await supabase
     .from('listings')
     .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at', { count: 'exact' })
