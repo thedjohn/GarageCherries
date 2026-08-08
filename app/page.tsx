@@ -45,6 +45,16 @@ export default async function HomePage() {
   const featured = allCars.filter(c => c.featured);
   const recent = allCars.slice(0, 8);
 
+  const [{ count: dealerCount }, { count: soldCount }] = await Promise.all([
+    supabase.from('dealers').select('id', { count: 'exact', head: true }),
+    supabase.from('listings').select('id', { count: 'exact', head: true }).eq('is_sold', true),
+  ]);
+  const stats = [
+    { label: 'Active Listings', value: allCars.length },
+    { label: 'Dealers', value: dealerCount ?? 0 },
+    { label: 'Cars Sold', value: soldCount ?? 0 },
+  ];
+
   const carYears = allCars.map(c => c.year).filter(y => Number.isFinite(y));
   const yearFrom = carYears.length ? Math.min(...carYears) : 1900;
   const yearTo = carYears.length ? Math.max(...carYears) : new Date().getFullYear() + 1;
@@ -118,6 +128,18 @@ export default async function HomePage() {
             <span>·</span>
             <span>Classic, Muscle, Sport &amp; Supercar</span>
           </div>
+        </div>
+      </section>
+
+      {/* Stats bar */}
+      <section className="bg-white border-b border-zinc-100">
+        <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-3 gap-4 text-center">
+          {stats.map(s => (
+            <div key={s.label}>
+              <p className="text-3xl md:text-4xl font-extrabold text-zinc-900">{s.value.toLocaleString()}</p>
+              <p className="text-xs md:text-sm text-zinc-500 uppercase tracking-wide font-semibold mt-1">{s.label}</p>
+            </div>
+          ))}
         </div>
       </section>
 
