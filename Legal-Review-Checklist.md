@@ -57,14 +57,16 @@ The current Terms of Service and Privacy Policy contain unfilled placeholders th
 
 ### 4. Data Breach Notification Policy
 
+**Status: Complete as of 2026-08-08.**
+
 **What it is:** 48 U.S. states have breach notification laws requiring companies to notify affected users within a defined window (commonly 30–45 days) after discovering a data breach.
 
 **Why it matters:** Collecting email addresses, passwords (hashed), and financial data creates notification obligations if compromised. Supabase has had security incidents; GarageCherries holds user credentials.
 
 **What's needed:**
-- [ ] Add a breach notification section to the Privacy Policy stating the notification timeframe (recommend "within 30 days of discovery" to cover the most restrictive state laws)
-- [ ] Define what constitutes a breach triggering notification
-- [ ] Document an internal incident response process (even a one-page document)
+- [x] Add a breach notification section to the Privacy Policy stating the notification timeframe (recommend "within 30 days of discovery" to cover the most restrictive state laws) — new "Data Breach Notification" section, `app/privacy/page.tsx`
+- [x] Define what constitutes a breach triggering notification — included in the same section
+- [x] Document an internal incident response process (even a one-page document) — new `Incident-Response-Plan.md`
 
 ---
 
