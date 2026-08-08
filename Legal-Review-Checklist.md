@@ -26,15 +26,17 @@ These items are either legally required or create significant liability exposure
 
 ### 2. FTC Affiliate/Referral Disclosure (16 C.F.R. Part 255)
 
+**Status: infrastructure ready as of 2026-08-08; final piece blocked on a real affiliate link actually existing.** Terms of Service, the dedicated disclosure page, and a reusable inline-disclosure component are all built. Nothing to disclose inline yet because zero affiliate links are currently live anywhere on the Site (Track 1 partner outreach — Hagerty, Montway, Lemon Squad, Woodside Credit, J.J. Best Banc — is still awaiting replies as of this writing).
+
 **What it is:** The FTC requires clear disclosure whenever a site earns compensation for recommending a product or service. "Clear and conspicuous" means near the recommendation, not buried in a footer or Terms page.
 
 **Why it matters:** GarageCherries plans referral revenue from Hagerty (insurance), JJ Best Banc / Woodside Credit (financing), and Montway / uShip (transport). All of these trigger disclosure requirements.
 
 **What's needed:**
-- [ ] Add a disclosure statement to Terms of Service (already partially done — expand it)
-- [ ] Add inline disclosures on any page where affiliate links appear (e.g., "We may earn a referral fee if you purchase a policy through this link")
-- [ ] If a newsletter includes sponsored content, clearly label it as sponsored
-- [ ] Create an `/affiliate-disclosure` page or section (common practice, not strictly required)
+- [x] Add a disclosure statement to Terms of Service — new "Affiliate & Referral Links" section, `app/terms/page.tsx`
+- [x] Build a reusable inline disclosure ready to place next to any affiliate link — `components/AffiliateDisclosure.tsx`, not yet rendered anywhere since no real affiliate link exists to attach it to; wire it in the same commit that ships the first real partner button
+- [ ] If a newsletter includes sponsored content, clearly label it as sponsored — not applicable yet, no sponsored newsletter content exists
+- [x] Create an `/affiliate-disclosure` page — `app/affiliate-disclosure/page.tsx`, linked from the footer and from the Terms section
 
 ---
 

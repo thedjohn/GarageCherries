@@ -15,6 +15,16 @@ export default function TermsPage() {
     <div className="max-w-4xl mx-auto px-4 py-12">
       <div id="__enzuzo-root" />
       <div className="mt-8 pt-8 border-t border-zinc-200">
+        <h2 className="text-2xl font-bold text-zinc-900 mb-4">Affiliate &amp; Referral Links</h2>
+        <p className="text-zinc-700 leading-relaxed">
+          GarageCherries may include affiliate or referral links to third-party services, such as vehicle
+          financing, insurance, transport, and inspection providers. We may receive a referral fee or commission
+          if you make a purchase through one of these links, at no additional cost to you. See our{' '}
+          <Link href="/affiliate-disclosure" className="text-red-600 hover:underline">Affiliate Disclosure</Link>{' '}
+          for details.
+        </p>
+      </div>
+      <div className="mt-8 pt-8 border-t border-zinc-200">
         <h2 className="text-2xl font-bold text-zinc-900 mb-4">Copyright Infringement (DMCA)</h2>
         <p className="text-zinc-700 leading-relaxed">
           GarageCherries responds to notices of alleged copyright infringement in accordance with the Digital
