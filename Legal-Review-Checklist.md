@@ -76,6 +76,8 @@ These become legally required once payment processing and dealer accounts go liv
 
 ### 5. FTC Used Car Rule (16 C.F.R. Part 455)
 
+**Note (2026-08-08):** Derek raised the question of whether these Priority 2 marketplace-liability items (5 and 6) even apply given GarageCherries' role as a listing platform rather than the actual seller — money never changes hands on-platform, no title transfer, no condition guarantees made by GarageCherries itself. That structural position is meaningfully protective (closer to Cars.com/AutoTrader/Craigslist than to a direct seller), but it's genuinely fact-specific and not something either of us can resolve without an attorney — noted here rather than acted on for now. Not urgent regardless, since these only become legally required once payment processing/dealer accounts with real transactions go fully live.
+
 **What it is:** Federal law requires dealers to display a Buyer's Guide on every used vehicle offered for sale. The guide discloses warranty status (As-Is vs. warranty), what systems are covered, and who pays for repairs.
 
 **Why it matters:** Dealers listing on GarageCherries are selling used vehicles. If GarageCherries facilitates or appears to facilitate the sale, it could share liability for non-compliance.
@@ -88,6 +90,8 @@ These become legally required once payment processing and dealer accounts go liv
 ---
 
 ### 6. Odometer Disclosure (49 U.S.C. § 32705)
+
+**Note (2026-08-08):** Same marketplace-vs-seller question noted on item 5 above applies here too.
 
 **What it is:** Federal law requires sellers to disclose a vehicle's odometer reading in writing at the time of sale for vehicles under 10 years old. Violations carry civil and criminal penalties.
 
