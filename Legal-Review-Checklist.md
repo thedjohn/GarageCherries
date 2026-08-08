@@ -186,7 +186,9 @@ GDPR applies to any EU resident using the Site. **The Site's listings and market
 
 ### 14. Terms for AI-Generated Content
 
-GarageCherries uses AI (Anthropic Claude) for price assessments and listing descriptions. AI-generated content creates specific legal exposure.
+**Update 2026-08-08: not currently applicable.** All AI features (Smart Search, Listing Writer, Price Assessment, Inquiry Reply Assistant, Similar Cars) were removed from the live site on 2026-07-01 and deferred to a future release (see `PRODUCT_OVERVIEW.md`). GarageCherries does not currently use AI for price assessments, listing descriptions, or anything else user-facing. Leaving this item in place for when/if any of those features come back — nothing to review with an attorney until then.
+
+Original context, for when AI features return: AI-generated content creates specific legal exposure (misleading price estimates, misrepresenting AI content as dealer-authored, etc.).
 
 - [ ] The Terms currently disclaim AI content as "not a professional appraisal." Expand this — specify that AI price estimates are for informational purposes only and GarageCherries is not liable if a user relies on them in a transaction
 - [ ] Review Anthropic's usage policies to confirm commercial use of Claude for this purpose is permitted (it is, under current terms, but log this for future policy changes)
