@@ -16,11 +16,14 @@
 
 *Updated 2026-07-29 (commit `4fe4714`) — added an item for the new "SFTP — we host" Feed Sync option (dealers push a file to us via SFTP, instead of only the two existing pull-based options); already live-verified end-to-end with a real dealer account and real credentials, not just written from the code.*
 
+*Updated 2026-08-08 — added items for: the homepage stats bar showing real Active Listings/Dealers/Cars Sold counts (§1); the new `/dmca` and `/affiliate-disclosure` pages and their footer links (§1); the Financing Calculator's strengthened disclaimer text (§1, existing item); the "car sold" watcher email now including a leave-a-review link, firing for feed-sync-marked-sold listings (not just manually-marked ones), and including a working unsubscribe link (§7). The sign-off below predates all of this and does not cover any of it.*
+
 ---
 
 ## 1. Public Browsing (no login required)
 
 - [ ] Homepage (`/`) loads — hero, featured listings, recently listed section
+- [ ] Homepage stats bar (between hero and "Browse by Body Style") shows real, non-zero Active Listings / Dealers / Cars Sold numbers
 - [ ] `/listings` loads and shows cars; filter sidebar present (make, year, price, condition, body style, transmission, state)
 - [ ] Keyword search box on `/listings` returns relevant results for a text query (e.g. a make or model name)
 - [ ] Filtering by make narrows results correctly
@@ -32,7 +35,7 @@
 - [ ] `/cars/[decade]`, a body-style page (e.g. `/cars/convertibles`), and a price-tier page (e.g. `/cars/under-10k`) each paginate their live-listings section the same way (3/page), with a real total count in the section heading
 - [ ] Listing detail page loads: photo gallery + thumbnails, full spec sheet, dealer info panel with map
 - [ ] Listing detail page shows **Make an Offer** button (dealer listings) and the offer modal opens
-- [ ] Listing detail page shows **Financing Calculator** (collapsible) and the math updates when inputs change
+- [ ] Listing detail page shows **Financing Calculator** (collapsible) and the math updates when inputs change; disclaimer text states this is an estimate only, not an offer of credit, and that GarageCherries is not a lender
 - [ ] Listing detail page shows an **ad** in the sidebar (`AdSlot`) — or confirm it gracefully shows nothing if no eligible advertiser, not a broken layout
 - [ ] Sold listing shows a "This vehicle has sold" banner + "View Similar Listings" link
 - [ ] Dealer directory (`/dealers`) lists all dealers with listing counts
@@ -46,6 +49,8 @@
 - [ ] Market Report (`/reports`) loads with live data
 - [ ] Pricing page (`/pricing`) loads — plan tiers, advertiser section, promo banner
 - [ ] About / Contact / Privacy / Terms pages all load with real content
+- [ ] `/dmca` page loads — copyright infringement notice requirements, designated agent contact, counter-notification process
+- [ ] `/affiliate-disclosure` page loads — footer has both "DMCA Policy" and "Affiliate Disclosure" links (Company column)
 - [ ] Sold archive (`/sold`) shows a gallery of sold vehicles with "Listed at $X" labeling
 - [ ] Events calendar (`/events`) loads — shows upcoming/featured/past sections or empty state
 - [ ] An individual event page (`/events/[slug]`) loads with date/location/"Add to Google Calendar" link
@@ -181,7 +186,7 @@
 - [ ] Dealer application approved → applicant gets password-reset email
 - [ ] Saved search match → subscriber gets alert email with an "unsubscribe from all alerts" link
 - [ ] Price drop on a watched listing → watcher gets immediate notification
-- [ ] Listing marked sold → watchers get "this car has sold" email
+- [ ] Listing marked sold → watchers get "this car has sold" email, including a link to leave a dealer review and a working unsubscribe link; verify this fires both when marked sold manually (dealer dashboard) AND via an automated feed sync (dealer's feed no longer lists the car)
 - [ ] Listing nearing 30-day expiry → seller gets renewal reminder ~3 days before
 - [ ] Admin "Warn User" action → target user receives the warning email
 
