@@ -325,6 +325,23 @@ These measures validate that a seller actually possesses the vehicle listed, pro
 
 ---
 
+### 24. Business Insurance (General Liability, Tech E&O, Cyber Liability)
+
+**What it is:** Business insurance coverage for GarageCherries as an operating company — separate from the legal/compliance items above, but part of the same overall risk-mitigation picture.
+
+**Why it matters:** Legal compliance work (Terms language, disclaimers, disclosures) reduces the *chance* of a claim; insurance covers the *cost* if one happens anyway. A marketplace hosting user content, collecting buyer/dealer PII, and increasingly linking to financial/referral partners (Track 1 affiliates) has real exposure in all three of these categories.
+
+**What's needed:**
+- [ ] General Liability — median small business cost ~$538/year, though tech/professional-services businesses commonly run $700–1,300/year
+- [ ] Technology Errors & Omissions (Tech E&O) — covers claims that the platform/software itself caused financial harm (e.g. a listing error, a bad data match); SaaS/tech platforms average ~$1,094/year
+- [ ] Cyber Liability — covers data breaches; averages ~$1,548/year but ranges $400–8,000+ depending on how much sensitive data is held (currently lower-risk since no payment processing is wired yet)
+- [ ] Get real quotes from a small-business insurer (e.g. Insureon, NEXT Insurance) once closer to launch — the above are industry-wide averages, not a quote for this specific business
+- [ ] Revisit cyber liability scope once Stripe is wired (cardholder-adjacent data increases exposure)
+
+**Rough combined estimate today:** $1,500–3,000/year if bundled, on the low end of that range given no payment processing yet. Not urgent at current scale — worth pricing out before/around public launch rather than immediately.
+
+---
+
 ## Recommended Next Steps
 
 1. **Retain an attorney** experienced in internet/marketplace law and automotive transactions. DMCA registration, FTC affiliate disclosures, and state dealer licensing are the three areas where errors create the most acute liability.
