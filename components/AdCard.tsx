@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 export interface AdData {
   id: string;
   advertiser_id: string;
@@ -43,7 +45,7 @@ export default function AdCard({ ad, onClickCta, onClickPhone }: Props) {
     <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm overflow-hidden">
       {ad.photo_url && (
         <div className="relative h-32 bg-zinc-100">
-          <img src={ad.photo_url} alt={ad.business_name} className="w-full h-full object-cover" />
+          <Image src={ad.photo_url} alt={ad.business_name} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
         </div>
       )}
 
@@ -51,7 +53,9 @@ export default function AdCard({ ad, onClickCta, onClickPhone }: Props) {
         {/* Header */}
         <div className="flex items-start gap-3 mb-3">
           {ad.logo_url ? (
-            <img src={ad.logo_url} alt={ad.business_name} className="w-10 h-10 rounded-lg object-contain bg-zinc-50 border border-zinc-100 shrink-0" />
+            <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-zinc-50 border border-zinc-100 shrink-0">
+              <Image src={ad.logo_url} alt={ad.business_name} fill className="object-contain" sizes="40px" />
+            </div>
           ) : (
             <div className="w-10 h-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
               <span className="text-red-600 font-bold text-sm">{ad.business_name.charAt(0)}</span>

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { useMessenger } from '@/lib/messenger-context';
 import { createClient } from '@/lib/supabase/client';
 
@@ -128,9 +129,9 @@ export default function MessengerWidget() {
       {/* Header */}
       <div className="bg-zinc-900 text-white px-4 py-3 flex items-center gap-2 cursor-pointer select-none"
         onClick={toggleMinimize}>
-        <div className="w-8 h-8 rounded-full bg-red-600 shrink-0 overflow-hidden flex items-center justify-center text-sm">
+        <div className="relative w-8 h-8 rounded-full bg-red-600 shrink-0 overflow-hidden flex items-center justify-center text-sm">
           {listingImage
-            ? <img src={listingImage} alt="" className="w-full h-full object-cover" />
+            ? <Image src={listingImage} alt="" fill className="object-cover" sizes="32px" />
             : '🚗'}
         </div>
         <div className="flex-1 min-w-0">

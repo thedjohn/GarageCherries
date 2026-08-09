@@ -1,6 +1,7 @@
 export const metadata = {
   title: 'DMCA Policy',
   description: 'GarageCherries\' Digital Millennium Copyright Act (DMCA) policy, designated agent contact information, and takedown notice procedure.',
+  alternates: { canonical: 'https://www.garagecherries.com/dmca' },
 };
 
 export default function DmcaPage() {

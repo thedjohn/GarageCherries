@@ -1,6 +1,7 @@
 export const metadata = {
   title: 'Affiliate Disclosure',
   description: 'GarageCherries\' disclosure of affiliate and referral relationships, in accordance with FTC guidelines.',
+  alternates: { canonical: 'https://www.garagecherries.com/affiliate-disclosure' },
 };
 
 export default function AffiliateDisclosurePage() {
