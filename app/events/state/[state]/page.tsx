@@ -77,6 +77,9 @@ export default async function StateEventsPage({ params }: Props) {
           <p className="text-lg text-zinc-500 max-w-2xl">
             Classic car shows, auctions, swap meets, and cruise nights in {stateName} for {new Date().getFullYear()}.
           </p>
+          <Link href={`/listings?state=${code}`} className="inline-block mt-3 text-sm font-semibold text-red-600 hover:underline">
+            Browse cars for sale in {stateName} →
+          </Link>
         </div>
 
         {events.length === 0 && (

@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
+import { STATE_NAMES } from '@/lib/usStates';
 
 export const revalidate = 0;
 
@@ -226,6 +227,14 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
               Visit Event Website →
             </a>
           )}
+          <Link href={`/listings?state=${e.state}`}
+            className="inline-flex items-center gap-2 border border-zinc-200 hover:border-red-300 text-zinc-700 font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors">
+            Browse Cars For Sale in {STATE_NAMES[e.state] ?? e.state} →
+          </Link>
+          <Link href="/dealers"
+            className="inline-flex items-center gap-2 border border-zinc-200 hover:border-red-300 text-zinc-700 font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors">
+            Find a Dealer →
+          </Link>
         </div>
 
         {relatedEvents.length > 0 && (

@@ -126,9 +126,11 @@ export default function Footer() {
               <li><Link href="/dealers" className="hover:text-white transition-colors">Find a Dealer</Link></li>
               <li><Link href="/listings?condition=Excellent" className="hover:text-white transition-colors">Collector Cars</Link></li>
               <li><Link href="/cars/muscle-cars" className="hover:text-white transition-colors">Muscle Cars</Link></li>
-              <li><Link href="/listings?bodyStyle=Convertible" className="hover:text-white transition-colors">Convertibles</Link></li>
-              <li><Link href="/listings?bodyStyle=Pickup+Truck" className="hover:text-white transition-colors">Classic Trucks</Link></li>
-              <li><Link href="/listings?bodyStyle=Coupe" className="hover:text-white transition-colors">Coupes</Link></li>
+              <li><Link href="/cars/srt" className="hover:text-white transition-colors">Dodge SRT</Link></li>
+              <li><Link href="/cars/convertibles" className="hover:text-white transition-colors">Convertibles</Link></li>
+              <li><Link href="/cars/pickup-trucks" className="hover:text-white transition-colors">Classic Trucks</Link></li>
+              <li><Link href="/cars/coupes" className="hover:text-white transition-colors">Coupes</Link></li>
+              <li><Link href="/reports" className="hover:text-white transition-colors">Market Report</Link></li>
             </ul>
           </div>
 

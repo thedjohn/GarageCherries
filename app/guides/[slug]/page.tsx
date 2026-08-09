@@ -2,9 +2,11 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import Link from 'next/link';
 
+interface LinkedParagraph { text: string; linkText: string; linkHref: string }
+
 const GUIDES: Record<string, {
   title: string; subtitle: string; category: string; readTime: string;
-  sections: { heading: string; body: string[] }[];
+  sections: { heading: string; body: (string | LinkedParagraph)[] }[];
 }> = {
   'how-to-buy-a-classic-car-online': {
     title: 'How to Buy a Classic Car Online',
@@ -12,7 +14,8 @@ const GUIDES: Record<string, {
     category: 'Getting Started', readTime: '8 min read',
     sections: [
       { heading: 'Start with research, not listings', body: [
-        'Before you open a single listing, spend time understanding the specific model you want. What are the common issues? What makes a good example versus a project? What should you expect to pay? The GarageCherries Encyclopedia has detailed buying guides for 20 popular models.',
+        'Before you open a single listing, spend time understanding the specific model you want. What are the common issues? What makes a good example versus a project? What should you expect to pay?',
+        { text: 'The GarageCherries Encyclopedia has detailed buying guides for 150+ popular models.', linkText: 'GarageCherries Encyclopedia', linkHref: '/cars' },
         'Buyers who research first make better decisions and waste less time on cars that were never right for them. Know what a numbers-matching 1969 Camaro Z28 means before you start reading listings that claim to have one.',
       ]},
       { heading: 'Set a realistic budget — including costs beyond purchase price', body: [
@@ -328,9 +331,19 @@ export default async function GuidePage({ params }: Props) {
         {guide.sections.map((section, i) => (
           <section key={i} className="mb-10">
             <h2 className="text-xl font-bold text-zinc-900 mb-4">{section.heading}</h2>
-            {section.body.map((para, j) => (
-              <p key={j} className="text-zinc-600 leading-relaxed mb-3 whitespace-pre-line">{para}</p>
-            ))}
+            {section.body.map((para, j) => {
+              if (typeof para === 'string') {
+                return <p key={j} className="text-zinc-600 leading-relaxed mb-3 whitespace-pre-line">{para}</p>;
+              }
+              const [before, after] = para.text.split(para.linkText);
+              return (
+                <p key={j} className="text-zinc-600 leading-relaxed mb-3 whitespace-pre-line">
+                  {before}
+                  <Link href={para.linkHref} className="text-red-600 hover:underline font-medium">{para.linkText}</Link>
+                  {after}
+                </p>
+              );
+            })}
           </section>
         ))}
       </div>

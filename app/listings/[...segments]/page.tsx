@@ -16,7 +16,7 @@ import {
   toSegment, CARS,
 } from '@/lib/data';
 import { getListingsIntro } from '@/lib/listingsMakeContent';
-import { getMakeSlugs } from '@/lib/encyclopedia';
+import { getMakeSlugs, getEntry } from '@/lib/encyclopedia';
 
 const BASE_URL = 'https://www.garagecherries.com';
 
@@ -133,6 +133,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
   // ── Detail page: /listings/dodge/charger/3/1969-dodge-charger-rt ──
   if (segments.length === 4) {
     const [makeSeg, modelSeg, id, slug] = segments;
+    const encyclopediaEntry = getEntry(makeSeg, modelSeg);
     let car = getCar(slug);
 
     // Fall back to Supabase for cars not in mock data
@@ -355,6 +356,15 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                 <p className="text-zinc-600 leading-relaxed">{car.description}</p>
               )}
             </div>
+
+            {encyclopediaEntry && (
+              <p className="text-sm text-zinc-500">
+                Want to know more about the {car.make} {car.model}?{' '}
+                <Link href={`/cars/${makeSeg}/${modelSeg}`} className="text-red-600 hover:underline font-medium">
+                  Read our full buying guide →
+                </Link>
+              </p>
+            )}
 
             {(car as any).youtubeVideoId && (
               <YouTubeEmbed videoId={(car as any).youtubeVideoId} title={car.title} />
