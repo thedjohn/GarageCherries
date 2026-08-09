@@ -20,6 +20,22 @@ import { getMakeSlugs } from '@/lib/encyclopedia';
 
 const BASE_URL = 'https://www.garagecherries.com';
 
+// RLS only exposes approved listings to anon reads. The admin dashboard's
+// "View" link on a pending/rejected listing opens this same public page, so
+// a logged-in admin needs a service-role fallback to actually see it.
+async function fetchListingForAdminPreview(id: string) {
+  const { createClient, createAdminClient } = await import('@/lib/supabase/server');
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { requireAdmin } = await import('@/lib/admin');
+  const role = await requireAdmin(user.id);
+  if (!role) return null;
+  const admin = createAdminClient();
+  const { data } = await admin.from('listings').select('*').eq('id', id).single();
+  return data;
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ segments: string[] }> }): Promise<Metadata> {
   const { segments } = await params;
 
@@ -30,7 +46,10 @@ export async function generateMetadata({ params }: { params: Promise<{ segments:
     if (!car || car.id !== id) {
       const { createClient } = await import('@/lib/supabase/server');
       const supabase = await createClient();
-      const { data } = await supabase.from('listings').select('*').eq('id', id).neq('status', 'rejected').single();
+      let { data } = await supabase.from('listings').select('*').eq('id', id).neq('status', 'rejected').single();
+      // RLS hides pending/rejected listings from anon reads -- let a logged-in
+      // admin preview any status via the admin "View" link in the dashboard.
+      if (!data) data = await fetchListingForAdminPreview(id);
       if (data) car = { ...data, bodyStyle: data.body_style, listedAt: data.listed_at, sellerId: data.seller_id, sellerName: data.seller_name, sellerPhone: data.seller_phone } as any;
     }
     if (!car) return {};
@@ -120,7 +139,10 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
     if (!car || car.id !== id) {
       const { createClient } = await import('@/lib/supabase/server');
       const supabase = await createClient();
-      const { data } = await supabase.from('listings').select('*').eq('id', id).neq('status', 'rejected').single();
+      let { data } = await supabase.from('listings').select('*').eq('id', id).neq('status', 'rejected').single();
+      // RLS hides pending/rejected listings from anon reads -- let a logged-in
+      // admin preview any status via the admin "View" link in the dashboard.
+      if (!data) data = await fetchListingForAdminPreview(id);
       if (!data) notFound();
       // Adapt snake_case DB row to Car shape
       car = {
