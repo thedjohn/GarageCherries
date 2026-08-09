@@ -125,6 +125,7 @@ export default function Footer() {
               <li><Link href="/listings" className="hover:text-white transition-colors">All Listings</Link></li>
               <li><Link href="/dealers" className="hover:text-white transition-colors">Find a Dealer</Link></li>
               <li><Link href="/listings?condition=Excellent" className="hover:text-white transition-colors">Collector Cars</Link></li>
+              <li><Link href="/cars/muscle-cars" className="hover:text-white transition-colors">Muscle Cars</Link></li>
               <li><Link href="/listings?bodyStyle=Convertible" className="hover:text-white transition-colors">Convertibles</Link></li>
               <li><Link href="/listings?bodyStyle=Pickup+Truck" className="hover:text-white transition-colors">Classic Trucks</Link></li>
               <li><Link href="/listings?bodyStyle=Coupe" className="hover:text-white transition-colors">Coupes</Link></li>

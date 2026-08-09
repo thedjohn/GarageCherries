@@ -38,6 +38,16 @@ export default function EncyclopediaPage() {
       {/* Featured Guide */}
       <div className="mb-14">
         <Link
+          href="/cars/muscle-cars"
+          className="block bg-zinc-900 rounded-2xl p-6 md:p-8 hover:bg-zinc-800 transition-colors group mb-4"
+        >
+          <p className="text-xs font-bold text-red-500 uppercase tracking-widest mb-2">Featured Guide</p>
+          <p className="text-2xl font-extrabold text-white mb-2 group-hover:text-red-400 transition-colors">Muscle Cars</p>
+          <p className="text-zinc-400 max-w-xl">
+            From the original 1964 GTO to the last true big-block classics — the complete history, notable models, buying tips, and current muscle car listings for sale.
+          </p>
+        </Link>
+        <Link
           href="/cars/srt"
           className="block bg-zinc-900 rounded-2xl p-6 md:p-8 hover:bg-zinc-800 transition-colors group"
         >
