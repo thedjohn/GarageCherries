@@ -303,8 +303,33 @@ export default async function GuidePage({ params }: Props) {
     'Valuation': 'bg-orange-100 text-orange-700', 'Insurance': 'bg-rose-100 text-rose-700',
   };
 
+  const articleJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: guide.title,
+    description: guide.subtitle,
+    url: `https://www.garagecherries.com/guides/${slug}`,
+    publisher: {
+      '@type': 'Organization',
+      name: 'GarageCherries',
+      url: 'https://www.garagecherries.com',
+    },
+  };
+
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.garagecherries.com' },
+      { '@type': 'ListItem', position: 2, name: "Buyer's Guides", item: 'https://www.garagecherries.com/guides' },
+      { '@type': 'ListItem', position: 3, name: guide.title, item: `https://www.garagecherries.com/guides/${slug}` },
+    ],
+  };
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-zinc-400 mb-8">
         <Link href="/guides" className="hover:text-red-600 transition-colors">Buyer's Guides</Link>

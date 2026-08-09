@@ -77,9 +77,25 @@ export default async function HomePage() {
     sameAs: ['https://www.facebook.com/profile.php?id=61591983653597'],
   };
 
+  const websiteJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'GarageCherries',
+    url: 'https://www.garagecherries.com',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: 'https://www.garagecherries.com/listings?q={search_term_string}',
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  };
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
       <PromoModal />
       {/* Hero */}
       <section className="relative bg-zinc-900 text-white overflow-hidden">

@@ -594,8 +594,19 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
     }));
     const models = [...new Set(cars.map((c: any) => c.model))].sort();
 
+    const breadcrumbJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
+        { '@type': 'ListItem', position: 2, name: 'Listings', item: `${BASE_URL}/listings` },
+        { '@type': 'ListItem', position: 3, name: make, item: `${BASE_URL}/listings/${segments[0]}` },
+      ],
+    };
+
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
         <nav className="text-sm text-zinc-500 mb-6 flex gap-2">
           <Link href="/" className="hover:text-red-600">Home</Link><span>/</span>
           <Link href="/listings" className="hover:text-red-600">Listings</Link><span>/</span>
@@ -681,8 +692,20 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
       description: r.description,
     }));
 
+    const breadcrumbJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: BASE_URL },
+        { '@type': 'ListItem', position: 2, name: 'Listings', item: `${BASE_URL}/listings` },
+        { '@type': 'ListItem', position: 3, name: make, item: `${BASE_URL}/listings/${segments[0]}` },
+        { '@type': 'ListItem', position: 4, name: model, item: `${BASE_URL}/listings/${segments[0]}/${segments[1]}` },
+      ],
+    };
+
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
         <nav className="text-sm text-zinc-500 mb-6 flex gap-2">
           <Link href="/" className="hover:text-red-600">Home</Link><span>/</span>
           <Link href="/listings" className="hover:text-red-600">Listings</Link><span>/</span>
