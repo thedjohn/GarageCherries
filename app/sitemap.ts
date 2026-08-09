@@ -6,6 +6,7 @@ import { ENCYCLOPEDIA, getMakeSlugs } from '@/lib/encyclopedia';
 import { getBodyStyleSlugs } from '@/lib/bodyStyles';
 import { getDecadeSlugs } from '@/lib/decades';
 import { getPriceTierSlugs } from '@/lib/priceTiers';
+import { stateSlug } from '@/lib/usStates';
 
 function encyclopediaSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -29,7 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     supabase.from('listings').select('id, slug, make, model, featured, listed_at, created_at').eq('status', 'approved'),
     supabase.from('dealers').select('slug, created_at'),
     supabase.from('advertisers').select('slug, created_at').eq('active', true).gt('trial_ends_at', new Date().toISOString()),
-    supabase.from('events').select('slug, date').eq('status', 'approved').not('slug', 'is', null),
+    supabase.from('events').select('slug, date, state').eq('status', 'approved').not('slug', 'is', null),
   ]);
 
   const GUIDE_SLUGS = [
@@ -168,6 +169,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }));
 
+  // One real page per state with at least one real event -- see app/events/state/[state]/page.tsx.
+  const eventStates = [...new Set((events ?? []).map(e => e.state).filter(Boolean))];
+  const eventStatePages: MetadataRoute.Sitemap = eventStates.map(state => ({
+    url: `${BASE_URL}/events/state/${stateSlug(state)}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.65,
+  }));
+
   // Make + model combo pages derived from live listings (e.g. /listings/ford/mustang).
   // Combos with 2 or fewer listings are set to noindex on the page itself (see
   // generateMetadata in app/listings/[...segments]/page.tsx) -- excluded here too
@@ -200,5 +210,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...advertiserPages,
     ...guidePages,
     ...eventPages,
+    ...eventStatePages,
   ];
 }
