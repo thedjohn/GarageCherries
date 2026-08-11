@@ -110,9 +110,12 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="GarageCherries on YouTube"
-                className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-zinc-800 hover:bg-red-600 transition-colors"
+                className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-zinc-800"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-white">
+                {/* Fixed to YouTube's official red (#FF0000), no hover recolor --
+                    YouTube's branding guidelines prohibit modifying the icon's
+                    colors, unlike Facebook/Instagram above. */}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#FF0000" className="w-8 h-8">
                   <path d="M21.582 6.186a2.75 2.75 0 0 0-1.936-1.947C17.87 3.75 12 3.75 12 3.75s-5.87 0-7.646.489a2.75 2.75 0 0 0-1.936 1.947C2 7.965 2 12 2 12s0 4.035.418 5.814a2.75 2.75 0 0 0 1.936 1.947C6.13 20.25 12 20.25 12 20.25s5.87 0 7.646-.489a2.75 2.75 0 0 0 1.936-1.947C22 16.035 22 12 22 12s0-4.035-.418-5.814zM9.955 15.568V8.432L15.818 12l-5.863 3.568z" />
                 </svg>
               </a>
