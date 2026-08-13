@@ -110,13 +110,15 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="GarageCherries on YouTube"
-                className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-zinc-800"
+                className="inline-flex items-center justify-center w-16 h-16"
               >
-                {/* Fixed to YouTube's official red (#FF0000), no hover recolor --
-                    YouTube's branding guidelines prohibit modifying the icon's
-                    colors, unlike Facebook/Instagram above. */}
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#FF0000" className="w-8 h-8">
-                  <path d="M21.582 6.186a2.75 2.75 0 0 0-1.936-1.947C17.87 3.75 12 3.75 12 3.75s-5.87 0-7.646.489a2.75 2.75 0 0 0-1.936 1.947C2 7.965 2 12 2 12s0 4.035.418 5.814a2.75 2.75 0 0 0 1.936 1.947C6.13 20.25 12 20.25 12 20.25s5.87 0 7.646-.489a2.75 2.75 0 0 0 1.936-1.947C22 16.035 22 12 22 12s0-4.035-.418-5.814zM9.955 15.568V8.432L15.818 12l-5.863 3.568z" />
+                {/* Official YouTube icon mark (red rounded-square + white play
+                    triangle), used as-is per YouTube's branding guidelines --
+                    no recoloring, no separate background badge, since the mark
+                    already includes its own solid background. */}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 34" className="w-14 h-10">
+                  <path fill="#FF0000" d="M47 5.3A6 6 0 0 0 42.8 1C39 0 24 0 24 0S9 0 5.2 1A6 6 0 0 0 1 5.3 62 62 0 0 0 0 17a62 62 0 0 0 1 11.7A6 6 0 0 0 5.2 33C9 34 24 34 24 34s15 0 18.8-1a6 6 0 0 0 4.2-4.3A62 62 0 0 0 48 17a62 62 0 0 0-1-11.7Z"/>
+                  <path fill="#FFF" d="M19 24V10l13 7Z"/>
                 </svg>
               </a>
             </div>
