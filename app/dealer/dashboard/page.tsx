@@ -77,33 +77,53 @@ function VehicleModal({ dealerId, dealerName, dealerLocation, dealerState, car, 
     state:        car?.state                    ?? dealerState ?? '',
   });
   const [featured, setFeatured] = useState(car?.featured ?? false);
-  // Existing images (URLs) + new file uploads
-  const [existingImages, setExistingImages] = useState<string[]>(car?.images ?? []);
-  const [newImages, setNewImages] = useState<{ file: File; preview: string }[]>([]);
+  // Existing (already-uploaded) and newly-added photos share one ordered
+  // list so drag-to-reorder and the Cover badge work across both -- upload
+  // order on save follows this same array, see handleSubmit below.
+  type Photo = { kind: 'existing'; url: string } | { kind: 'new'; file: File; preview: string };
+  const [photos, setPhotos] = useState<Photo[]>((car?.images ?? []).map(url => ({ kind: 'existing' as const, url })));
+  const [dragOverPhoto, setDragOverPhoto] = useState<number | null>(null);
+  const dragPhotoIndex = useRef<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const set = (k: string, v: string) => setFields(f => ({ ...f, [k]: v }));
-  const totalImages = existingImages.length + newImages.length;
+  const totalImages = photos.length;
 
   const handleImageAdd = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     if (fileInputRef.current) fileInputRef.current.value = '';
     const resized = await resizeImageFiles(files.slice(0, 30 - totalImages));
-    const next = resized.map(f => ({ file: f, preview: URL.createObjectURL(f) }));
-    setNewImages(prev => [...prev, ...next]);
+    const next: Photo[] = resized.map(f => ({ kind: 'new', file: f, preview: URL.createObjectURL(f) }));
+    setPhotos(prev => [...prev, ...next]);
   };
 
-  const removeExisting = (i: number) => setExistingImages(prev => prev.filter((_, j) => j !== i));
-  const removeNew = (i: number) => {
-    setNewImages(prev => { URL.revokeObjectURL(prev[i].preview); return prev.filter((_, j) => j !== i); });
+  const removePhoto = (i: number) => {
+    setPhotos(prev => {
+      const photo = prev[i];
+      if (photo.kind === 'new') URL.revokeObjectURL(photo.preview);
+      return prev.filter((_, j) => j !== i);
+    });
+  };
+  const onPhotoDragStart = (i: number) => { dragPhotoIndex.current = i; };
+  const onPhotoDrop = (i: number) => {
+    const from = dragPhotoIndex.current;
+    if (from === null || from === i) { setDragOverPhoto(null); return; }
+    setPhotos(prev => {
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(i, 0, item);
+      return next;
+    });
+    dragPhotoIndex.current = null;
+    setDragOverPhoto(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (existingImages.length + newImages.length === 0) {
+    if (photos.length === 0) {
       setError('Please add at least one photo before saving.');
       return;
     }
@@ -111,18 +131,17 @@ function VehicleModal({ dealerId, dealerName, dealerLocation, dealerState, car, 
     setError('');
     const supabase = createClient();
 
-    // Upload any new images
-    const uploadedUrls: string[] = [];
-    for (const img of newImages) {
-      const ext = img.file.name.split('.').pop();
+    // Upload any new photos, preserving the on-screen (drag-reordered) order
+    const allImages: string[] = [];
+    for (const photo of photos) {
+      if (photo.kind === 'existing') { allImages.push(photo.url); continue; }
+      const ext = photo.file.name.split('.').pop();
       const path = `cars/${dealerId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from('listing-images').upload(path, img.file);
+      const { error: uploadError } = await supabase.storage.from('listing-images').upload(path, photo.file);
       if (uploadError) { setError('Image upload failed: ' + uploadError.message); setSaving(false); return; }
       const { data: { publicUrl } } = supabase.storage.from('listing-images').getPublicUrl(path);
-      uploadedUrls.push(publicUrl);
+      allImages.push(publicUrl);
     }
-
-    const allImages = [...existingImages, ...uploadedUrls];
     const title = `${fields.year} ${fields.make} ${fields.model}`;
     const payload = {
       title,
@@ -358,23 +377,32 @@ function VehicleModal({ dealerId, dealerName, dealerLocation, dealerState, car, 
               <span className="text-xs text-zinc-400">{totalImages}/30</span>
             </div>
             {totalImages > 0 && (
-              <div className="grid grid-cols-5 gap-2 mb-3">
-                {existingImages.map((url, i) => (
-                  <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border border-zinc-100">
-                    {i === 0 && <span className="absolute top-1 left-1 z-10 text-[9px] bg-red-600 text-white font-bold px-1 py-0.5 rounded">Cover</span>}
-                    <img src={url} alt="" className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => removeExisting(i)}
-                      className="absolute top-1 right-1 bg-black/60 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
-                  </div>
-                ))}
-                {newImages.map((img, i) => (
-                  <div key={img.preview} className="relative group aspect-square rounded-lg overflow-hidden border border-dashed border-zinc-300">
-                    <img src={img.preview} alt="" className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => removeNew(i)}
-                      className="absolute top-1 right-1 bg-black/60 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
-                  </div>
-                ))}
-              </div>
+              <>
+                <p className="text-xs text-zinc-400 mb-2">First photo is the cover. Drag to reorder.</p>
+                <div className="grid grid-cols-5 gap-2 mb-3">
+                  {photos.map((photo, i) => (
+                    <div
+                      key={photo.kind === 'existing' ? photo.url : photo.preview}
+                      draggable
+                      onDragStart={() => onPhotoDragStart(i)}
+                      onDragOver={e => { e.preventDefault(); setDragOverPhoto(i); }}
+                      onDragLeave={() => setDragOverPhoto(null)}
+                      onDrop={() => onPhotoDrop(i)}
+                      className={`relative group aspect-square rounded-lg overflow-hidden cursor-grab active:cursor-grabbing transition-all ${
+                        dragOverPhoto === i ? 'border-2 border-red-500 scale-105'
+                        : photo.kind === 'new' ? 'border border-dashed border-zinc-300' : 'border border-zinc-100'
+                      }`}
+                    >
+                      <span className={`absolute top-1 left-1 z-10 text-[9px] font-bold px-1 py-0.5 rounded ${i === 0 ? 'bg-red-600 text-white' : 'bg-black/60 text-white'}`}>
+                        {i === 0 ? 'Cover' : i + 1}
+                      </span>
+                      <img src={photo.kind === 'existing' ? photo.url : photo.preview} alt="" className="w-full h-full object-cover" />
+                      <button type="button" onClick={() => removePhoto(i)}
+                        className="absolute top-1 right-1 bg-black/60 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
             {totalImages < 30 && (
               <label className="flex items-center justify-center gap-2 w-full h-20 border-2 border-dashed border-zinc-200 rounded-xl cursor-pointer hover:border-red-400 hover:bg-red-50 transition-colors text-sm text-zinc-500">
