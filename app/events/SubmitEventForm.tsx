@@ -8,12 +8,13 @@ const TYPE_LABELS: Record<string, string> = {
   'show': 'Car Show', 'swap-meet': 'Swap Meet', 'cruise': 'Cruise Night', 'auction': 'Auction',
 };
 
-const BLANK = { name: '', date: '', end_date: '', start_time: '', end_time: '', street: '', location: '', state: '', zip: '', type: 'show', description: '', url: '' };
+const BLANK = { name: '', date: '', end_date: '', start_time: '', end_time: '', street: '', location: '', state: '', zip: '', type: 'show', description: '', url: '', image: '' };
 
 export default function SubmitEventForm() {
   const [user, setUser] = useState<{ email: string } | null | undefined>(undefined);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(BLANK);
+  const [imageMode, setImageMode] = useState<'upload' | 'url'>('upload');
   const [photo, setPhoto] = useState<{ file: File; preview: string } | null>(null);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
@@ -61,7 +62,7 @@ export default function SubmitEventForm() {
         <p className="text-2xl mb-3">✅</p>
         <h2 className="text-lg font-bold text-zinc-900 mb-2">Event submitted!</h2>
         <p className="text-sm text-zinc-500 mb-4">Our team will review it and add it to the calendar shortly.</p>
-        <button onClick={() => { setSuccess(false); setForm(BLANK); removePhoto(); setOpen(false); }}
+        <button onClick={() => { setSuccess(false); setForm(BLANK); removePhoto(); setImageMode('upload'); setOpen(false); }}
           className="text-sm font-semibold text-red-600 hover:underline">Submit another</button>
       </div>
     );
@@ -72,7 +73,7 @@ export default function SubmitEventForm() {
     setWorking(true); setError('');
 
     let image: string | null = null;
-    if (photo) {
+    if (imageMode === 'upload' && photo) {
       const supabase = createClient();
       const ext = photo.file.name.split('.').pop();
       const path = `events/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -80,6 +81,8 @@ export default function SubmitEventForm() {
       if (uploadErr) { setError('Photo upload failed: ' + uploadErr.message); setWorking(false); return; }
       const { data: { publicUrl } } = supabase.storage.from('listing-images').getPublicUrl(path);
       image = publicUrl;
+    } else if (imageMode === 'url' && form.image.trim()) {
+      image = form.image.trim();
     }
 
     const res = await fetch('/api/events/submit', {
@@ -156,18 +159,34 @@ export default function SubmitEventForm() {
             </div>
           </div>
           <div>
-            <label className={labelCls}>Photo (optional)</label>
-            {photo ? (
-              <div className="relative inline-block">
-                <img src={photo.preview} alt="" className="w-32 h-32 object-cover rounded-lg border border-zinc-200" />
-                <button type="button" onClick={removePhoto}
-                  className="absolute top-1 right-1 bg-black/60 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">✕</button>
+            <div className="flex items-center justify-between mb-1">
+              <label className={labelCls}>Photo (optional)</label>
+              <div className="flex gap-1 text-xs">
+                <button type="button" onClick={() => setImageMode('upload')}
+                  className={`px-2 py-0.5 rounded-full font-semibold transition-colors ${imageMode === 'upload' ? 'bg-red-100 text-red-700' : 'text-zinc-400 hover:text-zinc-600'}`}>
+                  Upload
+                </button>
+                <button type="button" onClick={() => { removePhoto(); setImageMode('url'); }}
+                  className={`px-2 py-0.5 rounded-full font-semibold transition-colors ${imageMode === 'url' ? 'bg-red-100 text-red-700' : 'text-zinc-400 hover:text-zinc-600'}`}>
+                  URL
+                </button>
               </div>
+            </div>
+            {imageMode === 'upload' ? (
+              photo ? (
+                <div className="relative inline-block">
+                  <img src={photo.preview} alt="" className="w-32 h-32 object-cover rounded-lg border border-zinc-200" />
+                  <button type="button" onClick={removePhoto}
+                    className="absolute top-1 right-1 bg-black/60 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">✕</button>
+                </div>
+              ) : (
+                <label className="flex items-center justify-center gap-2 w-32 h-32 border-2 border-dashed border-zinc-200 rounded-lg cursor-pointer hover:border-red-400 hover:bg-red-50 transition-colors text-xs text-zinc-500 text-center">
+                  📷 Add photo
+                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handlePhotoChange} />
+                </label>
+              )
             ) : (
-              <label className="flex items-center justify-center gap-2 w-32 h-32 border-2 border-dashed border-zinc-200 rounded-lg cursor-pointer hover:border-red-400 hover:bg-red-50 transition-colors text-xs text-zinc-500 text-center">
-                📷 Add photo
-                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handlePhotoChange} />
-              </label>
+              <input className={inputCls} type="url" value={form.image} onChange={e => setForm(f => ({ ...f, image: e.target.value }))} placeholder="https://example.com/flyer.jpg" />
             )}
           </div>
           <div>

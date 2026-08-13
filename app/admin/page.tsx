@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { resizeImageFile } from '@/lib/resizeImage';
 import Tooltip from '@/components/Tooltip';
 import { formatPhone, normalizeUrl } from '@/lib/data';
 import VehicleFieldsForm from '@/components/VehicleFieldsForm';
@@ -159,6 +160,8 @@ export default function AdminPage() {
   const [pendingEvents, setPendingEvents] = useState<CarEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
   const [eventForm, setEventForm] = useState<typeof BLANK_EVENT>(BLANK_EVENT);
+  const [eventImageMode, setEventImageMode] = useState<'upload' | 'url'>('url');
+  const [eventPhoto, setEventPhoto] = useState<{ file: File; preview: string } | null>(null);
   const [editingEvent, setEditingEvent] = useState<CarEvent | null>(null);
   const [eventWorking, setEventWorking] = useState(false);
   const [eventError, setEventError] = useState('');
@@ -410,10 +413,37 @@ export default function AdminPage() {
     await loadEvents(eventPage);
   }
 
+  async function handleEventPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const resized = await resizeImageFile(file);
+    if (eventPhoto) URL.revokeObjectURL(eventPhoto.preview);
+    setEventPhoto({ file: resized, preview: URL.createObjectURL(resized) });
+  }
+  function removeEventPhoto() {
+    if (eventPhoto) URL.revokeObjectURL(eventPhoto.preview);
+    setEventPhoto(null);
+  }
+
   async function saveEvent() {
     setEventWorking(true); setEventError('');
+
+    // Only overwrites the existing image URL if the admin actually picked a
+    // new file -- switching to Upload mode without choosing one yet must not
+    // silently wipe an existing photo when editing.
+    let image = eventForm.image;
+    if (eventImageMode === 'upload' && eventPhoto) {
+      const supabase = createClient();
+      const ext = eventPhoto.file.name.split('.').pop();
+      const path = `events/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from('listing-images').upload(path, eventPhoto.file);
+      if (uploadErr) { setEventError('Photo upload failed: ' + uploadErr.message); setEventWorking(false); return; }
+      const { data: { publicUrl } } = supabase.storage.from('listing-images').getPublicUrl(path);
+      image = publicUrl;
+    }
+
     const method = editingEvent ? 'PATCH' : 'POST';
-    const body = editingEvent ? { id: editingEvent.id, ...eventForm } : eventForm;
+    const body = editingEvent ? { id: editingEvent.id, ...eventForm, image } : { ...eventForm, image };
     const res = await fetch('/api/admin/events', {
       method,
       headers: { 'Content-Type': 'application/json' },
@@ -424,6 +454,8 @@ export default function AdminPage() {
     if (!res.ok) { setEventError(json.error ?? 'Failed'); return; }
     setEditingEvent(null);
     setEventForm(BLANK_EVENT);
+    removeEventPhoto();
+    setEventImageMode('url');
     setShowEventForm(false);
     // Reload from the server rather than patching the local array -- with
     // filters/pagination active, a naive client-side splice can no longer
@@ -1667,7 +1699,7 @@ export default function AdminPage() {
               form) is what you see first; opens for Add, or automatically
               when editing an existing event. */}
           {!showEventForm && !editingEvent && (
-            <button onClick={() => { setEditingEvent(null); setEventForm(BLANK_EVENT); setEventError(''); setShowEventForm(true); }}
+            <button onClick={() => { setEditingEvent(null); setEventForm(BLANK_EVENT); removeEventPhoto(); setEventImageMode('url'); setEventError(''); setShowEventForm(true); }}
               className="mb-6 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition-colors">
               + Add Event
             </button>
@@ -1723,8 +1755,33 @@ export default function AdminPage() {
                 <input className={inputCls} value={eventForm.url} onChange={e => setEventForm(f => ({ ...f, url: e.target.value }))} placeholder="https://..." />
               </div>
               <div>
-                <label className={labelCls}>Photo URL (optional)</label>
-                <input className={inputCls} value={eventForm.image} onChange={e => setEventForm(f => ({ ...f, image: e.target.value }))} placeholder="https://..." />
+                <div className="flex items-center justify-between mb-1">
+                  <label className={labelCls}>Photo (optional)</label>
+                  <div className="flex gap-1 text-xs">
+                    <button type="button" onClick={() => setEventImageMode('url')}
+                      className={`px-2 py-0.5 rounded-full font-semibold transition-colors ${eventImageMode === 'url' ? 'bg-red-100 text-red-700' : 'text-zinc-400 hover:text-zinc-600'}`}>
+                      URL
+                    </button>
+                    <button type="button" onClick={() => { removeEventPhoto(); setEventImageMode('upload'); }}
+                      className={`px-2 py-0.5 rounded-full font-semibold transition-colors ${eventImageMode === 'upload' ? 'bg-red-100 text-red-700' : 'text-zinc-400 hover:text-zinc-600'}`}>
+                      Upload
+                    </button>
+                  </div>
+                </div>
+                {eventImageMode === 'url' ? (
+                  <input className={inputCls} value={eventForm.image} onChange={e => setEventForm(f => ({ ...f, image: e.target.value }))} placeholder="https://..." />
+                ) : eventPhoto ? (
+                  <div className="relative inline-block">
+                    <img src={eventPhoto.preview} alt="" className="w-20 h-20 object-cover rounded-lg border border-zinc-200" />
+                    <button type="button" onClick={removeEventPhoto}
+                      className="absolute top-1 right-1 bg-black/60 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">✕</button>
+                  </div>
+                ) : (
+                  <label className="flex items-center justify-center gap-2 w-20 h-20 border-2 border-dashed border-zinc-200 rounded-lg cursor-pointer hover:border-red-400 hover:bg-red-50 transition-colors text-xs text-zinc-500 text-center">
+                    📷
+                    <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleEventPhotoChange} />
+                  </label>
+                )}
               </div>
               <div className="md:col-span-2">
                 <label className={labelCls}>Description</label>
@@ -1742,7 +1799,7 @@ export default function AdminPage() {
                 {eventWorking ? 'Saving…' : editingEvent ? 'Save Changes' : 'Add Event'}
               </button>
               {editingEvent && (
-                <button onClick={() => { setEditingEvent(null); setEventForm(BLANK_EVENT); setEventError(''); setShowEventForm(false); }}
+                <button onClick={() => { setEditingEvent(null); setEventForm(BLANK_EVENT); removeEventPhoto(); setEventImageMode('url'); setEventError(''); setShowEventForm(false); }}
                   className="px-5 py-2 border border-zinc-200 text-zinc-600 font-semibold text-sm rounded-lg hover:bg-zinc-50 transition-colors">
                   Cancel
                 </button>
@@ -1807,7 +1864,7 @@ export default function AdminPage() {
                   {e.description && <p className="text-xs text-zinc-400 mt-0.5 line-clamp-1">{e.description}</p>}
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <button onClick={() => { setEditingEvent(e); setEventForm({ name: e.name, date: e.date, end_date: e.end_date ?? '', start_time: e.start_time ?? '', end_time: e.end_time ?? '', street: e.street ?? '', location: e.location, state: e.state, zip: e.zip ?? '', type: e.type, description: e.description, url: e.url ?? '', image: e.image ?? '', featured: e.featured }); setShowEventForm(true); }}
+                  <button onClick={() => { setEditingEvent(e); setEventForm({ name: e.name, date: e.date, end_date: e.end_date ?? '', start_time: e.start_time ?? '', end_time: e.end_time ?? '', street: e.street ?? '', location: e.location, state: e.state, zip: e.zip ?? '', type: e.type, description: e.description, url: e.url ?? '', image: e.image ?? '', featured: e.featured }); removeEventPhoto(); setEventImageMode('url'); setShowEventForm(true); }}
                     className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition-colors">Edit</button>
                   <button onClick={() => setConfirmDeleteEvent(e)}
                     className="text-xs font-semibold text-zinc-400 hover:text-red-600 transition-colors">Delete</button>

@@ -34,6 +34,9 @@ export async function POST(req: NextRequest) {
   if (url?.trim() && !/^https?:\/\//i.test(url.trim())) {
     return NextResponse.json({ error: 'Website URL must start with http:// or https://' }, { status: 400 });
   }
+  if (image?.trim() && !/^https?:\/\//i.test(image.trim())) {
+    return NextResponse.json({ error: 'Photo URL must start with http:// or https://' }, { status: 400 });
+  }
 
   const admin = createAdminClient();
   const { data: profile } = await admin.from('profiles').select('name').eq('id', user.id).maybeSingle();
