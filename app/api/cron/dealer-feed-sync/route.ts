@@ -370,6 +370,14 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     const color = format.color.map(col => r[idx(col)]?.trim()).find(Boolean) ?? null;
     const rawImages = extractImageUrls(r[idx(format.images)] ?? '');
     const images = selectRepresentativeImages(rawImages, 30);
+    // A listing with no photos at all isn't sellable-looking; manual listings
+    // already require at least one photo to save (dealer dashboard's Add
+    // Vehicle form), so feed-synced ones shouldn't be exempt from the same
+    // bar. Skipping (not inserting/updating) also means an existing listing
+    // whose photos disappeared from the feed falls out of seenIds below and
+    // gets caught by the normal "missing from today's feed" mark-sold pass --
+    // no separate cleanup path needed.
+    if (images.length === 0) { result.skipped++; continue; }
     let description = format.description ? (r[idx(format.description)]?.trim() ?? '') : '';
     if (format.descriptionStripMarker) {
       const cut = description.indexOf(format.descriptionStripMarker);

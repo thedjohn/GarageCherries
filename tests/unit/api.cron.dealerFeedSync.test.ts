@@ -49,8 +49,13 @@ const HEADER = [
   'Basic Exterior Color', 'Baisc Interior Color', 'Default Header', 'Long Description', 'Images Urls', 'Youtube URL', 'VDP URL',
 ];
 
+// Defaults a real Images Urls value so tests unrelated to photos don't need
+// to think about them -- sync now skips any row with zero images, so a test
+// that actually wants to exercise that (or the empty-images case generally)
+// overrides this explicitly.
 function csvRow(fields: Partial<Record<string, string>>) {
-  return HEADER.map(h => `"${(fields[h] ?? '').replace(/"/g, '""')}"`).join(',');
+  const withDefaults: Partial<Record<string, string>> = { 'Images Urls': 'https://example.com/default.jpg', ...fields };
+  return HEADER.map(h => `"${(withDefaults[h] ?? '').replace(/"/g, '""')}"`).join(',');
 }
 function buildCsv(rows: Partial<Record<string, string>>[]) {
   return [HEADER.map(h => `"${h}"`).join(','), ...rows.map(csvRow)].join('\n');
@@ -464,6 +469,36 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     expect(mockRpc).not.toHaveBeenCalled();
   });
 
+  it('skips a row with no images rather than importing an unsellable-looking listing', async () => {
+    makeSupabaseMock({ dealers: [DEALER], existingListings: [] });
+    const csv = buildCsv([{
+      VIN: 'VIN-NO-PHOTOS', Year: '1970', Make: 'Ford', Model: 'Mustang', BodyStyle: 'Coupe',
+      'List Price': '30000', 'Images Urls': '',
+    }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+    const res: any = await GET(makeRequest('Bearer cron-secret'));
+    expect(res._data.results['info@survivor-cars.com'].skipped).toBe(1);
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it('marks a previously-synced listing as sold if its photos disappear from the feed, even though its VIN is still present', async () => {
+    const { listingUpdateCalls } = makeSupabaseMock({
+      dealers: [DEALER],
+      existingListings: [{ id: 'listing-now-photoless', vin: 'VIN-LOST-PHOTOS' }],
+    });
+    const csv = buildCsv([{
+      VIN: 'VIN-LOST-PHOTOS', Year: '1970', Make: 'Ford', Model: 'Mustang', BodyStyle: 'Coupe',
+      'List Price': '30000', 'Images Urls': '',
+    }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+    const res: any = await GET(makeRequest('Bearer cron-secret'));
+    expect(res._data.results['info@survivor-cars.com'].markedSold).toBe(1);
+    expect(listingUpdateCalls[0].id).toBe('listing-now-photoless');
+    expect(listingUpdateCalls[0].payload.is_sold).toBe(true);
+  });
+
   it('falls back to matching by stock number when a row has no VIN', async () => {
     const { listingUpdateCalls } = makeSupabaseMock({
       dealers: [DEALER],
@@ -669,7 +704,8 @@ describe('GET /api/cron/dealer-feed-sync', () => {
       'Vehicle Link',
     ];
     function csvRowDcs(fields: Partial<Record<string, string>>) {
-      return HEADER_DCS.map(h => `"${(fields[h] ?? '').replace(/"/g, '""')}"`).join(',');
+      const withDefaults: Partial<Record<string, string>> = { Images: 'https://example.com/default.jpg', ...fields };
+      return HEADER_DCS.map(h => `"${(withDefaults[h] ?? '').replace(/"/g, '""')}"`).join(',');
     }
     function buildCsvDcs(rows: Partial<Record<string, string>>[]) {
       return [HEADER_DCS.map(h => `"${h}"`).join(','), ...rows.map(csvRowDcs)].join('\n');
