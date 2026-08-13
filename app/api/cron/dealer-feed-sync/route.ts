@@ -87,6 +87,7 @@ function mapTransmission(raw: string): string {
 // logic below is 100% shared and format-agnostic (both vendors seen so far
 // happen to share identical names for the 5 REQUIRED_FEED_COLUMNS).
 interface FeedFormatColumns {
+  stockNumber: string;
   subModel: string;
   price: string;
   // Tried first; falls back to `price` if blank/zero. Dealer Car Search's
@@ -115,6 +116,7 @@ interface FeedFormatColumns {
 
 const FEED_FORMATS: Record<string, FeedFormatColumns> = {
   speed_digital: {
+    stockNumber: 'Stock Number',
     subModel: 'Sub-Model',
     price: 'List Price',
     transmission: 'Transmission',
@@ -125,6 +127,7 @@ const FEED_FORMATS: Record<string, FeedFormatColumns> = {
     description: 'Long Description',
   },
   dealer_car_search: {
+    stockNumber: 'Stock Number',
     subModel: 'Trim',
     price: 'Internet Price',
     priceFallback: 'Retail',
@@ -135,6 +138,20 @@ const FEED_FORMATS: Record<string, FeedFormatColumns> = {
     bodyStyle: 'Body Type',
     description: 'Comments',
     descriptionStripMarker: 'Maintenance and Reconditioning:',
+  },
+  // Bespoke feed Beverly Hills Car Club built specifically for GarageCherries
+  // (the URL is .../feeds/garagecherries.csv) -- confirmed against a live
+  // sample of the real feed, not assumed from column names alone.
+  beverly_hills_car_club: {
+    stockNumber: 'StockNumber',
+    subModel: 'Trim',
+    price: 'Price',
+    transmission: 'Transmission',
+    engine: 'Engine',
+    color: ['ExteriorColor'],
+    images: 'Images',
+    bodyStyle: 'Body',
+    description: 'Description',
   },
 };
 
@@ -260,9 +277,13 @@ async function fetchViaSftpPush(dealer: FeedDealer): Promise<{ text: string; mti
 // were a real feed (which risks incorrectly marking cars "sold" that were
 // simply cut off by the bad read). Applied to all three protocols uniformly
 // since it's a harmless no-op for an already-well-formed feed.
-const REQUIRED_FEED_COLUMNS = ['VIN', 'Stock Number', 'Year', 'Make', 'Model'];
-function isValidFeedHeader(header: string[] | undefined): boolean {
-  return !!header && REQUIRED_FEED_COLUMNS.every(col => header.includes(col));
+// VIN/Year/Make/Model are the same literal column name across every vendor
+// seen so far; Stock Number's name varies (e.g. Beverly Hills Car Club uses
+// "StockNumber", no space), so it's checked against the resolved format's
+// own column name rather than a fixed string.
+const REQUIRED_FEED_COLUMNS = ['VIN', 'Year', 'Make', 'Model'];
+function isValidFeedHeader(header: string[] | undefined, stockNumberColumn: string): boolean {
+  return !!header && REQUIRED_FEED_COLUMNS.every(col => header.includes(col)) && header.includes(stockNumberColumn);
 }
 
 // Fetches one dealer's CSV feed and syncs it: inserts new vehicles (matched by
@@ -293,13 +314,13 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
 
   const rows = parseCSV(csvText.replace(/^﻿/, ''));
   const header = rows[0];
-  if (!isValidFeedHeader(header)) {
+  const format = FEED_FORMATS[dealer.feed_format ?? 'speed_digital'] ?? FEED_FORMATS.speed_digital;
+  if (!isValidFeedHeader(header, format.stockNumber)) {
     result.errors.push('Feed content failed validation (missing expected columns) -- possibly read mid-write, will retry next cycle');
     return result;
   }
   const idx = (name: string) => header.indexOf(name);
   const dataRows = rows.slice(1);
-  const format = FEED_FORMATS[dealer.feed_format ?? 'speed_digital'] ?? FEED_FORMATS.speed_digital;
 
   const { data: existingListings } = await admin
     .from('listings')
@@ -322,7 +343,7 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     if (SKIP_BODY_STYLES.has(bodyStyleRaw)) { result.skipped++; continue; }
 
     const vin = r[idx('VIN')]?.trim() || null;
-    const stockNumber = r[idx('Stock Number')]?.trim() || null;
+    const stockNumber = r[idx(format.stockNumber)]?.trim() || null;
     if (!vin && !stockNumber) { result.skipped++; continue; }
 
     const year = parseInt(r[idx('Year')], 10);
