@@ -80,6 +80,7 @@ function makeSupabaseMock({ dealers, existingListings = [] as { id: string; vin:
   updateError?: string | null;
 }) {
   const listingUpdateCalls: { id: string; payload: any }[] = [];
+  const listingDeleteCalls: { id: string }[] = [];
   const dealerUpdateCalls: { id: string; payload: any }[] = [];
   const dealerQueryCalls: { col: string; val: any }[] = [];
 
@@ -106,6 +107,12 @@ function makeSupabaseMock({ dealers, existingListings = [] as { id: string; vin:
             return Promise.resolve({ error: updateError ? new Error(updateError) : null });
           },
         }),
+        delete: () => ({
+          eq: (_col: string, id: string) => {
+            listingDeleteCalls.push({ id });
+            return Promise.resolve({ error: updateError ? new Error(updateError) : null });
+          },
+        }),
       };
     }
     // Mark-sold fires a fire-and-forget watcher notification (notifyWatchersCarSold);
@@ -116,7 +123,7 @@ function makeSupabaseMock({ dealers, existingListings = [] as { id: string; vin:
     }
     throw new Error(`Unexpected table: ${table}`);
   });
-  return { listingUpdateCalls, dealerUpdateCalls, dealerQueryCalls };
+  return { listingUpdateCalls, listingDeleteCalls, dealerUpdateCalls, dealerQueryCalls };
 }
 
 const originalFetch = global.fetch;
@@ -482,8 +489,8 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     expect(mockRpc).not.toHaveBeenCalled();
   });
 
-  it('marks a previously-synced listing as sold if its photos disappear from the feed, even though its VIN is still present', async () => {
-    const { listingUpdateCalls } = makeSupabaseMock({
+  it('deletes a previously-synced listing outright if its photos disappear from the feed -- NOT marked sold, since it did not actually sell', async () => {
+    const { listingUpdateCalls, listingDeleteCalls } = makeSupabaseMock({
       dealers: [DEALER],
       existingListings: [{ id: 'listing-now-photoless', vin: 'VIN-LOST-PHOTOS' }],
     });
@@ -494,9 +501,11 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
 
     const res: any = await GET(makeRequest('Bearer cron-secret'));
-    expect(res._data.results['info@survivor-cars.com'].markedSold).toBe(1);
-    expect(listingUpdateCalls[0].id).toBe('listing-now-photoless');
-    expect(listingUpdateCalls[0].payload.is_sold).toBe(true);
+    expect(listingDeleteCalls).toEqual([{ id: 'listing-now-photoless' }]);
+    // Confirms it did NOT go through the mark-sold path -- deleting it removed
+    // it from the DB, but the sold count/notification machinery never fired.
+    expect(res._data.results['info@survivor-cars.com'].markedSold).toBe(0);
+    expect(listingUpdateCalls.some(c => c.payload.is_sold === true)).toBe(false);
   });
 
   it('falls back to matching by stock number when a row has no VIN', async () => {

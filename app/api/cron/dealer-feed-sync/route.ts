@@ -345,6 +345,7 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     const vin = r[idx('VIN')]?.trim() || null;
     const stockNumber = r[idx(format.stockNumber)]?.trim() || null;
     if (!vin && !stockNumber) { result.skipped++; continue; }
+    const existingId = (vin && existingByVin.get(vin)) || (stockNumber && existingByStock.get(stockNumber)) || undefined;
 
     const year = parseInt(r[idx('Year')], 10);
     const model = r[idx('Model')]?.trim();
@@ -373,11 +374,21 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     // A listing with no photos at all isn't sellable-looking; manual listings
     // already require at least one photo to save (dealer dashboard's Add
     // Vehicle form), so feed-synced ones shouldn't be exempt from the same
-    // bar. Skipping (not inserting/updating) also means an existing listing
-    // whose photos disappeared from the feed falls out of seenIds below and
-    // gets caught by the normal "missing from today's feed" mark-sold pass --
-    // no separate cleanup path needed.
-    if (images.length === 0) { result.skipped++; continue; }
+    // bar. An existing listing whose photos disappeared from the feed is
+    // deleted outright here, NOT routed through the mark-sold pass below --
+    // it didn't actually sell, so flagging is_sold would both inflate the
+    // homepage's real "Cars Sold" count and wrongly email anyone watching
+    // it that the car sold. Added to seenIds so the mark-sold pass doesn't
+    // also try (and fail) to update the now-deleted row.
+    if (images.length === 0) {
+      result.skipped++;
+      if (existingId) {
+        seenIds.add(existingId);
+        const { error } = await admin.from('listings').delete().eq('id', existingId);
+        if (error) result.errors.push(`Delete failed for photo-less listing ${vin ?? stockNumber}: ${error.message}`);
+      }
+      continue;
+    }
     let description = format.description ? (r[idx(format.description)]?.trim() ?? '') : '';
     if (format.descriptionStripMarker) {
       const cut = description.indexOf(format.descriptionStripMarker);
@@ -395,8 +406,6 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     const listingState = r[idx('State')]?.trim() || dealerNameLoc?.state || dealer.state;
     const listingPhone = r[idx('Dealer Phone Number')]?.trim() || dealer.phone;
     const listingEmail = r[idx('Dealer Email Address')]?.trim() || dealer.email;
-
-    const existingId = (vin && existingByVin.get(vin)) || (stockNumber && existingByStock.get(stockNumber)) || undefined;
 
     if (existingId) {
       seenIds.add(existingId);
