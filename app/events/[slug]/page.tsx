@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { STATE_NAMES } from '@/lib/usStates';
+import EventImageLightbox from '@/components/EventImageLightbox';
 
 export const revalidate = 0;
 
@@ -192,9 +193,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
 
         <h1 className="text-3xl md:text-4xl font-extrabold text-zinc-900 mb-6 leading-tight">{e.name}</h1>
 
-        {e.image && (
-          <img src={e.image} alt={e.name} className="w-full h-64 object-cover rounded-2xl mb-6" />
-        )}
+        {e.image && <EventImageLightbox src={e.image} alt={e.name} />}
 
         {/* Details */}
         <div className="bg-white border border-zinc-100 rounded-2xl shadow-sm p-6 mb-6 space-y-4">

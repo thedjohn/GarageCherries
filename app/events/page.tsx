@@ -183,9 +183,6 @@ export default async function EventsPage({ searchParams }: Props) {
 export function EventCard({ event, highlight }: { event: CarShowEvent; highlight?: boolean }) {
   return (
     <div className={`bg-white border rounded-xl p-5 flex gap-4 items-start ${highlight ? 'border-red-200 shadow-sm' : 'border-zinc-100'}`}>
-      {event.image && (
-        <img src={event.image} alt="" className="hidden sm:block shrink-0 w-20 h-20 object-cover rounded-lg" />
-      )}
       <div className="shrink-0 text-center bg-zinc-50 rounded-lg px-3 py-2 min-w-[56px]">
         <p className="text-xs font-bold text-zinc-400 uppercase">
           {new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short' })}
@@ -221,6 +218,9 @@ export function EventCard({ event, highlight }: { event: CarShowEvent; highlight
           <p className="text-xs text-zinc-500 mt-1 line-clamp-2">{event.description}</p>
         )}
       </div>
+      {event.image && (
+        <img src={event.image} alt="" className="hidden sm:block shrink-0 w-20 h-20 object-cover rounded-lg" />
+      )}
     </div>
   );
 }
