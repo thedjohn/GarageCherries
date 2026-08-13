@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
   if (!role || !hasRole(role, 'admin')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
-  const { name, date, end_date, start_time, end_time, location, state, type, description, url, featured } = body;
+  const { name, date, end_date, start_time, end_time, street, location, state, zip, type, description, url, image, featured } = body;
 
   if (!name?.trim() || !date || !location?.trim() || !state?.trim() || !VALID_TYPES.includes(type)) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -76,11 +76,14 @@ export async function POST(req: NextRequest) {
     end_date: end_date || null,
     start_time: start_time?.trim() || null,
     end_time: end_time?.trim() || null,
+    street: street?.trim() || null,
     location: location.trim(),
     state: state.trim().toUpperCase(),
+    zip: zip?.trim() || null,
     type,
     description: description?.trim() ?? '',
     url: url?.trim() || null,
+    image: image?.trim() || null,
     featured: !!featured,
     status: 'approved',
   }).select().single();
@@ -106,7 +109,7 @@ export async function PATCH(req: NextRequest) {
   if (!role || !hasRole(role, 'admin')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
-  const { id, action, name, date, end_date, start_time, end_time, location, state, type, description, url, featured } = body;
+  const { id, action, name, date, end_date, start_time, end_time, street, location, state, zip, type, description, url, image, featured } = body;
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
   const admin = createAdminClient();
@@ -141,11 +144,14 @@ export async function PATCH(req: NextRequest) {
     end_date: end_date || null,
     start_time: start_time?.trim() || null,
     end_time: end_time?.trim() || null,
+    street: street?.trim() || null,
     location: location?.trim(),
     state: state?.trim().toUpperCase(),
+    zip: zip?.trim() || null,
     type,
     description: description?.trim() ?? '',
     url: url?.trim() || null,
+    image: image?.trim() || null,
     featured: !!featured,
   }).eq('id', id);
 

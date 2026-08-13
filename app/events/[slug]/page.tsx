@@ -9,8 +9,8 @@ export const revalidate = 0;
 interface Event {
   id: string; name: string; slug: string; date: string; end_date?: string | null;
   start_time?: string | null; end_time?: string | null;
-  location: string; state: string; type: string;
-  featured: boolean; description: string; url?: string | null;
+  street?: string | null; location: string; state: string; zip?: string | null; type: string;
+  featured: boolean; description: string; url?: string | null; image?: string | null;
 }
 
 interface RelatedEvent {
@@ -123,6 +123,12 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
       : formatTime(e.start_time)
     : null;
 
+  // Same free Google Maps iframe-embed pattern as the dealer page
+  // (app/dealers/[slug]/page.tsx) -- no API key needed.
+  const addressParts = [e.street, e.location, e.state, e.zip].filter(Boolean);
+  const mapQuery = encodeURIComponent(addressParts.length > 0 ? addressParts.join(', ') : `${e.location}, ${e.state}`);
+  const mapSrc = `https://maps.google.com/maps?q=${mapQuery}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+
   // TODO after 2026-07-31: replace promo eagle image with permanent brand OG image (cherry logo + tagline, no promo text)
   // JSON-LD Event schema
   const jsonLd = {
@@ -139,8 +145,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
       name: e.location,
       address: {
         '@type': 'PostalAddress',
+        ...(e.street ? { streetAddress: e.street } : {}),
         addressLocality: e.location,
         addressRegion: e.state,
+        ...(e.zip ? { postalCode: e.zip } : {}),
         addressCountry: 'US',
       },
     },
@@ -149,7 +157,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
       name: 'GarageCherries',
       url: 'https://www.garagecherries.com',
     },
-    image: 'https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/promo/gc%20eagle.png',
+    image: e.image ?? 'https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/promo/gc%20eagle.png',
     offers: {
       '@type': 'Offer',
       url: e.url ?? `https://www.garagecherries.com/events/${e.slug}`,
@@ -184,6 +192,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
 
         <h1 className="text-3xl md:text-4xl font-extrabold text-zinc-900 mb-6 leading-tight">{e.name}</h1>
 
+        {e.image && (
+          <img src={e.image} alt={e.name} className="w-full h-64 object-cover rounded-2xl mb-6" />
+        )}
+
         {/* Details */}
         <div className="bg-white border border-zinc-100 rounded-2xl shadow-sm p-6 mb-6 space-y-4">
           <div className="flex items-start gap-3">
@@ -195,7 +207,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
           </div>
           <div className="flex items-start gap-3">
             <span className="text-xl mt-0.5">📍</span>
-            <p className="font-semibold text-zinc-900">{e.location}, {e.state}</p>
+            <p className="font-semibold text-zinc-900">{addressParts.join(', ')}</p>
           </div>
           {e.url && (
             <div className="flex items-start gap-3">
@@ -206,6 +218,18 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
               </a>
             </div>
           )}
+        </div>
+
+        {/* Map */}
+        <div className="bg-white border border-zinc-100 rounded-2xl shadow-sm overflow-hidden mb-6">
+          <iframe
+            src={mapSrc}
+            className="w-full h-64"
+            style={{ border: 0 }}
+            allowFullScreen
+            loading="lazy"
+            title={`Map of ${e.name}`}
+          />
         </div>
 
         {/* Description */}

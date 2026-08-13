@@ -48,11 +48,12 @@ type Tab = 'overview' | 'listings' | 'reported' | 'team' | 'users' | 'applicatio
 interface CarEvent {
   id: string; name: string; date: string; end_date: string | null;
   start_time: string | null; end_time: string | null;
-  location: string; state: string; type: string; description: string;
-  url: string | null; featured: boolean; created_at: string;
+  street: string | null; location: string; state: string; zip: string | null;
+  type: string; description: string;
+  url: string | null; image: string | null; featured: boolean; created_at: string;
   status: string; submitted_by: string | null; submitter_email: string | null; submitter_name: string | null;
 }
-const BLANK_EVENT = { name: '', date: '', end_date: '', start_time: '', end_time: '', location: '', state: '', type: 'show', description: '', url: '', featured: false };
+const BLANK_EVENT = { name: '', date: '', end_date: '', start_time: '', end_time: '', street: '', location: '', state: '', zip: '', type: 'show', description: '', url: '', image: '', featured: false };
 const EVENT_TYPES = ['show', 'swap-meet', 'cruise', 'auction'] as const;
 const EVENT_PAGE_SIZE = 20;
 
@@ -1625,13 +1626,18 @@ export default function AdminPage() {
                 {pendingEvents.map(e => (
                   <div key={e.id} className="bg-white border border-amber-200 rounded-xl p-4 shadow-sm">
                     <div className="flex items-start justify-between gap-4">
+                      {e.image && (
+                        <img src={e.image} alt="" className="shrink-0 w-16 h-16 object-cover rounded-lg border border-zinc-100" />
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600">{e.type}</span>
                           <span className="text-xs font-bold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Pending</span>
                         </div>
                         <p className="font-semibold text-zinc-900 text-sm">{e.name}</p>
-                        <p className="text-xs text-zinc-500">{e.date}{e.end_date ? ` – ${e.end_date}` : ''} · {e.location}, {e.state}</p>
+                        <p className="text-xs text-zinc-500">
+                          {e.date}{e.end_date ? ` – ${e.end_date}` : ''} · {[e.street, e.location, e.state, e.zip].filter(Boolean).join(', ')}
+                        </p>
                         {e.description && <p className="text-xs text-zinc-400 mt-0.5">{e.description}</p>}
                         {e.url && <p className="text-xs text-blue-500 mt-0.5 truncate"><a href={e.url} target="_blank" rel="noopener noreferrer">{e.url}</a></p>}
                         <p className="text-xs text-zinc-400 mt-1">Submitted by: {e.submitter_name ?? 'Unknown'} ({e.submitter_email ?? '—'})</p>
@@ -1691,12 +1697,20 @@ export default function AdminPage() {
                 <input type="time" className={inputCls} value={eventForm.end_time} onChange={e => setEventForm(f => ({ ...f, end_time: e.target.value }))} />
               </div>
               <div>
+                <label className={labelCls}>Street Address (optional)</label>
+                <input className={inputCls} value={eventForm.street} onChange={e => setEventForm(f => ({ ...f, street: e.target.value }))} placeholder="123 Main St" />
+              </div>
+              <div>
                 <label className={labelCls}>City *</label>
                 <input className={inputCls} value={eventForm.location} onChange={e => setEventForm(f => ({ ...f, location: e.target.value }))} placeholder="Springfield" />
               </div>
               <div>
                 <label className={labelCls}>State *</label>
                 <input className={inputCls} value={eventForm.state} maxLength={2} onChange={e => setEventForm(f => ({ ...f, state: e.target.value.toUpperCase() }))} placeholder="IL" />
+              </div>
+              <div>
+                <label className={labelCls}>ZIP (optional)</label>
+                <input className={inputCls} value={eventForm.zip} onChange={e => setEventForm(f => ({ ...f, zip: e.target.value }))} placeholder="62704" />
               </div>
               <div>
                 <label className={labelCls}>Type *</label>
@@ -1707,6 +1721,10 @@ export default function AdminPage() {
               <div>
                 <label className={labelCls}>Website URL</label>
                 <input className={inputCls} value={eventForm.url} onChange={e => setEventForm(f => ({ ...f, url: e.target.value }))} placeholder="https://..." />
+              </div>
+              <div>
+                <label className={labelCls}>Photo URL (optional)</label>
+                <input className={inputCls} value={eventForm.image} onChange={e => setEventForm(f => ({ ...f, image: e.target.value }))} placeholder="https://..." />
               </div>
               <div className="md:col-span-2">
                 <label className={labelCls}>Description</label>
@@ -1789,7 +1807,7 @@ export default function AdminPage() {
                   {e.description && <p className="text-xs text-zinc-400 mt-0.5 line-clamp-1">{e.description}</p>}
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <button onClick={() => { setEditingEvent(e); setEventForm({ name: e.name, date: e.date, end_date: e.end_date ?? '', start_time: e.start_time ?? '', end_time: e.end_time ?? '', location: e.location, state: e.state, type: e.type, description: e.description, url: e.url ?? '', featured: e.featured }); setShowEventForm(true); }}
+                  <button onClick={() => { setEditingEvent(e); setEventForm({ name: e.name, date: e.date, end_date: e.end_date ?? '', start_time: e.start_time ?? '', end_time: e.end_time ?? '', street: e.street ?? '', location: e.location, state: e.state, zip: e.zip ?? '', type: e.type, description: e.description, url: e.url ?? '', image: e.image ?? '', featured: e.featured }); setShowEventForm(true); }}
                     className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition-colors">Edit</button>
                   <button onClick={() => setConfirmDeleteEvent(e)}
                     className="text-xs font-semibold text-zinc-400 hover:text-red-600 transition-colors">Delete</button>

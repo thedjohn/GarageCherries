@@ -152,6 +152,19 @@ describe('POST /api/admin/events', () => {
     expect(mockPostEventToFacebook).toHaveBeenCalledOnce();
     expect(mockRevalidatePath).toHaveBeenCalledWith('/events');
   });
+
+  it('stores street, zip, and image when provided, and nulls them when omitted', async () => {
+    mockRequireAdmin.mockResolvedValue('admin');
+    const insert = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'e1', name: 'Muscle Car Show' }, error: null }) }) });
+    mockFrom.mockReturnValue({ insert });
+    await POST(makeRequest({ ...validEvent, street: '123 Main St', zip: '63101', image: 'https://example.com/flyer.jpg' }));
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({
+      street: '123 Main St', zip: '63101', image: 'https://example.com/flyer.jpg',
+    }));
+
+    await POST(makeRequest(validEvent));
+    expect(insert).toHaveBeenLastCalledWith(expect.objectContaining({ street: null, zip: null, image: null }));
+  });
 });
 
 describe('PATCH /api/admin/events', () => {
@@ -197,6 +210,16 @@ describe('PATCH /api/admin/events', () => {
     const res: any = await PATCH(makeRequest({ id: 'e1', ...validEvent }));
     expect(res._status).toBe(200);
     expect(mockRevalidatePath).toHaveBeenCalledWith('/events');
+  });
+
+  it('includes street, zip, and image in a full edit', async () => {
+    mockRequireAdmin.mockResolvedValue('admin');
+    const update = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+    mockFrom.mockReturnValue({ update });
+    await PATCH(makeRequest({ id: 'e1', ...validEvent, street: '456 Elm St', zip: '90210', image: 'https://example.com/flyer2.jpg' }));
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      street: '456 Elm St', zip: '90210', image: 'https://example.com/flyer2.jpg',
+    }));
   });
 
   it('returns 500 when the full edit fails', async () => {

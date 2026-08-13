@@ -1,21 +1,37 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { resizeImageFile } from '@/lib/resizeImage';
 
 const EVENT_TYPES = ['show', 'swap-meet', 'cruise', 'auction'] as const;
 const TYPE_LABELS: Record<string, string> = {
   'show': 'Car Show', 'swap-meet': 'Swap Meet', 'cruise': 'Cruise Night', 'auction': 'Auction',
 };
 
-const BLANK = { name: '', date: '', end_date: '', start_time: '', end_time: '', location: '', state: '', type: 'show', description: '', url: '' };
+const BLANK = { name: '', date: '', end_date: '', start_time: '', end_time: '', street: '', location: '', state: '', zip: '', type: 'show', description: '', url: '' };
 
 export default function SubmitEventForm() {
   const [user, setUser] = useState<{ email: string } | null | undefined>(undefined);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(BLANK);
+  const [photo, setPhoto] = useState<{ file: File; preview: string } | null>(null);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const resized = await resizeImageFile(file);
+    if (photo) URL.revokeObjectURL(photo.preview);
+    setPhoto({ file: resized, preview: URL.createObjectURL(resized) });
+  }
+  function removePhoto() {
+    if (photo) URL.revokeObjectURL(photo.preview);
+    setPhoto(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
 
   // Lazy-load auth state on first render
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -45,7 +61,7 @@ export default function SubmitEventForm() {
         <p className="text-2xl mb-3">✅</p>
         <h2 className="text-lg font-bold text-zinc-900 mb-2">Event submitted!</h2>
         <p className="text-sm text-zinc-500 mb-4">Our team will review it and add it to the calendar shortly.</p>
-        <button onClick={() => { setSuccess(false); setForm(BLANK); setOpen(false); }}
+        <button onClick={() => { setSuccess(false); setForm(BLANK); removePhoto(); setOpen(false); }}
           className="text-sm font-semibold text-red-600 hover:underline">Submit another</button>
       </div>
     );
@@ -54,10 +70,22 @@ export default function SubmitEventForm() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setWorking(true); setError('');
+
+    let image: string | null = null;
+    if (photo) {
+      const supabase = createClient();
+      const ext = photo.file.name.split('.').pop();
+      const path = `events/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from('listing-images').upload(path, photo.file);
+      if (uploadErr) { setError('Photo upload failed: ' + uploadErr.message); setWorking(false); return; }
+      const { data: { publicUrl } } = supabase.storage.from('listing-images').getPublicUrl(path);
+      image = publicUrl;
+    }
+
     const res = await fetch('/api/events/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, image }),
     });
     const json = await res.json();
     setWorking(false);
@@ -114,8 +142,33 @@ export default function SubmitEventForm() {
             </div>
           </div>
           <div>
-            <label className={labelCls}>City / Venue *</label>
-            <input className={inputCls} required value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="Springfield" />
+            <label className={labelCls}>Street Address (optional)</label>
+            <input className={inputCls} value={form.street} onChange={e => setForm(f => ({ ...f, street: e.target.value }))} placeholder="123 Main St" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>City / Venue *</label>
+              <input className={inputCls} required value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="Springfield" />
+            </div>
+            <div>
+              <label className={labelCls}>ZIP (optional)</label>
+              <input className={inputCls} value={form.zip} onChange={e => setForm(f => ({ ...f, zip: e.target.value }))} placeholder="62704" />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>Photo (optional)</label>
+            {photo ? (
+              <div className="relative inline-block">
+                <img src={photo.preview} alt="" className="w-32 h-32 object-cover rounded-lg border border-zinc-200" />
+                <button type="button" onClick={removePhoto}
+                  className="absolute top-1 right-1 bg-black/60 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">✕</button>
+              </div>
+            ) : (
+              <label className="flex items-center justify-center gap-2 w-32 h-32 border-2 border-dashed border-zinc-200 rounded-lg cursor-pointer hover:border-red-400 hover:bg-red-50 transition-colors text-xs text-zinc-500 text-center">
+                📷 Add photo
+                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handlePhotoChange} />
+              </label>
+            )}
           </div>
           <div>
             <label className={labelCls}>Description *</label>
@@ -132,7 +185,7 @@ export default function SubmitEventForm() {
               className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-colors">
               {working ? 'Submitting…' : 'Submit for Review'}
             </button>
-            <button type="button" onClick={() => { setOpen(false); setError(''); setForm(BLANK); }}
+            <button type="button" onClick={() => { setOpen(false); setError(''); setForm(BLANK); removePhoto(); }}
               className="text-sm font-semibold text-zinc-500 hover:text-zinc-900 transition-colors">
               Cancel
             </button>

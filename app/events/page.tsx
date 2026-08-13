@@ -28,9 +28,10 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 export interface CarShowEvent {
   id: string; name: string; slug?: string | null; date: string; end_date?: string | null;
   start_time?: string | null; end_time?: string | null;
-  location: string; state: string;
+  street?: string | null; location: string; state: string; zip?: string | null;
   type: 'show' | 'swap-meet' | 'cruise' | 'auction';
   featured: boolean; description: string; url?: string | null; status: string;
+  image?: string | null;
 }
 
 export const TYPE_LABELS: Record<CarShowEvent['type'], string> = {
@@ -182,6 +183,9 @@ export default async function EventsPage({ searchParams }: Props) {
 export function EventCard({ event, highlight }: { event: CarShowEvent; highlight?: boolean }) {
   return (
     <div className={`bg-white border rounded-xl p-5 flex gap-4 items-start ${highlight ? 'border-red-200 shadow-sm' : 'border-zinc-100'}`}>
+      {event.image && (
+        <img src={event.image} alt="" className="hidden sm:block shrink-0 w-20 h-20 object-cover rounded-lg" />
+      )}
       <div className="shrink-0 text-center bg-zinc-50 rounded-lg px-3 py-2 min-w-[56px]">
         <p className="text-xs font-bold text-zinc-400 uppercase">
           {new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short' })}
