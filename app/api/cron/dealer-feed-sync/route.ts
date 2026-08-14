@@ -153,6 +153,20 @@ const FEED_FORMATS: Record<string, FeedFormatColumns> = {
     bodyStyle: 'Body',
     description: 'Description',
   },
+  // JTZ Enterprise's feed for Zoom Classic Cars (pushed via SFTP) -- lowercase,
+  // no-space column names throughout, confirmed against a real sample row
+  // pulled directly off the SFTP account, not assumed.
+  jtz_enterprise: {
+    stockNumber: 'Stock Number',
+    subModel: 'trim',
+    price: 'price',
+    transmission: 'transmission',
+    engine: 'enginetype',
+    color: ['color'],
+    images: 'photourl_list',
+    bodyStyle: 'bodystyle',
+    description: 'dealer_notes',
+  },
 };
 
 const STATE_NAME_TO_ABBR: Record<string, string> = {
