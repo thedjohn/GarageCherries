@@ -93,6 +93,40 @@ describe('POST /api/dealer/feed-sftp/provision', () => {
     expect(res._data).toEqual({ username: 'dealer_dealer-1', password: 'one-time-pw', host: 'video.garagecherries.com', port: 2022 });
   });
 
+  it('best-effort deletes any existing account before provisioning, so regenerating an already-provisioned dealer succeeds instead of colliding', async () => {
+    const updateCalls: any[] = [];
+    makeFromMock({ id: DEALER_ID }, updateCalls);
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 500, text: async () => 'user already exists' }) // pre-delete call, deliberately failing
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ username: 'dealer_dealer-1', password: 'new-pw', host: 'video.garagecherries.com', port: 2022 }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res: any = await POST(makeReq());
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, 'https://video.garagecherries.com/dealer-feed/dealers/dealer-1', {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer bridge-secret' },
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, 'https://video.garagecherries.com/dealer-feed/dealers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer bridge-secret' },
+      body: JSON.stringify({ dealerId: DEALER_ID }),
+    });
+    expect(res._status).toBe(200);
+    expect(res._data.username).toBe('dealer_dealer-1');
+  });
+
+  it('does not let a network-level failure of the pre-delete call block provisioning', async () => {
+    makeFromMock({ id: DEALER_ID });
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new Error('network down')) // pre-delete call throws outright
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ username: 'dealer_dealer-1', password: 'new-pw', host: 'video.garagecherries.com', port: 2022 }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res: any = await POST(makeReq());
+    expect(res._status).toBe(200);
+  });
+
   it('returns 502 without writing to the dealer row when the bridge call fails', async () => {
     const updateCalls: any[] = [];
     makeFromMock({ id: DEALER_ID }, updateCalls);

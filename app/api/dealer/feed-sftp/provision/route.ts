@@ -32,6 +32,17 @@ export async function POST(_request: NextRequest) {
     return NextResponse.json({ error: 'SFTP feed intake is not configured' }, { status: 503 });
   }
 
+  // Best-effort cleanup of any account already provisioned for this dealer --
+  // the bridge's create call 500s if one already exists, which broke "Generate
+  // New Password" for any dealer regenerating rather than provisioning for the
+  // first time (confirmed in production against Zoom Classic Cars). Failure
+  // here is never fatal: if nothing existed to delete, that's the normal
+  // first-time-provisioning case and this is just a no-op.
+  await fetch(`${vpsUrl}/dealer-feed/dealers/${encodeURIComponent(dealer.id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${bridgeSecret}` },
+  }).catch(() => {});
+
   const bridgeRes = await fetch(`${vpsUrl}/dealer-feed/dealers`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${bridgeSecret}` },
