@@ -168,7 +168,7 @@ export default function Footer() {
 
         <div className="border-t border-zinc-800 mt-8 pt-6 flex flex-col md:flex-row justify-between items-center gap-3 text-xs">
           <p>© {new Date().getFullYear()} GarageCherries. All rights reserved.</p>
-          <p>The #1 specialty car marketplace</p>
+          <p>The specialty marketplace built for enthusiast vehicles</p>
         </div>
       </div>
     </footer>
