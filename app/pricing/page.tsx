@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { getSiteSettings } from '@/lib/siteSettings';
+import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'Pricing — Dealer Plans & Private Seller Options',
@@ -80,6 +81,13 @@ const FAQS = [
 
 export default async function PricingPage() {
   const settings = await getSiteSettings();
+  const supabase = await createClient();
+  // Real counts instead of a hardcoded "hundreds" claim -- same query shape
+  // the homepage already uses for its own stats.
+  const [{ count: dealerCount }, { count: listingCount }] = await Promise.all([
+    supabase.from('dealers').select('id', { count: 'exact', head: true }),
+    supabase.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+  ]);
   const isPromo = new Date() < new Date(settings.promoApplicationCutoff);
   const promoExpiresLabel = new Date(settings.promoExpiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   const promoCutoffLabel = new Date(settings.promoApplicationCutoff).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
@@ -324,7 +332,9 @@ export default async function PricingPage() {
       <section className="bg-red-600 text-white py-16 text-center">
         <div className="max-w-xl mx-auto px-4">
           <h2 className="text-3xl font-extrabold mb-3">Ready to Start Selling?</h2>
-          <p className="text-red-100 mb-8">Join hundreds of classic car dealers already on GarageCherries.</p>
+          <p className="text-red-100 mb-8">
+            Join {dealerCount ?? 0} dealers already listing {(listingCount ?? 0).toLocaleString()}+ collector vehicles on GarageCherries.
+          </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/dealer/login"
               className="bg-white text-red-600 font-bold px-8 py-3 rounded-xl hover:bg-red-50 transition-colors">

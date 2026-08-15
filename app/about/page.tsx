@@ -71,8 +71,8 @@ export default async function AboutPage() {
             },
             {
               icon: '🤝',
-              title: 'Verified Dealers Only',
-              body: 'We work exclusively with established dealers who specialize in classic and collector vehicles. No private scammers, no bait-and-switch listings.',
+              title: 'Vetted Dealers & Reviewed Listings',
+              body: 'Every dealer account is reviewed before approval, and every private-seller listing is checked by our team before it goes live. No anonymous drop-in listings, no bait-and-switch.',
             },
             {
               icon: '📖',
