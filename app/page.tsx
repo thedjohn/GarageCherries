@@ -52,7 +52,7 @@ export default async function HomePage() {
   const stats = [
     { label: 'Active Listings', value: allCars.length },
     { label: 'Dealers', value: dealerCount ?? 0 },
-    { label: 'Cars Sold', value: soldCount ?? 0 },
+    { label: 'Cars Sold All-Time', value: soldCount ?? 0 },
   ];
 
   const carYears = allCars.map(c => c.year).filter(y => Number.isFinite(y));

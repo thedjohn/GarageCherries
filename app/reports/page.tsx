@@ -80,7 +80,10 @@ export default async function MarketReportPage() {
     .eq('is_sold', true)
     .gte('sold_at', `${thisMonth}-01T00:00:00Z`);
 
-  const { data: totalSold } = await admin
+  // head: true means Supabase returns the count on `count`, not `data`
+  // (data is always null in that mode) -- this was previously destructured
+  // as `data`, so the section below never rendered at all.
+  const { count: totalSoldCount } = await admin
     .from('listings')
     .select('id', { count: 'exact', head: true })
     .eq('is_sold', true);
@@ -89,6 +92,25 @@ export default async function MarketReportPage() {
   const prices = allCars.map(c => c.price).filter(Boolean).sort((a, b) => a - b);
   const medianPrice = prices.length > 0 ? prices[Math.floor(prices.length / 2)] : 0;
   const avgPrice = prices.length > 0 ? prices.reduce((s, p) => s + p, 0) / prices.length : 0;
+
+  // New listings this month -- reuses thisMonthStart already computed above
+  // for the views query.
+  const newListingsThisMonth = allCars.filter(c => c.listed_at && c.listed_at >= thisMonthStart).length;
+
+  // Average price by condition -- every figure in the Market Snapshot below
+  // is computed directly from allCars, replacing what used to be fixed
+  // prose ("strong buyer demand", specific model call-outs) that never
+  // changed and wasn't derived from real data at all.
+  const conditionPriceMap: Record<string, { total: number; count: number }> = {};
+  for (const c of allCars) {
+    if (!c.price || c.price <= 0) continue;
+    if (!conditionPriceMap[c.condition]) conditionPriceMap[c.condition] = { total: 0, count: 0 };
+    conditionPriceMap[c.condition].total += c.price;
+    conditionPriceMap[c.condition].count++;
+  }
+  const avgByCondition = Object.entries(conditionPriceMap)
+    .map(([condition, v]) => ({ condition, avg: Math.round(v.total / v.count) }))
+    .sort((a, b) => (conditionMap[b.condition] ?? 0) - (conditionMap[a.condition] ?? 0));
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
@@ -215,21 +237,26 @@ export default async function MarketReportPage() {
         </section>
       )}
 
-      {/* Market Commentary */}
+      {/* Market Snapshot -- every line below is computed directly from
+          current inventory data, not hand-written commentary. */}
       <section className="bg-zinc-50 border border-zinc-100 rounded-2xl p-8 mb-10">
-        <h2 className="text-lg font-bold text-zinc-900 mb-4">Market Observations — {monthName}</h2>
-        <div className="space-y-3 text-zinc-600 leading-relaxed text-sm">
-          <p>The classic car market continues to see strong buyer demand for driver-quality examples priced in the $20,000–$50,000 range. Show-condition vehicles above $100,000 are moving more slowly as buyers become increasingly price-sensitive heading into the summer show season.</p>
-          <p>Muscle cars from the 1968–1972 era remain the most-searched segment on GarageCherries. Pontiac GTOs and Oldsmobile 4-4-2s are showing strong interest relative to available inventory, suggesting upward price pressure in those models specifically.</p>
-          <p>Project cars in the $5,000–$15,000 range are selling quickly as entry-level collectors look for restoration opportunities. Complete, running examples with good sheet metal are particularly competitive regardless of mechanical condition.</p>
+        <h2 className="text-lg font-bold text-zinc-900 mb-4">Market Snapshot — {monthName}</h2>
+        <div className="space-y-2 text-zinc-600 leading-relaxed text-sm">
+          <p>{newListingsThisMonth} new listing{newListingsThisMonth === 1 ? '' : 's'} added this month, bringing total active inventory to {allCars.length.toLocaleString()}.</p>
+          {avgByCondition.length > 0 && (
+            <p>Average asking price by condition: {avgByCondition.map(c => `${c.condition} ${fmt(c.avg)}`).join(' · ')}.</p>
+          )}
+          {byMake.length > 0 && (
+            <p>{byMake[0].make} carries the highest average asking price among makes with active listings, at {fmt(byMake[0].avg)} across {byMake[0].count} listing{byMake[0].count === 1 ? '' : 's'}.</p>
+          )}
         </div>
       </section>
 
       {/* Total sold badge */}
-      {(totalSold as any)?.count > 0 && (
+      {!!totalSoldCount && totalSoldCount > 0 && (
         <div className="text-center py-8 border-t border-zinc-100">
-          <p className="text-4xl font-extrabold text-zinc-900">{((totalSold as any).count as number).toLocaleString()}</p>
-          <p className="text-zinc-500 mt-1">cars sold through GarageCherries</p>
+          <p className="text-4xl font-extrabold text-zinc-900">{totalSoldCount.toLocaleString()}</p>
+          <p className="text-zinc-500 mt-1">cars sold through GarageCherries, all-time</p>
         </div>
       )}
 
