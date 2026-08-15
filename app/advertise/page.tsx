@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { getSiteSettings } from '@/lib/siteSettings';
 
 export const metadata: Metadata = {
   title: 'Advertise',
@@ -39,7 +40,17 @@ const CATEGORIES = [
   { icon: '🔍', label: 'Pre-Purchase Inspection', desc: 'Buyers sending $50k+ want peace of mind. That\'s your pitch.' },
 ];
 
-export default function AdvertisePage() {
+export default async function AdvertisePage() {
+  const settings = await getSiteSettings();
+  const isPromo = new Date() < new Date(settings.promoApplicationCutoff);
+  const promoExpiresLabel = new Date(settings.promoExpiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  // Matches the same isPromo pattern the Pricing page already uses for its
+  // advertiser plans, and what /api/advertiser/signup actually grants
+  // (trial_ends_at = promoExpiresAt during the promo window) -- this page
+  // was just never wired up to it, so it always showed a flat "14-day trial"
+  // even during the free-through-2026 promo.
+  const trialCtaLabel = isPromo ? 'Get Free Access Through 2026' : `Start ${settings.advertiserTrialDays}-Day Free Trial`;
+  const trialSubLabel = isPromo ? `Free through ${promoExpiresLabel} · No credit card required` : 'No credit card required · Cancel anytime';
   return (
     <div className="max-w-5xl mx-auto px-4 py-16">
       {/* Hero */}
@@ -58,14 +69,14 @@ export default function AdvertisePage() {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link href="/advertiser/signup"
             className="bg-red-600 hover:bg-red-700 text-white font-bold px-8 py-3.5 rounded-xl text-base transition-colors">
-            Start 14-Day Free Trial
+            {trialCtaLabel}
           </Link>
           <Link href="/advertiser/login"
             className="border-2 border-zinc-200 hover:border-zinc-300 text-zinc-700 font-bold px-8 py-3.5 rounded-xl text-base transition-colors">
             Sign In
           </Link>
         </div>
-        <p className="text-sm text-zinc-400 mt-3">No credit card required · Cancel anytime</p>
+        <p className="text-sm text-zinc-400 mt-3">{trialSubLabel}</p>
       </div>
 
       {/* Who it's for */}
@@ -139,10 +150,10 @@ export default function AdvertisePage() {
       {/* CTA */}
       <div className="bg-zinc-900 rounded-2xl p-10 text-center text-white">
         <h2 className="text-2xl font-extrabold mb-3">Ready to reach more customers?</h2>
-        <p className="text-zinc-400 mb-6">Join local businesses already advertising to GarageCherries buyers.</p>
+        <p className="text-zinc-400 mb-6">Get your business in front of engaged classic car buyers, right when they're shopping.</p>
         <Link href="/advertiser/signup"
           className="inline-block bg-red-600 hover:bg-red-700 text-white font-bold px-8 py-3.5 rounded-xl transition-colors">
-          Start Free Trial
+          {trialCtaLabel}
         </Link>
       </div>
     </div>
