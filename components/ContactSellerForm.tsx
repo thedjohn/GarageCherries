@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useMessenger } from '@/lib/messenger-context';
+import { trackEvent } from '@/lib/gtag';
 
 interface Props {
   carId: string;
@@ -52,6 +53,7 @@ export default function ContactSellerForm({ carId, carTitle, sellerName, sellerE
       if (!res.ok) { setError(json.error ?? 'Failed to send.'); return; }
       setOpen(false);
       setMessage('');
+      trackEvent('contact_seller', { car_id: carId });
       // Open the floating messenger widget
       openChat(json.conversationId, carTitle);
     } catch {

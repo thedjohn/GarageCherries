@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import Turnstile from '@/components/Turnstile';
 import GoogleSignInButton from '@/components/GoogleSignInButton';
 import FacebookSignInButton from '@/components/FacebookSignInButton';
+import { trackEvent } from '@/lib/gtag';
 
 function SignupForm() {
   const promo = useSearchParams().get('promo') ?? '';
@@ -40,7 +41,7 @@ function SignupForm() {
     });
 
     setLoading(false);
-    if (authError) { setError(authError.message); } else { setSent(true); }
+    if (authError) { setError(authError.message); } else { setSent(true); trackEvent('sign_up', { method: 'email' }); }
   };
 
   if (sent) {

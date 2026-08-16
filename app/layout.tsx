@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import { MessengerProvider } from '@/lib/messenger-context';
 import MessengerWidget from '@/components/MessengerWidget';
 import PromoBanner from '@/components/PromoBanner';
+import UtmCapture from '@/components/UtmCapture';
 
 const geist = Geist({ subsets: ['latin'] });
 
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={`${geist.className} bg-zinc-50 text-zinc-900 min-h-screen flex flex-col`}>
+        <UtmCapture />
         <MessengerProvider>
           {/* SessionGuard disabled 2026-07-07 -- two bugs in a row (a timing-race
               false positive, then a logic inversion) force-logged-out at least one

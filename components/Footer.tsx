@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
+import { trackEvent } from '@/lib/gtag';
 
 function NewsletterForm() {
   const [email, setEmail] = useState('');
@@ -25,6 +26,7 @@ function NewsletterForm() {
       } else {
         setStatus('success');
         setEmail('');
+        trackEvent('newsletter_signup');
       }
     } catch {
       setErrorMsg('Signup failed. Please try again.');

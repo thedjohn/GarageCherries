@@ -11,6 +11,7 @@ import MakeOfferButton from '@/components/MakeOfferButton';
 import FinancingCalculator from '@/components/FinancingCalculator';
 import YouTubeEmbed from '@/components/YouTubeEmbed';
 import InspectionReportCard from '@/components/InspectionReportCard';
+import TrackedLink from '@/components/TrackedLink';
 import {
   getCar, getDealerById, formatPrice, formatListingPrice, formatMileage, formatPhone,
   toSegment, CARS,
@@ -472,10 +473,11 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                     {dealer.since && <p className="text-xs text-zinc-400 mt-0.5">Est. {dealer.since}</p>}
                     <p className="text-sm text-zinc-500 mt-1">{formatPhone(car.sellerPhone)}</p>
                     {(dealer as any).website && (
-                      <a href={(dealer as any).website} target="_blank" rel="noopener noreferrer"
+                      <TrackedLink href={(dealer as any).website} target="_blank" rel="noopener noreferrer"
+                        eventName="dealer_website_click" eventParams={{ dealer_id: car.sellerId }}
                         className="text-xs text-zinc-400 hover:text-red-600 transition-colors mt-1 inline-block">
                         Visit website ↗
-                      </a>
+                      </TrackedLink>
                     )}
                   </>
                 ) : (
@@ -484,10 +486,11 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
               </div>
 
               {dealer ? (
-                <a href={`tel:${car.sellerPhone.replace(/\D/g, '')}`}
+                <TrackedLink href={`tel:${car.sellerPhone.replace(/\D/g, '')}`}
+                  eventName="dealer_phone_click" eventParams={{ dealer_id: car.sellerId }}
                   className="block w-full bg-red-600 hover:bg-red-700 text-white font-bold text-center py-3 rounded-xl transition-colors mb-3">
                   Call Dealer
-                </a>
+                </TrackedLink>
               ) : (
                 <p className="text-xs text-zinc-400 text-center mb-3">Contact this seller using the form below</p>
               )}
@@ -538,10 +541,11 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                 <>
                   <Link href={`/dealers/${dealer.slug}`} className="font-bold text-red-600 hover:underline block">{car.sellerName}</Link>
                   <p className="text-sm text-zinc-500 mb-4">{formatPhone(car.sellerPhone)}</p>
-                  <a href={`tel:${car.sellerPhone.replace(/\D/g, '')}`}
+                  <TrackedLink href={`tel:${car.sellerPhone.replace(/\D/g, '')}`}
+                    eventName="dealer_phone_click" eventParams={{ dealer_id: car.sellerId }}
                     className="block w-full bg-red-600 text-white font-bold text-center py-3 rounded-xl mb-3">
                     Call Dealer
-                  </a>
+                  </TrackedLink>
                 </>
               ) : (
                 <p className="text-sm text-zinc-500 mb-4">{car.location}{car.state ? `, ${car.state}` : ''}</p>

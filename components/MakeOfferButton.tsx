@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { trackEvent } from '@/lib/gtag';
 
 interface Props {
   carId: string;
@@ -32,7 +33,10 @@ export default function MakeOfferButton({ carId, carTitle, askingPrice, dealerId
       body: JSON.stringify({ carId, carTitle, dealerId, amount: Number(amount), buyerName: name, buyerEmail: email, message }),
     });
     setSending(false);
-    if (res.ok) { setSent(true); }
+    if (res.ok) {
+      setSent(true);
+      trackEvent('make_offer', { car_id: carId, amount: Number(amount) });
+    }
     else {
       const d = await res.json().catch(() => ({}));
       setError(d.error ?? 'Failed to send offer. Please try again.');
