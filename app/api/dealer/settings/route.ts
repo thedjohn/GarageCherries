@@ -8,7 +8,20 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await request.json();
-  const { dealerId, ...fields } = body;
+  const { dealerId, ...rawFields } = body;
+
+  // Only dealer-editable preferences may be written here -- plan, beta_expires_at,
+  // and any other server-controlled column must never be settable via this route.
+  const EDITABLE_FIELDS = [
+    'name', 'phone', 'address', 'location', 'state', 'zip', 'description', 'website',
+    'specialties', 'logo',
+    'feed_protocol', 'feed_url', 'feed_host', 'feed_port', 'feed_username', 'feed_password',
+    'feed_remote_path', 'feed_sync_hour',
+  ] as const;
+  const fields: Record<string, unknown> = {};
+  for (const key of EDITABLE_FIELDS) {
+    if (key in rawFields) fields[key] = rawFields[key];
+  }
 
   const admin = createAdminClient();
 

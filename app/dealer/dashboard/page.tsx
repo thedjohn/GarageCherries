@@ -171,7 +171,6 @@ function VehicleModal({ dealerId, dealerName, dealerLocation, dealerState, car, 
       location:     fields.location,
       state:        fields.state.toUpperCase().slice(0, 2),
       images:       allImages,
-      featured,
     };
 
     let dbError;
@@ -193,6 +192,19 @@ function VehicleModal({ dealerId, dealerName, dealerLocation, dealerState, car, 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ carId: car!.id, oldPrice, newPrice }),
         }).catch(() => {});
+      }
+      // Featured goes through a server-side cap check instead of the direct
+      // write above -- see app/api/dealer/listings/[id]/featured/route.ts
+      if (!error && featured !== (car?.featured ?? false)) {
+        const res = await fetch(`/api/dealer/listings/${car!.id}/featured`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ featured }),
+        });
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          dbError = { message: json.error ?? 'Failed to update featured status' };
+        }
       }
     } else {
       const uid = Date.now();
