@@ -23,6 +23,7 @@ interface DbCar {
   listed_at: string; images: string[]; seller_id: string;
   status?: string; rejection_reason?: string | null;
   expires_at?: string | null; is_feed_managed?: boolean; is_sold?: boolean;
+  youtube_video_id?: string | null;
 }
 interface DbDealer {
   id: string; slug: string; name: string;
@@ -192,6 +193,11 @@ function VehicleModal({ dealerId, dealerName, dealerLocation, dealerState, car, 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ carId: car!.id, oldPrice, newPrice }),
         }).catch(() => {});
+        // Flag this listing's social videos as needing a refresh -- see the
+        // matching comment in app/api/listings/[id]/route.ts.
+        if (car!.youtube_video_id) {
+          void supabase.from('listings').update({ price_dropped_at: new Date().toISOString() }).eq('id', car!.id);
+        }
       }
       // Featured goes through a server-side cap check instead of the direct
       // write above -- see app/api/dealer/listings/[id]/featured/route.ts
@@ -533,7 +539,7 @@ export default function DealerDashboard() {
       setDealer(dealerRow);
       const { data: cars } = await supabase
         .from('listings')
-        .select('id, slug, title, year, make, model, price, mileage, condition, body_style, engine, horsepower, torque, cylinders, displacement, forced_induction, fuel_type, num_speeds, drive_type, transmission, color, interior_color, seat_material, seating_type, description, location, state, featured, listed_at, images, seller_id, status, rejection_reason, expires_at, is_feed_managed, is_sold')
+        .select('id, slug, title, year, make, model, price, mileage, condition, body_style, engine, horsepower, torque, cylinders, displacement, forced_induction, fuel_type, num_speeds, drive_type, transmission, color, interior_color, seat_material, seating_type, description, location, state, featured, listed_at, images, seller_id, status, rejection_reason, expires_at, is_feed_managed, is_sold, youtube_video_id')
         .eq('seller_id', dealerRow.id)
         .order('created_at', { ascending: false });
       setListings(cars ?? []);

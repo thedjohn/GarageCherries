@@ -1,0 +1,30 @@
+name: Video Price Refresh
+
+# Runs daily (not hourly, unlike video-backfill.yml) to re-render and repost
+# social videos for listings whose price dropped after their video already
+# went out -- see app/api/admin/video-price-refresh/route.ts for the actual
+# selection/debounce logic. Daily, not hourly, because a refresh does
+# strictly more work per listing (delete old + post new, across up to 3
+# platforms) than backfill's simpler "post if missing", and this shares the
+# same YouTube upload quota and VPS render queue that new-listing posting
+# and backfill both depend on -- keeping this infrequent avoids it eating
+# into either of those budgets.
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call video-price-refresh endpoint
+        run: |
+          status=$(curl -s -o response.txt -w "%{http_code}" -X GET "https://www.garagecherries.com/api/admin/video-price-refresh" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "HTTP status: $status"
+          echo "Response body:"
+          cat response.txt
+          if [ "$status" -ge 400 ]; then
+            exit 1
+          fi

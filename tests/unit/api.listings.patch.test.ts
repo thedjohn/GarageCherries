@@ -286,6 +286,54 @@ describe('PATCH /api/listings/[id]', () => {
     expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/notify-watchers'), expect.objectContaining({ method: 'POST' }));
   });
 
+  it('flags price_dropped_at on a price drop when the listing already has a YouTube video', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+    let listingsCall = 0;
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'suspended_users') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'price_history') return { insert: vi.fn().mockResolvedValue({}) };
+      if (table === 'listings') {
+        listingsCall++;
+        if (listingsCall === 1) {
+          return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { seller_id: 'user-1', status: 'approved', resubmission_count: 0, price: 5000, year: 2002, make: 'Dodge', model: 'Ram', youtube_video_id: 'yt-1' } }) }) }) };
+        }
+        return { update: mockUpdate };
+      }
+      return {};
+    });
+    mockUpdate.mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+    process.env.BETA_MODE = 'true';
+
+    await PATCH(makeRequest({ price: 4000 }), makeParams('listing-1'));
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ price_dropped_at: expect.any(String) }));
+  });
+
+  it('does not flag price_dropped_at on a price drop when the listing has no video yet', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+    let listingsCall = 0;
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'suspended_users') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'price_history') return { insert: vi.fn().mockResolvedValue({}) };
+      if (table === 'listings') {
+        listingsCall++;
+        if (listingsCall === 1) {
+          return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { seller_id: 'user-1', status: 'approved', resubmission_count: 0, price: 5000, year: 2002, make: 'Dodge', model: 'Ram', youtube_video_id: null } }) }) }) };
+        }
+        return { update: mockUpdate };
+      }
+      return {};
+    });
+    mockUpdate.mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+    process.env.BETA_MODE = 'true';
+
+    await PATCH(makeRequest({ price: 4000 }), makeParams('listing-1'));
+    expect(mockUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ price_dropped_at: expect.any(String) }));
+  });
+
   it('does not record price_history when the new price is not lower', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
     const insert = vi.fn();

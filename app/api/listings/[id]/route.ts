@@ -33,7 +33,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Verify ownership
   const { data: listing } = await admin
     .from('listings')
-    .select('seller_id, status, resubmission_count, price, year, make, model')
+    .select('seller_id, status, resubmission_count, price, year, make, model, youtube_video_id')
     .eq('id', id)
     .single();
 
@@ -101,6 +101,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       price: newPrice,
       changed_at: new Date().toISOString(),
     });
+    // Flag this listing's social videos as needing a refresh -- they were
+    // rendered with the old (now stale) price baked in. Only relevant if a
+    // video actually exists yet; picked up by the scheduled batch job in
+    // app/api/admin/video-price-refresh, never fired synchronously here.
+    // Never cleared here -- video-pipeline/complete determines per-platform
+    // staleness by comparing each platform's own *_posted_at against this.
+    if (listing.youtube_video_id) {
+      void admin.from('listings').update({ price_dropped_at: new Date().toISOString() }).eq('id', id);
+    }
     const base = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.garagecherries.com';
     fetch(`${base}/api/notify-watchers`, {
       method: 'POST',

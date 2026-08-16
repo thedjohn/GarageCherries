@@ -167,22 +167,24 @@ async function postReelStep(pageId: string, token: string, params: Record<string
 }
 
 // Designed to never throw, same contract as postListingToFacebook. Returns
-// whether the post actually succeeded. videoUrl must already be uploaded to
-// a public host (e.g. Supabase storage) before calling this -- unlike the
-// photo post, there's no local-upload path here.
-export async function postListingReelToFacebook(listing: ListingPostInput, videoUrl: string): Promise<boolean> {
+// the new Reel's video ID on success (matching postListingReelToYouTube's
+// convention, so a caller can record it for later cleanup/replacement), or
+// null on failure. videoUrl must already be uploaded to a public host (e.g.
+// Supabase storage) before calling this -- unlike the photo post, there's
+// no local-upload path here.
+export async function postListingReelToFacebook(listing: ListingPostInput, videoUrl: string): Promise<string | null> {
   const pageId = process.env.FACEBOOK_PAGE_ID;
   const token = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
   if (!pageId || !token) {
     log.info('Facebook Reel post skipped — FACEBOOK_PAGE_ID/FACEBOOK_PAGE_ACCESS_TOKEN not configured');
-    return false;
+    return null;
   }
 
   const caption = buildListingCaption(listing);
 
   try {
     const start = await postReelStep(pageId, token, { upload_phase: 'start' });
-    if (!start.success || !start.data?.video_id || !start.data?.upload_url) return false;
+    if (!start.success || !start.data?.video_id || !start.data?.upload_url) return null;
     const videoId = start.data.video_id as string;
 
     const uploadRes = await fetch(start.data.upload_url, {
@@ -192,7 +194,7 @@ export async function postListingReelToFacebook(listing: ListingPostInput, video
     const uploadData = await uploadRes.json();
     if (!uploadRes.ok || !uploadData.success) {
       log.error('Facebook Reel upload failed', new Error(uploadData.error?.message ?? `HTTP ${uploadRes.status}`), { videoId });
-      return false;
+      return null;
     }
 
     const finish = await postReelStep(pageId, token, {
@@ -201,9 +203,34 @@ export async function postListingReelToFacebook(listing: ListingPostInput, video
       video_state: 'PUBLISHED',
       description: caption,
     });
-    return finish.success;
+    return finish.success ? videoId : null;
   } catch (err) {
     log.error('postListingReelToFacebook threw', err instanceof Error ? err : new Error(String(err)), { listingId: listing.id });
+    return null;
+  }
+}
+
+// Deletes a previously-posted Facebook Reel by its video ID -- used to clean
+// up the old video when a listing's price drop triggers a refreshed repost.
+// Never throws; a failed delete just leaves the stale Reel up alongside the
+// new one rather than blocking the refresh, same tolerance as everywhere
+// else in this pipeline.
+export async function deleteFacebookReel(videoId: string): Promise<boolean> {
+  const token = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+  if (!token) {
+    log.info('Facebook Reel delete skipped — FACEBOOK_PAGE_ACCESS_TOKEN not configured');
+    return false;
+  }
+  try {
+    const res = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${videoId}?access_token=${token}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok || data.error || data.success === false) {
+      log.error('Facebook Reel delete failed', new Error(data.error?.message ?? `HTTP ${res.status}`), { videoId });
+      return false;
+    }
+    return true;
+  } catch (err) {
+    log.error('deleteFacebookReel threw', err instanceof Error ? err : new Error(String(err)), { videoId });
     return false;
   }
 }
@@ -227,28 +254,62 @@ async function waitForInstagramContainer(igUserId: string, token: string, contai
   return false;
 }
 
-export async function postListingReelToInstagram(listing: ListingPostInput, videoUrl: string): Promise<boolean> {
+// Returns the published media's permanent ID on success (matching
+// postListingReelToYouTube/postListingReelToFacebook's convention), not the
+// temporary container ID used mid-upload -- the container ID from the
+// 'media' step is only valid during processing, the real, permanent media
+// ID only comes back from the final 'media_publish' response.
+export async function postListingReelToInstagram(listing: ListingPostInput, videoUrl: string): Promise<string | null> {
   const igUserId = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID;
   const token = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
   if (!igUserId || !token) {
     log.info('Instagram Reel post skipped — INSTAGRAM_BUSINESS_ACCOUNT_ID/FACEBOOK_PAGE_ACCESS_TOKEN not configured');
-    return false;
+    return null;
   }
 
   const caption = buildListingCaption(listing);
 
   try {
     const container = await postToInstagram(igUserId, token, 'media', { media_type: 'REELS', video_url: videoUrl, caption });
-    if (!container.success || !container.data?.id) return false;
+    if (!container.success || !container.data?.id) return null;
     const containerId = container.data.id as string;
 
     const ready = await waitForInstagramContainer(igUserId, token, containerId);
-    if (!ready) return false;
+    if (!ready) return null;
 
     const publish = await postToInstagram(igUserId, token, 'media_publish', { creation_id: containerId });
-    return publish.success;
+    return publish.success && publish.data?.id ? (publish.data.id as string) : null;
   } catch (err) {
     log.error('postListingReelToInstagram threw', err instanceof Error ? err : new Error(String(err)), { listingId: listing.id });
+    return null;
+  }
+}
+
+// Attempts to delete a previously-published Instagram media object by ID,
+// for the same refresh-cleanup purpose as deleteFacebookReel above. NOTE:
+// unlike Facebook, Meta's standard Instagram Graph API does not reliably
+// support deleting a published media object this way for all account/
+// permission types -- this is unverified against Meta's current docs, kept
+// here because it's cheap to attempt and harmless to fail. A failure here
+// is expected-tolerable: it's logged and the refresh proceeds regardless,
+// same as everywhere else in this pipeline, but don't assume this actually
+// removes the old post without confirming it in production.
+export async function deleteInstagramMedia(mediaId: string): Promise<boolean> {
+  const token = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+  if (!token) {
+    log.info('Instagram media delete skipped — FACEBOOK_PAGE_ACCESS_TOKEN not configured');
+    return false;
+  }
+  try {
+    const res = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${mediaId}?access_token=${token}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok || data.error || data.success === false) {
+      log.warn('Instagram media delete failed (may be unsupported by the API for this account type)', { mediaId, error: data.error?.message ?? `HTTP ${res.status}` });
+      return false;
+    }
+    return true;
+  } catch (err) {
+    log.error('deleteInstagramMedia threw', err instanceof Error ? err : new Error(String(err)), { mediaId });
     return false;
   }
 }

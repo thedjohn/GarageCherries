@@ -215,3 +215,33 @@ export async function postListingReelToYouTube(
     return null;
   }
 }
+
+// Deletes a previously-uploaded YouTube video by ID -- used to clean up the
+// old video when a listing's price drop triggers a refreshed repost (YouTube
+// has no "replace the file on this video ID" operation, only metadata
+// updates, so a real re-render requires a new video ID and cleaning up the
+// old one separately). Never throws; a failed delete just leaves the stale
+// video up alongside the new one rather than blocking the refresh, same
+// tolerance as everywhere else in this pipeline.
+export async function deleteYouTubeVideo(videoId: string): Promise<boolean> {
+  try {
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      log.info('YouTube video delete skipped — YOUTUBE_CLIENT_ID/YOUTUBE_CLIENT_SECRET/YOUTUBE_REFRESH_TOKEN not configured');
+      return false;
+    }
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?id=${videoId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok && res.status !== 204) {
+      const errBody = await res.text().catch(() => '');
+      log.error('YouTube video delete failed', new Error(errBody || `HTTP ${res.status}`), { videoId });
+      return false;
+    }
+    return true;
+  } catch (err) {
+    log.error('deleteYouTubeVideo threw', err instanceof Error ? err : new Error(String(err)), { videoId });
+    return false;
+  }
+}

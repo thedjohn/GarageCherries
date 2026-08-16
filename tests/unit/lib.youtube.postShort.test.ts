@@ -5,7 +5,7 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: mockWarn, error: mockError, flush: vi.fn().mockResolvedValue(undefined) }),
 }));
 
-import { postListingReelToYouTube } from '@/lib/youtube/postShort';
+import { postListingReelToYouTube, deleteYouTubeVideo } from '@/lib/youtube/postShort';
 
 const LISTING = {
   id: 'listing-1',
@@ -289,5 +289,45 @@ describe('postListingReelToYouTube', () => {
       .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) });
     const result = await postListingReelToYouTube(LISTING, VIDEO_URL);
     expect(result).toBeNull();
+  });
+});
+
+describe('deleteYouTubeVideo', () => {
+  it('returns false when YouTube env vars are not configured, without calling fetch', async () => {
+    delete process.env.YOUTUBE_CLIENT_ID;
+    const result = await deleteYouTubeVideo('yt-video-1');
+    expect(result).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('refreshes the token, calls the delete endpoint with the video ID, and returns true on success', async () => {
+    (fetch as any)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'access-token' }) })
+      .mockResolvedValueOnce({ ok: true, status: 204 });
+
+    const result = await deleteYouTubeVideo('yt-video-1');
+
+    expect(result).toBe(true);
+    const [deleteUrl, deleteInit] = (fetch as any).mock.calls[1];
+    expect(deleteUrl).toContain('yt-video-1');
+    expect(deleteInit.method).toBe('DELETE');
+    expect(deleteInit.headers.Authorization).toContain('access-token');
+  });
+
+  it('returns false and logs when the delete call fails', async () => {
+    (fetch as any)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'access-token' }) })
+      .mockResolvedValueOnce({ ok: false, status: 404, text: async () => 'videoNotFound' });
+
+    const result = await deleteYouTubeVideo('yt-video-1');
+
+    expect(result).toBe(false);
+    expect(mockError).toHaveBeenCalled();
+  });
+
+  it('catches a thrown fetch error without propagating it and returns false', async () => {
+    (fetch as any).mockRejectedValueOnce(new Error('network down'));
+    const result = await deleteYouTubeVideo('yt-video-1');
+    expect(result).toBe(false);
   });
 });
