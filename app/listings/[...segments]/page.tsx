@@ -558,6 +558,15 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
           </div>
         </div>
 
+        {similar.length > 0 && (
+          <section className="mt-12">
+            <h2 className="text-2xl font-bold text-zinc-900 mb-6">Similar Vehicles</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {similar.map((c: any) => <CarCard key={c.id} car={c} />)}
+            </div>
+          </section>
+        )}
+
       </div>
       </>
     );

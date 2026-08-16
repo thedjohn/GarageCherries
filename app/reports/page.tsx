@@ -213,7 +213,7 @@ export default async function MarketReportPage() {
       {/* Most Viewed */}
       {mostViewed.length > 0 && (
         <section className="bg-white border border-zinc-100 rounded-2xl p-6 shadow-sm mb-12">
-          <h2 className="text-lg font-bold text-zinc-900 mb-5">Most-Watched Listings This Month</h2>
+          <h2 className="text-lg font-bold text-zinc-900 mb-5">Most-Viewed Listings This Month</h2>
           <div className="space-y-3">
             {mostViewed.map((c, i) => (
               <div key={i} className="flex items-center justify-between gap-3 text-sm">
