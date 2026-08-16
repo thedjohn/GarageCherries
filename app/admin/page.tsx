@@ -6,6 +6,8 @@ import Tooltip from '@/components/Tooltip';
 import { formatPhone, normalizeUrl } from '@/lib/data';
 import VehicleFieldsForm from '@/components/VehicleFieldsForm';
 import AdminEmailCampaigns from '@/components/AdminEmailCampaigns';
+import AdminVideoBackfill from '@/components/AdminVideoBackfill';
+import AdminVideoPriceRefresh from '@/components/AdminVideoPriceRefresh';
 import { resolveAdminRole, type TeamMember } from '@/lib/resolveAdminRole';
 import { MAKES, STATES } from '@/lib/types';
 import TrendChart, { type TrendPoint } from '@/components/TrendChart';
@@ -44,7 +46,7 @@ interface SiteUser {
   conversation_count: number;
 }
 
-type Tab = 'overview' | 'listings' | 'reported' | 'team' | 'users' | 'applications' | 'events' | 'email';
+type Tab = 'overview' | 'listings' | 'reported' | 'team' | 'users' | 'applications' | 'events' | 'email' | 'videos';
 
 interface CarEvent {
   id: string; name: string; date: string; end_date: string | null;
@@ -889,6 +891,11 @@ export default function AdminPage() {
             Email
           </button>
         )}
+        {(adminRole === 'superadmin' || adminRole === 'admin') && (
+          <button onClick={() => setTab('videos')} className={tabCls('videos')}>
+            Videos
+          </button>
+        )}
       </div>
 
       {/* Overview tab */}
@@ -1642,6 +1649,14 @@ export default function AdminPage() {
       {/* Email tab */}
       {tab === 'email' && (adminRole === 'superadmin' || adminRole === 'admin') && (
         <AdminEmailCampaigns />
+      )}
+
+      {/* Videos tab */}
+      {tab === 'videos' && (adminRole === 'superadmin' || adminRole === 'admin') && (
+        <div className="space-y-8">
+          <AdminVideoPriceRefresh />
+          <AdminVideoBackfill />
+        </div>
       )}
 
       {/* Events tab */}
