@@ -138,6 +138,7 @@ export default function Footer() {
               <li><Link href="/cars/pickup-trucks" className="hover:text-white transition-colors">Classic Trucks</Link></li>
               <li><Link href="/cars/coupes" className="hover:text-white transition-colors">Coupes</Link></li>
               <li><Link href="/reports" className="hover:text-white transition-colors">Market Report</Link></li>
+              <li><Link href="/videos" className="hover:text-white transition-colors">Video Tours</Link></li>
             </ul>
           </div>
 

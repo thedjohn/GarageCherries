@@ -9,7 +9,6 @@ import ViewTracker from '@/components/ViewTracker';
 import AdSlot from '@/components/AdSlot';
 import MakeOfferButton from '@/components/MakeOfferButton';
 import FinancingCalculator from '@/components/FinancingCalculator';
-import YouTubeEmbed from '@/components/YouTubeEmbed';
 import InspectionReportCard from '@/components/InspectionReportCard';
 import TrackedLink from '@/components/TrackedLink';
 import {
@@ -174,7 +173,6 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
         lotNumber: data.lot_number,
         descriptionParagraphs: data.description_paragraphs,
         isSold: data.is_sold ?? false,
-        youtubeVideoId: data.youtube_video_id ?? undefined,
       } as any;
     }
     if (!car) notFound();
@@ -365,10 +363,6 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
                   Read our full buying guide →
                 </Link>
               </p>
-            )}
-
-            {(car as any).youtubeVideoId && (
-              <YouTubeEmbed videoId={(car as any).youtubeVideoId} title={car.title} />
             )}
 
             {inspectionRow && (
