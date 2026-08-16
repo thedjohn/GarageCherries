@@ -1,13 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
-const { mockGetUser, mockFrom, mockListUsers, mockSend, mockRateLimit, mockGetClientIP } = vi.hoisted(() => ({
+const { mockGetUser, mockFrom, mockListUsers, mockSend, mockRateLimit, mockGetClientIP, mockDeleteListingVideos } = vi.hoisted(() => ({
   mockGetUser:     vi.fn(),
   mockFrom:        vi.fn(),
   mockListUsers:   vi.fn(),
   mockSend:        vi.fn().mockResolvedValue({ id: 'email-1' }),
   mockRateLimit:   vi.fn(),
   mockGetClientIP: vi.fn(() => '1.2.3.4'),
+  mockDeleteListingVideos: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -16,6 +17,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }));
 vi.mock('resend', () => ({ Resend: vi.fn(function (this: any) { return { emails: { send: mockSend } }; }) }));
 vi.mock('@/lib/rateLimit', () => ({ rateLimit: mockRateLimit, getClientIP: mockGetClientIP }));
+vi.mock('@/lib/deleteListingVideos', () => ({ deleteListingVideos: mockDeleteListingVideos }));
 vi.mock('next/server', () => ({
   NextResponse: {
     json: vi.fn((data: unknown, init?: { status?: number }) => ({ _data: data, _status: init?.status ?? 200 })),
@@ -101,6 +103,29 @@ describe('POST /api/cars/sold', () => {
     const sentHtml = mockSend.mock.calls[0][0].html;
     expect(sentHtml).toContain('Leave a Review');
     expect(sentHtml).toContain('/dealers/survivor-classic#reviews');
+  });
+
+  it('cleans up the sold listing\'s social videos, passing along its stored platform IDs', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        return {
+          select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({
+            data: { id: 'c1', seller_id: 'dealer-1', title: 'Nice Car', youtube_video_id: 'yt-1', facebook_reel_id: 'fb-1', instagram_media_id: null },
+          }) }) }),
+          update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
+        };
+      }
+      if (table === 'watchlists') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [] }) }) };
+      return {};
+    });
+
+    await soldPost(makeRequest({ carId: 'c1' }));
+
+    expect(mockDeleteListingVideos).toHaveBeenCalledWith(
+      expect.anything(),
+      'c1',
+      expect.objectContaining({ youtube_video_id: 'yt-1', facebook_reel_id: 'fb-1', instagram_media_id: null }),
+    );
   });
 
   it('skips notification entirely when there are no watchers', async () => {

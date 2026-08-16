@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 const {
   mockFrom, mockRpc, mockNotifyAdmin, mockLoggerInfo, mockLoggerWarn, mockLoggerFlush,
-  mockSubmitToIndexNow, mockSftpConnect, mockSftpGet, mockSftpEnd,
+  mockSubmitToIndexNow, mockSftpConnect, mockSftpGet, mockSftpEnd, mockDeleteListingVideos,
 } = vi.hoisted(() => ({
   mockFrom:             vi.fn(),
   mockRpc:              vi.fn(),
@@ -15,6 +15,7 @@ const {
   mockSftpConnect:      vi.fn().mockResolvedValue(undefined),
   mockSftpGet:          vi.fn(),
   mockSftpEnd:          vi.fn().mockResolvedValue(undefined),
+  mockDeleteListingVideos: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -25,6 +26,7 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ info: mockLoggerInfo, warn: mockLoggerWarn, error: vi.fn(), flush: mockLoggerFlush }),
 }));
 vi.mock('@/lib/indexNow', () => ({ submitToIndexNow: mockSubmitToIndexNow }));
+vi.mock('@/lib/deleteListingVideos', () => ({ deleteListingVideos: mockDeleteListingVideos }));
 vi.mock('ssh2-sftp-client', () => ({
   default: vi.fn().mockImplementation(function () {
     return { connect: mockSftpConnect, get: mockSftpGet, end: mockSftpEnd };
@@ -74,9 +76,9 @@ const DEALER: TestDealerRow = {
   location: 'Tampa', state: 'FL', feed_url: 'https://example.com/feed.csv',
 };
 
-function makeSupabaseMock({ dealers, existingListings = [] as { id: string; vin: string | null; stock_number?: string | null }[], updateError = null as string | null }: {
+function makeSupabaseMock({ dealers, existingListings = [] as { id: string; vin: string | null; stock_number?: string | null; youtube_video_id?: string | null; facebook_reel_id?: string | null; instagram_media_id?: string | null }[], updateError = null as string | null }: {
   dealers: TestDealerRow[];
-  existingListings?: { id: string; vin: string | null; stock_number?: string | null }[];
+  existingListings?: { id: string; vin: string | null; stock_number?: string | null; youtube_video_id?: string | null; facebook_reel_id?: string | null; instagram_media_id?: string | null }[];
   updateError?: string | null;
 }) {
   const listingUpdateCalls: { id: string; payload: any }[] = [];
@@ -474,6 +476,22 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     expect(listingUpdateCalls[0].id).toBe('listing-gone');
     expect(listingUpdateCalls[0].payload.is_sold).toBe(true);
     expect(listingUpdateCalls[0].payload.sold_at).toEqual(expect.any(String));
+  });
+
+  it('cleans up the social videos of a listing auto-marked sold, passing along its stored platform IDs', async () => {
+    makeSupabaseMock({
+      dealers: [DEALER],
+      existingListings: [{ id: 'listing-gone', vin: 'VIN-GONE', youtube_video_id: 'yt-1', facebook_reel_id: 'fb-1', instagram_media_id: null }],
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => buildCsv([]) }));
+
+    await GET(makeRequest('Bearer cron-secret'));
+
+    expect(mockDeleteListingVideos).toHaveBeenCalledWith(
+      expect.anything(),
+      'listing-gone',
+      expect.objectContaining({ youtube_video_id: 'yt-1', facebook_reel_id: 'fb-1', instagram_media_id: null }),
+    );
   });
 
   it('skips rows with neither a VIN nor a stock number rather than crashing', async () => {

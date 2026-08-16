@@ -4,6 +4,7 @@ import { notifyAdmin } from '@/lib/notifyAdmin';
 import { createLogger } from '@/lib/logger';
 import { submitToIndexNow } from '@/lib/indexNow';
 import { notifyWatchersCarSold } from '@/lib/notifyCarSold';
+import { deleteListingVideos } from '@/lib/deleteListingVideos';
 import { MAKES } from '@/lib/types';
 import Client from 'ssh2-sftp-client';
 
@@ -338,7 +339,7 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
 
   const { data: existingListings } = await admin
     .from('listings')
-    .select('id, vin, stock_number, title')
+    .select('id, vin, stock_number, title, youtube_video_id, facebook_reel_id, instagram_media_id')
     .eq('seller_id', dealer.id);
   // VIN is the primary match key (globally unique). Stock number is a fallback --
   // only unique *within* this dealer's own inventory, which is fine here since
@@ -513,6 +514,7 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
       else {
         result.markedSold++;
         void notifyWatchersCarSold(admin, l.id, l.title, dealer.id);
+        void deleteListingVideos(admin, l.id, l);
       }
     }
   }

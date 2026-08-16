@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { notifyWatchersCarSold } from '@/lib/notifyCarSold';
+import { deleteListingVideos } from '@/lib/deleteListingVideos';
 
 // POST /api/cars/sold — dealer marks a listing as sold
 export async function POST(request: NextRequest) {
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
 
   // Verify ownership
   const admin = createAdminClient();
-  const { data: car } = await admin.from('listings').select('id, seller_id, title').eq('id', carId).single();
+  const { data: car } = await admin.from('listings').select('id, seller_id, title, youtube_video_id, facebook_reel_id, instagram_media_id').eq('id', carId).single();
   if (!car || car.seller_id !== user.id) {
     return NextResponse.json({ error: 'Not authorized to update this listing' }, { status: 403 });
   }
@@ -28,6 +29,10 @@ export async function POST(request: NextRequest) {
 
   // Notify watchlist users that this car has sold (fire-and-forget)
   void notifyWatchersCarSold(admin, carId, car.title, car.seller_id);
+
+  // Clean up the sold car's social videos so they don't keep advertising it
+  // as available (fire-and-forget, same tolerance as the notification above)
+  void deleteListingVideos(admin, carId, car);
 
   return NextResponse.json({ ok: true });
 }
