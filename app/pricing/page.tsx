@@ -83,10 +83,13 @@ export default async function PricingPage() {
   const settings = await getSiteSettings();
   const supabase = await createClient();
   // Real counts instead of a hardcoded "hundreds" claim -- same query shape
-  // the homepage already uses for its own stats.
+  // (including the is_sold/expiry filters) the homepage already uses for its
+  // own stats, so this doesn't count sold or expired listings as "active".
+  const now = new Date().toISOString();
   const [{ count: dealerCount }, { count: listingCount }] = await Promise.all([
     supabase.from('dealers').select('id', { count: 'exact', head: true }),
-    supabase.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+    supabase.from('listings').select('id', { count: 'exact', head: true })
+      .eq('status', 'approved').eq('is_sold', false).or(`expires_at.is.null,expires_at.gt.${now}`),
   ]);
   const isPromo = new Date() < new Date(settings.promoApplicationCutoff);
   const promoExpiresLabel = new Date(settings.promoExpiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });

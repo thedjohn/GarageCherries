@@ -1,6 +1,8 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
+import { ENCYCLOPEDIA } from '@/lib/encyclopedia';
+import { GUIDES } from '@/app/guides/page';
 
 export const metadata: Metadata = {
   title: 'About Us',
@@ -110,8 +112,8 @@ export default async function AboutPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
             { stat: (listingCount ?? 0).toLocaleString(), label: 'Active Listings' },
-            { stat: '54', label: 'Model Guides' },
-            { stat: '6', label: "Buyer's Guides" },
+            { stat: ENCYCLOPEDIA.length.toLocaleString(), label: 'Model Guides' },
+            { stat: GUIDES.length.toLocaleString(), label: "Buyer's Guides" },
             { stat: (eventCount ?? 0).toLocaleString(), label: 'Car Events' },
           ].map(item => (
             <div key={item.label}>

@@ -19,11 +19,12 @@ export default async function DealersPage() {
 
   const dealerList = dealers ?? [];
 
-  // Get approved listing counts per dealer
+  // Get approved, unsold listing counts per dealer
   const { data: listingCounts } = await supabase
     .from('listings')
     .select('seller_id')
     .eq('status', 'approved')
+    .eq('is_sold', false)
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
 
   const countByDealer: Record<string, number> = {};

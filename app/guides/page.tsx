@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://www.garagecherries.com/guides' },
 };
 
-const GUIDES = [
+export const GUIDES = [
   {
     slug: 'how-to-buy-a-classic-car-online',
     title: 'How to Buy a Classic Car Online',
