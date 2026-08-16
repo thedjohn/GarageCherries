@@ -159,7 +159,7 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     expect(res._data.results['info@survivor-cars.com'].errors[0]).toContain('Could not fetch feed');
   });
 
-  it('stamps feed_last_synced_at and feed_last_sync_summary on the dealer row after syncing', async () => {
+  it('stamps feed_last_synced_at, feed_last_sync_summary, and feed_last_success_at on the dealer row after a successful sync', async () => {
     const { dealerUpdateCalls } = makeSupabaseMock({ dealers: [DEALER] });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => buildCsv([]) }));
 
@@ -167,6 +167,16 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     expect(dealerUpdateCalls[0].id).toBe('dealer-1');
     expect(dealerUpdateCalls[0].payload.feed_last_synced_at).toBeTruthy();
     expect(dealerUpdateCalls[0].payload.feed_last_sync_summary).toBe('0 inserted, 0 updated, 0 sold, 0 skipped');
+    expect(dealerUpdateCalls[0].payload.feed_last_success_at).toBeTruthy();
+  });
+
+  it('does not stamp feed_last_success_at when the sync fails', async () => {
+    const { dealerUpdateCalls } = makeSupabaseMock({ dealers: [DEALER] });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+
+    await GET(makeRequest('Bearer cron-secret'));
+    expect(dealerUpdateCalls[0].payload.feed_last_synced_at).toBeTruthy();
+    expect(dealerUpdateCalls[0].payload.feed_last_success_at).toBeUndefined();
   });
 
   it('inserts a new vehicle not already in our listings, flags it feed-managed, and submits it to IndexNow', async () => {

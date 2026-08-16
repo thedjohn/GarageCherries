@@ -555,6 +555,11 @@ export async function GET(request: NextRequest) {
       feed_last_synced_at: new Date().toISOString(),
       feed_last_sync_summary: summarizeFeedSync(result),
       ...(result.sourceMtime ? { feed_sftp_last_received_at: result.sourceMtime } : {}),
+      // Distinct from feed_last_synced_at above, which is stamped on every
+      // attempt regardless of outcome -- this only advances on an actual
+      // successful sync, so dealer-feed-staleness can tell "still working"
+      // from "has been silently failing" for the https/sftp protocols.
+      ...(result.errors.length === 0 ? { feed_last_success_at: new Date().toISOString() } : {}),
     }).eq('id', dealer.id);
   }
 
