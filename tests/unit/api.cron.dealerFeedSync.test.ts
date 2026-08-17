@@ -885,4 +885,90 @@ describe('GET /api/cron/dealer-feed-sync', () => {
       expect(res._data.results['inventory@buyyourride.net'].errors[0]).toContain('failed validation');
     });
   });
+
+  describe('DDC/Dealer.com format (feed_format: dealer_com)', () => {
+    // McGinty Motorcars' real feed, pushed via SFTP from their Dealer.com/DDC
+    // export -- lowercase, no-space column names throughout, confirmed
+    // against the actual file pulled off their SFTP upload directory, not
+    // assumed.
+    const HEADER_DDC = [
+      'id', 'dealer_id', 'vin', 'stocknumber', 'year', 'make', 'model', 'modelcode', 'trimlevel', 'bodystyle',
+      'transmission', 'drivetrain', 'doors', 'exteriorcolor', 'interiorcolor', 'exteriorcolorcode', 'interiorcolorcode',
+      'cab', 'bed', 'msrp', 'invoiceprice', 'internetprice', 'askingprice', 'wholesaleprice', 'retailvalue', 'saleprice',
+      'mileage', 'comments', 'options', 'images', 'type', 'certified', 'engine', 'enginesize', 'fuel', 'lot_date',
+      'city_mpg', 'highway_mpg', 'wheelbase', 'dealership', 'dealership_address1', 'dealership_address2',
+      'dealership_city', 'dealership_state', 'dealership_postalcode', 'dealership_country', 'dealership_phone',
+      'dealership_url', 'details_url',
+    ];
+    function csvRowDdc(fields: Partial<Record<string, string>>) {
+      const withDefaults: Partial<Record<string, string>> = { images: 'https://example.com/default.jpg', ...fields };
+      return HEADER_DDC.map(h => `"${(withDefaults[h] ?? '').replace(/"/g, '""')}"`).join(',');
+    }
+    function buildCsvDdc(rows: Partial<Record<string, string>>[]) {
+      return [HEADER_DDC.map(h => `"${h}"`).join(','), ...rows.map(csvRowDdc)].join('\n');
+    }
+    const DEALER_DDC: TestDealerRow = { ...DEALER, id: 'dealer-ddc', email: 'mcgintymotorcars@gmail.com', feed_format: 'dealer_com' };
+
+    it('imports a real row using DDC\'s lowercase column names -- real sample (2005 Audi S4)', async () => {
+      makeSupabaseMock({ dealers: [DEALER_DDC], existingListings: [] });
+      const csv = buildCsvDdc([{
+        vin: 'WUARL48H15K901313', stocknumber: 'MM1655C', year: '2005', make: 'Audi', model: 'S4', trimlevel: 'Quattro',
+        bodystyle: 'Convertible', askingprice: '12996', mileage: '59435', exteriorcolor: 'Silver',
+        dealership_city: 'Reading', dealership_state: 'PA', dealership_phone: '610-743-3946',
+      }]);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({
+        p_vin: 'WUARL48H15K901313', p_year: 2005, p_make: 'Audi', p_model: 'S4', p_title: '2005 Audi S4 Quattro',
+        p_price: 12996, p_mileage: 59435, p_color: 'Silver', p_body_style: 'Convertible',
+        p_location: 'Reading', p_state: 'PA', p_seller_phone: '610-743-3946',
+      }));
+    });
+
+    it('combines engine and enginesize into one string -- e.g. "4.2 L V-8 cyl"', async () => {
+      makeSupabaseMock({ dealers: [DEALER_DDC], existingListings: [] });
+      const csv = buildCsvDdc([{
+        vin: 'VIN-ENGINE-TEST', stocknumber: 'S1', year: '2005', make: 'Audi', model: 'S4',
+        engine: 'V-8 cyl', enginesize: '4.2 L',
+      }]);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({ p_engine: '4.2 L V-8 cyl' }));
+    });
+
+    it('uses askingprice directly as the price -- confirmed non-zero on every real row, no fallback needed', async () => {
+      makeSupabaseMock({ dealers: [DEALER_DDC], existingListings: [] });
+      const csv = buildCsvDdc([{
+        vin: 'VIN-PRICE-TEST', stocknumber: 'S2', year: '2020', make: 'Honda', model: 'Civic', askingprice: '27996',
+      }]);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({ p_price: 27996 }));
+    });
+
+    it('uses the real per-row dealership_city/dealership_state/dealership_phone columns rather than falling back to the dealer\'s stored profile', async () => {
+      makeSupabaseMock({ dealers: [{ ...DEALER_DDC, location: 'Wrong City', state: 'ZZ', phone: '000-000-0000' }], existingListings: [] });
+      const csv = buildCsvDdc([{
+        vin: 'VIN-LOCATION-TEST', stocknumber: 'S3', year: '2020', make: 'Honda', model: 'Civic',
+        dealership_city: 'Reading', dealership_state: 'PA', dealership_phone: '610-743-3946',
+      }]);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({
+        p_location: 'Reading', p_state: 'PA', p_seller_phone: '610-743-3946',
+      }));
+    });
+
+    it('still validates on the shared required columns (vin, year, make, model, stocknumber) for this format', async () => {
+      makeSupabaseMock({ dealers: [DEALER_DDC], existingListings: [] });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => '"vin","year' }));
+
+      const res: any = await GET(makeRequest('Bearer cron-secret'));
+      expect(res._data.results['mcgintymotorcars@gmail.com'].errors[0]).toContain('failed validation');
+    });
+  });
 });

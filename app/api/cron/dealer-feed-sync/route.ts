@@ -99,12 +99,30 @@ interface FeedFormatColumns {
   priceFallback?: string;
   transmission: string;
   engine: string;
+  // Some vendors split engine type and displacement into two columns (e.g.
+  // "V-8 cyl" + "4.2 L") rather than one combined field -- when set, its
+  // value is joined with `engine` ("4.2 L V-8 cyl"). Undefined for vendors
+  // whose single `engine` column already holds the full description.
+  engineSize?: string;
   // Tried in order, first non-blank wins.
   color: string[];
   images: string;
   bodyStyle: string;
   // null = this vendor has no per-vehicle description field at all.
   description: string | null;
+  // The following default to the literal column names every existing vendor
+  // already uses ('VIN', 'Year', 'Model', 'Make', 'Mileage', 'City', 'State',
+  // 'Dealer Phone Number') when left unset -- only set these for a vendor
+  // whose export actually spells them differently, confirmed by reading real
+  // rows, same bar as every other field here.
+  vin?: string;
+  year?: string;
+  model?: string;
+  make?: string;
+  mileage?: string;
+  city?: string;
+  state?: string;
+  phone?: string;
   // If set and found in the raw description text, everything from that
   // marker onward is cut off before storing. Dealer Car Search's "Comments"
   // field mixes real per-vehicle copy with an identical reconditioning
@@ -167,6 +185,32 @@ const FEED_FORMATS: Record<string, FeedFormatColumns> = {
     images: 'photourl_list',
     bodyStyle: 'bodystyle',
     description: 'dealer_notes',
+  },
+  // McGinty Motorcars' feed, pushed via SFTP from their Dealer.com/DDC export.
+  // Lowercase, no-space column names throughout -- confirmed against the real
+  // file pulled directly off the SFTP upload directory, not assumed. Unlike
+  // every other vendor here, DDC's export also has real per-row
+  // dealership_city/dealership_state/dealership_phone columns rather than
+  // needing the Dealer-Name-as-"City, State" fallback other vendors rely on.
+  dealer_com: {
+    stockNumber: 'stocknumber',
+    subModel: 'trimlevel',
+    price: 'askingprice',
+    transmission: 'transmission',
+    engine: 'engine',
+    engineSize: 'enginesize',
+    color: ['exteriorcolor'],
+    images: 'images',
+    bodyStyle: 'bodystyle',
+    description: 'comments',
+    vin: 'vin',
+    year: 'year',
+    model: 'model',
+    make: 'make',
+    mileage: 'mileage',
+    city: 'dealership_city',
+    state: 'dealership_state',
+    phone: 'dealership_phone',
   },
 };
 
@@ -292,13 +336,17 @@ async function fetchViaSftpPush(dealer: FeedDealer): Promise<{ text: string; mti
 // were a real feed (which risks incorrectly marking cars "sold" that were
 // simply cut off by the bad read). Applied to all three protocols uniformly
 // since it's a harmless no-op for an already-well-formed feed.
-// VIN/Year/Make/Model are the same literal column name across every vendor
-// seen so far; Stock Number's name varies (e.g. Beverly Hills Car Club uses
-// "StockNumber", no space), so it's checked against the resolved format's
-// own column name rather than a fixed string.
-const REQUIRED_FEED_COLUMNS = ['VIN', 'Year', 'Make', 'Model'];
-function isValidFeedHeader(header: string[] | undefined, stockNumberColumn: string): boolean {
-  return !!header && REQUIRED_FEED_COLUMNS.every(col => header.includes(col)) && header.includes(stockNumberColumn);
+// VIN/Year/Make/Model were the same literal column name across every vendor
+// seen until DDC (all lowercase) -- resolved against the format's own names
+// (falling back to the original literals) rather than a fixed list, same
+// pattern as Stock Number's name already varying (e.g. Beverly Hills Car
+// Club uses "StockNumber", no space).
+function isValidFeedHeader(header: string[] | undefined, format: FeedFormatColumns): boolean {
+  const required = [
+    format.vin ?? 'VIN', format.year ?? 'Year', format.make ?? 'Make', format.model ?? 'Model',
+    format.stockNumber,
+  ];
+  return !!header && required.every(col => header.includes(col));
 }
 
 // Fetches one dealer's CSV feed and syncs it: inserts new vehicles (matched by
@@ -330,7 +378,7 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
   const rows = parseCSV(csvText.replace(/^﻿/, ''));
   const header = rows[0];
   const format = FEED_FORMATS[dealer.feed_format ?? 'speed_digital'] ?? FEED_FORMATS.speed_digital;
-  if (!isValidFeedHeader(header, format.stockNumber)) {
+  if (!isValidFeedHeader(header, format)) {
     result.errors.push('Feed content failed validation (missing expected columns) -- possibly read mid-write, will retry next cycle');
     return result;
   }
@@ -357,19 +405,19 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     const bodyStyleRaw = r[idx(format.bodyStyle)]?.trim();
     if (SKIP_BODY_STYLES.has(bodyStyleRaw)) { result.skipped++; continue; }
 
-    const vin = r[idx('VIN')]?.trim() || null;
+    const vin = r[idx(format.vin ?? 'VIN')]?.trim() || null;
     const stockNumber = r[idx(format.stockNumber)]?.trim() || null;
     if (!vin && !stockNumber) { result.skipped++; continue; }
     const existingId = (vin && existingByVin.get(vin)) || (stockNumber && existingByStock.get(stockNumber)) || undefined;
 
-    const year = parseInt(r[idx('Year')], 10);
-    const model = r[idx('Model')]?.trim();
+    const year = parseInt(r[idx(format.year ?? 'Year')], 10);
+    const model = r[idx(format.model ?? 'Model')]?.trim();
     const subModel = r[idx(format.subModel)]?.trim();
     // Not every vendor's export has this column; idx() returns -1 when absent,
     // and r[-1] is safely undefined -- ?.trim() handles that the same as any
     // other optional column.
     const vdpUrl = r[idx('VDP URL')]?.trim() ?? '';
-    const make = normalizeMake(r[idx('Make')]?.trim(), subModel, vdpUrl);
+    const make = normalizeMake(r[idx(format.make ?? 'Make')]?.trim(), subModel, vdpUrl);
     // Import the car regardless -- a make not yet in our official MAKES list is a
     // real data-review item, not a reason to drop otherwise-sellable inventory.
     // Flagged here so it surfaces for a deliberate add/reject decision.
@@ -379,10 +427,13 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     const price = parseInt(r[idx(format.price)], 10)
       || (format.priceFallback ? parseInt(r[idx(format.priceFallback)], 10) : 0)
       || 0;
-    const mileage = parseInt(r[idx('Mileage')], 10) || null;
+    const mileage = parseInt(r[idx(format.mileage ?? 'Mileage')], 10) || null;
     const bodyStyle = BODY_STYLE_MAP[bodyStyleRaw] ?? bodyStyleRaw;
     const transmission = mapTransmission(r[idx(format.transmission)] ?? '');
-    const engine = r[idx(format.engine)]?.trim() || null;
+    const engine = [
+      format.engineSize ? r[idx(format.engineSize)]?.trim() : null,
+      r[idx(format.engine)]?.trim(),
+    ].filter(Boolean).join(' ') || null;
     const color = format.color.map(col => r[idx(col)]?.trim()).find(Boolean) ?? null;
     const rawImages = extractImageUrls(r[idx(format.images)] ?? '');
     const images = selectRepresentativeImages(rawImages, 30);
@@ -417,9 +468,9 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     // location label (e.g. "Tampa, Florida") -- parse that first. Seller *name*
     // is always the dealer's real business name (dealer.name), never this column.
     const dealerNameLoc = parseDealerNameLocation(r[idx('Dealer Name')] ?? '');
-    const listingLocation = r[idx('City')]?.trim() || dealerNameLoc?.city || dealer.location;
-    const listingState = r[idx('State')]?.trim() || dealerNameLoc?.state || dealer.state;
-    const listingPhone = r[idx('Dealer Phone Number')]?.trim() || dealer.phone;
+    const listingLocation = r[idx(format.city ?? 'City')]?.trim() || dealerNameLoc?.city || dealer.location;
+    const listingState = r[idx(format.state ?? 'State')]?.trim() || dealerNameLoc?.state || dealer.state;
+    const listingPhone = r[idx(format.phone ?? 'Dealer Phone Number')]?.trim() || dealer.phone;
     const listingEmail = r[idx('Dealer Email Address')]?.trim() || dealer.email;
 
     if (existingId) {
