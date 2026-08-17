@@ -126,27 +126,18 @@ async function getAccessToken(): Promise<string | null> {
   return data.access_token as string;
 }
 
-// TikTok requires posting only with a privacy level the creator's account
-// actually supports -- posting with an unsupported one fails outright, and
-// silently substituting a different one than what was asked for (e.g.
-// quietly downgrading a public post to private) would be worse than just
-// failing loudly, so this returns null (treated as failure) rather than a
-// fallback level when the requested one isn't available.
-async function getAvailablePrivacyLevels(accessToken: string): Promise<string[] | null> {
-  const res = await fetch('https://open.tiktokapis.com/v2/post/publish/creator_info/query/', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json; charset=UTF-8' },
-  });
-  const data = await res.json();
-  if (!res.ok || data.error?.code !== 'ok') return null;
-  return data.data?.privacy_level_options ?? null;
-}
-
 // Designed to never throw: a TikTok post failure must never break the
 // existing Facebook/Instagram/YouTube posting it's called alongside
 // (fire-and-forget) from app/api/video-pipeline/complete/route.ts. Returns
 // whether the post actually succeeded, so callers can record
 // tiktok_posted_at.
+//
+// Uses the "Upload to TikTok" (inbox/draft) endpoint, not Direct Post --
+// this app isn't audited for Direct Post's UX requirements, and inbox
+// uploads land as a draft the creator finishes and publishes themselves
+// inside the TikTok app, so none of Direct Post's post_info (privacy_level,
+// disable_duet/comment/stitch) applies here; the creator sets all of that
+// when they publish it. Trades full automation for not needing the audit.
 //
 // Unlike YouTube (which requires pushing video bytes), TikTok's Content
 // Posting API supports PULL_FROM_URL -- since the domain hosting videoUrl
@@ -155,32 +146,12 @@ async function getAvailablePrivacyLevels(accessToken: string): Promise<string[] 
 // integrations.
 export async function postListingReelToTikTok(
   listing: ListingPostInput,
-  videoUrl: string,
-  privacyLevel: string = 'PUBLIC_TO_EVERYONE'
+  videoUrl: string
 ): Promise<boolean> {
   try {
     const accessToken = await getAccessToken();
     if (!accessToken) {
       log.info('TikTok post skipped — TIKTOK_CLIENT_KEY/TIKTOK_CLIENT_SECRET/TIKTOK_REFRESH_TOKEN not configured');
-      return false;
-    }
-
-    const availableLevels = await getAvailablePrivacyLevels(accessToken);
-    if (!availableLevels) {
-      log.error('TikTok post failed to query creator info', new Error('creator_info/query failed'), { listingId: listing.id });
-      return false;
-    }
-    // A missing privacy level here is expected, not exceptional, while our
-    // Content Posting API audit is pending (unaudited apps can't post
-    // PUBLIC_TO_EVERYONE) -- warn (Axiom only) rather than error (which pages
-    // via Sentry), so the daily automated retries don't alert on a known,
-    // already-tracked condition. This naturally stops firing the moment the
-    // audit is approved and the requested level becomes available.
-    if (!availableLevels.includes(privacyLevel)) {
-      log.warn(
-        'TikTok post skipped — requested privacy level not available for this creator (Content Posting API audit likely still pending)',
-        { listingId: listing.id, requestedLevel: privacyLevel, availableLevels: availableLevels.join(',') }
-      );
       return false;
     }
 
@@ -195,16 +166,12 @@ export async function postListingReelToTikTok(
     }
     const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
 
-    const initRes = await fetch('https://open.tiktokapis.com/v2/post/publish/video/init/', {
+    const initRes = await fetch('https://open.tiktokapis.com/v2/post/publish/inbox/video/init/', {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json; charset=UTF-8' },
       body: JSON.stringify({
         post_info: {
           title: buildCaption(listing),
-          privacy_level: privacyLevel,
-          disable_duet: false,
-          disable_comment: false,
-          disable_stitch: false,
         },
         source_info: {
           source: 'FILE_UPLOAD',
@@ -216,13 +183,18 @@ export async function postListingReelToTikTok(
     });
     const initData = await initRes.json();
 
-    // Same reasoning as the privacy-level check above: while unaudited, TikTok
-    // rejects every real init attempt (unaudited_client_can_only_post_to_private_accounts,
-    // and -- once enough attempts stack up in a day -- a separate "exceeded
-    // the number of videos" limit). Both are the same known, already-tracked
-    // condition, not a new bug each time -- warn rather than error.
+    // "Queue full" (at most 5 pending drafts within 24h) is expected, not
+    // exceptional -- leaving tiktok_posted_at unset (rather than treating
+    // this as a hard failure) means the existing hourly backfill job
+    // naturally retries once the creator clears a draft, no separate retry
+    // logic needed. Any other error code is a real, unexpected problem and
+    // still deserves the loud error path below.
+    if (initData.error?.code === 'spam_risk_too_many_pending_share') {
+      log.warn('TikTok post skipped — creator already has 5 pending drafts, will retry once cleared', { listingId: listing.id });
+      return false;
+    }
     if (!initRes.ok || initData.error?.code !== 'ok' || !initData.data?.publish_id || !initData.data?.upload_url) {
-      log.warn('TikTok post init failed (Content Posting API audit likely still pending)', { listingId: listing.id, error: initData.error?.message ?? `HTTP ${initRes.status}` });
+      log.error('TikTok post init failed', new Error(initData.error?.message ?? `HTTP ${initRes.status}`), { listingId: listing.id });
       return false;
     }
 

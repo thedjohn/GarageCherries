@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
 
   const postAndRecordTikTok = async (): Promise<boolean> => {
     if (listing.tiktok_posted_at) return true; // never refreshed -- see the REFRESH note above
-    const posted = await postListingReelToTikTok(listing, videoUrl, process.env.TIKTOK_DEMO_PRIVACY_LEVEL || 'PUBLIC_TO_EVERYONE').catch(() => false);
+    const posted = await postListingReelToTikTok(listing, videoUrl).catch(() => false);
     if (posted) {
       await admin.from('listings').update({ tiktok_posted_at: new Date().toISOString() }).eq('id', listingId);
     }

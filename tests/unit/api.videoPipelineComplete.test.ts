@@ -203,7 +203,7 @@ describe('POST /api/video-pipeline/complete', () => {
 
     const res: any = await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
 
-    expect(mockPostReelToTikTok).toHaveBeenCalledWith(LISTING, 'https://x/y.mp4', 'PUBLIC_TO_EVERYONE');
+    expect(mockPostReelToTikTok).toHaveBeenCalledWith(LISTING, 'https://x/y.mp4');
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ tiktok_posted_at: expect.any(String) }));
     expect(res._data).toEqual({ ok: true, fbSuccess: false, igSuccess: false, ytSuccess: false, ttSuccess: true });
   });
