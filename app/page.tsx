@@ -45,12 +45,18 @@ export default async function HomePage() {
   const featured = allCars.filter(c => c.featured);
   const recent = allCars.slice(0, 8);
 
-  const [{ count: dealerCount }, { count: soldCount }] = await Promise.all([
+  const [{ count: activeCount }, { count: dealerCount }, { count: soldCount }] = await Promise.all([
+    // allCars.length undercounts once inventory exceeds Supabase's default
+    // 1000-row cap on an uncapped select -- a real count query has no such
+    // limit, same reasoning as dealerCount/soldCount below.
+    supabase.from('listings').select('id', { count: 'exact', head: true })
+      .eq('status', 'approved').eq('is_sold', false)
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`),
     supabase.from('dealers').select('id', { count: 'exact', head: true }),
     supabase.from('listings').select('id', { count: 'exact', head: true }).eq('is_sold', true),
   ]);
   const stats = [
-    { label: 'Active Listings', value: allCars.length },
+    { label: 'Active Listings', value: activeCount ?? allCars.length },
     { label: 'Dealers', value: dealerCount ?? 0 },
     { label: 'Cars Sold All-Time', value: soldCount ?? 0 },
   ];
