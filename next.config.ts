@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
       { protocol: 'http', hostname: 'imagescdn.dealercarsearch.com' },
       { protocol: 'https', hostname: 'www.beverlyhillscarclub.com' },
       { protocol: 'https', hostname: 'www.jtzimages.com' },
+      { protocol: 'https', hostname: 'pictures.dealer.com' },
     ],
   },
   async redirects() {
