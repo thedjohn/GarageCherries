@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { resizeImageFile } from '@/lib/resizeImage';
 import Tooltip from '@/components/Tooltip';
@@ -1037,7 +1038,7 @@ export default function AdminPage() {
         <div className="space-y-4">
           {listings.map(l => (
             <div key={l.id} className={`bg-white rounded-2xl border shadow-sm p-5 flex gap-4 ${l.resubmission_count > 0 && l.status === 'pending' ? 'border-blue-200' : 'border-zinc-100'}`}>
-              {l.images?.[0] && <img src={l.images[0]} alt={l.title} className="w-32 h-24 object-cover rounded-xl shrink-0" />}
+              {l.images?.[0] && <Image src={l.images[0]} alt={l.title} width={128} height={96} className="w-32 h-24 object-cover rounded-xl shrink-0" />}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -2278,7 +2279,7 @@ export default function AdminPage() {
               )}
               {!sellerListingsLoading && sellerListings.map(l => (
                 <div key={l.id} className="flex gap-4 bg-white border border-zinc-100 rounded-xl p-4 mb-3 shadow-sm">
-                  {l.images?.[0] && <img src={l.images[0]} alt={l.title} className="w-24 h-18 object-cover rounded-lg shrink-0" style={{height:'72px'}} />}
+                  {l.images?.[0] && <Image src={l.images[0]} alt={l.title} width={96} height={72} className="w-24 h-18 object-cover rounded-lg shrink-0" style={{height:'72px'}} />}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-bold text-zinc-900 text-sm">{l.title}</p>
