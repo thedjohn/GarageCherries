@@ -31,34 +31,38 @@ export default function EventFilters() {
   };
 
   return (
-    <div className="flex flex-wrap items-end gap-3 mb-8 bg-white border border-zinc-100 rounded-xl p-4 shadow-sm">
-      <div>
-        <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">State</label>
-        <select
-          value={state}
-          onChange={e => { setState(e.target.value); apply(e.target.value, type); }}
-          className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-        >
-          <option value="">All States</option>
-          {STATES.filter(s => s !== 'All States').map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
+    <div className="mt-8 mb-8 bg-white border border-zinc-100 rounded-xl p-4 shadow-sm">
+      <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-wide mb-1">Filters</h2>
+      <p className="text-xs text-zinc-500 mb-3">Narrow the events below by state, event type, or both — pick either dropdown and the list updates automatically.</p>
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">State</label>
+          <select
+            value={state}
+            onChange={e => { setState(e.target.value); apply(e.target.value, type); }}
+            className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            <option value="">All States</option>
+            {STATES.filter(s => s !== 'All States').map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Type</label>
+          <select
+            value={type}
+            onChange={e => { setType(e.target.value); apply(state, e.target.value); }}
+            className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            <option value="">All Types</option>
+            {TYPE_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        </div>
+        {(state || type) && (
+          <button onClick={clear} className="text-xs text-red-600 hover:underline pb-2.5">
+            Clear filters
+          </button>
+        )}
       </div>
-      <div>
-        <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Type</label>
-        <select
-          value={type}
-          onChange={e => { setType(e.target.value); apply(state, e.target.value); }}
-          className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-        >
-          <option value="">All Types</option>
-          {TYPE_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-      </div>
-      {(state || type) && (
-        <button onClick={clear} className="text-xs text-red-600 hover:underline pb-2.5">
-          Clear filters
-        </button>
-      )}
     </div>
   );
 }

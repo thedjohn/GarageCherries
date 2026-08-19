@@ -101,6 +101,8 @@ export default async function EventsPage({ searchParams }: Props) {
         </p>
       </div>
 
+      <SubmitEventForm />
+
       <EventFilters />
 
       {events.length === 0 && hasActiveFilters && (
@@ -169,8 +171,6 @@ export default async function EventsPage({ searchParams }: Props) {
           </div>
         </div>
       )}
-
-      <SubmitEventForm />
 
       <p className="mt-8 text-xs text-zinc-400 text-center">
         Dates are subject to change. Verify with organizers before making travel arrangements.
