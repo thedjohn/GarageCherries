@@ -37,6 +37,13 @@ const CAMPAIGNS = [
     description: 'Warns all promo users (individual sellers, dealers, advertisers) that their free period ends December 31, 2026. Safe to run once — will not re-send to anyone already notified.',
     icon: '🇺🇸',
   },
+  {
+    id: 'newsletter',
+    endpoint: '/api/email/newsletter',
+    title: 'Newsletter — New Listings',
+    description: 'Sends new listings from the past 7 days to everyone who signed up for the newsletter via the site footer.',
+    icon: '📰',
+  },
 ] as const;
 
 interface Result { ok: boolean; sent?: number; total?: number; message?: string; error?: string }

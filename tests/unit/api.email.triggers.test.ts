@@ -32,6 +32,7 @@ import { POST as digestPost } from '@/app/api/email/digest/route';
 import { POST as expiringListingsPost } from '@/app/api/email/expiring-listings/route';
 import { POST as priceDropsPost } from '@/app/api/email/price-drops/route';
 import { POST as promoExpiryPost } from '@/app/api/email/promo-expiry/route';
+import { POST as newsletterPost } from '@/app/api/email/newsletter/route';
 
 function makeRequest(authHeader?: string) {
   return { headers: { get: (k: string) => (k === 'Authorization' ? authHeader ?? null : null) } } as unknown as NextRequest;
@@ -41,6 +42,10 @@ const AUTH = 'Bearer admin-secret';
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // clearAllMocks resets call history but not queued/persistent implementations
+  // (e.g. a prior test's mockRejectedValue) -- restore the default success
+  // behavior explicitly so one test's send failure can't leak into the next.
+  mockSend.mockResolvedValue({ id: 'email-1' });
   process.env.ADMIN_API_SECRET = 'admin-secret';
   mockGetSiteSettings.mockResolvedValue({
     promoApplicationCutoff: '2026-08-01T00:00:00Z',
@@ -386,5 +391,62 @@ describe('POST /api/email/promo-expiry', () => {
       expect.stringContaining('dealer d1'),
       expect.stringContaining('advertiser a1'),
     ]);
+  });
+});
+
+// ── POST /api/email/newsletter ──────────────────────────────────────────────
+
+describe('POST /api/email/newsletter', () => {
+  it('returns 401 without the correct secret', async () => {
+    const res: any = await newsletterPost(makeRequest('Bearer wrong'));
+    expect(res._status).toBe(401);
+  });
+
+  it('reports zero when there are no new listings', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') return { select: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue({ data: [] }) }) }) }) }) };
+      return {};
+    });
+    const res: any = await newsletterPost(makeRequest(AUTH));
+    expect(res._status).toBe(200);
+    expect(res._data.sent).toBe(0);
+    expect(res._data.message).toBe('No new listings this week');
+  });
+
+  it('reports zero when there are no newsletter subscribers', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') return { select: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue({ data: [{ id: 'c1', title: 'Car', make: 'Dodge', model: 'Charger', slug: 'x' }] }) }) }) }) }) };
+      if (table === 'newsletter_subscribers') return { select: vi.fn().mockResolvedValue({ data: [] }) };
+      return {};
+    });
+    const res: any = await newsletterPost(makeRequest(AUTH));
+    expect(res._status).toBe(200);
+    expect(res._data.sent).toBe(0);
+    expect(res._data.message).toBe('No subscribers found');
+  });
+
+  it('emails every subscriber, continuing past a send failure', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') return { select: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue({ data: [{ id: 'c1', title: 'Car', make: 'Dodge', model: 'Charger', slug: 'x', price: 1000, condition: 'Good', location: 'STL', state: 'MO' }] }) }) }) }) }) };
+      if (table === 'newsletter_subscribers') return { select: vi.fn().mockResolvedValue({ data: [{ id: 's1', email: 's1@x.com' }, { id: 's2', email: 's2@x.com' }] }) };
+      return {};
+    });
+    mockSend.mockRejectedValueOnce(new Error('resend down'));
+    const res: any = await newsletterPost(makeRequest(AUTH));
+    expect(res._status).toBe(200);
+    expect(res._data.sent).toBe(1);
+    expect(res._data.total).toBe(2);
+    expect(mockSend.mock.calls[0][0].to).toBe('s1@x.com');
+  });
+
+  it('includes a per-subscriber unsubscribe link in the email body', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') return { select: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue({ data: [{ id: 'c1', title: 'Car', make: 'Dodge', model: 'Charger', slug: 'x' }] }) }) }) }) }) };
+      if (table === 'newsletter_subscribers') return { select: vi.fn().mockResolvedValue({ data: [{ id: 'sub-123', email: 's1@x.com' }] }) };
+      return {};
+    });
+    const res: any = await newsletterPost(makeRequest(AUTH));
+    expect(res._status).toBe(200);
+    expect(mockSend.mock.calls[0][0].html).toContain('/unsubscribe/newsletter?uid=sub-123');
   });
 });
