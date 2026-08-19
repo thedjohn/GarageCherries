@@ -1,5 +1,5 @@
 # GarageCherries — Product Overview & Roadmap
-*Last updated: July 2026*
+*Last updated: August 2026*
 
 ---
 
@@ -54,6 +54,7 @@ GarageCherries is a classic and collector car marketplace connecting buyers with
 - Buyer message tracking via the two-way conversations/messages system ("Message Seller") — dealer sees sender name, listing, and first message in their Inquiries tab
 - 30-day rolling metrics with month-over-month comparison
 - All data stored in Supabase, accessible only to the relevant dealer
+- Admin, dealer-directory, and reporting queries page past Supabase's default 1000-row-per-request cap, so counts and stats stay accurate as the platform scales (fixed 2026-08-18 across the admin Overview/Users tabs, the Dealers directory, Market Report, and the homepage stats bar)
 
 ### 💰 Pricing Structure
 **Dealer Subscriptions (Monthly)**
