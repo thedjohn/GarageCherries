@@ -71,7 +71,7 @@ export default async function HomePage() {
     '@type': 'Organization',
     name: 'GarageCherries',
     url: 'https://www.garagecherries.com',
-    logo: 'https://www.garagecherries.com/logo.png',
+    logo: 'https://www.garagecherries.com/cherry-logo.png',
     description: 'Buy and sell classic cars, muscle cars, sports cars, and collector vehicles. Browse listings from trusted dealers across the United States.',
     contactPoint: {
       '@type': 'ContactPoint',
