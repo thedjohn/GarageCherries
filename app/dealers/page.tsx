@@ -19,18 +19,24 @@ export default async function DealersPage() {
 
   const dealerList = dealers ?? [];
 
-  // Get approved, unsold listing counts per dealer
-  const { data: listingCounts } = await supabase
-    .from('listings')
-    .select('seller_id')
-    .eq('status', 'approved')
-    .eq('is_sold', false)
-    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
-
-  const countByDealer: Record<string, number> = {};
-  for (const row of listingCounts ?? []) {
-    if (row.seller_id) countByDealer[row.seller_id] = (countByDealer[row.seller_id] ?? 0) + 1;
-  }
+  // One targeted count per dealer instead of fetching every matching listing
+  // site-wide and grouping in JS -- that approach silently undercounted
+  // every dealer's badge once total active listings crossed Supabase's
+  // default 1000-row cap on an uncapped select. The dealer list itself is
+  // small, so N parallel count queries is cheap and gives each dealer their
+  // real number regardless of how large the listings table gets.
+  const nowIso = new Date().toISOString();
+  const countEntries = await Promise.all(dealerList.map(async dealer => {
+    const { count } = await supabase
+      .from('listings')
+      .select('id', { count: 'exact', head: true })
+      .eq('seller_id', dealer.id)
+      .eq('status', 'approved')
+      .eq('is_sold', false)
+      .or(`expires_at.is.null,expires_at.gt.${nowIso}`);
+    return [dealer.id, count ?? 0] as const;
+  }));
+  const countByDealer: Record<string, number> = Object.fromEntries(countEntries);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">

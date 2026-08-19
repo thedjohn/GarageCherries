@@ -29,13 +29,18 @@ function makeGetRequest() {
   return {} as unknown as NextRequest;
 }
 
-function makeSupabaseMock({ pendingRows = [] as { created_at: string }[], reportedCount = 0, views30d = 0, inquiries30d = 0, offers30d = 0, sold30d = 0, dealerRows = [] as { created_at: string }[] }) {
+function makeSupabaseMock({ pendingCount = 0, oldestPendingRow = undefined as { created_at: string } | undefined, reportedCount = 0, views30d = 0, inquiries30d = 0, offers30d = 0, sold30d = 0, dealerRows = [] as { created_at: string }[] }) {
   let listingsCall = 0;
   mockFrom.mockImplementation((table: string) => {
     if (table === 'listings') {
       listingsCall++;
       if (listingsCall === 1) {
-        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: pendingRows }) }) };
+        // pending count
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ count: pendingCount }) }) };
+      }
+      if (listingsCall === 2) {
+        // oldest pending row
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue({ data: oldestPendingRow ? [oldestPendingRow] : [] }) }) }) }) };
       }
       return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: sold30d }) }) }) };
     }
@@ -80,7 +85,8 @@ describe('GET /api/admin/overview', () => {
     mockRequireAdmin.mockResolvedValue('admin');
     const today = new Date().toISOString();
     makeSupabaseMock({
-      pendingRows: [{ created_at: new Date(Date.now() - 3 * 86400000).toISOString() }, { created_at: today }],
+      pendingCount: 2,
+      oldestPendingRow: { created_at: new Date(Date.now() - 3 * 86400000).toISOString() },
       reportedCount: 2,
       views30d: 500, inquiries30d: 20, offers30d: 5, sold30d: 1,
       dealerRows: [{ created_at: today }],
@@ -96,9 +102,20 @@ describe('GET /api/admin/overview', () => {
     expect(res._data.dealerSignupsTrend[29].count).toBe(1);
   });
 
+  it('reports the real pending count even past Supabase\'s 1000-row select cap', async () => {
+    // Proves this uses a real count query rather than array .length on a
+    // fetched row set -- 1500 could never come from .length on a select
+    // that silently caps at 1000.
+    mockRequireAdmin.mockResolvedValue('admin');
+    makeSupabaseMock({ pendingCount: 1500, oldestPendingRow: { created_at: new Date(Date.now() - 10 * 86400000).toISOString() } });
+
+    const res: any = await GET(makeGetRequest());
+    expect(res._data.pendingQueue).toEqual({ count: 1500, oldestDays: 10 });
+  });
+
   it('reports oldestDays as null when nothing is pending', async () => {
     mockRequireAdmin.mockResolvedValue('superadmin');
-    makeSupabaseMock({ pendingRows: [] });
+    makeSupabaseMock({ pendingCount: 0 });
 
     const res: any = await GET(makeGetRequest());
     expect(res._data.pendingQueue).toEqual({ count: 0, oldestDays: null });

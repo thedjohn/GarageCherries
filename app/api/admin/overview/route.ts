@@ -42,7 +42,8 @@ export async function GET(request: NextRequest) {
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const [
-    { data: pendingRows },
+    { count: pendingCount },
+    { data: oldestPendingRows },
     { count: reportedCount },
     { count: views30d },
     { count: inquiries30d },
@@ -50,7 +51,13 @@ export async function GET(request: NextRequest) {
     { count: sold30d },
     { data: dealerRows },
   ] = await Promise.all([
-    admin.from('listings').select('created_at').eq('status', 'pending'),
+    // Two targeted queries instead of fetching every pending row -- a bare
+    // count and the single oldest row's timestamp, neither of which needs
+    // the full row set. Fetching all rows just to call .length and Math.max
+    // on them silently undercounts/misdates once the pending queue crosses
+    // Supabase's default 1000-row cap on an uncapped select.
+    admin.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    admin.from('listings').select('created_at').eq('status', 'pending').order('created_at', { ascending: true }).limit(1),
     admin.from('messages').select('id', { count: 'exact', head: true }).eq('reported', true),
     admin.from('listing_views').select('id', { count: 'exact', head: true }).gte('viewed_at', thirtyDaysAgo),
     admin.from('conversations').select('id', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
@@ -59,13 +66,12 @@ export async function GET(request: NextRequest) {
     admin.from('dealers').select('created_at').gte('created_at', thirtyDaysAgo),
   ]);
 
-  const pendingCount = pendingRows?.length ?? 0;
-  const oldestPendingDays = pendingCount > 0
-    ? Math.round(Math.max(...pendingRows!.map(r => (Date.now() - new Date(r.created_at).getTime()) / (1000 * 60 * 60 * 24))))
+  const oldestPendingDays = oldestPendingRows && oldestPendingRows.length > 0
+    ? Math.round((Date.now() - new Date(oldestPendingRows[0].created_at).getTime()) / (1000 * 60 * 60 * 24))
     : null;
 
   return NextResponse.json({
-    pendingQueue: { count: pendingCount, oldestDays: oldestPendingDays },
+    pendingQueue: { count: pendingCount ?? 0, oldestDays: oldestPendingDays },
     reportedQueue: { count: reportedCount ?? 0 },
     funnel: {
       views30d: views30d ?? 0,
