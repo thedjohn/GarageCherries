@@ -64,12 +64,22 @@ function makeJsonRequest(body: Record<string, unknown>) {
   return { json: async () => body } as unknown as NextRequest;
 }
 
+// listings/watchlists/conversations are fetched via fetchAllRows (paged past
+// Supabase's default 1000-row cap), so GET calls .select(...).order(...).range(...)
+// on those three specifically, unlike the flat .select(...) used elsewhere in
+// this route. A single page of test-sized data (always well under 1000 rows)
+// is enough to satisfy fetchAllRows' "fewer than a full page means done" check.
+const PAGED_TABLES = new Set(['listings', 'watchlists', 'conversations']);
+function tableStub(table: string, data: unknown[] = []) {
+  return PAGED_TABLES.has(table)
+    ? { select: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ range: vi.fn().mockResolvedValue({ data }) }) }) }
+    : { select: vi.fn().mockResolvedValue({ data }) };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
-  // Default empty-but-valid shape for every `.from(table).select(...)` call in GET
-  mockFrom.mockImplementation((table: string) => ({
-    select: vi.fn().mockResolvedValue({ data: [] }),
-  }));
+  // Default empty-but-valid shape for every `.from(table)` call in GET
+  mockFrom.mockImplementation((table: string) => tableStub(table, []));
 });
 
 // ── GET /api/admin/users ────────────────────────────────────────────────────
@@ -120,7 +130,7 @@ describe('GET /api/admin/users', () => {
         watchlists:    [{ user_id: 'buyer-1' }],
         conversations: [{ buyer_id: 'buyer-1', listing_id: 'l1' }],
       };
-      return { select: vi.fn().mockResolvedValue({ data: data[table] ?? [] }) };
+      return tableStub(table, data[table] ?? []);
     });
     mockListUsers.mockResolvedValue({ data: { users: authUsers } });
 
@@ -136,6 +146,36 @@ describe('GET /api/admin/users', () => {
     expect(res._data.total).toBe(6);
   });
 
+  it('counts a seller\'s listings correctly even past Supabase\'s 1000-row select cap', async () => {
+    // Proves the listings fetch actually pages through multiple batches
+    // rather than silently stopping at 1000 -- 1200 approved listings for
+    // one seller, split across two pages (1000 + 200), should still all
+    // get counted.
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'admin1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    const now = new Date().toISOString();
+
+    const page1 = Array.from({ length: 1000 }, () => ({ seller_id: 'big-seller', status: 'approved' }));
+    const page2 = Array.from({ length: 200 }, () => ({ seller_id: 'big-seller', status: 'approved' }));
+    let listingsCall = 0;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        listingsCall++;
+        const data = listingsCall === 1 ? page1 : listingsCall === 2 ? page2 : [];
+        return { select: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ range: vi.fn().mockResolvedValue({ data }) }) }) };
+      }
+      return tableStub(table, []);
+    });
+    mockListUsers.mockResolvedValue({ data: { users: [
+      { id: 'big-seller', email: 'big@x.com', created_at: now, last_sign_in_at: now, user_metadata: {} },
+    ] } });
+
+    const res: any = await GET(makeGetRequest());
+    expect(res._status).toBe(200);
+    const seller = res._data.users.find((u: any) => u.id === 'big-seller');
+    expect(seller.listings.approved).toBe(1200);
+  });
+
   it('filters by role and status query params', async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'admin1' } } });
     mockRequireAdmin.mockResolvedValue('admin');
@@ -149,7 +189,7 @@ describe('GET /api/admin/users', () => {
     });
     mockFrom.mockImplementation((table: string) => {
       if (table === 'suspended_users') return { select: vi.fn().mockResolvedValue({ data: [{ user_id: 'u1', reason: 'spam', suspended_at: new Date().toISOString() }] }) };
-      return { select: vi.fn().mockResolvedValue({ data: [] }) };
+      return tableStub(table, []);
     });
 
     const res: any = await GET(makeGetRequest({ status: 'suspended' }));
@@ -171,8 +211,8 @@ describe('GET /api/admin/users', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'dealers') return { select: vi.fn().mockResolvedValue({ data: [{ id: 'dealer-1', name: 'Dealer Co' }] }) };
       if (table === 'suspended_users') return { select: vi.fn().mockResolvedValue({ data: [{ user_id: 'dealer-1', reason: 'x', suspended_at: new Date().toISOString() }] }) };
-      if (table === 'watchlists') return { select: vi.fn().mockResolvedValue({ data: [{ user_id: 'buyer-1' }] }) };
-      return { select: vi.fn().mockResolvedValue({ data: [] }) };
+      if (table === 'watchlists') return tableStub(table, [{ user_id: 'buyer-1' }]);
+      return tableStub(table, []);
     });
 
     const res: any = await GET(makeGetRequest({ role: 'dealer', status: 'active' }));
@@ -195,7 +235,7 @@ describe('GET /api/admin/users', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'dealers') return { select: vi.fn().mockResolvedValue({ data: [{ id: 'dealer-1', name: 'Dealer Co', beta_expires_at: '2026-10-31T23:59:59+00:00' }] }) };
       if (table === 'advertisers') return { select: vi.fn().mockResolvedValue({ data: [{ id: 'ad-1', user_id: 'advertiser-1', business_name: 'Ads Co', trial_ends_at: '2026-08-01T00:00:00+00:00' }] }) };
-      return { select: vi.fn().mockResolvedValue({ data: [] }) };
+      return tableStub(table, []);
     });
 
     const res: any = await GET(makeGetRequest());

@@ -5,6 +5,7 @@ import type { Car } from '@/lib/types';
 import CarCard from '@/components/CarCard';
 import Pagination from '@/components/Pagination';
 import { MUSCLE_CARS_CONTENT, MUSCLE_CAR_FILTER } from '@/lib/muscleCars';
+import { fetchAllRows } from '@/lib/db';
 
 const PAGE_SIZE = 3; // 1 row at the 3-column (lg) breakpoint, matching the other /cars category pages
 
@@ -19,15 +20,33 @@ export default async function MuscleCarsPage({ searchParams }: { searchParams: P
   const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1);
   const content = MUSCLE_CARS_CONTENT;
 
+  interface MuscleCarRow {
+    id: string; slug: string; title: string; year: number; make: string; model: string | null;
+    price: number; mileage: number | null; location: string | null; state: string | null;
+    condition: string; body_style: string; transmission: string; engine: string; color: string;
+    images: string[] | null; description: string | null; seller_name: string | null;
+    seller_phone: string | null; featured: boolean | null; listed_at: string | null;
+  }
+
   const supabase = await createClient();
-  const { data: dbRows } = await supabase
+  // Paged past Supabase's default 1000-row cap on an uncapped select --
+  // unlikely to matter today given the make filter already narrows this to
+  // a handful of muscle-car makes, but the same latent bug as the other
+  // fixes in this batch otherwise. listed_at stays the primary sort since
+  // display order here is real (newest listings shown first, not just
+  // internal math); id is added only as a tie-breaker so paging stays
+  // gap-free/duplicate-free when multiple rows share the same listed_at
+  // (e.g. a batch import landing many rows the same second).
+  const dbRows = await fetchAllRows<MuscleCarRow>((from, to) => supabase
     .from('listings')
     .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at')
     .eq('status', 'approved')
     .eq('is_sold', false)
     .in('make', MUSCLE_CAR_FILTER.map(f => f.make))
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-    .order('listed_at', { ascending: false });
+    .order('listed_at', { ascending: false })
+    .order('id', { ascending: true })
+    .range(from, to));
 
   // .in('make', ...) narrows to the right makes at the DB level; the model-prefix
   // match (which make/model combos actually count as a muscle car) happens here,
@@ -46,13 +65,13 @@ export default async function MuscleCarsPage({ searchParams }: { searchParams: P
 
   const cars: Car[] = pageRows.map(r => ({
     id: r.id, slug: r.slug, title: r.title,
-    year: r.year, make: r.make, model: r.model,
+    year: r.year, make: r.make, model: r.model ?? '',
     price: r.price, mileage: r.mileage,
     location: r.location ?? '', state: r.state ?? '',
     condition: r.condition, bodyStyle: r.body_style,
     transmission: r.transmission, engine: r.engine,
     color: r.color, images: r.images ?? [],
-    description: r.description,
+    description: r.description ?? '',
     sellerId: '', sellerName: r.seller_name ?? '', sellerPhone: r.seller_phone ?? '',
     featured: r.featured ?? false, listedAt: r.listed_at ?? '',
   }));

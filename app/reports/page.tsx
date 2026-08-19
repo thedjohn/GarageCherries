@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
+import { fetchAllRows } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,16 +23,25 @@ export default async function MarketReportPage() {
   const now = new Date();
   const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-  // Pull all active listings
-  const { data: cars } = await admin
+  // Pull all active listings -- paged past Supabase's default 1000-row cap
+  // on an uncapped select, since every stat below (averages, median, counts)
+  // needs the complete set, not just the first 1000. Ordered by id (not
+  // listed_at) since none of these computations care about row order, and
+  // id is the one column guaranteed unique enough for safe, gap-free paging
+  // (listed_at isn't -- e.g. a batch import can land many rows the same
+  // second, which would risk skipping/duplicating rows across page
+  // boundaries if used as the sort key instead).
+  const allCars = await fetchAllRows<{
+    id: string; make: string; model: string; price: number; condition: string;
+    listed_at: string; is_sold: boolean; sold_at: string | null;
+  }>((from, to) => admin
     .from('listings')
     .select('id, make, model, price, condition, listed_at, is_sold, sold_at')
     .eq('is_sold', false)
     .eq('status', 'approved')
     .or(`expires_at.is.null,expires_at.gt.${now.toISOString()}`)
-    .order('listed_at', { ascending: false });
-
-  const allCars = cars ?? [];
+    .order('id', { ascending: true })
+    .range(from, to));
 
   // Views this month — from listing_views, the table the dealer dashboard and
   // per-listing views feature actually read. `listings.views` doesn't exist as

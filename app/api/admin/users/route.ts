@@ -3,6 +3,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requireAdmin, hasRole } from '@/lib/admin';
 import { Resend } from 'resend';
 import { emailWrap } from '@/lib/emailBranding';
+import { fetchAllRows } from '@/lib/db';
 
 async function auth() {
   const supabase = await createClient();
@@ -25,22 +26,32 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient();
 
+  // listings/watchlists/conversations are paged past Supabase's default
+  // 1000-row cap on an uncapped select -- each is used below to build a
+  // per-user breakdown (listing counts, watchlist counts, conversation
+  // counts) that needs every row, not just a total. Ordered by id (not
+  // any of these tables' timestamp columns) since the breakdowns don't
+  // care about row order, and id is the one column guaranteed unique
+  // enough for safe, gap-free paging.
   const [
     { data: { users: authUsers } },
     { data: dealers },
     { data: advertisers },
-    { data: listings },
+    listings,
     { data: suspended },
-    { data: watchlists },
-    { data: conversations },
+    watchlists,
+    conversations,
   ] = await Promise.all([
     admin.auth.admin.listUsers({ perPage: 1000 }),
     admin.from('dealers').select('id, name, location, state, since, logo, beta_expires_at'),
     admin.from('advertisers').select('id, user_id, business_name, contact_name, phone, city, state, trial_ends_at'),
-    admin.from('listings').select('seller_id, status'),
+    fetchAllRows<{ seller_id: string | null; status: string }>((from, to) =>
+      admin.from('listings').select('seller_id, status').order('id', { ascending: true }).range(from, to)),
     admin.from('suspended_users').select('user_id, reason, suspended_at'),
-    admin.from('watchlists').select('user_id'),
-    admin.from('conversations').select('buyer_id, listing_id'),
+    fetchAllRows<{ user_id: string }>((from, to) =>
+      admin.from('watchlists').select('user_id').order('id', { ascending: true }).range(from, to)),
+    fetchAllRows<{ buyer_id: string; listing_id: string }>((from, to) =>
+      admin.from('conversations').select('buyer_id, listing_id').order('id', { ascending: true }).range(from, to)),
   ]);
 
   const dealerIds = new Set((dealers ?? []).map((d: any) => d.id));

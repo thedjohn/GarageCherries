@@ -182,6 +182,31 @@ export async function fetchMakes(): Promise<string[]> {
   return makes;
 }
 
+// Supabase/PostgREST caps any select with no .range()/.limit() at 1000 rows
+// by default -- callers that need every matching row (not just a count) use
+// this to fetch them all in pages instead of silently getting only the
+// first 1000. The query must be ordered by something unique (or unique-
+// enough as a tie-breaker) for paging to be safe: without a deterministic
+// sort, rows can be skipped or duplicated across page boundaries when many
+// rows share the same sort value (e.g. a batch import that landed the same
+// second) -- an "unbounded fetch capped at 1000" bug traded for a subtler
+// "wrong order in the shell game" one.
+export async function fetchAllRows<T>(
+  page: (from: number, to: number) => PromiseLike<{ data: T[] | null }>
+): Promise<T[]> {
+  const PAGE_SIZE = 1000;
+  const all: T[] = [];
+  let from = 0;
+  for (;;) {
+    const { data } = await page(from, from + PAGE_SIZE - 1);
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return all;
+}
+
 export async function fetchCarCount(): Promise<number> {
   const supabase = await createClient();
   const { count } = await supabase.from('listings').select('*', { count: 'exact', head: true });
