@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { trackEvent } from '@/lib/gtag';
 
 export default function WatchlistButton({ carId, price }: { carId: string; price: number }) {
   const [watched, setWatched] = useState(false);
@@ -32,6 +33,7 @@ export default function WatchlistButton({ carId, price }: { carId: string; price
       setWatched(false);
     } else {
       await supabase.from('watchlists').insert({ user_id: user.id, car_id: carId, price_at_add: price });
+      trackEvent('watchlist_add', { car_id: carId });
       setWatched(true);
     }
     setWorking(false);
