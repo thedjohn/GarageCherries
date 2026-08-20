@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next';
 import { createAdminClient } from '@/lib/supabase/server';
+import { fetchAllRows } from '@/lib/db';
 import { toSegment } from '@/lib/data';
 import { MAKES } from '@/lib/types';
 import { ENCYCLOPEDIA, getMakeSlugs } from '@/lib/encyclopedia';
@@ -26,8 +27,24 @@ const BASE_URL = 'https://www.garagecherries.com';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = createAdminClient();
 
-  const [{ data: cars }, { data: dealers }, { data: advertisers }, { data: events }] = await Promise.all([
-    supabase.from('listings').select('id, slug, make, model, featured, listed_at, created_at').eq('status', 'approved'),
+  interface SitemapCarRow {
+    id: string; slug: string; make: string; model: string;
+    featured: boolean | null; listed_at: string | null; created_at: string | null;
+  }
+
+  // Paged past Supabase's default 1000-row cap on an uncapped select -- with
+  // 1086 approved listings as of this fix, the old raw .select() silently
+  // dropped every listing past the first 1000 from the sitemap (confirmed
+  // live via the sitemap-health cron's alert). Ordered by id, the one column
+  // guaranteed unique enough for safe, gap-free paging (this list doesn't
+  // care about row order).
+  const [cars, { data: dealers }, { data: advertisers }, { data: events }] = await Promise.all([
+    fetchAllRows<SitemapCarRow>((from, to) => supabase
+      .from('listings')
+      .select('id, slug, make, model, featured, listed_at, created_at')
+      .eq('status', 'approved')
+      .order('id', { ascending: true })
+      .range(from, to)),
     supabase.from('dealers').select('slug, created_at'),
     supabase.from('advertisers').select('slug, created_at').eq('active', true).gt('trial_ends_at', new Date().toISOString()),
     supabase.from('events').select('slug, date, state').eq('status', 'approved').not('slug', 'is', null),
