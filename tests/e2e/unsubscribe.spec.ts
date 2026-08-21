@@ -9,10 +9,15 @@ const UNSUBSCRIBE_PAGES = [
   { path: '/unsubscribe/alerts',       name: 'alerts' },
   { path: '/unsubscribe/dealer-report', name: 'dealer report' },
   { path: '/unsubscribe/car-sold',     name: 'car sold' },
-  { path: '/unsubscribe/newsletter',   name: 'newsletter' },
+  // newsletter unsubscribes by deleting the subscriber row rather than
+  // flagging an existing auth user, so it can't tell "never existed" apart
+  // from "already unsubscribed" -- it deliberately shows the friendlier
+  // "already unsubscribed" state for both instead of "invalid link" (see
+  // app/unsubscribe/newsletter/page.tsx).
+  { path: '/unsubscribe/newsletter',   name: 'newsletter', notFoundIsAlreadyDone: true },
 ];
 
-for (const { path, name } of UNSUBSCRIBE_PAGES) {
+for (const { path, name, notFoundIsAlreadyDone } of UNSUBSCRIBE_PAGES) {
   test.describe(`Unsubscribe page — ${name}`, () => {
     test('renders without application error', async ({ page }) => {
       await page.goto(path);
@@ -36,9 +41,14 @@ for (const { path, name } of UNSUBSCRIBE_PAGES) {
 
     test('shows invalid link state for a well-formed but non-existent UUID', async ({ page }) => {
       await page.goto(`${path}?uid=00000000-0000-0000-0000-000000000000`);
-      // Should show invalid (user not found), not crash
       await expect(page.getByText(/Application error/i)).not.toBeVisible();
-      await expect(page.getByText(/invalid link/i)).toBeVisible();
+      // newsletter can't distinguish "never existed" from "already unsubscribed"
+      // (see notFoundIsAlreadyDone comment above), so it shows that state instead.
+      if (notFoundIsAlreadyDone) {
+        await expect(page.getByText(/already unsubscribed/i)).toBeVisible();
+      } else {
+        await expect(page.getByText(/invalid link/i)).toBeVisible();
+      }
     });
 
     test('shows GarageCherries branding', async ({ page }) => {
