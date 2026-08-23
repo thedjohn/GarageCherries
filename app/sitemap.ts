@@ -32,13 +32,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     featured: boolean | null; listed_at: string | null; created_at: string | null;
   }
 
+  interface SitemapEventRow {
+    id: string; slug: string; date: string | null; state: string | null;
+  }
+
   // Paged past Supabase's default 1000-row cap on an uncapped select -- with
   // 1086 approved listings as of this fix, the old raw .select() silently
   // dropped every listing past the first 1000 from the sitemap (confirmed
   // live via the sitemap-health cron's alert). Ordered by id, the one column
   // guaranteed unique enough for safe, gap-free paging (this list doesn't
-  // care about row order).
-  const [cars, { data: dealers }, { data: advertisers }, { data: events }] = await Promise.all([
+  // care about row order). Events hit the same cap once approved events
+  // passed 1000 (a state-by-state events import pushed the total past 13,000),
+  // silently dropping most event pages from the sitemap -- same fix applies.
+  const [cars, { data: dealers }, { data: advertisers }, events] = await Promise.all([
     fetchAllRows<SitemapCarRow>((from, to) => supabase
       .from('listings')
       .select('id, slug, make, model, featured, listed_at, created_at')
@@ -47,7 +53,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .range(from, to)),
     supabase.from('dealers').select('slug, created_at'),
     supabase.from('advertisers').select('slug, created_at').eq('active', true).gt('trial_ends_at', new Date().toISOString()),
-    supabase.from('events').select('slug, date, state').eq('status', 'approved').not('slug', 'is', null),
+    fetchAllRows<SitemapEventRow>((from, to) => supabase
+      .from('events')
+      .select('id, slug, date, state')
+      .eq('status', 'approved')
+      .not('slug', 'is', null)
+      .order('id', { ascending: true })
+      .range(from, to)),
   ]);
 
   const GUIDE_SLUGS = [
@@ -187,7 +199,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }));
 
   // One real page per state with at least one real event -- see app/events/state/[state]/page.tsx.
-  const eventStates = [...new Set((events ?? []).map(e => e.state).filter(Boolean))];
+  const eventStates = [...new Set((events ?? []).map(e => e.state).filter((s): s is string => Boolean(s)))];
   const eventStatePages: MetadataRoute.Sitemap = eventStates.map(state => ({
     url: `${BASE_URL}/events/state/${stateSlug(state)}`,
     lastModified: new Date(),
