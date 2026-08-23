@@ -77,6 +77,7 @@ export default async function EventsPage({ searchParams }: Props) {
   const admin = createAdminClient();
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
   const zipCoords = sp.zip ? resolveZipCoords(sp.zip) : null;
+  const today = new Date().toISOString().slice(0, 10);
 
   const applyFilters = <T,>(q: T): T => {
     let query = q as any;
@@ -132,6 +133,12 @@ export default async function EventsPage({ searchParams }: Props) {
   }
 
   const { data: featuredData } = await featuredQuery;
+  // Upcoming-events count for the header line below -- respects the same
+  // state/type/city filters as the list itself (not the ZIP radius, which
+  // already has its own "within 50 miles of X" status line).
+  let upcomingCountQuery = admin.from('events').select('id', { count: 'exact', head: true }).eq('status', 'approved').gte('date', today);
+  upcomingCountQuery = applyFilters(upcomingCountQuery);
+  const { count: upcomingCount } = await upcomingCountQuery;
   // Per-state counts for "Browse by State" -- head:true count-only queries
   // return no rows, so they aren't subject to Supabase's 1000-row select cap
   // the way fetching every row's `state` column and tallying in JS would be.
@@ -147,9 +154,8 @@ export default async function EventsPage({ searchParams }: Props) {
     ? (featuredData ?? []).filter(e => haversineMiles(zipCoords.lat, zipCoords.lng, e.lat!, e.lng!) <= NEARBY_RADIUS_MILES)
     : (featuredData ?? []);
   const hasActiveFilters = !!(sp.state || sp.type || sp.city || sp.zip);
-  const now = new Date().toISOString().slice(0, 10);
-  const upcoming = events.filter(e => e.date >= now);
-  const past = events.filter(e => e.date < now);
+  const upcoming = events.filter(e => e.date >= today);
+  const past = events.filter(e => e.date < today);
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
@@ -159,6 +165,12 @@ export default async function EventsPage({ searchParams }: Props) {
         <p className="text-lg text-zinc-500 max-w-2xl">
           Major classic car shows, auctions, swap meets, and cruise nights across the USA for {new Date().getFullYear()}.
         </p>
+        {!zipCoords && (
+          <p className="mt-3 text-sm font-semibold text-red-600">
+            {(upcomingCount ?? 0).toLocaleString()} upcoming event{upcomingCount === 1 ? '' : 's'}
+            {sp.state ? ` in ${STATE_NAMES[sp.state] ?? sp.state}` : ' nationwide'}
+          </p>
+        )}
       </div>
 
       <SubmitEventForm />
