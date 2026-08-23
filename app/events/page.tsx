@@ -3,9 +3,14 @@ import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import SubmitEventForm from './SubmitEventForm';
 import EventFilters from '@/components/EventFilters';
+import Pagination from '@/components/Pagination';
 import { stateSlug, STATE_NAMES } from '@/lib/usStates';
+import { resolveZipCoords, boundingBox, haversineMiles } from '@/lib/geo';
+import { fetchAllRows } from '@/lib/db';
 
 export const revalidate = 0;
+const PAGE_SIZE = 20;
+const NEARBY_RADIUS_MILES = 50;
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ state?: string; type?: string }> }): Promise<Metadata> {
   const sp = await searchParams;
@@ -29,6 +34,7 @@ export interface CarShowEvent {
   id: string; name: string; slug?: string | null; date: string; end_date?: string | null;
   start_time?: string | null; end_time?: string | null;
   street?: string | null; location: string; state: string; zip?: string | null;
+  lat?: number | null; lng?: number | null;
   type: 'show' | 'swap-meet' | 'cruise' | 'auction';
   featured: boolean; description: string; url?: string | null; status: string;
   image?: string | null;
@@ -63,33 +69,87 @@ export function formatTimeRange(start?: string | null, end?: string | null) {
 }
 
 interface Props {
-  searchParams: Promise<{ state?: string; type?: string }>;
+  searchParams: Promise<{ state?: string; type?: string; city?: string; zip?: string; page?: string }>;
 }
 
 export default async function EventsPage({ searchParams }: Props) {
   const sp = await searchParams;
   const admin = createAdminClient();
-  let query = admin
-    .from('events')
-    .select('*')
-    .eq('status', 'approved')
-    .order('date', { ascending: true });
-  if (sp.state) query = query.eq('state', sp.state);
-  if (sp.type) query = query.eq('type', sp.type);
-  const [{ data }, { data: allStateRows }] = await Promise.all([
-    query,
-    admin.from('events').select('state').eq('status', 'approved'),
-  ]);
+  const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
+  const zipCoords = sp.zip ? resolveZipCoords(sp.zip) : null;
 
-  const events: CarShowEvent[] = data ?? [];
-  const stateCounts = new Map<string, number>();
-  for (const row of allStateRows ?? []) stateCounts.set(row.state, (stateCounts.get(row.state) ?? 0) + 1);
-  const statesWithEvents = [...stateCounts.entries()].sort((a, b) => b[1] - a[1]);
-  const hasActiveFilters = !!(sp.state || sp.type);
+  const applyFilters = <T,>(q: T): T => {
+    let query = q as any;
+    if (sp.state) query = query.eq('state', sp.state);
+    if (sp.type) query = query.eq('type', sp.type);
+    if (sp.city) query = query.ilike('location', `%${sp.city}%`);
+    return query;
+  };
+
+  // Featured events are a small curated set by design -- always shown in full,
+  // never subject to page/.range() (a far-future featured event could otherwise
+  // fall outside page 1's window and simply vanish). When a ZIP is active, they
+  // still respect the same distance radius as the main list -- otherwise a
+  // "Featured" event hundreds of miles away would undercut a "near me" search.
+  let featuredQuery = admin.from('events').select('*').eq('status', 'approved').eq('featured', true).order('date', { ascending: true });
+  featuredQuery = applyFilters(featuredQuery);
+
+  let events: CarShowEvent[];
+  let totalCount: number;
+  let totalPages: number;
+
+  if (zipCoords) {
+    // PostgREST can't sort by a computed haversine expression, so a resolved
+    // ZIP switches this page from DB-.range() pagination to: a cheap bounding-
+    // box pre-filter pushed down to the DB, exact distance computed in JS over
+    // that (small) candidate set, then JS-side sort/paginate.
+    const box = boundingBox(zipCoords.lat, zipCoords.lng, NEARBY_RADIUS_MILES);
+    featuredQuery = featuredQuery
+      .not('lat', 'is', null).not('lng', 'is', null)
+      .gte('lat', box.minLat).lte('lat', box.maxLat).gte('lng', box.minLng).lte('lng', box.maxLng);
+    const nearbyRows = await fetchAllRows<CarShowEvent>((from, to) => {
+      let q = admin.from('events').select('*').eq('status', 'approved').eq('featured', false)
+        .not('lat', 'is', null).not('lng', 'is', null)
+        .gte('lat', box.minLat).lte('lat', box.maxLat).gte('lng', box.minLng).lte('lng', box.maxLng)
+        .range(from, to);
+      return applyFilters(q);
+    });
+    const withinRadius = nearbyRows
+      .map(e => ({ event: e, miles: haversineMiles(zipCoords.lat, zipCoords.lng, e.lat!, e.lng!) }))
+      .filter(r => r.miles <= NEARBY_RADIUS_MILES)
+      .sort((a, b) => a.miles - b.miles);
+    totalCount = withinRadius.length;
+    totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+    events = withinRadius.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(r => r.event);
+  } else {
+    let mainQuery = admin.from('events').select('*', { count: 'exact' }).eq('status', 'approved').eq('featured', false).order('date', { ascending: true });
+    mainQuery = applyFilters(mainQuery);
+    mainQuery = mainQuery.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+    const { data, count } = await mainQuery;
+    events = data ?? [];
+    totalCount = count ?? 0;
+    totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  }
+
+  const { data: featuredData } = await featuredQuery;
+  // Per-state counts for "Browse by State" -- head:true count-only queries
+  // return no rows, so they aren't subject to Supabase's 1000-row select cap
+  // the way fetching every row's `state` column and tallying in JS would be.
+  const stateCountPairs = await Promise.all(
+    Object.keys(STATE_NAMES).map(async code => {
+      const { count: c } = await admin.from('events').select('id', { count: 'exact', head: true }).eq('status', 'approved').eq('state', code);
+      return [code, c ?? 0] as const;
+    })
+  );
+  const statesWithEvents = stateCountPairs.filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]);
+
+  const featured: CarShowEvent[] = zipCoords
+    ? (featuredData ?? []).filter(e => haversineMiles(zipCoords.lat, zipCoords.lng, e.lat!, e.lng!) <= NEARBY_RADIUS_MILES)
+    : (featuredData ?? []);
+  const hasActiveFilters = !!(sp.state || sp.type || sp.city || sp.zip);
   const now = new Date().toISOString().slice(0, 10);
   const upcoming = events.filter(e => e.date >= now);
   const past = events.filter(e => e.date < now);
-  const featured = upcoming.filter(e => e.featured);
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
@@ -105,16 +165,16 @@ export default async function EventsPage({ searchParams }: Props) {
 
       <EventFilters />
 
-      {events.length === 0 && hasActiveFilters && (
+      {totalCount === 0 && featured.length === 0 && hasActiveFilters && (
         <div className="bg-white border border-zinc-100 rounded-2xl p-16 text-center shadow-sm">
           <p className="text-4xl mb-4">📅</p>
           <h2 className="text-xl font-bold text-zinc-800 mb-2">No events match your filters</h2>
-          <p className="text-zinc-500 text-sm mb-4">Try a different state or event type.</p>
+          <p className="text-zinc-500 text-sm mb-4">Try a different state, city, or event type.</p>
           <Link href="/events" className="text-red-600 hover:underline text-sm font-semibold">Clear filters</Link>
         </div>
       )}
 
-      {events.length === 0 && !hasActiveFilters && (
+      {totalCount === 0 && featured.length === 0 && !hasActiveFilters && (
         <div className="bg-white border border-zinc-100 rounded-2xl p-16 text-center shadow-sm">
           <p className="text-4xl mb-4">📅</p>
           <h2 className="text-xl font-bold text-zinc-800 mb-2">No events listed yet</h2>
@@ -154,6 +214,8 @@ export default async function EventsPage({ searchParams }: Props) {
           </div>
         </div>
       )}
+
+      <Pagination currentPage={page} totalPages={totalPages} basePath="/events" searchParams={sp} />
 
       {statesWithEvents.length > 0 && (
         <div className="mb-10">

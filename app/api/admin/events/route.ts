@@ -5,11 +5,16 @@ import { requireAdmin, hasRole } from '@/lib/admin';
 import { createLogger } from '@/lib/logger';
 import { postEventToFacebook } from '@/lib/facebook/postToPage';
 import { submitToIndexNow } from '@/lib/indexNow';
+import { resolveEventCoords } from '@/lib/geo';
 
 const VALID_TYPES = ['show', 'swap-meet', 'cruise', 'auction'] as const;
 
 function toEventSlug(name: string, date: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + date;
+}
+
+function primaryCity(location: string): string {
+  return location.split(',')[0].trim();
 }
 
 export async function GET(req: NextRequest) {
@@ -69,6 +74,9 @@ export async function POST(req: NextRequest) {
   }
 
   const admin = createAdminClient();
+  const trimmedLocation = location.trim();
+  const trimmedState = state.trim().toUpperCase();
+  const coords = resolveEventCoords(primaryCity(trimmedLocation), trimmedState);
   const { data, error } = await admin.from('events').insert({
     name: name.trim(),
     slug: toEventSlug(name.trim(), date),
@@ -77,9 +85,11 @@ export async function POST(req: NextRequest) {
     start_time: start_time?.trim() || null,
     end_time: end_time?.trim() || null,
     street: street?.trim() || null,
-    location: location.trim(),
-    state: state.trim().toUpperCase(),
+    location: trimmedLocation,
+    state: trimmedState,
     zip: zip?.trim() || null,
+    lat: coords?.lat ?? null,
+    lng: coords?.lng ?? null,
     type,
     description: description?.trim() ?? '',
     url: url?.trim() || null,
@@ -138,6 +148,12 @@ export async function PATCH(req: NextRequest) {
   }
 
   // full edit
+  const trimmedLocation = location?.trim();
+  const trimmedState = state?.trim().toUpperCase();
+  // Only re-resolve lat/lng when this edit actually supplies both location
+  // and state -- a partial edit that omits them shouldn't null out existing
+  // coordinates for a value it never touched.
+  const coords = trimmedLocation && trimmedState ? resolveEventCoords(primaryCity(trimmedLocation), trimmedState) : undefined;
   const { error } = await admin.from('events').update({
     name: name?.trim(),
     date,
@@ -145,9 +161,10 @@ export async function PATCH(req: NextRequest) {
     start_time: start_time?.trim() || null,
     end_time: end_time?.trim() || null,
     street: street?.trim() || null,
-    location: location?.trim(),
-    state: state?.trim().toUpperCase(),
+    location: trimmedLocation,
+    state: trimmedState,
     zip: zip?.trim() || null,
+    ...(coords !== undefined ? { lat: coords?.lat ?? null, lng: coords?.lng ?? null } : {}),
     type,
     description: description?.trim() ?? '',
     url: url?.trim() || null,

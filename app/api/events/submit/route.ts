@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { rateLimit, getClientIP } from '@/lib/rateLimit';
 import { createLogger } from '@/lib/logger';
+import { resolveEventCoords } from '@/lib/geo';
 
 const log = createLogger('api/events/submit');
 const VALID_TYPES = ['show', 'swap-meet', 'cruise', 'auction'] as const;
 
 function toEventSlug(name: string, date: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + date;
+}
+
+function primaryCity(location: string): string {
+  return location.split(',')[0].trim();
 }
 
 export async function POST(req: NextRequest) {
@@ -41,6 +46,9 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { data: profile } = await admin.from('profiles').select('name').eq('id', user.id).maybeSingle();
 
+  const trimmedLocation = location.trim();
+  const trimmedState = state.trim().toUpperCase();
+  const coords = resolveEventCoords(primaryCity(trimmedLocation), trimmedState);
   const { data, error } = await admin.from('events').insert({
     name: name.trim(),
     slug: toEventSlug(name.trim(), date),
@@ -49,9 +57,11 @@ export async function POST(req: NextRequest) {
     start_time: start_time?.trim() || null,
     end_time: end_time?.trim() || null,
     street: street?.trim() || null,
-    location: location.trim(),
-    state: state.trim().toUpperCase(),
+    location: trimmedLocation,
+    state: trimmedState,
     zip: zip?.trim() || null,
+    lat: coords?.lat ?? null,
+    lng: coords?.lng ?? null,
     type,
     description: description.trim(),
     url: url?.trim() || null,

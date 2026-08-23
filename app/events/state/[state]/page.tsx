@@ -2,14 +2,21 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
+import { fetchAllRows } from '@/lib/db';
 import { STATE_NAMES, stateCodeFromSlug } from '@/lib/usStates';
+import { resolveZipCoords, boundingBox, haversineMiles } from '@/lib/geo';
 import { CarShowEvent, EventCard } from '../../page';
 import SubmitEventForm from '../../SubmitEventForm';
+import EventFilters from '@/components/EventFilters';
+import Pagination from '@/components/Pagination';
 
 export const revalidate = 0;
+const PAGE_SIZE = 20;
+const NEARBY_RADIUS_MILES = 50;
 
 interface Props {
   params: Promise<{ state: string }>;
+  searchParams: Promise<{ page?: string; city?: string; zip?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -29,25 +36,89 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function StateEventsPage({ params }: Props) {
+export default async function StateEventsPage({ params, searchParams }: Props) {
   const { state: stateSlugParam } = await params;
+  const sp = await searchParams;
   const code = stateCodeFromSlug(stateSlugParam);
   if (!code) notFound();
   const stateName = STATE_NAMES[code];
+  const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
+  const zipCoords = sp.zip ? resolveZipCoords(sp.zip) : null;
 
   const admin = createAdminClient();
-  const { data } = await admin
-    .from('events')
-    .select('*')
-    .eq('status', 'approved')
-    .eq('state', code)
-    .order('date', { ascending: true });
 
-  const events: CarShowEvent[] = data ?? [];
+  const applyCity = <T,>(q: T): T => {
+    let query = q as any;
+    if (sp.city) query = query.ilike('location', `%${sp.city}%`);
+    return query;
+  };
+
+  // Featured events are a small curated set by design -- always shown in full,
+  // never subject to page/.range() (see app/events/page.tsx for the same pattern,
+  // including respecting the ZIP radius below so a "Featured" event hundreds of
+  // miles away doesn't undercut a "near me" search).
+  let featuredQuery = admin.from('events').select('*').eq('status', 'approved').eq('state', code).eq('featured', true).order('date', { ascending: true });
+  featuredQuery = applyCity(featuredQuery);
+
+  let events: CarShowEvent[];
+  let totalCount: number;
+  let totalPages: number;
+  let featured: CarShowEvent[];
+  let cityOptions: string[];
+
+  const locationRowsPromise = fetchAllRows<{ location: string }>((from, to) =>
+    admin.from('events').select('location').eq('status', 'approved').eq('state', code).order('location').range(from, to)
+  );
+
+  if (zipCoords) {
+    // Same hybrid pattern as app/events/page.tsx: PostgREST can't sort by a
+    // computed haversine expression, so a resolved ZIP switches this page to a
+    // cheap DB-side bounding-box pre-filter + exact JS-side distance sort/paginate,
+    // additionally scoped to this route's fixed state.
+    const box = boundingBox(zipCoords.lat, zipCoords.lng, NEARBY_RADIUS_MILES);
+    featuredQuery = featuredQuery
+      .not('lat', 'is', null).not('lng', 'is', null)
+      .gte('lat', box.minLat).lte('lat', box.maxLat).gte('lng', box.minLng).lte('lng', box.maxLng);
+    const [nearbyRows, { data: featuredData }, locationRows] = await Promise.all([
+      fetchAllRows<CarShowEvent>((from, to) => {
+        let q = admin.from('events').select('*').eq('status', 'approved').eq('state', code).eq('featured', false)
+          .not('lat', 'is', null).not('lng', 'is', null)
+          .gte('lat', box.minLat).lte('lat', box.maxLat).gte('lng', box.minLng).lte('lng', box.maxLng)
+          .range(from, to);
+        return applyCity(q);
+      }),
+      featuredQuery,
+      locationRowsPromise,
+    ]);
+    const withinRadius = nearbyRows
+      .map(e => ({ event: e, miles: haversineMiles(zipCoords.lat, zipCoords.lng, e.lat!, e.lng!) }))
+      .filter(r => r.miles <= NEARBY_RADIUS_MILES)
+      .sort((a, b) => a.miles - b.miles);
+    totalCount = withinRadius.length;
+    totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+    events = withinRadius.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(r => r.event);
+    featured = (featuredData ?? []).filter(e => haversineMiles(zipCoords.lat, zipCoords.lng, e.lat!, e.lng!) <= NEARBY_RADIUS_MILES);
+    cityOptions = [...new Set(locationRows.map(r => r.location.split(',')[0].trim()))].sort();
+  } else {
+    let mainQuery = admin.from('events').select('*', { count: 'exact' }).eq('status', 'approved').eq('state', code).eq('featured', false).order('date', { ascending: true });
+    mainQuery = applyCity(mainQuery);
+    mainQuery = mainQuery.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+
+    const [{ data: featuredData }, { data, count }, locationRows] = await Promise.all([
+      featuredQuery,
+      mainQuery,
+      locationRowsPromise,
+    ]);
+    events = data ?? [];
+    totalCount = count ?? 0;
+    totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+    featured = featuredData ?? [];
+    cityOptions = [...new Set(locationRows.map(r => r.location.split(',')[0].trim()))].sort();
+  }
+
   const now = new Date().toISOString().slice(0, 10);
   const upcoming = events.filter(e => e.date >= now);
   const past = events.filter(e => e.date < now);
-  const featured = upcoming.filter(e => e.featured);
 
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
@@ -82,12 +153,20 @@ export default async function StateEventsPage({ params }: Props) {
           </Link>
         </div>
 
-        {events.length === 0 && (
+        <EventFilters basePath={`/events/state/${stateSlugParam}`} hideStateSelect cityOptions={cityOptions} />
+
+        {totalCount === 0 && featured.length === 0 && (
           <div className="bg-white border border-zinc-100 rounded-2xl p-16 text-center shadow-sm">
             <p className="text-4xl mb-4">📅</p>
-            <h2 className="text-xl font-bold text-zinc-800 mb-2">No {stateName} events listed yet</h2>
-            <p className="text-zinc-500 text-sm mb-4">Check back soon, or browse events in every state.</p>
-            <Link href="/events" className="text-red-600 hover:underline text-sm font-semibold">Browse all events</Link>
+            <h2 className="text-xl font-bold text-zinc-800 mb-2">
+              {sp.zip ? `No ${stateName} events within 50 miles of ${sp.zip}` : sp.city ? `No ${stateName} events match "${sp.city}"` : `No ${stateName} events listed yet`}
+            </h2>
+            <p className="text-zinc-500 text-sm mb-4">
+              {sp.zip ? 'Try a different ZIP, or browse every event in this state.' : sp.city ? 'Try a different city, or browse every event in this state.' : 'Check back soon, or browse events in every state.'}
+            </p>
+            <Link href={(sp.zip || sp.city) ? `/events/state/${stateSlugParam}` : '/events'} className="text-red-600 hover:underline text-sm font-semibold">
+              {(sp.zip || sp.city) ? `Browse all ${stateName} events` : 'Browse all events'}
+            </Link>
           </div>
         )}
 
@@ -117,6 +196,8 @@ export default async function StateEventsPage({ params }: Props) {
             </div>
           </div>
         )}
+
+        <Pagination currentPage={page} totalPages={totalPages} basePath={`/events/state/${stateSlugParam}`} searchParams={sp} />
 
         <SubmitEventForm />
 
