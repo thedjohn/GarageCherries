@@ -243,6 +243,15 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true });
   }
 
+  // Reset password — generates a new random password and returns it once
+  if (action === 'reset-password') {
+    if (!hasRole(role, 'admin')) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const newPassword = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+    const { error } = await admin.auth.admin.updateUserById(id, { password: newPassword });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ success: true, password: newPassword });
+  }
+
   // Promote seller to dealer
   if (action === 'promote') {
     if (role !== 'superadmin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

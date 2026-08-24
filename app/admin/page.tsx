@@ -212,6 +212,8 @@ export default function AdminPage() {
   const [editDealerBetaExpires, setEditDealerBetaExpires] = useState('');
   const [editAdvertiserTrialExpires, setEditAdvertiserTrialExpires] = useState('');
   const [editUserSaving, setEditUserSaving] = useState(false);
+  const [resetPasswordWorking, setResetPasswordWorking] = useState(false);
+  const [resetPasswordResult, setResetPasswordResult] = useState<string | null>(null);
   const [promoteTarget, setPromoteTarget] = useState<SiteUser | null>(null);
   const [promoteName, setPromoteName] = useState('');
   const [promoteLocation, setPromoteLocation] = useState('');
@@ -559,7 +561,24 @@ export default function AdminPage() {
         advertiser: u.advertiser && body.advertiser ? { ...u.advertiser, trial_ends_at: (body.advertiser as { trial_ends_at: string }).trial_ends_at } : u.advertiser,
       };
     }));
-    setEditingUser(null); setEditUserSaving(false);
+    setEditingUser(null); setEditUserSaving(false); setResetPasswordResult(null);
+  }
+
+  async function resetUserPassword() {
+    if (!editingUser) return;
+    setResetPasswordWorking(true);
+    const res = await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: editingUser.id, action: 'reset-password' }),
+    });
+    const json = await res.json();
+    setResetPasswordWorking(false);
+    if (res.ok) {
+      setResetPasswordResult(json.password);
+    } else {
+      alert(`Failed to reset password: ${json.error ?? 'Unknown error'}`);
+    }
   }
 
   async function promoteToDealer() {
@@ -620,6 +639,7 @@ export default function AdminPage() {
     setEditingUser(u); setEditUserName(u.name); setEditUserEmail(u.email);
     setEditDealerBetaExpires(u.dealer?.beta_expires_at ? u.dealer.beta_expires_at.slice(0, 10) : '');
     setEditAdvertiserTrialExpires(u.advertiser?.trial_ends_at ? u.advertiser.trial_ends_at.slice(0, 10) : '');
+    setResetPasswordResult(null);
   }
 
   function openPromote(u: SiteUser) {
@@ -2129,7 +2149,7 @@ export default function AdminPage() {
 
       {/* Edit user modal */}
       {editingUser && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setEditingUser(null)}>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setEditingUser(null); setResetPasswordResult(null); }}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
             <h2 className="font-bold text-lg text-zinc-900 mb-4">Edit User</h2>
             <div className="space-y-4">
@@ -2157,9 +2177,27 @@ export default function AdminPage() {
                     className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
                 </div>
               )}
+              <div className="pt-2 border-t border-zinc-100">
+                <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Password</label>
+                {resetPasswordResult ? (
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 text-sm flex items-center justify-between gap-3">
+                    <code className="font-mono text-zinc-900 select-all">{resetPasswordResult}</code>
+                    <button type="button" onClick={() => navigator.clipboard.writeText(resetPasswordResult)}
+                      className="text-xs font-semibold text-red-600 hover:underline shrink-0">Copy</button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={resetUserPassword} disabled={resetPasswordWorking}
+                    className="w-full border border-zinc-200 text-zinc-600 font-semibold py-2.5 rounded-xl hover:bg-zinc-50 disabled:opacity-50 text-sm">
+                    {resetPasswordWorking ? 'Resetting…' : 'Reset Password'}
+                  </button>
+                )}
+                {resetPasswordResult && (
+                  <p className="text-xs text-zinc-400 mt-1.5">This won&apos;t be shown again, copy it now.</p>
+                )}
+              </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setEditingUser(null)} className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2.5 rounded-xl hover:bg-zinc-50">Cancel</button>
+              <button onClick={() => { setEditingUser(null); setResetPasswordResult(null); }} className="flex-1 border border-zinc-200 text-zinc-600 font-semibold py-2.5 rounded-xl hover:bg-zinc-50">Cancel</button>
               <button onClick={saveUserEdit} disabled={editUserSaving}
                 className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl">
                 {editUserSaving ? 'Saving…' : 'Save'}
