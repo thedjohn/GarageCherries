@@ -5,6 +5,7 @@ import Image from 'next/image';
 import CarCard from '@/components/CarCard';
 import DealerReviews from '@/components/DealerReviews';
 import DealerBadge from '@/components/DealerBadge';
+import TrackedLink from '@/components/TrackedLink';
 import { formatPhone } from '@/lib/data';
 import { createClient } from '@/lib/supabase/server';
 
@@ -150,13 +151,14 @@ export default async function DealerPage({ params }: { params: Promise<{ slug: s
 
               <div className="flex flex-col gap-2 sm:items-end">
                 {dealer.phone && (
-                  <a href={`tel:${dealer.phone.replace(/\D/g, '')}`}
+                  <TrackedLink href={`tel:${dealer.phone.replace(/\D/g, '')}`}
+                    eventName="dealer_phone_click" eventParams={{ dealer_id: dealer.id }}
                     className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-5 py-2.5 rounded-xl transition-colors text-sm">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
                     </svg>
                     {formatPhone(dealer.phone)}
-                  </a>
+                  </TrackedLink>
                 )}
                 {dealer.email && (
                   <a href={`mailto:${dealer.email}`} className="text-sm text-red-600 hover:underline text-center sm:text-right">
@@ -164,13 +166,14 @@ export default async function DealerPage({ params }: { params: Promise<{ slug: s
                   </a>
                 )}
                 {dealer.website && (
-                  <a href={dealer.website} target="_blank" rel="noopener noreferrer"
+                  <TrackedLink href={dealer.website} target="_blank" rel="noopener noreferrer"
+                    eventName="dealer_website_click" eventParams={{ dealer_id: dealer.id }}
                     className="text-sm text-red-600 hover:underline text-center sm:text-right flex items-center gap-1">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>
                     {dealer.website.replace(/^https?:\/\//, '')}
-                  </a>
+                  </TrackedLink>
                 )}
               </div>
             </div>

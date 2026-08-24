@@ -99,7 +99,7 @@ export default async function DealersPage() {
                   </div>
                 )}
 
-                {dealer.website && <DealerWebsiteLink website={dealer.website} />}
+                {dealer.website && <DealerWebsiteLink website={dealer.website} dealerId={dealer.id} />}
 
                 <div className="border-t border-zinc-100 pt-3 flex items-center justify-between">
                   <span className="text-sm font-semibold text-zinc-700">

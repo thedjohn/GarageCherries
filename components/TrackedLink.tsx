@@ -10,6 +10,7 @@ interface Props {
   className?: string;
   target?: string;
   rel?: string;
+  stopPropagation?: boolean;
   children: React.ReactNode;
 }
 
@@ -26,13 +27,14 @@ const DEALER_CLICK_TYPES: Record<string, 'website' | 'phone'> = {
 // no other place to hook a client-side event into. Dealer click events are
 // additionally logged first-party (dealer_link_clicks) so the dealer
 // dashboard/report can surface them without depending on the GA4 API.
-export default function TrackedLink({ href, eventName, eventParams, listingId, className, target, rel, children }: Props) {
-  const handleClick = () => {
+export default function TrackedLink({ href, eventName, eventParams, listingId, className, target, rel, stopPropagation, children }: Props) {
+  const handleClick = (e: React.MouseEvent) => {
+    if (stopPropagation) e.stopPropagation();
     trackEvent(eventName, eventParams);
 
     const clickType = DEALER_CLICK_TYPES[eventName];
     const dealerId = eventParams?.dealer_id;
-    if (clickType && dealerId && listingId) {
+    if (clickType && dealerId) {
       fetch('/api/dealer/track-click', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
