@@ -37,7 +37,7 @@ import { POST as settingsPost } from '@/app/api/dealer/settings/route';
 import { GET as watcherCountsGet } from '@/app/api/dealer/watcher-counts/route';
 
 function makeGetRequest(url: string) {
-  return { url, headers: new Headers() } as unknown as NextRequest;
+  return { url, nextUrl: new URL(url), headers: new Headers() } as unknown as NextRequest;
 }
 function makePostRequest(body: Record<string, unknown>, headers: Record<string, string> = {}) {
   return { json: async () => body, headers: new Headers(headers) } as unknown as NextRequest;

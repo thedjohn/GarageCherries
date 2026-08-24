@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
     { count: offers30d },
     { count: sold30d },
     { data: dealerRows },
+    { data: allDealers },
   ] = await Promise.all([
     // Two targeted queries instead of fetching every pending row -- a bare
     // count and the single oldest row's timestamp, neither of which needs
@@ -64,6 +65,9 @@ export async function GET(request: NextRequest) {
     admin.from('offers').select('id', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
     admin.from('listings').select('id', { count: 'exact', head: true }).eq('is_sold', true).gte('sold_at', thirtyDaysAgo),
     admin.from('dealers').select('created_at').gte('created_at', thirtyDaysAgo),
+    // Full dealer list for the Overview tab's dealer drilldown dropdown --
+    // just id/name, not the full row set the Users tab needs.
+    admin.from('dealers').select('id, name').order('name', { ascending: true }),
   ]);
 
   const oldestPendingDays = oldestPendingRows && oldestPendingRows.length > 0
@@ -80,5 +84,6 @@ export async function GET(request: NextRequest) {
       sold30d: sold30d ?? 0,
     },
     dealerSignupsTrend: bucketByDay((dealerRows ?? []).map(r => r.created_at), 30),
+    dealers: allDealers ?? [],
   });
 }

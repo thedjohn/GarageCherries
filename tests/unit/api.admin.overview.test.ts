@@ -29,8 +29,9 @@ function makeGetRequest() {
   return {} as unknown as NextRequest;
 }
 
-function makeSupabaseMock({ pendingCount = 0, oldestPendingRow = undefined as { created_at: string } | undefined, reportedCount = 0, views30d = 0, inquiries30d = 0, offers30d = 0, sold30d = 0, dealerRows = [] as { created_at: string }[] }) {
+function makeSupabaseMock({ pendingCount = 0, oldestPendingRow = undefined as { created_at: string } | undefined, reportedCount = 0, views30d = 0, inquiries30d = 0, offers30d = 0, sold30d = 0, dealerRows = [] as { created_at: string }[], allDealers = [] as { id: string; name: string }[] }) {
   let listingsCall = 0;
+  let dealersCall = 0;
   mockFrom.mockImplementation((table: string) => {
     if (table === 'listings') {
       listingsCall++;
@@ -57,7 +58,13 @@ function makeSupabaseMock({ pendingCount = 0, oldestPendingRow = undefined as { 
       return { select: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: offers30d }) }) };
     }
     if (table === 'dealers') {
-      return { select: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ data: dealerRows }) }) };
+      dealersCall++;
+      if (dealersCall === 1) {
+        // dealerSignupsTrend
+        return { select: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ data: dealerRows }) }) };
+      }
+      // full dealer list for the drilldown dropdown
+      return { select: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({ data: allDealers }) }) };
     }
     throw new Error(`Unexpected table: ${table}`);
   });
@@ -90,6 +97,7 @@ describe('GET /api/admin/overview', () => {
       reportedCount: 2,
       views30d: 500, inquiries30d: 20, offers30d: 5, sold30d: 1,
       dealerRows: [{ created_at: today }],
+      allDealers: [{ id: 'd1', name: 'RK Motors' }, { id: 'd2', name: 'Zoom Classic Cars' }],
     });
 
     const res: any = await GET(makeGetRequest());
@@ -100,6 +108,7 @@ describe('GET /api/admin/overview', () => {
     expect(res._data.funnel).toEqual({ views30d: 500, inquiries30d: 20, offers30d: 5, sold30d: 1 });
     expect(res._data.dealerSignupsTrend).toHaveLength(30);
     expect(res._data.dealerSignupsTrend[29].count).toBe(1);
+    expect(res._data.dealers).toEqual([{ id: 'd1', name: 'RK Motors' }, { id: 'd2', name: 'Zoom Classic Cars' }]);
   });
 
   it('reports the real pending count even past Supabase\'s 1000-row select cap', async () => {

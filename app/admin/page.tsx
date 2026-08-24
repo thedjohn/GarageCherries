@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { resizeImageFile } from '@/lib/resizeImage';
 import Tooltip from '@/components/Tooltip';
-import { formatPhone, normalizeUrl } from '@/lib/data';
+import { formatPhone, normalizeUrl, formatListingPrice } from '@/lib/data';
 import VehicleFieldsForm from '@/components/VehicleFieldsForm';
 import AdminEmailCampaigns from '@/components/AdminEmailCampaigns';
 import AdminVideoBackfill from '@/components/AdminVideoBackfill';
@@ -81,10 +81,37 @@ export default function AdminPage() {
     reportedQueue: { count: number };
     funnel: { views30d: number; inquiries30d: number; offers30d: number; sold30d: number };
     dealerSignupsTrend: TrendPoint[];
+    dealers: { id: string; name: string }[];
   } | null>(null);
   const loadOverview = async () => {
     const res = await fetch('/api/admin/overview');
     if (res.ok) setOverview(await res.json());
+  };
+
+  // Overview — dealer drilldown
+  const [drilldownDealerId, setDrilldownDealerId] = useState('');
+  const [dealerMetrics, setDealerMetrics] = useState<{
+    activeListings: number;
+    views30d: number; viewsDelta: number | null;
+    inquiries30d: number; inquiriesDelta: number | null;
+    avgDaysOnMarket: number;
+    recentInquiries: { id: string; buyer_name: string; message: string; created_at: string; carTitle: string }[];
+    viewsTrend: TrendPoint[];
+    inquiriesTrend: TrendPoint[];
+    clicks30d: number; clicksDelta: number | null;
+    websiteClicks30d: number; phoneClicks30d: number;
+    clicksTrend: TrendPoint[];
+    topListings: { id: string; title: string; price: number; condition: string; image: string | null; views: number }[];
+  } | null>(null);
+  const [dealerMetricsLoading, setDealerMetricsLoading] = useState(false);
+  const loadDealerMetrics = async (dealerId: string) => {
+    setDrilldownDealerId(dealerId);
+    setDealerMetrics(null);
+    if (!dealerId) return;
+    setDealerMetricsLoading(true);
+    const res = await fetch(`/api/dealer/metrics?dealerId=${dealerId}`);
+    if (res.ok) setDealerMetrics(await res.json());
+    setDealerMetricsLoading(false);
   };
 
   // Listings
@@ -968,6 +995,102 @@ export default function AdminPage() {
                   <TrendChart data={overview.dealerSignupsTrend} unitLabel="new dealers" color="#dc2626" />
                 </div>
               </div>
+
+              {/* Dealer drilldown */}
+              <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
+                <label className="block text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-2">Dealer performance</label>
+                <select value={drilldownDealerId} onChange={e => loadDealerMetrics(e.target.value)}
+                  className="w-full max-w-sm border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                  <option value="">Select a dealer…</option>
+                  {overview.dealers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </div>
+
+              {dealerMetricsLoading && <p className="text-sm text-zinc-400">Loading dealer metrics…</p>}
+
+              {dealerMetrics && (() => {
+                const fmtDelta = (d: number | null) => d === null ? 'No prior data' : `${d >= 0 ? '+' : ''}${d}% vs prior period`;
+                const statCards = [
+                  { label: 'Active listings', value: dealerMetrics.activeListings.toLocaleString(), sub: 'total in inventory' },
+                  { label: 'Views (30d)', value: dealerMetrics.views30d.toLocaleString(), sub: fmtDelta(dealerMetrics.viewsDelta) },
+                  { label: 'Inquiries (30d)', value: dealerMetrics.inquiries30d.toLocaleString(), sub: fmtDelta(dealerMetrics.inquiriesDelta) },
+                  { label: 'Avg. days on market', value: String(dealerMetrics.avgDaysOnMarket), sub: 'across active listings' },
+                  { label: 'Click-throughs (30d)', value: dealerMetrics.clicks30d.toLocaleString(), sub: `${fmtDelta(dealerMetrics.clicksDelta)} · ${dealerMetrics.websiteClicks30d} website, ${dealerMetrics.phoneClicks30d} phone` },
+                ];
+                return (
+                  <>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      {statCards.map(m => (
+                        <div key={m.label} className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
+                          <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-1">{m.label}</p>
+                          <p className="text-2xl font-bold text-zinc-900">{m.value}</p>
+                          <p className="text-xs text-green-600 mt-1 font-medium">▲ {m.sub}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
+                        <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-3">Views — last 30 days</p>
+                        <TrendChart data={dealerMetrics.viewsTrend} unitLabel="views" color="#dc2626" />
+                      </div>
+                      <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
+                        <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-3">Inquiries — last 30 days</p>
+                        <TrendChart data={dealerMetrics.inquiriesTrend} unitLabel="inquiries" color="#dc2626" />
+                      </div>
+                      <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
+                        <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-3">Click-throughs — last 30 days</p>
+                        <TrendChart data={dealerMetrics.clicksTrend} unitLabel="clicks" color="#dc2626" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
+                        <h2 className="font-bold text-zinc-800 mb-4 text-sm">Recent inquiries <span className="text-zinc-400 font-normal">— last 30 days</span></h2>
+                        {dealerMetrics.recentInquiries.length === 0 ? (
+                          <p className="text-sm text-zinc-400 py-4 text-center">No inquiries in the last 30 days.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {dealerMetrics.recentInquiries.slice(0, 5).map(inq => (
+                              <div key={inq.id} className="flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-sm font-bold text-red-600 shrink-0">
+                                  {inq.buyer_name[0]}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-zinc-800 truncate">{inq.buyer_name} <span className="font-normal text-zinc-400">on</span> {inq.carTitle}</p>
+                                  <p className="text-xs text-zinc-500 truncate">{inq.message}</p>
+                                  <p className="text-xs text-zinc-400 mt-0.5">{new Date(inq.created_at).toLocaleDateString()}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
+                        <h2 className="font-bold text-zinc-800 mb-4 text-sm">Top listings <span className="text-zinc-400 font-normal">— by views</span></h2>
+                        {dealerMetrics.topListings.length === 0 ? (
+                          <p className="text-sm text-zinc-400 py-4 text-center">No active listings.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {dealerMetrics.topListings.map(car => (
+                              <div key={car.id} className="flex items-center gap-3 text-sm">
+                                <div className="w-10 h-10 rounded-lg bg-zinc-100 overflow-hidden shrink-0">
+                                  {car.image && <img src={car.image} alt="" className="w-full h-full object-cover" />}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-semibold text-zinc-800 truncate">{car.title}</p>
+                                  <p className="text-xs text-zinc-400">{car.condition} · {formatListingPrice(car.price)}</p>
+                                  <p className="text-xs text-zinc-400">{car.views} view{car.views !== 1 ? 's' : ''}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </>
           )}
         </div>

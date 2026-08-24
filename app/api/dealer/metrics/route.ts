@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireAdmin, hasRole } from '@/lib/admin';
 
 // Buckets raw timestamps into a zero-filled daily series (oldest first), so
 // the trend chart shows a real flat 0 on quiet days instead of a gap.
@@ -27,16 +28,24 @@ export async function GET(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Get dealer id
-  const { data: dealer } = await admin
-    .from('dealers')
-    .select('id')
-    .or(`id.eq.${user.id},email.eq.${user.email}`)
-    .single();
-
-  if (!dealer) return NextResponse.json({ error: 'Dealer not found' }, { status: 404 });
-
-  const dealerId = dealer.id;
+  // An admin/superadmin can pass ?dealerId= to view any dealer's metrics
+  // (the admin Overview dealer drilldown); everyone else always gets their
+  // own dealer record, same as before.
+  const requestedDealerId = request.nextUrl.searchParams.get('dealerId');
+  let dealerId: string;
+  if (requestedDealerId) {
+    const role = await requireAdmin(user.id);
+    if (!role || !hasRole(role, 'admin')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    dealerId = requestedDealerId;
+  } else {
+    const { data: dealer } = await admin
+      .from('dealers')
+      .select('id')
+      .or(`id.eq.${user.id},email.eq.${user.email}`)
+      .single();
+    if (!dealer) return NextResponse.json({ error: 'Dealer not found' }, { status: 404 });
+    dealerId = dealer.id;
+  }
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -149,7 +158,7 @@ export async function GET(request: NextRequest) {
   // Overview tab can show a day-by-day trend instead of a flat 30d snapshot.
   const { data: viewRows } = await admin
     .from('listing_views')
-    .select('viewed_at')
+    .select('viewed_at, listing_id')
     .eq('dealer_id', dealerId)
     .gte('viewed_at', thirtyDaysAgo);
   const viewsTrend = bucketByDay((viewRows ?? []).map(r => r.viewed_at), 30);
@@ -174,10 +183,24 @@ export async function GET(request: NextRequest) {
   // Active approved unsold listings + avg days on market
   const { data: cars } = await admin
     .from('listings')
-    .select('listed_at')
+    .select('id, title, price, condition, images, listed_at')
     .eq('seller_id', dealerId)
     .eq('status', 'approved')
     .eq('is_sold', false);
+
+  // Top 5 active listings by views (30d) -- used by the admin dealer
+  // drilldown, which has no separately-fetched listings/views state the
+  // way the dealer's own dashboard does. Reuses viewRows above rather than
+  // a second listing_views query. Additive only; the dealer dashboard's
+  // own Overview tab still computes this client-side, unchanged.
+  const viewsByListing: Record<string, number> = {};
+  (viewRows ?? []).forEach(r => {
+    viewsByListing[r.listing_id] = (viewsByListing[r.listing_id] ?? 0) + 1;
+  });
+  const topListings = [...(cars ?? [])]
+    .map(c => ({ id: c.id, title: c.title, price: c.price, condition: c.condition, image: c.images?.[0] ?? null, views: viewsByListing[c.id] ?? 0 }))
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 5);
 
   const avgDaysOnMarket = cars && cars.length > 0
     ? Math.round(
@@ -195,6 +218,7 @@ export async function GET(request: NextRequest) {
   const clicksDelta = clicksPrev30d ? Math.round((clicks30d - clicksPrev30d) / clicksPrev30d * 100) : null;
 
   return NextResponse.json({
+    activeListings: cars?.length ?? 0,
     views30d: views30d ?? 0,
     viewsDelta,
     inquiries30d,
@@ -208,5 +232,6 @@ export async function GET(request: NextRequest) {
     websiteClicks30d: websiteClicks30d ?? 0,
     phoneClicks30d: phoneClicks30d ?? 0,
     clicksTrend,
+    topListings,
   });
 }
