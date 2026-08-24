@@ -500,6 +500,9 @@ export default function DealerDashboard() {
     recentInquiries: any[];
     viewsTrend: TrendPoint[];
     inquiriesTrend: TrendPoint[];
+    clicks30d: number; clicksDelta: number | null;
+    websiteClicks30d: number; phoneClicks30d: number;
+    clicksTrend: TrendPoint[];
   } | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
@@ -664,6 +667,13 @@ export default function DealerDashboard() {
       sub: 'across all active listings',
       up: true,
       tooltip: 'Average number of days your active listings have been live. Calculated from the date each listing was approved.',
+    },
+    {
+      label: 'Click-throughs (30d)',
+      value: metrics ? metrics.clicks30d.toLocaleString() : '—',
+      sub: metrics ? `${fmtDelta(metrics.clicksDelta)} · ${metrics.websiteClicks30d} website, ${metrics.phoneClicks30d} phone` : 'Loading…',
+      up: (metrics?.clicksDelta ?? 0) >= 0,
+      tooltip: 'Buyers who clicked "Visit website" or "Call Dealer" on your listings in the last 30 days. These bypass GarageCherries messaging entirely, so they won\'t show up as inquiries.',
     },
   ];
 
@@ -872,8 +882,8 @@ export default function DealerDashboard() {
               ))}
             </div>
 
-            {metrics && (metrics.viewsTrend.length > 0 || metrics.inquiriesTrend.length > 0) && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+            {metrics && (metrics.viewsTrend.length > 0 || metrics.inquiriesTrend.length > 0 || metrics.clicksTrend.length > 0) && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
                 <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
                   <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-3">Views — last 30 days</p>
                   <TrendChart data={metrics.viewsTrend} unitLabel="views" color="#dc2626" />
@@ -881,6 +891,10 @@ export default function DealerDashboard() {
                 <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
                   <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-3">Inquiries — last 30 days</p>
                   <TrendChart data={metrics.inquiriesTrend} unitLabel="inquiries" color="#dc2626" />
+                </div>
+                <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-5">
+                  <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold mb-3">Click-throughs — last 30 days</p>
+                  <TrendChart data={metrics.clicksTrend} unitLabel="clicks" color="#dc2626" />
                 </div>
               </div>
             )}

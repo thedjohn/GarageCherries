@@ -55,6 +55,29 @@ export async function GET(request: NextRequest) {
     .gte('viewed_at', sixtyDaysAgo)
     .lt('viewed_at', thirtyDaysAgo);
 
+  // "Visit website" / "Call Dealer" click-throughs last 30d, and the prior
+  // 30d for comparison -- same shape as the views metrics above.
+  const { count: websiteClicks30d } = await admin
+    .from('dealer_link_clicks')
+    .select('id', { count: 'exact', head: true })
+    .eq('dealer_id', dealerId)
+    .eq('click_type', 'website')
+    .gte('clicked_at', thirtyDaysAgo);
+
+  const { count: phoneClicks30d } = await admin
+    .from('dealer_link_clicks')
+    .select('id', { count: 'exact', head: true })
+    .eq('dealer_id', dealerId)
+    .eq('click_type', 'phone')
+    .gte('clicked_at', thirtyDaysAgo);
+
+  const { count: clicksPrev30d } = await admin
+    .from('dealer_link_clicks')
+    .select('id', { count: 'exact', head: true })
+    .eq('dealer_id', dealerId)
+    .gte('clicked_at', sixtyDaysAgo)
+    .lt('clicked_at', thirtyDaysAgo);
+
   // Dealer's own listing ids — conversations has no dealer_id column, only
   // listing_id, so buyer-contact activity is scoped the same way GET
   // /api/conversations already scopes seller conversations.
@@ -131,6 +154,13 @@ export async function GET(request: NextRequest) {
     .gte('viewed_at', thirtyDaysAgo);
   const viewsTrend = bucketByDay((viewRows ?? []).map(r => r.viewed_at), 30);
 
+  const { data: clickRows } = await admin
+    .from('dealer_link_clicks')
+    .select('clicked_at')
+    .eq('dealer_id', dealerId)
+    .gte('clicked_at', thirtyDaysAgo);
+  const clicksTrend = bucketByDay((clickRows ?? []).map(r => r.clicked_at), 30);
+
   let inquiriesTrend = bucketByDay([], 30);
   if (dealerListingIds.length > 0) {
     const { data: convRows } = await admin
@@ -161,6 +191,8 @@ export async function GET(request: NextRequest) {
 
   const viewsDelta = viewsPrev30d ? Math.round(((views30d ?? 0) - viewsPrev30d) / viewsPrev30d * 100) : null;
   const inquiriesDelta = inquiriesPrev30d ? Math.round((inquiries30d - inquiriesPrev30d) / inquiriesPrev30d * 100) : null;
+  const clicks30d = (websiteClicks30d ?? 0) + (phoneClicks30d ?? 0);
+  const clicksDelta = clicksPrev30d ? Math.round((clicks30d - clicksPrev30d) / clicksPrev30d * 100) : null;
 
   return NextResponse.json({
     views30d: views30d ?? 0,
@@ -171,5 +203,10 @@ export async function GET(request: NextRequest) {
     recentInquiries,
     viewsTrend,
     inquiriesTrend,
+    clicks30d,
+    clicksDelta,
+    websiteClicks30d: websiteClicks30d ?? 0,
+    phoneClicks30d: phoneClicks30d ?? 0,
+    clicksTrend,
   });
 }

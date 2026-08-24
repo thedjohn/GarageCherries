@@ -84,6 +84,7 @@ describe('POST /api/email/dealer-report', () => {
         { listing_id: 'l1' }, { listing_id: 'l1' },
       ] }) }) }) };
       if (table === 'conversations') return { select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 3 }) }) }) };
+      if (table === 'dealer_link_clicks') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 2 }) }) }) };
       return {};
     });
     const res: any = await dealerReportPost(makeRequest(AUTH));
@@ -101,6 +102,7 @@ describe('POST /api/email/dealer-report', () => {
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [] }) }) };
       if (table === 'listing_views') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ data: [] }) }) }) };
       if (table === 'conversations') return { select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 0 }) }) }) };
+      if (table === 'dealer_link_clicks') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ count: 0 }) }) }) };
       return {};
     });
     mockSend.mockRejectedValueOnce(new Error('resend down'));

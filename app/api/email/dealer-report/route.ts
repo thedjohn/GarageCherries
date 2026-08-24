@@ -52,6 +52,15 @@ export async function POST(request: NextRequest) {
     (viewRows ?? []).forEach((r: any) => { viewsByListing[r.listing_id] = (viewsByListing[r.listing_id] ?? 0) + 1; });
     const totalViews = Object.values(viewsByListing).reduce((s, n) => s + n, 0);
 
+    // "Visit website" / "Call Dealer" click-throughs this month -- these
+    // bypass the conversations/messages system entirely, so they'd
+    // otherwise be invisible to the dealer.
+    const { count: clickCount } = await admin
+      .from('dealer_link_clicks')
+      .select('id', { count: 'exact', head: true })
+      .eq('dealer_id', dealer.id)
+      .gte('clicked_at', thirtyDaysAgo);
+
     // Buyer inquiries this month — from conversations, the live buyer-contact
     // system (Message Seller). The old `inquiries` table has had no live writer
     // since that button switched to conversations/messages, so this was always 0.
@@ -85,7 +94,7 @@ export async function POST(request: NextRequest) {
         <h1 style="font-size:22px;font-weight:800;color:#18181b;margin:0 0 8px">Your Monthly GarageCherries Report</h1>
         <p style="color:#52525b;margin:0 0 16px">Here's how your inventory performed over the last 30 days, ${dealer.name}.</p>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:24px 0;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin:24px 0;">
           <div style="background:#f9fafb;border-radius:12px;padding:16px;text-align:center;">
             <p style="font-size:28px;font-weight:800;color:#18181b;margin:0;">${activeCars.length}</p>
             <p style="color:#71717a;font-size:13px;margin:4px 0 0;">Active Listings</p>
@@ -97,6 +106,10 @@ export async function POST(request: NextRequest) {
           <div style="background:#f9fafb;border-radius:12px;padding:16px;text-align:center;">
             <p style="font-size:28px;font-weight:800;color:#18181b;margin:0;">${inquiryCount}</p>
             <p style="color:#71717a;font-size:13px;margin:4px 0 0;">Buyer Inquiries</p>
+          </div>
+          <div style="background:#f9fafb;border-radius:12px;padding:16px;text-align:center;">
+            <p style="font-size:28px;font-weight:800;color:#18181b;margin:0;">${clickCount ?? 0}</p>
+            <p style="color:#71717a;font-size:13px;margin:4px 0 0;">Click-Throughs</p>
           </div>
         </div>
 

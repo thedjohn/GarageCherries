@@ -213,6 +213,7 @@ describe('GET /api/dealer/metrics', () => {
     let listingViewsCall = 0;
     let listingsCall = 0;
     let conversationsCall = 0;
+    let clicksCall = 0;
     mockFrom.mockImplementation((table: string) => {
       if (table === 'dealers') return { select: vi.fn().mockReturnValue({ or: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'dealer-1' } }) }) }) };
       if (table === 'listing_views') {
@@ -259,6 +260,17 @@ describe('GET /api/dealer/metrics', () => {
           { conversation_id: 'c1', body: 'Hi is this still available?', created_at: '2026-01-01T00:00:00Z' },
         ] }) }) }) };
       }
+      if (table === 'dealer_link_clicks') {
+        clicksCall++;
+        // Calls 1 & 2 (websiteClicks30d, phoneClicks30d): .select().eq().eq().gte() awaited directly.
+        if (clicksCall === 1) return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ count: 3 }) }) }) }) };
+        if (clicksCall === 2) return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ count: 2 }) }) }) }) };
+        // Call 3 (clicksPrev30d): .select().eq().gte().lt() awaited.
+        if (clicksCall === 3) return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ lt: vi.fn().mockResolvedValue({ count: 4 }) }) }) }) };
+        // Call 4 (clicksTrend): .select('clicked_at').eq().gte() awaited directly, raw rows.
+        const today = new Date().toISOString().slice(0, 10);
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ data: [{ clicked_at: `${today}T09:00:00Z` }] }) }) }) };
+      }
       return {};
     });
 
@@ -275,10 +287,17 @@ describe('GET /api/dealer/metrics', () => {
     expect(res._data.viewsTrend[29].count).toBe(2); // today's bucket -- 2 viewed_at rows mocked for today
     expect(res._data.inquiriesTrend).toHaveLength(30);
     expect(res._data.inquiriesTrend[29].count).toBe(1); // today's bucket -- 1 created_at row mocked for today
+    expect(res._data.websiteClicks30d).toBe(3);
+    expect(res._data.phoneClicks30d).toBe(2);
+    expect(res._data.clicks30d).toBe(5);
+    expect(res._data.clicksDelta).toBe(25); // (5-4)/4*100
+    expect(res._data.clicksTrend).toHaveLength(30);
+    expect(res._data.clicksTrend[29].count).toBe(1); // today's bucket -- 1 clicked_at row mocked for today
   });
 
   it('returns null deltas and zero avgDaysOnMarket when there is no prior-period or listing data', async () => {
     let listingsCall = 0;
+    let clicksCall = 0;
     mockFrom.mockImplementation((table: string) => {
       if (table === 'dealers') return { select: vi.fn().mockReturnValue({ or: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'dealer-1' } }) }) }) };
       if (table === 'listing_views') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ lt: vi.fn().mockResolvedValue({ count: 0 }) }) }) }) };
@@ -287,6 +306,15 @@ describe('GET /api/dealer/metrics', () => {
         // Call 1: dealerListings — empty, so inquiries/conversations logic short-circuits entirely.
         if (listingsCall === 1) return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [] }) }) };
         return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [] }) }) }) }) };
+      }
+      if (table === 'dealer_link_clicks') {
+        clicksCall++;
+        // Calls 1 & 2 (websiteClicks30d, phoneClicks30d): .select().eq().eq().gte() awaited directly.
+        if (clicksCall === 1 || clicksCall === 2) return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ count: 0 }) }) }) }) };
+        // Call 3 (clicksPrev30d): .select().eq().gte().lt() awaited.
+        if (clicksCall === 3) return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ lt: vi.fn().mockResolvedValue({ count: 0 }) }) }) }) };
+        // Call 4 (clicksTrend): .select('clicked_at').eq().gte() awaited directly, raw rows.
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ data: [] }) }) }) };
       }
       return {};
     });
@@ -297,6 +325,8 @@ describe('GET /api/dealer/metrics', () => {
     expect(res._data.inquiries30d).toBe(0);
     expect(res._data.recentInquiries).toEqual([]);
     expect(res._data.avgDaysOnMarket).toBe(0);
+    expect(res._data.clicksDelta).toBeNull();
+    expect(res._data.clicks30d).toBe(0);
   });
 });
 
