@@ -1,4 +1,5 @@
 import { createLogger } from '@/lib/logger';
+import { formatListingPrice } from '@/lib/data';
 
 const log = createLogger('lib/videoPipeline');
 
@@ -9,10 +10,6 @@ interface ListingVideoInput {
   year: number;
   price: number;
   images: string[] | null;
-}
-
-function fmtPrice(n: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
 }
 
 // Fire-and-forget, same contract as the Facebook/Instagram posting helpers:
@@ -39,7 +36,7 @@ export async function triggerListingVideo(listing: ListingVideoInput): Promise<v
       body: JSON.stringify({
         listingId: listing.id,
         title: `${listing.year} ${listing.make} ${listing.model}`,
-        price: fmtPrice(listing.price),
+        price: formatListingPrice(listing.price),
         images: listing.images,
       }),
     });

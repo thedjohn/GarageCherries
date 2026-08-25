@@ -57,6 +57,20 @@ describe('triggerListingVideo', () => {
     });
   });
 
+  it('sends "Call For Price" instead of "$0" for a zero-price listing', async () => {
+    (fetch as any).mockResolvedValue({ ok: true });
+    await triggerListingVideo({ ...LISTING, price: 0 });
+
+    expect(fetch).toHaveBeenCalledWith('https://video.garagecherries.com/build-video', expect.objectContaining({
+      body: JSON.stringify({
+        listingId: 'l1',
+        title: '1970 Ford Mustang',
+        price: 'Call For Price',
+        images: LISTING.images,
+      }),
+    }));
+  });
+
   it('logs but does not throw when the VPS responds with a non-ok status', async () => {
     (fetch as any).mockResolvedValue({ ok: false, status: 500 });
     await expect(triggerListingVideo(LISTING)).resolves.toBeUndefined();
