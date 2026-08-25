@@ -212,6 +212,31 @@ const FEED_FORMATS: Record<string, FeedFormatColumns> = {
     state: 'dealership_state',
     phone: 'dealership_phone',
   },
+  // Platt Motors' vendor, AutoCorner -- confirmed against a real header row
+  // Autocorner's own support sent directly, not assumed. Every column is
+  // prefixed "Vehicle " except Stock Number and List Price. This feed has no
+  // engine or per-vehicle description column at all -- `engine` points at a
+  // column name that doesn't exist in their file, which resolves to null the
+  // same safe way any other vendor's missing optional column does; `description`
+  // uses the interface's real null-support for the same reason. No City/State/
+  // Phone columns either, so those fall through to the dealer's own profile
+  // address, same as every other single-location dealer.
+  autocorner: {
+    stockNumber: 'Stock Number',
+    subModel: 'Vehicle Trim',
+    price: 'List Price',
+    transmission: 'Transmission Type',
+    engine: 'Engine',
+    color: ['Exterior Color'],
+    images: 'Vehicle Photos',
+    bodyStyle: 'Vehicle Body',
+    description: null,
+    vin: 'Vehicle VIN',
+    year: 'Vehicle Year',
+    model: 'Vehicle Model',
+    make: 'Vehicle Make',
+    mileage: 'Miles',
+  },
 };
 
 const STATE_NAME_TO_ABBR: Record<string, string> = {
