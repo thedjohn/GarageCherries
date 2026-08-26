@@ -237,6 +237,22 @@ const FEED_FORMATS: Record<string, FeedFormatColumns> = {
     make: 'Vehicle Make',
     mileage: 'Miles',
   },
+  // All Auto Network's feed for Garage Kept Motors -- confirmed against a real
+  // sample pulled directly from the live feed URL, not assumed. No-space
+  // PascalCase columns throughout except VIN/Year/Make/Model/Mileage/City/
+  // State, which already match the shared defaults.
+  all_auto_network: {
+    stockNumber: 'StockNumber',
+    subModel: 'Sub-Model',
+    price: 'ListPrice',
+    transmission: 'Transmission',
+    engine: 'EngineSize',
+    color: ['BasicExteriorColor'],
+    images: 'ImagesUrls',
+    bodyStyle: 'BodyStyle',
+    description: 'LongDescription',
+    phone: 'DealerPhoneNumber',
+  },
 };
 
 const STATE_NAME_TO_ABBR: Record<string, string> = {
