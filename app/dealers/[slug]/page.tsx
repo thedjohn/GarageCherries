@@ -160,9 +160,9 @@ export default async function DealerPage({ params }: { params: Promise<{ slug: s
                     {formatPhone(dealer.phone)}
                   </TrackedLink>
                 )}
-                {dealer.email && (
-                  <a href={`mailto:${dealer.email}`} className="text-sm text-red-600 hover:underline text-center sm:text-right">
-                    {dealer.email}
+                {(dealer.notification_email || dealer.email) && (
+                  <a href={`mailto:${dealer.notification_email || dealer.email}`} className="text-sm text-red-600 hover:underline text-center sm:text-right">
+                    {dealer.notification_email || dealer.email}
                   </a>
                 )}
                 {dealer.website && (
