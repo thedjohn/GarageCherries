@@ -36,6 +36,7 @@ interface DbDealer {
   feed_protocol?: string | null; feed_host?: string | null; feed_port?: number | null;
   feed_username?: string | null; feed_password?: string | null; feed_remote_path?: string | null;
   feed_sftp_username?: string | null; feed_sftp_provisioned_at?: string | null; feed_sftp_last_received_at?: string | null;
+  notification_email?: string | null;
 }
 
 function toSlug(s: string) {
@@ -530,7 +531,7 @@ export default function DealerDashboard() {
     if (!user) { router.replace('/dealer/login'); return; }
 
     const { data: dealerRow } = await supabase
-      .from('dealers').select('id, slug, name, phone, email, address, location, state, zip, description, website, specialties, since, logo, plan, beta_expires_at, feed_url, feed_sync_hour, feed_last_synced_at, feed_last_sync_summary, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path, feed_sftp_username, feed_sftp_provisioned_at, feed_sftp_last_received_at')
+      .from('dealers').select('id, slug, name, phone, email, notification_email, address, location, state, zip, description, website, specialties, since, logo, plan, beta_expires_at, feed_url, feed_sync_hour, feed_last_synced_at, feed_last_sync_summary, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path, feed_sftp_username, feed_sftp_provisioned_at, feed_sftp_last_received_at')
       .or(`id.eq.${user.id},email.eq.${user.email}`)
       .single();
 
@@ -1250,6 +1251,7 @@ function DealerSettings({ dealer, onSaved }: { dealer: DbDealer & { phone?: stri
     name:        dealer.name        ?? '',
     phone:       dealer.phone       ?? '',
     email:       dealer.email       ?? '',
+    notification_email: dealer.notification_email ?? '',
     address:     dealer.address     ?? '',
     location:    dealer.location    ?? '',
     state:       dealer.state       ?? '',
@@ -1302,6 +1304,7 @@ function DealerSettings({ dealer, onSaved }: { dealer: DbDealer & { phone?: stri
         dealerId:    dealer.id,
         name:        fields.name,
         phone:       fields.phone,
+        notification_email: fields.notification_email,
         address:     fields.address,
         location:    fields.location,
         state:       fields.state.toUpperCase().slice(0, 2),
@@ -1365,6 +1368,11 @@ function DealerSettings({ dealer, onSaved }: { dealer: DbDealer & { phone?: stri
           <div>
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Email <span className="font-normal normal-case text-zinc-400">(login email — not editable)</span></label>
             <input type="email" value={fields.email} readOnly className={`${inp} bg-zinc-50 text-zinc-400 cursor-not-allowed`} />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Lead Notification Email</label>
+            <input type="email" value={fields.notification_email} onChange={e => set('notification_email', e.target.value)} placeholder={fields.email || 'Defaults to your login email'} className={inp} />
+            <p className="text-xs text-zinc-400 mt-1.5">Where new buyer inquiries get sent. Leave blank to use your login email.</p>
           </div>
           <div className="col-span-2">
             <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Street Address</label>

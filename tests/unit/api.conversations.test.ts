@@ -92,12 +92,13 @@ describe('POST /api/conversations', () => {
     expect(res._status).toBe(404);
   });
 
-  function setupNewConversation(sellerId: string | null, sellerEmailOnListing: string | null, sellerAuthEmail?: string) {
+  function setupNewConversation(sellerId: string | null, sellerEmailOnListing: string | null, sellerAuthEmail?: string, dealerNotificationEmail: string | null = null) {
     const convInsert = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'conv-1' } }) }) });
     const msgInsert = vi.fn().mockResolvedValue({ error: null });
     mockFrom.mockImplementation((table: string) => {
       if (table === 'suspended_users') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { seller_email: sellerEmailOnListing, seller_id: sellerId, title: 'Listing Title' } }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: dealerNotificationEmail ? { notification_email: dealerNotificationEmail } : null }) }) }) };
       if (table === 'conversations') {
         return {
           select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null }) }) }) }),
@@ -123,6 +124,13 @@ describe('POST /api/conversations', () => {
     expect(res._data.conversationId).toBe('conv-1');
     expect(mockSend).toHaveBeenCalledOnce();
     expect(mockSend.mock.calls[0][0].to).toBe('seller-auth@x.com');
+  });
+
+  it('prefers the dealer\'s notification_email over their login email', async () => {
+    setupNewConversation('seller-1', 'listing-fallback@x.com', 'seller-auth@x.com', 'sales@gkm.com');
+    const res: any = await POST(makeRequest({ listingId: 'l1', message: 'Is this still available?' }));
+    expect(res._status).toBe(200);
+    expect(mockSend.mock.calls[0][0].to).toBe('sales@gkm.com');
   });
 
   it('falls back to the listing seller_email when the seller has no auth account', async () => {

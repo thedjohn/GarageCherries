@@ -47,11 +47,15 @@ export async function POST(req: NextRequest) {
     .single();
   if (!listing) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
 
-  // Prefer auth email if seller has an account, fall back to listing seller_email
+  // Prefer auth email if seller has an account, fall back to listing seller_email --
+  // a dealer's own notification_email (set in their dashboard settings) takes priority
+  // over their login email, so leads can route to a shared inbox like sales@ instead.
   let resolvedSellerEmail = listing.seller_email ?? '';
   if (listing.seller_id) {
     const { data: { user: sellerUser } } = await admin.auth.admin.getUserById(listing.seller_id);
     if (sellerUser?.email) resolvedSellerEmail = sellerUser.email;
+    const { data: dealer } = await admin.from('dealers').select('notification_email').eq('id', listing.seller_id).maybeSingle();
+    if (dealer?.notification_email) resolvedSellerEmail = dealer.notification_email;
   }
 
   const resolvedTitle = listingTitle || listing.title;
