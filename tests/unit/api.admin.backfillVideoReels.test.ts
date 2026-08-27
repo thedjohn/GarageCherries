@@ -152,6 +152,40 @@ describe('GET /api/admin/backfill-video-reels', () => {
     expect(res._data).toEqual({ ok: true, triggered: 15 });
   });
 
+  it('treats a null data response from either tier the same as an empty array', async () => {
+    makeSupabaseMock(null as unknown as typeof LISTING[], null as unknown as typeof LISTING[]);
+    const res: any = await GET(makeRequest('Bearer cron-secret'));
+    expect(mockTriggerListingVideo).not.toHaveBeenCalled();
+    expect(res._data).toEqual({ ok: true, triggered: 0 });
+  });
+
+  it('wraps a non-Error throw (e.g. a rejected string) in a real Error before logging', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table !== 'listings') throw new Error(`Unexpected table: ${table}`);
+      return {
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              not: () => ({
+                or: () => ({
+                  order: () => ({
+                    limit: () => Promise.reject('write ETIMEDOUT'),
+                  }),
+                }),
+              }),
+            }),
+          }),
+        }),
+      };
+    });
+
+    const res: any = await GET(makeRequest('Bearer cron-secret'));
+
+    expect(mockTriggerListingVideo).not.toHaveBeenCalled();
+    expect(res._data).toEqual({ ok: false, error: 'Query failed' });
+    expect(res._status).toBe(500);
+  });
+
   it('returns a clean 500 instead of crashing when the query throws (e.g. a DB timeout)', async () => {
     mockFrom.mockImplementation((table: string) => {
       if (table !== 'listings') throw new Error(`Unexpected table: ${table}`);
