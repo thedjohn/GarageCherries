@@ -5,6 +5,7 @@ import QuickFilters from '@/components/QuickFilters';
 import SearchFilters from '@/components/SearchFilters';
 import Pagination from '@/components/Pagination';
 import SortSelect from '@/components/SortSelect';
+import NewsletterForm from '@/components/NewsletterForm';
 import { createClient } from '@/lib/supabase/server';
 import type { Car } from '@/lib/types';
 
@@ -141,6 +142,18 @@ export default async function ListingsPage({ searchParams }: Props) {
                 {cars.map(car => <CarCard key={car.id} car={car} />)}
               </div>
               <Pagination currentPage={page} totalPages={totalPages} basePath="/listings" searchParams={sp} />
+
+              <div className="bg-zinc-900 rounded-xl px-6 py-5 mt-8">
+                <div className="flex flex-col md:flex-row md:items-center gap-4">
+                  <div className="flex-1">
+                    <p className="text-white font-semibold text-sm">Stay in the loop</p>
+                    <p className="text-zinc-400 text-xs mt-0.5">New listings, car news, and collector market updates — straight to your inbox.</p>
+                  </div>
+                  <div className="md:w-96 w-full">
+                    <NewsletterForm />
+                  </div>
+                </div>
+              </div>
             </>
           )}
         </div>
