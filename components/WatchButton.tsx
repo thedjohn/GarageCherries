@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import EmailSavePrompt from './EmailSavePrompt';
 
 interface Props {
   carId: string;
@@ -12,13 +13,9 @@ export default function WatchButton({ carId, currentPrice, initialWatched, isLog
   const [watching, setWatching]         = useState(initialWatched);
   const [allowContact, setAllowContact] = useState(true);
   const [loading, setLoading]           = useState(false);
+  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
 
-  const toggle = async () => {
-    if (!isLoggedIn) {
-      const returnUrl = encodeURIComponent(window.location.pathname);
-      window.location.href = `/account/login?return=${returnUrl}`;
-      return;
-    }
+  const save = async () => {
     setLoading(true);
     const res = await fetch('/api/watchlist', {
       method: 'POST',
@@ -30,6 +27,14 @@ export default function WatchButton({ carId, currentPrice, initialWatched, isLog
       setWatching(next);
     }
     setLoading(false);
+  };
+
+  const toggle = async () => {
+    if (!isLoggedIn) {
+      setShowEmailPrompt(true);
+      return;
+    }
+    await save();
   };
 
   return (
@@ -62,6 +67,13 @@ export default function WatchButton({ carId, currentPrice, initialWatched, isLog
             Allow the seller to send me one message about this car
           </span>
         </label>
+      )}
+
+      {showEmailPrompt && (
+        <EmailSavePrompt
+          pendingSave={{ carId, currentPrice }}
+          onClose={() => setShowEmailPrompt(false)}
+        />
       )}
     </div>
   );

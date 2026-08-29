@@ -12,6 +12,8 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/';
   const promo = searchParams.get('promo');
+  const pendingSaveCarId = searchParams.get('save');
+  const pendingSavePrice = searchParams.get('price');
 
   if (code) {
     const cookieStore = await cookies();
@@ -47,7 +49,37 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      return NextResponse.redirect(new URL(next, req.url));
+      // Complete a save-without-account car save right here, server-side, in
+      // the same request that creates the session -- doing this as a
+      // follow-up client-side step (after redirecting) meant the save could
+      // be cut off if the person navigated away before it finished. Doing it
+      // here removes that race entirely.
+      let saved = false;
+      if (data.user && pendingSaveCarId) {
+        const { data: existing, error: selectErr } = await supabase
+          .from('watchlists').select('id').eq('user_id', data.user.id).eq('car_id', pendingSaveCarId).maybeSingle();
+        if (selectErr) {
+          console.error('Pending-save watchlist lookup failed:', selectErr.message, selectErr.details, selectErr.hint);
+        } else if (!existing) {
+          const { error: insertErr } = await supabase.from('watchlists').insert({
+            user_id:              data.user.id,
+            car_id:                pendingSaveCarId,
+            price_at_add:          pendingSavePrice ? Number(pendingSavePrice) : 0,
+            allow_dealer_contact:  true,
+          });
+          if (insertErr) {
+            console.error('Pending-save watchlist insert failed:', insertErr.message, insertErr.details, insertErr.hint);
+          } else {
+            saved = true;
+          }
+        } else {
+          saved = true; // already watching this car
+        }
+      }
+
+      const dest = new URL(next, req.url);
+      if (saved) dest.searchParams.set('saved', '1');
+      return NextResponse.redirect(dest);
     }
   }
 

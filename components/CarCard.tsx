@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Car } from '@/lib/types';
 import { formatListingPrice, formatMileage, toSegment } from '@/lib/data';
+import CarCardHeart from './CarCardHeart';
 
 const CONDITION_COLORS: Record<string, string> = {
   Excellent: 'bg-green-100 text-green-800',
@@ -30,6 +31,7 @@ export default function CarCard({ car }: { car: Car }) {
         <span className={`absolute top-2 right-2 text-xs font-semibold px-2 py-1 rounded ${CONDITION_COLORS[car.condition]}`}>
           {car.condition}
         </span>
+        <CarCardHeart carId={car.id} currentPrice={car.price} />
       </div>
 
       {/* Info */}
