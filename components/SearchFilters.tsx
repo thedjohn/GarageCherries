@@ -28,6 +28,8 @@ export default function SearchFilters({ initialMakes, minYear, maxYear }: { init
   });
 
   const [models, setModels] = useState<string[]>([]);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const activeCount = Object.values(filters).filter(Boolean).length;
 
   useEffect(() => {
     if (!filters.make) { setModels([]); return; }
@@ -52,7 +54,21 @@ export default function SearchFilters({ initialMakes, minYear, maxYear }: { init
 
   return (
     <aside className="w-full lg:w-64 shrink-0">
-      <div className="bg-white rounded-xl shadow-sm border border-zinc-100 p-5 sticky top-20">
+      <button
+        type="button"
+        onClick={() => setMobileOpen(o => !o)}
+        className="lg:hidden w-full flex items-center justify-between bg-white rounded-xl shadow-sm border border-zinc-100 px-4 py-3 mb-3"
+      >
+        <span className="font-semibold text-zinc-800 flex items-center gap-2">
+          Filters
+          {activeCount > 0 && (
+            <span className="bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{activeCount}</span>
+          )}
+        </span>
+        <span className="text-zinc-400 text-sm">{mobileOpen ? 'Hide ▲' : 'Show ▼'}</span>
+      </button>
+
+      <div className={`${mobileOpen ? 'block' : 'hidden'} lg:block bg-white rounded-xl shadow-sm border border-zinc-100 p-5 lg:sticky lg:top-20`}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-bold text-zinc-800 text-lg">Filter</h2>
           <button onClick={clear} className="text-xs text-red-600 hover:underline">Clear all</button>
