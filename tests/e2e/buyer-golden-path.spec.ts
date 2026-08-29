@@ -22,6 +22,19 @@ async function navigateToFirstListing(page: Page): Promise<boolean> {
   return true;
 }
 
+// Like navigateToFirstListing, but filtered to listings with a real price --
+// the financing calculator only renders when price > 0, so a plain "first
+// listing" is flaky whenever the newest listing happens to be "Call For
+// Price" (no numeric price).
+async function navigateToPricedListing(page: Page): Promise<boolean> {
+  await page.goto('/listings?priceMin=1');
+  const card = page.locator('a[href*="/listings/"]').first();
+  if (await card.count() === 0) return false;
+  await card.click();
+  await page.waitForLoadState('domcontentloaded');
+  return true;
+}
+
 // ── Browse → Filter → Results ─────────────────────────────────────────────────
 
 test.describe('Browse and filter', () => {
@@ -145,7 +158,7 @@ test.describe('Listing detail page — sidebar', () => {
   });
 
   test('financing calculator section is present', async ({ page }) => {
-    const found = await navigateToFirstListing(page);
+    const found = await navigateToPricedListing(page);
     if (!found) { test.skip(); return; }
 
     await expect(
