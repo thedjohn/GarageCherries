@@ -28,6 +28,13 @@ export default function PromoModal() {
     setOpen(false);
   };
 
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') dismiss(); };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open]);
+
   const claim = () => {
     localStorage.setItem(STORAGE_KEY, '1');
     setOpen(false);
