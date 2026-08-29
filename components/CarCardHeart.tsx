@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import EmailSavePrompt from './EmailSavePrompt';
 import { createClient } from '@/lib/supabase/client';
 
@@ -15,6 +15,19 @@ export default function CarCardHeart({ carId, currentPrice }: Props) {
   const [watching, setWatching] = useState(false);
   const [loading, setLoading]   = useState(false);
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
+
+  // Same on-mount check WatchlistButton already uses on the detail page --
+  // without it, a card's heart forgets it was saved as soon as you navigate
+  // away and back.
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data } = await supabase
+        .from('watchlists').select('id').eq('user_id', user.id).eq('car_id', carId).maybeSingle();
+      setWatching(!!data);
+    });
+  }, [carId]);
 
   const save = async () => {
     setLoading(true);
