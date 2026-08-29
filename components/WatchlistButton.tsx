@@ -2,11 +2,13 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { trackEvent } from '@/lib/gtag';
+import EmailSavePrompt from './EmailSavePrompt';
 
 export default function WatchlistButton({ carId, price }: { carId: string; price: number }) {
   const [watched, setWatched] = useState(false);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -26,7 +28,7 @@ export default function WatchlistButton({ carId, price }: { carId: string; price
   async function toggle() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { window.location.href = '/account/login'; return; }
+    if (!user) { setShowEmailPrompt(true); return; }
     setWorking(true);
     if (watched) {
       await supabase.from('watchlists').delete().eq('user_id', user.id).eq('car_id', carId);
@@ -57,6 +59,13 @@ export default function WatchlistButton({ carId, price }: { carId: string; price
         </svg>
         {working ? '…' : watched ? 'Saved to Watchlist' : 'Save to Watchlist'}
       </button>
+
+      {showEmailPrompt && (
+        <EmailSavePrompt
+          pendingSave={{ carId, currentPrice: price }}
+          onClose={() => setShowEmailPrompt(false)}
+        />
+      )}
     </div>
   );
 }
