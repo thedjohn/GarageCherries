@@ -488,6 +488,13 @@ function AccountPage() {
     setCounts(c => ({ ...c, alerts: Math.max(0, c.alerts - 1) }));
   };
 
+  const togglePauseAlert = async (alertId: string, currentlyPaused: boolean) => {
+    const supabase = createClient();
+    const next = !currentlyPaused;
+    await supabase.from('saved_searches').update({ paused: next }).eq('id', alertId);
+    setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, paused: next } : a));
+  };
+
   const alertFields = () => ({
     name: alertForm.name || null,
     make: alertForm.make || null,
@@ -559,7 +566,20 @@ function AccountPage() {
     const supabase = createClient();
     const { data, error } = await supabase.from('saved_searches').update(alertFields()).eq('id', editingAlertId).select().single();
     setAlertSaving(false);
-    if (error) { setAlertError(error.message); return; }
+    if (error) {
+      // PGRST116 = .single() got zero rows back -- the alert was deleted
+      // (e.g. from another tab, or the trash icon on this same row) while
+      // its edit form was still open. Nothing left to update; close the
+      // form instead of surfacing Postgres' raw "coerce to a single JSON
+      // object" error.
+      if (error.code === 'PGRST116') {
+        setAlerts(prev => prev.filter(a => a.id !== editingAlertId));
+        resetAlertForm();
+      } else {
+        setAlertError(error.message);
+      }
+      return;
+    }
     setAlerts(prev => prev.map(a => a.id === editingAlertId ? (data as Alert) : a));
     resetAlertForm();
   };
@@ -922,6 +942,10 @@ function AccountPage() {
                         <svg className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                         </svg>
+                      </button>
+                      <button onClick={() => togglePauseAlert(a.id, a.paused)}
+                        className="text-xs font-semibold text-zinc-500 hover:text-zinc-800 border border-zinc-200 hover:border-zinc-300 rounded-lg px-3 py-1.5 transition-colors shrink-0">
+                        {a.paused ? 'Resume' : 'Pause'}
                       </button>
                       <button onClick={() => openEditAlert(a)}
                         className="text-zinc-300 hover:text-zinc-600 transition-colors p-2" title="Edit alert">

@@ -5,6 +5,7 @@ import QuickFilters from '@/components/QuickFilters';
 import SearchFilters from '@/components/SearchFilters';
 import Pagination from '@/components/Pagination';
 import SortSelect from '@/components/SortSelect';
+import SaveSearchButton from '@/components/SaveSearchButton';
 import NewsletterForm from '@/components/NewsletterForm';
 import { createClient } from '@/lib/supabase/server';
 import type { Car } from '@/lib/types';
@@ -115,9 +116,14 @@ export default async function ListingsPage({ searchParams }: Props) {
           </h1>
           <p className="text-zinc-500 mt-1">{totalCount} listing{totalCount !== 1 ? 's' : ''} found</p>
         </div>
-        <Suspense>
-          <SortSelect />
-        </Suspense>
+        <div className="flex items-center gap-3">
+          <Suspense>
+            <SaveSearchButton />
+          </Suspense>
+          <Suspense>
+            <SortSelect />
+          </Suspense>
+        </div>
       </div>
 
       <Suspense>
