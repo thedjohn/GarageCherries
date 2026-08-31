@@ -27,11 +27,14 @@ export async function submitToIndexNow(urls: string[]): Promise<void> {
     });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      log.warn('IndexNow submission rejected', { status: res.status, body: body.slice(0, 300), urlCount: urlList.length });
+      // error(), not warn() -- warn() only attaches a Sentry breadcrumb to
+      // some other captured event, it never creates a visible Issue on its
+      // own. This needs to actually surface, not just get logged to Axiom.
+      log.error('IndexNow submission rejected', new Error(`HTTP ${res.status}`), { body: body.slice(0, 300), urlCount: urlList.length });
       await log.flush();
     }
   } catch (err) {
-    log.warn('IndexNow submission failed', { error: err instanceof Error ? err.message : String(err), urlCount: urlList.length });
+    log.error('IndexNow submission failed', err instanceof Error ? err : new Error(String(err)), { urlCount: urlList.length });
     await log.flush();
     // Best-effort notification only -- indexing still happens on Bing's normal
     // crawl schedule if this fails, nothing on our side depends on success.
