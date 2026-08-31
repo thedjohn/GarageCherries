@@ -17,6 +17,7 @@ interface Props {
 // just to save a car, we send a one-click magic-link email.
 export default function EmailSavePrompt({ onClose, pendingSave }: Props) {
   const [email, setEmail]     = useState('');
+  const [fullName, setFullName] = useState('');
   const [sent, setSent]       = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
@@ -33,7 +34,7 @@ export default function EmailSavePrompt({ onClose, pendingSave }: Props) {
     const redirectTo = `${window.location.origin}/auth/callback?next=${next}&save=${encodeURIComponent(pendingSave.carId)}&price=${pendingSave.currentPrice}`;
     const { error: authError } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: redirectTo },
+      options: { emailRedirectTo: redirectTo, ...(fullName.trim() && { data: { full_name: fullName.trim() } }) },
     });
     setLoading(false);
     if (authError) { setError('Something went wrong. Please try again.'); return; }
@@ -67,6 +68,13 @@ export default function EmailSavePrompt({ onClose, pendingSave }: Props) {
             <h3 className="font-bold text-zinc-900 mb-1">Save this car</h3>
             <p className="text-sm text-zinc-500 mb-4">Enter your email and we&apos;ll send a one-click link — no password needed.</p>
             <form onSubmit={submit} className="space-y-3">
+              <input
+                type="text"
+                value={fullName}
+                onChange={e => setFullName(e.target.value)}
+                placeholder="Name (optional)"
+                className="w-full border border-zinc-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
               <input
                 type="email"
                 required

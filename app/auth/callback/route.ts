@@ -56,6 +56,24 @@ export async function GET(req: NextRequest) {
       // here removes that race entirely.
       let saved = false;
       if (data.user && pendingSaveCarId) {
+        // The passwordless save flow's name field is optional (EmailSavePrompt.tsx) --
+        // only upsert a profile when one was actually given, matching the OAuth
+        // branch above so /account/watchlist's `profiles.full_name` lookup can
+        // show a real name instead of always falling back to the email.
+        const pendingSaveFullName = data.user.user_metadata?.full_name;
+        if (pendingSaveFullName) {
+          const admin = createAdminClient();
+          const { data: existingProfile } = await admin
+            .from('profiles').select('id').eq('id', data.user.id).maybeSingle();
+          if (!existingProfile) {
+            await admin.from('profiles').upsert({
+              id: data.user.id,
+              full_name: pendingSaveFullName,
+              updated_at: new Date().toISOString(),
+            });
+          }
+        }
+
         const { data: existing, error: selectErr } = await supabase
           .from('watchlists').select('id').eq('user_id', data.user.id).eq('car_id', pendingSaveCarId).maybeSingle();
         if (selectErr) {
