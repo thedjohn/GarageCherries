@@ -66,7 +66,7 @@ export function matchBadges(car: Car, s: any): string {
 
 function buildEmail(car: Car, s: any, listingUrl: string, alertId: string, userId: string): string {
   const image = car.images?.[0] ?? '';
-  const pauseUrl = `${BASE_URL}/account/alerts?pause=${alertId}`;
+  const pauseUrl = `${BASE_URL}/account?tab=alerts&pause=${alertId}`;
   const unsubscribeUrl = `${BASE_URL}/unsubscribe/alerts?uid=${userId}`;
   const name = alertName(s);
   const badges = matchBadges(car, s);
@@ -97,7 +97,7 @@ function buildEmail(car: Car, s: any, listingUrl: string, alertId: string, userI
     <p style="font-size:12px;color:#a1a1aa;margin:0">
       You set up a car alert for "${name}".<br>
       <a href="${pauseUrl}" style="color:#71717a">Pause this alert</a> &nbsp;·&nbsp;
-      <a href="${BASE_URL}/account/alerts" style="color:#71717a">Manage all alerts</a> &nbsp;·&nbsp;
+      <a href="${BASE_URL}/account?tab=alerts" style="color:#71717a">Manage all alerts</a> &nbsp;·&nbsp;
       <a href="${unsubscribeUrl}" style="color:#71717a">Unsubscribe from all alerts</a>
     </p>
   </div>

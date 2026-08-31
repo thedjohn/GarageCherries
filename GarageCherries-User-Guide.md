@@ -34,7 +34,7 @@ Buyers are anyone browsing the site looking to purchase a classic car. No accoun
 - Remove cars from the watchlist at any time from the watchlist page
 
 ### Car Alerts
-- Go to `/account/alerts` to set up a saved search
+- Go to `/account?tab=alerts` to set up a saved search, or click **Notify me when a match lists** on any filtered search results page
 - Choose make, model, year range, price range, and condition
 - When a dealer lists a new car matching your criteria, you receive an email notification automatically
 - You can have multiple active alerts and delete them at any time
@@ -265,5 +265,5 @@ Or the dealer can toggle Featured themselves when adding or editing a listing fr
 | `/account/login` | Buyer login |
 | `/account/signup` | Buyer registration |
 | `/account/watchlist` | Buyer saved cars |
-| `/account/alerts` | Buyer car alerts |
+| `/account?tab=alerts` | Buyer car alerts |
 | `/sell` | Sell your car landing page |

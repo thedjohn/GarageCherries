@@ -184,7 +184,15 @@ function AccountPage() {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { router.replace('/account/login?return=/account'); return; }
+      if (!user) {
+        // Preserve the full URL (tab, pause=<id>, etc.) so a logged-out click
+        // on the alert-match email's one-click pause link still lands back
+        // on the right tab and completes the pause after login, instead of
+        // dropping onto a bare /account.
+        const returnTo = '/account' + window.location.search;
+        router.replace(`/account/login?return=${encodeURIComponent(returnTo)}`);
+        return;
+      }
       setUserId(user.id);
       setEmail(user.email ?? '');
       const m = user.user_metadata ?? {};
@@ -198,6 +206,25 @@ function AccountPage() {
       if (profile) { setFullName(profile.full_name ?? ''); setPhone(profile.phone ?? ''); }
     });
   }, [router]);
+
+  // One-click pause from the alert-match email's ?pause=<id> link -- mirrors
+  // PendingSaveHandler.tsx's pattern (act once, then clean the param out of
+  // the URL). Runs once we actually know who's logged in, since it needs
+  // userId to scope the update to the right person's alert.
+  const pauseHandledRef = useRef(false);
+  useEffect(() => {
+    const pauseId = searchParams.get('pause');
+    if (!pauseId || !userId || pauseHandledRef.current) return;
+    pauseHandledRef.current = true;
+
+    const supabase = createClient();
+    supabase.from('saved_searches').update({ paused: true }).eq('id', pauseId).eq('user_id', userId).then(() => {
+      setAlerts(prev => prev.map(a => a.id === pauseId ? { ...a, paused: true } : a));
+      const url = new URL(window.location.href);
+      url.searchParams.delete('pause');
+      router.replace(url.pathname + url.search);
+    });
+  }, [searchParams, userId, router]);
 
   // Fetch counts for badges
   const fetchCounts = useCallback(async () => {
