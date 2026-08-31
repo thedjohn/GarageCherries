@@ -1074,8 +1074,8 @@ export default function AdminPage() {
                           <div className="space-y-3">
                             {dealerMetrics.topListings.map(car => (
                               <div key={car.id} className="flex items-center gap-3 text-sm">
-                                <div className="w-10 h-10 rounded-lg bg-zinc-100 overflow-hidden shrink-0">
-                                  {car.image && <img src={car.image} alt="" className="w-full h-full object-cover" />}
+                                <div className="relative w-10 h-10 rounded-lg bg-zinc-100 overflow-hidden shrink-0">
+                                  {car.image && <Image src={car.image} alt="" fill sizes="40px" className="object-cover" />}
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <p className="font-semibold text-zinc-800 truncate">{car.title}</p>

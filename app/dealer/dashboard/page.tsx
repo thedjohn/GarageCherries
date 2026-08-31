@@ -932,8 +932,8 @@ export default function DealerDashboard() {
                       .sort((a, b) => (listingViews[b.id] ?? 0) - (listingViews[a.id] ?? 0))
                       .slice(0, 5).map(car => (
                       <div key={car.id} className="flex items-center gap-3 text-sm">
-                        <div className="w-10 h-10 rounded-lg bg-zinc-100 overflow-hidden shrink-0">
-                          {car.images?.[0] && <img src={car.images[0]} alt="" className="w-full h-full object-cover" />}
+                        <div className="relative w-10 h-10 rounded-lg bg-zinc-100 overflow-hidden shrink-0">
+                          {car.images?.[0] && <Image src={car.images[0]} alt="" fill sizes="40px" className="object-cover" />}
                         </div>
                         <div className="min-w-0 flex-1">
                           <Link href={`/listings/${toSlug(car.make)}/${toSlug(car.model)}/${car.id}/${car.slug}`} target="_blank"
