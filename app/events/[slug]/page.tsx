@@ -59,18 +59,32 @@ function gcalUrl(event: Event) {
   return `https://calendar.google.com/calendar/render?${params}`;
 }
 
+// Keeps the rendered <title> (this string + the root layout's " | GarageCherries"
+// suffix) at or under ~60 chars, the length search engines display/prefer --
+// long event names were pushing titles past that and getting flagged.
+const MAX_TITLE_LENGTH = 44;
+
+function buildEventTitle(name: string, dateStr: string): string {
+  const full = `${name} — ${dateStr}`;
+  if (full.length <= MAX_TITLE_LENGTH) return full;
+  const nameBudget = MAX_TITLE_LENGTH - dateStr.length - 4; // " — " + ellipsis
+  const trimmedName = name.slice(0, Math.max(nameBudget, 1)).replace(/\s+\S*$/, '');
+  return `${trimmedName}… — ${dateStr}`;
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const admin = createAdminClient();
   const { data } = await admin.from('events').select('name, description, date, location, state').eq('slug', slug).eq('status', 'approved').single();
   if (!data) return { title: 'Event Not Found' };
   const dateStr = new Date(data.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const title = buildEventTitle(data.name, dateStr);
   return {
-    title: `${data.name} — ${dateStr}`,
+    title,
     description: `${data.name} on ${dateStr} in ${data.location}, ${data.state}. ${data.description?.slice(0, 120)}`,
     alternates: { canonical: `https://www.garagecherries.com/events/${slug}` },
     openGraph: {
-      title: `${data.name} — ${dateStr}`,
+      title,
       description: data.description?.slice(0, 200),
       type: 'website',
     },

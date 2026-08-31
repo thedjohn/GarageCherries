@@ -293,7 +293,7 @@ export function EventCard({ event, highlight }: { event: CarShowEvent; highlight
         )}
       </div>
       {event.image && (
-        <img src={event.image} alt="" className="hidden sm:block shrink-0 w-20 h-20 object-cover rounded-lg" />
+        <img src={event.image} alt={event.name} className="hidden sm:block shrink-0 w-20 h-20 object-cover rounded-lg" />
       )}
     </div>
   );
