@@ -11,7 +11,7 @@ vi.mock('@/lib/logger', () => ({
 
 import { triggerListingVideo } from '@/lib/videoPipeline';
 
-const LISTING = { id: 'l1', make: 'Ford', model: 'Mustang', year: 1970, price: 30000, images: ['https://example.com/1.jpg'] };
+const LISTING = { id: 'l1', make: 'Ford', model: 'Mustang', year: 1970, price: 30000, images: ['https://example.com/1.jpg', 'https://example.com/2.jpg'] };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -34,10 +34,14 @@ describe('triggerListingVideo', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('is a no-op when the listing has no images', async () => {
+  it('is a no-op when the listing has fewer than 2 images', async () => {
     await triggerListingVideo({ ...LISTING, images: [] });
     expect(fetch).not.toHaveBeenCalled();
     await triggerListingVideo({ ...LISTING, images: null });
+    expect(fetch).not.toHaveBeenCalled();
+    // A single photo is often just a feed's placeholder/branding card ahead
+    // of real photos syncing in later -- see the videoPipeline.ts comment.
+    await triggerListingVideo({ ...LISTING, images: ['https://example.com/1.jpg'] });
     expect(fetch).not.toHaveBeenCalled();
   });
 

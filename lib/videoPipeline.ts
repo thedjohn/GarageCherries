@@ -24,8 +24,13 @@ export async function triggerListingVideo(listing: ListingVideoInput): Promise<v
     log.info('Video pipeline trigger skipped — VPS_URL/VPS_SHARED_SECRET not configured');
     return;
   }
-  if (!listing.images?.length) {
-    log.info('Video pipeline trigger skipped — listing has no images', { listingId: listing.id });
+  if (!listing.images || listing.images.length < 2) {
+    // A single-photo listing is usually a feed that hasn't synced real photos
+    // yet -- often just a dealer's own placeholder/branding card (see the
+    // McGinty Motorcars incident: a video got built from that one card and
+    // was never regenerated once real photos arrived, since only a price
+    // drop re-triggers a render, not an images-array change).
+    log.info('Video pipeline trigger skipped — fewer than 2 images', { listingId: listing.id, imageCount: listing.images?.length ?? 0 });
     return;
   }
 
