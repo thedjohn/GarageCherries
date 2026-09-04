@@ -318,6 +318,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `feed_sftp_provisioned_at` | timestamptz \| null | Added 2026-07-29. Stamped when SFTP push access is created via `POST /api/dealer/feed-sftp/provision`. |
 | `feed_sftp_last_received_at` | timestamptz \| null | Added 2026-07-29. The pushed file's own mtime (not wall-clock sync time) as of the last successful sync that found new content — used both to skip reprocessing an unchanged file and by the daily `dealer-feed-staleness` cron to flag dealers whose feed has gone quiet. |
 | `feed_format` | text | Added 2026-07-31, default `'speed_digital'`. Selects which dealer-inventory-platform's column-naming convention `syncDealerFeed()` (`app/api/cron/dealer-feed-sync/route.ts`) uses to read the feed — orthogonal to `feed_protocol` above (that's *transport*: URL/SFTP-pull/SFTP-push; this is *column names*, since different platforms export the same data under different headers, e.g. price is `List Price` for Speed Digital but `Internet Price`/`Retail` for Dealer Car Search). Admin-set only for now (no dealer-facing UI) — set directly when onboarding a dealer on a new platform. `'dealer_car_search'` is the only other value currently supported. |
+| `notification_email` | text \| null | Added 2026-08-27 (migration `20260827_dealer_notification_email.sql`). When set, `POST /api/conversations` sends the "new message" notification email here instead of the dealer's Supabase Auth login email — lets a dealer route buyer-message alerts to a shared inbox (e.g. `sales@...`) distinct from both their login and their public-facing `email` column. Self-serve editable from the dealer's own Settings page; falls back to the login email when unset. |
 | `created_at` | timestamptz | |
 
 #### Current Dealers & Feed Setup (snapshot as of 2026-08-04, live-queried directly from `dealers`/`listings` — this goes stale fast, see the standing note at the top of `IMPLEMENTATION_STATUS.md` about this project's pace)
@@ -748,7 +749,7 @@ Added 2026-07-11. Single-row singleton (`id` is always `1`), superadmin-editable
 ### `GET /api/admin/users`
 - **Auth**: required, min role: moderator
 - **Query**: `page?`, `limit?` (default 100, max 200)
-- **Returns**: rich user objects with roles array, suspended status, dealer/advertiser info, listing counts, watchlist/conversation counts
+- **Returns**: rich user objects with roles array, suspended status, dealer/advertiser info, listing counts, watchlist/conversation counts. Added 2026-09-04: each user also gets a `conversations` array (`id`, `listing_title`, `listing_url`, `seller_email`) backing the Users tab's "View messages" feature — `listing_url` is the real canonical listing URL (built via a targeted `.in()` lookup against the specific listings referenced, not a full table scan), `null` when that listing has since been deleted.
 
 ---
 
@@ -1485,7 +1486,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | Axiom structured logging | **Complete (2026-07-07)** | `next-axiom` installed. `lib/logger.ts` exports `createLogger(source)` — a unified logger that writes structured logs to Axiom and forwards errors/warnings to Sentry as breadcrumbs/exceptions. Wired across all high-value API routes: `api/listings/submit`, `api/admin/listings`, `api/admin/events`, `api/dealer/apply`, `api/alerts/match`, `api/notify-watchers`, `api/conversations`, `api/conversations/[id]/messages`, `api/email/digest`, `api/email/dealer-report`, `api/email/expiring-listings` (`api/inquire` was in this list until it was deleted 2026-07-14). Env vars: `AXIOM_TOKEN`, `AXIOM_DATASET=garagecherries`. |
 | Sell form — contact section removed | **Complete (2026-07-06)** | Seller name, phone, and email fields removed from `SellClient.tsx`. The submit API now reads `seller_name`/`seller_phone` from the `profiles` table and `seller_email` from the auth session. |
 | Homepage hero stats | **Updated 2026-07-13** | Replaced placeholder stats ("12,400+ listings · All 50 states") with honest copy: "Growing daily · Worldwide · Classic, Muscle, Sport & Supercar" (2026-07-06; "Nationwide" changed to "Worldwide" sitewide 2026-07-13). Hero subtext also reworded 2026-07-13 to drop an unearned "thousands of listings" claim and USA-only framing. |
-| Dedicated watchlist page (`/account/watchlist`) | **Complete** | Standalone URL for watchlist; price-change indicators; mirrors `/account?tab=watchlist` |
+| Dedicated watchlist page (`/account/watchlist`) | **Removed 2026-09-04** | Was a standalone URL duplicating `/account?tab=watchlist`, reachable only via email links and default post-auth redirects, never from any in-app navigation. Its two extra features (price-increase badge, "Saved at $X") were ported into the unified tab first, every real entry point (price-drop emails, login/signup/reset-password redirects) repointed at `/account?tab=watchlist`, then the page deleted. Now 404s. |
 | Import JSON / Sync Now buttons | **Missing** | UI buttons exist in dealer dashboard but click handlers are stubs — no API route or format defined; sample format saved at `docs/dealer-import-sample.json` |
 | Export inventory | **Complete** | GET /api/dealer/export?format=csv\|json; dashboard has "Export CSV" and "Export JSON" buttons |
 | Admin email tool (`/admin/email`) | **Complete** | Manual trigger panel for digest, price-drop, and dealer-report batch emails; requires `ADMIN_API_SECRET`; not linked from `/admin` nav |
@@ -1515,7 +1516,7 @@ All emails sent via Resend. Sender domains: `no-reply@garagecherries.com`, `noti
 | `dealer/dashboard` — "Import JSON" button | No API route for bulk inventory import; format not yet defined |
 | `dealer/dashboard` — "Sync now" button | No API route for inventory sync |
 | ~~`dealer/dashboard` — "Export" button~~ | **Fixed (P1)** — `GET /api/dealer/export?format=csv\|json` implemented; buttons wired |
-| `/account/watchlist` | **Complete** — dedicated watchlist page; shows saved listings with price-change indicators (green = dropped, orange = increased since saved); redirects to login if unauthenticated; duplicates the Watchlist tab at `/account?tab=watchlist` but at a cleaner standalone URL |
+| ~~`/account/watchlist`~~ | **Removed 2026-09-04** — deleted; was a fully-duplicate standalone page, superseded by `/account?tab=watchlist` (see §8 above for detail) |
 | `/reports` | **Complete** — public market report page; pulls live data from listings table; shows active count, median/average price, sold this month, average price by make (bar chart), inventory by condition breakdown, most-viewed listings, static market commentary; good SEO content page; not linked from main nav |
 
 ### Business rules with no enforcement or test coverage

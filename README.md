@@ -110,7 +110,6 @@ Open [http://localhost:3000](http://localhost:3000).
 | `/dealers/[slug]` | Dealer profile + live inventory |
 | `/sell` | Private seller listing form (auth required) |
 | `/account` | Buyer account — watchlist, alerts, listings, profile |
-| `/account/watchlist` | Standalone watchlist page |
 | `/messages` | Buyer-seller messaging inbox |
 | `/reports` | Live market report |
 | `/dealer/apply` | Dealer application form |

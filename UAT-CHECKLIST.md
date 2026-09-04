@@ -88,7 +88,7 @@
 - [ ] Log in / log out
 - [ ] "Sign out" button in the breadcrumb bar on `/account` and `/messages` — signs out and returns to the homepage
 - [x] Forgot password (`/account/forgot-password`) → click the emailed link → lands on the **"Set new password" form**, not the homepage. Wildcard Redirect URLs did not actually work; fixed for real 2026-07-11 by using exact literal entries instead (see IMPLEMENTATION_STATUS.md). Confirmed working live by Derek 2026-07-11. Email is now a branded GarageCherries template rather than Supabase's generic default.
-- [ ] Profile management (`/account/profile`) — update name/phone, save succeeds
+- [ ] Profile management (`/account?tab=settings`) — update name/phone, save succeeds. Note: the old standalone `/account/profile` page was deleted 2026-09-04 (orphaned duplicate, superseded by this unified page) — this item was updated to match, not newly added.
 - [ ] Watch a listing (heart/save icon) — appears under Watchlist tab
 - [ ] Unwatch a listing — disappears from Watchlist
 - [ ] Create a saved search alert with at least 2 criteria — appears under Alerts tab
