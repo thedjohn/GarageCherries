@@ -55,6 +55,14 @@ export default function PrivacyPage() {
           .
         </p>
       </div>
+      <div className="mt-8 pt-8 border-t border-zinc-200">
+        <h2 className="text-2xl font-bold text-zinc-900 mb-4">Buyer-Seller Messages</h2>
+        <p className="text-zinc-700 leading-relaxed">
+          Messages sent through the Site&apos;s buyer-seller messaging feature are not fully private between the
+          two parties. Authorized GarageCherries staff may access message content to provide customer support,
+          investigate a reported message, or otherwise help ensure the safety and integrity of the Site.
+        </p>
+      </div>
     </div>
   );
 }
