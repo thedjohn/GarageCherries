@@ -4,7 +4,7 @@ import TrackedLink from '@/components/TrackedLink';
 
 export default function DealerWebsiteLink({ website, dealerId }: { website: string; dealerId: string }) {
   return (
-    <TrackedLink href={website} target="_blank" rel="noopener noreferrer" stopPropagation
+    <TrackedLink href={website} target="_blank" rel="noopener noreferrer" stopPropagation asButton
       eventName="dealer_website_click" eventParams={{ dealer_id: dealerId }}
       className="flex items-center gap-1 text-xs text-red-600 hover:underline mb-3 relative z-10 w-fit">
       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
