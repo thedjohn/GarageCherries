@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
         <p style="color:#52525b;">Good news — ${userCars.length} car${userCars.length !== 1 ? 's' : ''} on your watchlist got a price reduction this week.</p>
         <table style="width:100%;border-collapse:collapse;margin-top:16px;">${listHtml}</table>
         <p style="margin-top:24px;">
-          <a href="https://www.garagecherries.com/account/watchlist" style="background:#dc2626;color:#fff;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;">
+          <a href="https://www.garagecherries.com/account?tab=watchlist" style="background:#dc2626;color:#fff;font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;">
             View My Watchlist
           </a>
         </p>

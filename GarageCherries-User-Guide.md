@@ -29,7 +29,7 @@ Buyers are anyone browsing the site looking to purchase a classic car. No accoun
 
 ### Watchlist
 - On any listing detail page, click **Add to Watchlist** to save a car
-- View all saved cars at `/account/watchlist`
+- View all saved cars at `/account?tab=watchlist`
 - You will receive an email notification if the price drops on a watched car
 - Remove cars from the watchlist at any time from the watchlist page
 
@@ -264,6 +264,6 @@ Or the dealer can toggle Featured themselves when adding or editing a listing fr
 | `/admin/email` | Email campaign trigger (admin only) |
 | `/account/login` | Buyer login |
 | `/account/signup` | Buyer registration |
-| `/account/watchlist` | Buyer saved cars |
+| `/account?tab=watchlist` | Buyer saved cars |
 | `/account?tab=alerts` | Buyer car alerts |
 | `/sell` | Sell your car landing page |

@@ -41,6 +41,7 @@ interface WatchItem {
     state: string | null;
     images: string[];
     status: string;
+    condition: string | null;
   } | null;
 }
 
@@ -255,7 +256,7 @@ function AccountPage() {
       .eq('user_id', userId).order('added_at', { ascending: false });
     const carIds = (rows ?? []).map((r: any) => r.car_id);
     const { data: cars } = carIds.length
-      ? await supabase.from('listings').select('id,slug,title,year,make,model,price,mileage,location,state,images,status').in('id', carIds)
+      ? await supabase.from('listings').select('id,slug,title,year,make,model,price,mileage,location,state,images,status,condition').in('id', carIds)
       : { data: [] };
     const byId = Object.fromEntries((cars ?? []).map((c: any) => [c.id, c]));
     setWatchItems((rows ?? []).map((r: any) => ({ ...r, car: byId[r.car_id] ?? null })).filter((r: any) => r.car));
@@ -717,6 +718,8 @@ function AccountPage() {
                 const img = car.images?.[0];
                 const priceChange = item.price_at_add && car.price < item.price_at_add
                   ? item.price_at_add - car.price : null;
+                const priceIncrease = item.price_at_add && car.price > item.price_at_add
+                  ? car.price - item.price_at_add : null;
                 return (
                   <div key={item.id} className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 flex gap-4 items-center">
                     {img ? (
@@ -740,12 +743,20 @@ function AccountPage() {
                             ↓ {formatPrice(priceChange)} drop
                           </span>
                         )}
+                        {priceIncrease && (
+                          <span className="text-xs font-bold text-orange-800 bg-orange-100 px-2 py-0.5 rounded-full">
+                            ↑ {formatPrice(priceIncrease)} increase
+                          </span>
+                        )}
+                        {item.price_at_add ? (
+                          <span className="text-xs text-zinc-400">Saved at {formatPrice(item.price_at_add)}</span>
+                        ) : null}
                         {car.status !== 'approved' && (
                           <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Sold / Removed</span>
                         )}
                       </div>
                       <p className="text-xs text-zinc-400 mt-0.5">
-                        {car.location}{car.state ? `, ${car.state}` : ''} · Saved {new Date(item.added_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        {car.condition ? `${car.condition} · ` : ''}{car.location}{car.state ? `, ${car.state}` : ''} · Saved {new Date(item.added_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </p>
                     </div>
                     <button
@@ -1430,7 +1441,8 @@ function AccountPage() {
 
           {/* Password */}
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
-            <h2 className="text-base font-bold text-zinc-900 mb-4">Change Password</h2>
+            <h2 className="text-base font-bold text-zinc-900 mb-1">Change Password</h2>
+            <p className="text-xs text-zinc-400 mb-4">Don&apos;t have a password yet (e.g. you signed up by saving a car)? Leave Current Password blank.</p>
             <form onSubmit={changePassword} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Current Password</label>

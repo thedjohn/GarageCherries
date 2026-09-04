@@ -76,7 +76,7 @@ describe('AccountLoginPage dealer-account rejection', () => {
     await submitLogin();
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/account/watchlist');
+      expect(mockPush).toHaveBeenCalledWith('/account?tab=watchlist');
     });
     expect(mockSignOut).not.toHaveBeenCalled();
     expect(screen.queryByText(/this is a dealer account/i)).not.toBeInTheDocument();

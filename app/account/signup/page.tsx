@@ -35,7 +35,7 @@ function SignupForm() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/account/watchlist`,
+        emailRedirectTo: `${window.location.origin}/account?tab=watchlist`,
         data: { full_name: fullName, ...(promo && { promo }) },
       },
     });

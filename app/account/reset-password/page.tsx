@@ -47,7 +47,7 @@ export default function ResetPasswordPage() {
       setLoading(false);
     } else {
       setDone(true);
-      setTimeout(() => router.push('/account/watchlist'), 2000);
+      setTimeout(() => router.push('/account?tab=watchlist'), 2000);
     }
   };
 
