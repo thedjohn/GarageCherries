@@ -45,6 +45,7 @@ interface SiteUser {
   listings: { approved: number; pending: number; rejected: number } | null;
   watchlist_count: number;
   conversation_count: number;
+  conversations: { id: string; listing_title: string; listing_url: string | null; seller_email: string }[];
 }
 
 type Tab = 'overview' | 'listings' | 'reported' | 'team' | 'users' | 'applications' | 'events' | 'email' | 'videos';
@@ -159,6 +160,10 @@ export default function AdminPage() {
   const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
   const [convThreads, setConvThreads] = useState<Record<string, ConvMsg[]>>({});
   const [threadLoading, setThreadLoading] = useState<string | null>(null);
+  // Users tab "View messages" -- which user's conversation list is showing.
+  // Reuses expandedConvId/convThreads/threadLoading/loadThread() above for
+  // the actual per-conversation thread, same mechanism the Reported tab uses.
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
   const [warningSenderId, setWarningSenderId] = useState<string | null>(null);
   const [warningText, setWarningText] = useState('');
   const [warnWorking, setWarnWorking] = useState(false);
@@ -2178,6 +2183,52 @@ export default function AdminPage() {
                         </p>
                         {u.suspended?.reason && (
                           <p className="text-xs text-red-500 mt-1">Reason: {u.suspended.reason}</p>
+                        )}
+                        {u.conversation_count > 0 && (
+                          <button
+                            onClick={() => setExpandedUserId(expandedUserId === u.id ? null : u.id)}
+                            className="text-xs text-red-600 hover:underline mt-1">
+                            {expandedUserId === u.id ? 'Hide messages' : 'View messages'}
+                          </button>
+                        )}
+                        {expandedUserId === u.id && (
+                          <div className="mt-2 space-y-2 border-l-2 border-zinc-100 pl-3">
+                            {u.conversations.map(c => {
+                              const isExpanded = expandedConvId === c.id;
+                              const thread = convThreads[c.id];
+                              const isLoadingThread = threadLoading === c.id;
+                              return (
+                                <div key={c.id}>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <button
+                                      onClick={() => loadThread(c.id)}
+                                      className="text-xs font-semibold text-zinc-600 hover:text-zinc-900">
+                                      {isExpanded ? '▲' : '▼'} {c.listing_title}
+                                    </button>
+                                    {c.listing_url && (
+                                      <a href={c.listing_url} target="_blank" rel="noopener noreferrer"
+                                        className="text-xs text-red-600 hover:underline">
+                                        View car ↗
+                                      </a>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-zinc-400">Sent to: {c.seller_email}</p>
+                                  {isExpanded && (
+                                    <div className="mt-1.5 mb-2 space-y-1.5">
+                                      {isLoadingThread && <p className="text-xs text-zinc-400">Loading…</p>}
+                                      {thread?.map(msg => (
+                                        <div key={msg.id} className="bg-zinc-50 border border-zinc-100 rounded-lg px-3 py-2">
+                                          <p className="text-xs font-semibold text-zinc-500">{msg.sender_name}</p>
+                                          <p className="text-sm text-zinc-700">{msg.body}</p>
+                                          <p className="text-[10px] text-zinc-400 mt-0.5">{new Date(msg.created_at).toLocaleString()}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         )}
                       </div>
                       <div className="flex items-center gap-2 flex-wrap shrink-0">

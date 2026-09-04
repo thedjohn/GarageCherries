@@ -4,6 +4,7 @@ import { requireAdmin, hasRole } from '@/lib/admin';
 import { Resend } from 'resend';
 import { emailWrap } from '@/lib/emailBranding';
 import { fetchAllRows } from '@/lib/db';
+import { toSegment } from '@/lib/data';
 
 async function auth() {
   const supabase = await createClient();
@@ -50,8 +51,8 @@ export async function GET(req: NextRequest) {
     admin.from('suspended_users').select('user_id, reason, suspended_at'),
     fetchAllRows<{ user_id: string }>((from, to) =>
       admin.from('watchlists').select('user_id').order('id', { ascending: true }).range(from, to)),
-    fetchAllRows<{ buyer_id: string; listing_id: string }>((from, to) =>
-      admin.from('conversations').select('buyer_id, listing_id').order('id', { ascending: true }).range(from, to)),
+    fetchAllRows<{ id: string; buyer_id: string; listing_id: string; listing_title: string; seller_email: string }>((from, to) =>
+      admin.from('conversations').select('id, buyer_id, listing_id, listing_title, seller_email').order('id', { ascending: true }).range(from, to)),
   ]);
 
   const dealerIds = new Set((dealers ?? []).map((d: any) => d.id));
@@ -76,10 +77,38 @@ export async function GET(req: NextRequest) {
     watchlistCounts[w.user_id] = (watchlistCounts[w.user_id] ?? 0) + 1;
   }
 
-  // Conversation counts per buyer
+  // Conversation counts + ids per buyer -- ids/listing titles included so the
+  // admin Users tab can offer a "View messages" link straight to each
+  // conversation's thread, reusing the same GET /api/admin/conversations/[id]/messages
+  // endpoint the Reported tab already uses. listing_title comes straight off
+  // the conversation row's own snapshot column (same field ReportedMessage
+  // already relies on) rather than joining against listings -- simpler, and
+  // correct even if the listing is later deleted or renamed.
   const convCounts: Record<string, number> = {};
-  for (const c of conversations ?? []) {
+  const convs = conversations ?? [];
+  const convListingIds = [...new Set(convs.map(c => c.listing_id))];
+  // Targeted lookup (not another fetchAllRows pass over the whole table) --
+  // only the specific listings referenced by an actual conversation, so this
+  // stays cheap regardless of total listings volume. Used to build each
+  // conversation's real canonical URL (same shape CarCard.tsx uses) instead
+  // of a placeholder one.
+  const { data: convListings } = convListingIds.length
+    ? await admin.from('listings').select('id, make, model, slug').in('id', convListingIds)
+    : { data: [] as { id: string; make: string; model: string; slug: string }[] };
+  const listingUrlMap: Record<string, string> = {};
+  for (const l of convListings ?? []) {
+    listingUrlMap[l.id] = `/listings/${toSegment(l.make)}/${toSegment(l.model)}/${l.id}/${l.slug}`;
+  }
+
+  const convsByBuyer: Record<string, { id: string; listing_title: string; listing_url: string | null; seller_email: string }[]> = {};
+  for (const c of convs) {
     convCounts[c.buyer_id] = (convCounts[c.buyer_id] ?? 0) + 1;
+    (convsByBuyer[c.buyer_id] ??= []).push({
+      id: c.id,
+      listing_title: c.listing_title,
+      listing_url: listingUrlMap[c.listing_id] ?? null, // null when the listing has since been deleted
+      seller_email: c.seller_email,
+    });
   }
 
   const ONE_YEAR_AGO = new Date();
@@ -119,6 +148,7 @@ export async function GET(req: NextRequest) {
       listings: listingCounts[u.id] ?? null,
       watchlist_count: watchlistCounts[u.id] ?? 0,
       conversation_count: convCounts[u.id] ?? 0,
+      conversations: convsByBuyer[u.id] ?? [],
     };
   });
 

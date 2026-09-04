@@ -69,10 +69,17 @@ function makeJsonRequest(body: Record<string, unknown>) {
 // on those three specifically, unlike the flat .select(...) used elsewhere in
 // this route. A single page of test-sized data (always well under 1000 rows)
 // is enough to satisfy fetchAllRows' "fewer than a full page means done" check.
+// `listings` additionally gets a second, separate .select(...).in(...) chain --
+// the targeted make/model/slug lookup for building each conversation's real
+// listing URL, keyed by the same mock data (inert for watchlists/conversations,
+// which never call .in()).
 const PAGED_TABLES = new Set(['listings', 'watchlists', 'conversations']);
 function tableStub(table: string, data: unknown[] = []) {
   return PAGED_TABLES.has(table)
-    ? { select: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ range: vi.fn().mockResolvedValue({ data }) }) }) }
+    ? { select: vi.fn().mockReturnValue({
+        order: vi.fn().mockReturnValue({ range: vi.fn().mockResolvedValue({ data }) }),
+        in: vi.fn().mockResolvedValue({ data }),
+      }) }
     : { select: vi.fn().mockResolvedValue({ data }) };
 }
 
@@ -122,13 +129,26 @@ describe('GET /api/admin/users', () => {
         dealers:       [{ id: 'dealer-1', name: 'Dealer Co' }],
         advertisers:   [{ id: 'ad-1', user_id: 'advertiser-1', business_name: 'Ads Co' }],
         listings:      [
-          { seller_id: 'seller-1', status: 'approved' },
-          { seller_id: 'seller-1', status: 'pending' },
-          { seller_id: 'seller-1', status: 'rejected' },
+          // id/make/model/slug present on every row -- the same `listings`
+          // mock also backs the separate .select(...).in(...) lookup GET
+          // uses to build each conversation's real canonical URL. Unlike
+          // real Supabase, this mock's .in() doesn't actually filter by id,
+          // so every row here needs valid make/model regardless of whether
+          // a conversation actually references it.
+          { id: 'l1', seller_id: 'seller-1', status: 'approved', make: 'Ford', model: 'Mustang', slug: 'test-ford-mustang' },
+          { id: 'l2', seller_id: 'seller-1', status: 'pending', make: 'Ford', model: 'Mustang', slug: 'test-ford-mustang-2' },
+          { id: 'l3', seller_id: 'seller-1', status: 'rejected', make: 'Ford', model: 'Mustang', slug: 'test-ford-mustang-3' },
         ],
         suspended_users: [],
         watchlists:    [{ user_id: 'buyer-1' }],
-        conversations: [{ buyer_id: 'buyer-1', listing_id: 'l1' }],
+        conversations: [
+          { id: 'conv-1', buyer_id: 'buyer-1', listing_id: 'l1', listing_title: 'Test Listing', seller_email: 's@x.com' },
+          // Second conversation for the same buyer, referencing a listing_id
+          // with no matching row -- proves listing_url correctly falls back
+          // to null (e.g. the listing was later deleted) instead of crashing
+          // or silently pointing at a broken URL.
+          { id: 'conv-2', buyer_id: 'buyer-1', listing_id: 'deleted-listing', listing_title: 'Deleted Listing', seller_email: 's@x.com' },
+        ],
       };
       return tableStub(table, data[table] ?? []);
     });
@@ -144,6 +164,15 @@ describe('GET /api/admin/users', () => {
     expect(byId['new-1'].roles).toContain('new');
     expect(byId['inactive-1'].roles).toContain('inactive');
     expect(res._data.total).toBe(6);
+
+    // Conversation count/detail wiring for the admin Users tab's "View
+    // messages" feature: both of buyer-1's conversations show up, the one
+    // with a real listing gets a real canonical URL, and the one whose
+    // listing no longer exists correctly falls back to null.
+    expect(byId['buyer-1'].conversation_count).toBe(2);
+    const byConvId = Object.fromEntries(byId['buyer-1'].conversations.map((c: any) => [c.id, c]));
+    expect(byConvId['conv-1'].listing_url).toBe('/listings/ford/mustang/l1/test-ford-mustang');
+    expect(byConvId['conv-2'].listing_url).toBeNull();
   });
 
   it('counts a seller\'s listings correctly even past Supabase\'s 1000-row select cap', async () => {
