@@ -253,6 +253,25 @@ const FEED_FORMATS: Record<string, FeedFormatColumns> = {
     description: 'LongDescription',
     phone: 'DealerPhoneNumber',
   },
+  // HaggleMe's feed (pushed via SFTP) -- confirmed against two real sample
+  // rows pulled directly off the SFTP account, not assumed. No trim/sub-model
+  // column; "Series" is the closest analog (blank on both sample rows, but
+  // present in the header for vehicles where it's filled in). "SalePrice" was
+  // blank on both samples with "Price" holding the real asking price, so
+  // "Price" is primary and "SalePrice" the fallback, same shape as Dealer Car
+  // Search's Internet-Price/Retail pair above (just the opposite way around).
+  haggle_me: {
+    stockNumber: 'StockNumber',
+    subModel: 'Series',
+    price: 'Price',
+    priceFallback: 'SalePrice',
+    transmission: 'Transmission',
+    engine: 'Engine',
+    color: ['ExteriorColor'],
+    images: 'Images',
+    bodyStyle: 'BodyStyle',
+    description: 'SellerDescription',
+  },
 };
 
 const STATE_NAME_TO_ABBR: Record<string, string> = {
