@@ -530,6 +530,20 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     expect(mockRpc).not.toHaveBeenCalled();
   });
 
+  it('skips a row whose Year is a blank-defaulted "0000" instead of importing a "0 Chevrolet GM" listing -- real production incident (two HaggleMe rows: a Chevrolet with no real model and a mini excavator, neither an actual car)', async () => {
+    makeSupabaseMock({ dealers: [DEALER], existingListings: [] });
+    const csv = buildCsv([{
+      VIN: 'VIN-ZERO-YEAR', 'Stock Number': 'VIN-ZERO-YEAR', Year: '0000', Make: 'Chevrolet',
+      Model: 'GM', BodyStyle: '', 'List Price': '5000',
+    }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+    const res: any = await GET(makeRequest('Bearer cron-secret'));
+    expect(res._data.results['info@survivor-cars.com'].errors).toEqual([]);
+    expect(res._data.results['info@survivor-cars.com'].skipped).toBe(1);
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
   it('skips a row with a non-numeric Year instead of failing the DB insert -- real production shape (HaggleMe listed shop equipment as if it were a vehicle, with descriptive text in the Year column)', async () => {
     makeSupabaseMock({ dealers: [DEALER], existingListings: [] });
     const csv = buildCsv([{

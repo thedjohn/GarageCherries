@@ -485,7 +485,11 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     // is NOT NULL, so this would otherwise surface as a loud insert failure
     // instead of a clean skip like any other not-actually-a-car row (compare
     // SKIP_BODY_STYLES above).
-    if (isNaN(year)) { result.skipped++; continue; }
+    // year <= 0 catches a blank Year field defaulting to "0000" (two real
+    // HaggleMe rows: "0 Chevrolet GM", and a mini excavator with no real make
+    // in our catalog at all) -- isNaN alone missed this since "0000" parses
+    // to a valid, if nonsensical, number rather than NaN.
+    if (isNaN(year) || year <= 0) { result.skipped++; continue; }
     const model = r[idx(format.model ?? 'Model')]?.trim();
     const subModel = r[idx(format.subModel)]?.trim();
     // Not every vendor's export has this column; idx() returns -1 when absent,

@@ -31,42 +31,60 @@ function toCarShape(r: Record<string, unknown>): Car {
   };
 }
 
+const LISTING_COLUMNS = 'id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at';
+
 export default async function HomePage() {
   const supabase = await createClient();
-  const { data: rows } = await supabase
-    .from('listings')
-    .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at')
-    .eq('status', 'approved')
-    .eq('is_sold', false)
-    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-    .order('listed_at', { ascending: false });
+  const now = new Date().toISOString();
+  // A plain, unfiltered "active listings" select would silently truncate at
+  // Supabase/PostgREST's default 1000-row cap once inventory crosses that --
+  // the same recurring bug already fixed elsewhere in this codebase
+  // (fetchAllRows() in lib/db.ts). Rather than fetch every row just to derive
+  // a small featured set, a top-8 recent list, and a year range, each is its
+  // own targeted query that can never itself exceed the cap -- cheaper than
+  // fetchAllRows() on the site's highest-traffic page, and avoids the bug
+  // entirely rather than working around it.
+  const [{ data: recentRows }, { data: featuredRows }, { data: minYearRow }, { data: maxYearRow }] = await Promise.all([
+    supabase.from('listings').select(LISTING_COLUMNS)
+      .eq('status', 'approved').eq('is_sold', false)
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
+      .order('listed_at', { ascending: false })
+      .limit(8),
+    supabase.from('listings').select(LISTING_COLUMNS)
+      .eq('status', 'approved').eq('is_sold', false).eq('featured', true)
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
+      .order('listed_at', { ascending: false }),
+    supabase.from('listings').select('year')
+      .eq('status', 'approved').eq('is_sold', false)
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
+      .order('year', { ascending: true }).limit(1).maybeSingle(),
+    supabase.from('listings').select('year')
+      .eq('status', 'approved').eq('is_sold', false)
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
+      .order('year', { ascending: false }).limit(1).maybeSingle(),
+  ]);
 
-  const allCars = (rows ?? []).map(toCarShape);
-  const featured = allCars.filter(c => c.featured);
-  const recent = allCars.slice(0, 8);
+  const recent = (recentRows ?? []).map(toCarShape);
+  const featured = (featuredRows ?? []).map(toCarShape);
 
   const [{ count: activeCount }, { count: dealerCount }, { count: soldCount }, { count: eventCount }] = await Promise.all([
-    // allCars.length undercounts once inventory exceeds Supabase's default
-    // 1000-row cap on an uncapped select -- a real count query has no such
-    // limit, same reasoning as dealerCount/soldCount/eventCount below.
     supabase.from('listings').select('id', { count: 'exact', head: true })
       .eq('status', 'approved').eq('is_sold', false)
-      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`),
+      .or(`expires_at.is.null,expires_at.gt.${now}`),
     supabase.from('dealers').select('id', { count: 'exact', head: true }),
     supabase.from('listings').select('id', { count: 'exact', head: true }).eq('is_sold', true),
     supabase.from('events').select('id', { count: 'exact', head: true })
-      .eq('status', 'approved').gte('date', new Date().toISOString().slice(0, 10)),
+      .eq('status', 'approved').gte('date', now.slice(0, 10)),
   ]);
   const stats = [
-    { label: 'Active Listings', value: activeCount ?? allCars.length },
+    { label: 'Active Listings', value: activeCount ?? 0 },
     { label: 'Dealers', value: dealerCount ?? 0 },
     { label: 'Cars Sold All-Time', value: soldCount ?? 0 },
     { label: 'Upcoming Events', value: eventCount ?? 0 },
   ];
 
-  const carYears = allCars.map(c => c.year).filter(y => Number.isFinite(y));
-  const yearFrom = carYears.length ? Math.min(...carYears) : 1900;
-  const yearTo = carYears.length ? Math.max(...carYears) : new Date().getFullYear() + 1;
+  const yearFrom = minYearRow?.year != null ? Number(minYearRow.year) : 1900;
+  const yearTo = maxYearRow?.year != null ? Number(maxYearRow.year) : new Date().getFullYear() + 1;
   const years = Array.from({ length: yearTo - yearFrom + 1 }, (_, i) => yearTo - i);
 
   const orgJsonLd = {
