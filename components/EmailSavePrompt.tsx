@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { trackEvent } from '@/lib/gtag';
 
 interface Props {
   onClose: () => void;
@@ -38,6 +39,7 @@ export default function EmailSavePrompt({ onClose, pendingSave }: Props) {
     });
     setLoading(false);
     if (authError) { setError('Something went wrong. Please try again.'); return; }
+    trackEvent('watchlist_email_submitted', { car_id: pendingSave.carId });
     setSent(true);
   };
 

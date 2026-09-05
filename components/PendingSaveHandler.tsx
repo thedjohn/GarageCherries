@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { trackEvent } from '@/lib/gtag';
 
 // Shows a quick confirmation toast after a save-without-account car save.
 // The actual save now happens server-side in /auth/callback, before the
@@ -16,6 +17,13 @@ function PendingSaveInner() {
     if (params.get('saved') !== '1' || handledRef.current) return;
     handledRef.current = true;
     setShow(true);
+    // The passwordless flow's actual save happens server-side in
+    // /auth/callback -- no client code runs at that moment to fire GA4's
+    // watchlist_add, so this is the only place that path's completion can
+    // be tracked. Kept consistent with the already-logged-in path's event
+    // (WatchlistButton.tsx) so watchlist_add reflects total completed
+    // saves regardless of which flow got them there.
+    trackEvent('watchlist_add', { source: 'magic_link' });
 
     const url = new URL(window.location.href);
     url.searchParams.delete('saved');

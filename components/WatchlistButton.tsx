@@ -26,6 +26,7 @@ export default function WatchlistButton({ carId, price }: { carId: string; price
   }, [carId]);
 
   async function toggle() {
+    if (!watched) trackEvent('watchlist_intent_click', { car_id: carId, source: 'detail_button' });
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setShowEmailPrompt(true); return; }

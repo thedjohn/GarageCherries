@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import EmailSavePrompt from './EmailSavePrompt';
 import { createClient } from '@/lib/supabase/client';
+import { trackEvent } from '@/lib/gtag';
 
 interface Props {
   carId: string;
@@ -46,6 +47,7 @@ export default function CarCardHeart({ carId, currentPrice }: Props) {
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!watching) trackEvent('watchlist_intent_click', { car_id: carId, source: 'card_heart' });
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setShowEmailPrompt(true); return; }
