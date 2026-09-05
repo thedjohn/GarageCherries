@@ -29,7 +29,8 @@ export async function POST(request: NextRequest) {
   await admin.from('dealers').update({
     feed_last_synced_at: new Date().toISOString(),
     feed_last_sync_summary: summary,
-    ...(result.sourceMtime ? { feed_sftp_last_received_at: result.sourceMtime } : {}),
+    // Gated on no errors -- see the matching comment in the cron route for why.
+    ...(result.errors.length === 0 && result.sourceMtime ? { feed_sftp_last_received_at: result.sourceMtime } : {}),
   }).eq('id', dealer.id);
 
   return NextResponse.json({ ok: result.errors.length === 0, result, summary });

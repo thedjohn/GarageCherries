@@ -76,9 +76,10 @@ const DEALER: TestDealerRow = {
   location: 'Tampa', state: 'FL', feed_url: 'https://example.com/feed.csv',
 };
 
-function makeSupabaseMock({ dealers, existingListings = [] as { id: string; vin: string | null; stock_number?: string | null; youtube_video_id?: string | null; facebook_reel_id?: string | null; instagram_media_id?: string | null }[], updateError = null as string | null }: {
+type TestExistingListing = { id: string; vin: string | null; stock_number?: string | null; youtube_video_id?: string | null; facebook_reel_id?: string | null; instagram_media_id?: string | null; is_feed_managed?: boolean };
+function makeSupabaseMock({ dealers, existingListings = [] as TestExistingListing[], updateError = null as string | null }: {
   dealers: TestDealerRow[];
-  existingListings?: { id: string; vin: string | null; stock_number?: string | null; youtube_video_id?: string | null; facebook_reel_id?: string | null; instagram_media_id?: string | null }[];
+  existingListings?: TestExistingListing[];
   updateError?: string | null;
 }) {
   const listingUpdateCalls: { id: string; payload: any }[] = [];
@@ -467,7 +468,7 @@ describe('GET /api/cron/dealer-feed-sync', () => {
   it('marks a previously-synced VIN as sold when it no longer appears in the feed', async () => {
     const { listingUpdateCalls } = makeSupabaseMock({
       dealers: [DEALER],
-      existingListings: [{ id: 'listing-gone', vin: 'VIN-GONE' }],
+      existingListings: [{ id: 'listing-gone', vin: 'VIN-GONE', is_feed_managed: true }],
     });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => buildCsv([]) }));
 
@@ -478,10 +479,22 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     expect(listingUpdateCalls[0].payload.sold_at).toEqual(expect.any(String));
   });
 
+  it('does not mark a manually-added listing sold just because it has no VIN/stock to match against -- real production incident (HaggleMe\'s pre-existing manual test listing)', async () => {
+    const { listingUpdateCalls } = makeSupabaseMock({
+      dealers: [DEALER],
+      existingListings: [{ id: 'listing-manual', vin: null, stock_number: null, is_feed_managed: false }],
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => buildCsv([]) }));
+
+    const res: any = await GET(makeRequest('Bearer cron-secret'));
+    expect(res._data.results['info@survivor-cars.com'].markedSold).toBe(0);
+    expect(listingUpdateCalls.some(c => c.id === 'listing-manual')).toBe(false);
+  });
+
   it('cleans up the social videos of a listing auto-marked sold, passing along its stored platform IDs', async () => {
     makeSupabaseMock({
       dealers: [DEALER],
-      existingListings: [{ id: 'listing-gone', vin: 'VIN-GONE', youtube_video_id: 'yt-1', facebook_reel_id: 'fb-1', instagram_media_id: null }],
+      existingListings: [{ id: 'listing-gone', vin: 'VIN-GONE', youtube_video_id: 'yt-1', facebook_reel_id: 'fb-1', instagram_media_id: null, is_feed_managed: true }],
     });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => buildCsv([]) }));
 
@@ -515,6 +528,35 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     const res: any = await GET(makeRequest('Bearer cron-secret'));
     expect(res._data.results['info@survivor-cars.com'].skipped).toBe(1);
     expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it('skips a row with a non-numeric Year instead of failing the DB insert -- real production shape (HaggleMe listed shop equipment as if it were a vehicle, with descriptive text in the Year column)', async () => {
+    makeSupabaseMock({ dealers: [DEALER], existingListings: [] });
+    const csv = buildCsv([{
+      VIN: 'RHR1228HE', 'Stock Number': 'RHR1228HE', Year: 'Misc Auto shop parts', Make: 'Dyno Jet Machine',
+      Model: 'Computerized Rotary Lift', BodyStyle: '', 'List Price': '62600',
+    }]);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+    const res: any = await GET(makeRequest('Bearer cron-secret'));
+    expect(res._data.results['info@survivor-cars.com'].errors).toEqual([]);
+    expect(res._data.results['info@survivor-cars.com'].skipped).toBe(1);
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it('skips a malformed short data row instead of crashing, and still imports the good rows around it -- real production shape (HaggleMe\'s export tool appended a one-column error line after an otherwise-clean file)', async () => {
+    makeSupabaseMock({ dealers: [DEALER], existingListings: [] });
+    const csv = buildCsv([
+      { VIN: 'VIN-BEFORE', Year: '1970', Make: 'Ford', Model: 'Mustang', BodyStyle: 'Coupe', 'List Price': '30000' },
+    ]) + '\n"ERROR: Export Click = Thread was being aborted.<br/>"\n' + buildCsv([
+      { VIN: 'VIN-AFTER', Year: '1965', Make: 'Chevrolet', Model: 'Impala', BodyStyle: 'Convertible', 'List Price': '25000' },
+    ]).split('\n').slice(1).join('\n');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => csv }));
+
+    const res: any = await GET(makeRequest('Bearer cron-secret'));
+    expect(res._data.results['info@survivor-cars.com'].errors).toEqual([]);
+    expect(res._data.results['info@survivor-cars.com'].skipped).toBe(1);
+    expect(res._data.results['info@survivor-cars.com'].inserted).toBe(2);
   });
 
   it('deletes a previously-synced listing outright if its photos disappear from the feed -- NOT marked sold, since it did not actually sell', async () => {
@@ -726,6 +768,21 @@ describe('GET /api/cron/dealer-feed-sync', () => {
       expect(res._data.results['inventory@pushmotors.com'].errors[0]).toContain('failed validation');
       expect(res._data.results['inventory@pushmotors.com'].inserted).toBe(0);
       expect(mockRpc).not.toHaveBeenCalled();
+    });
+
+    it('does not advance feed_sftp_last_received_at on a validation failure, so the same file is retried next cycle instead of being permanently skipped', async () => {
+      const { dealerUpdateCalls } = makeSupabaseMock({ dealers: [PUSH_DEALER], existingListings: [] });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true, status: 200,
+        json: async () => ({ text: '"VIN","Ye', mtime: '2026-07-29T00:45:00.000Z' }),
+      }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      // If this were stamped despite the failure, the bridge's `since` check
+      // would tell every later attempt there's nothing new to fetch -- even
+      // after a feed_format fix -- silently breaking the "will retry next
+      // cycle" promise in the validation error message for good.
+      expect(dealerUpdateCalls[0].payload).not.toHaveProperty('feed_sftp_last_received_at');
     });
   });
 

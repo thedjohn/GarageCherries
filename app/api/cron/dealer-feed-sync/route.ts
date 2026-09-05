@@ -447,7 +447,7 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
 
   const { data: existingListings } = await admin
     .from('listings')
-    .select('id, vin, stock_number, title, youtube_video_id, facebook_reel_id, instagram_media_id')
+    .select('id, vin, stock_number, title, youtube_video_id, facebook_reel_id, instagram_media_id, is_feed_managed')
     .eq('seller_id', dealer.id);
   // VIN is the primary match key (globally unique). Stock number is a fallback --
   // only unique *within* this dealer's own inventory, which is fine here since
@@ -462,6 +462,14 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
   const seenIds = new Set<string>();
 
   for (const r of dataRows) {
+    // Guards against a malformed data row further down in an otherwise
+    // well-formed file -- distinct from isValidFeedHeader's guard above,
+    // which only checks the header line. Seen in production: HaggleMe's own
+    // export tool appended a literal error message as a one-column trailing
+    // line ("ERROR: Export Click = Thread was being aborted.<br/>") after an
+    // otherwise-clean 899-row file, which crashed every field lookup below
+    // instead of just being skipped like any other bad row.
+    if (r.length < header.length) { result.skipped++; continue; }
     const bodyStyleRaw = r[idx(format.bodyStyle)]?.trim();
     if (SKIP_BODY_STYLES.has(bodyStyleRaw)) { result.skipped++; continue; }
 
@@ -471,6 +479,13 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     const existingId = (vin && existingByVin.get(vin)) || (stockNumber && existingByStock.get(stockNumber)) || undefined;
 
     const year = parseInt(r[idx(format.year ?? 'Year')], 10);
+    // Not a malformed row -- a real HaggleMe row put shop equipment ("Dyno Jet
+    // Machine" / "Computerized Rotary Lift") in as if it were a vehicle, with
+    // descriptive text in the Year column instead of a year. `listings.year`
+    // is NOT NULL, so this would otherwise surface as a loud insert failure
+    // instead of a clean skip like any other not-actually-a-car row (compare
+    // SKIP_BODY_STYLES above).
+    if (isNaN(year)) { result.skipped++; continue; }
     const model = r[idx(format.model ?? 'Model')]?.trim();
     const subModel = r[idx(format.subModel)]?.trim();
     // Not every vendor's export has this column; idx() returns -1 when absent,
@@ -618,7 +633,12 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
   }
 
   // Anything previously synced for this dealer but missing from today's feed is sold/removed.
+  // Manually-added listings (is_feed_managed: false) are never eligible here --
+  // they typically have no VIN/stock number to match against in the first
+  // place, so without this check they'd get marked sold on this dealer's very
+  // first sync regardless of whether the car is actually still for sale.
   for (const l of existingListings ?? []) {
+    if (!l.is_feed_managed) continue;
     if (!seenIds.has(l.id)) {
       const { error } = await admin.from('listings').update({ is_sold: true, sold_at: new Date().toISOString() }).eq('id', l.id);
       if (error) result.errors.push(`Mark-sold failed for listing ${l.id}: ${error.message}`);
@@ -667,7 +687,14 @@ export async function GET(request: NextRequest) {
     await admin.from('dealers').update({
       feed_last_synced_at: new Date().toISOString(),
       feed_last_sync_summary: summarizeFeedSync(result),
-      ...(result.sourceMtime ? { feed_sftp_last_received_at: result.sourceMtime } : {}),
+      // Gated on no errors -- otherwise a content-validation failure (e.g. a
+      // feed_format mismatch) permanently "consumes" this mtime marker even
+      // though the file was never actually processed, so the bridge's `since`
+      // check would tell every later attempt there's nothing new to fetch,
+      // silently breaking the "will retry next cycle" promise in that error
+      // message for good (found 2026-09-06 chasing exactly that symptom for
+      // HaggleMe/Platt Motors Inc).
+      ...(result.errors.length === 0 && result.sourceMtime ? { feed_sftp_last_received_at: result.sourceMtime } : {}),
       // Distinct from feed_last_synced_at above, which is stamped on every
       // attempt regardless of outcome -- this only advances on an actual
       // successful sync, so dealer-feed-staleness can tell "still working"
