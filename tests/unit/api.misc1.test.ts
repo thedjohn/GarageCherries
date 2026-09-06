@@ -134,7 +134,10 @@ describe('POST /api/facebook/post-listing', () => {
   });
 
   it('returns 404 when the listing is not owned by the caller', async () => {
-    mockFrom.mockReturnValue({ select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'c1', seller_id: 'other-user' } }) }) }) });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) }) };
+      return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'c1', seller_id: 'other-user' } }) }) }) };
+    });
     const res: any = await postListingPost(makeRequest({ carId: 'c1' }));
     expect(res._status).toBe(404);
   });
@@ -208,7 +211,10 @@ describe('POST /api/listings/[id]/renew', () => {
   });
 
   it('returns 403 when not the owner', async () => {
-    mockFrom.mockReturnValue({ select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'l1', seller_id: 'other-user', status: 'approved', is_feed_managed: false } }) }) }) });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) }) };
+      return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'l1', seller_id: 'other-user', status: 'approved', is_feed_managed: false } }) }) }) };
+    });
     const res: any = await renewPost(makeRequest({}), makeParams('l1'));
     expect(res._status).toBe(403);
   });

@@ -194,6 +194,17 @@ function AccountPage() {
         router.replace(`/account/login?return=${encodeURIComponent(returnTo)}`);
         return;
       }
+      // Dealers (and their team members) have their own dedicated dashboard
+      // -- send them there instead of this buyer/private-seller account page,
+      // same as /sell already does for the "add a listing" flow. Checks
+      // dealers first (today's identity, unchanged), then dealer_members
+      // (a team member acting on someone else's dealer account).
+      Promise.all([
+        supabase.from('dealers').select('id').eq('id', user.id).maybeSingle(),
+        supabase.from('dealer_members').select('dealer_id').eq('user_id', user.id).maybeSingle(),
+      ]).then(([{ data: dealer }, { data: membership }]) => {
+        if (dealer || membership) { router.replace('/dealer/dashboard'); return; }
+      });
       setUserId(user.id);
       setEmail(user.email ?? '');
       const m = user.user_metadata ?? {};

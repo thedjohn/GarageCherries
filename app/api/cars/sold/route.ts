@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { notifyWatchersCarSold } from '@/lib/notifyCarSold';
 import { deleteListingVideos } from '@/lib/deleteListingVideos';
+import { isAuthorizedForSeller } from '@/lib/dealerAuth';
 
 // POST /api/cars/sold — dealer marks a listing as sold
 export async function POST(request: NextRequest) {
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
   // Verify ownership
   const admin = createAdminClient();
   const { data: car } = await admin.from('listings').select('id, seller_id, title, youtube_video_id, facebook_reel_id, instagram_media_id').eq('id', carId).single();
-  if (!car || car.seller_id !== user.id) {
+  if (!car || !(await isAuthorizedForSeller(user.id, car.seller_id))) {
     return NextResponse.json({ error: 'Not authorized to update this listing' }, { status: 403 });
   }
 

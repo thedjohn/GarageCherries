@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { syncDealerFeed, summarizeFeedSync } from '@/app/api/cron/dealer-feed-sync/route';
 import { MAKES } from '@/lib/types';
+import { resolveDealerId } from '@/lib/dealerAuth';
 
 // POST /api/dealer/feed-sync -- runs the authenticated dealer's own feed sync
 // immediately, on demand ("Sync now" in the dashboard), reusing the exact same
@@ -12,10 +13,12 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const admin = createAdminClient();
+  const dealerId = await resolveDealerId(user.id);
+  if (!dealerId) return NextResponse.json({ error: 'Dealer not found' }, { status: 403 });
   const { data: dealer } = await admin
     .from('dealers')
     .select('id, name, phone, email, location, state, feed_url, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path, feed_sftp_last_received_at, feed_format')
-    .eq('id', user.id)
+    .eq('id', dealerId)
     .single();
 
   if (!dealer) return NextResponse.json({ error: 'Dealer not found' }, { status: 403 });

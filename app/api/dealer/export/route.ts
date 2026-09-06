@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { resolveDealerId } from '@/lib/dealerAuth';
 
 // GET /api/dealer/export?format=json|csv
 export async function GET(request: NextRequest) {
@@ -9,17 +10,19 @@ export async function GET(request: NextRequest) {
 
   const admin = createAdminClient();
 
+  const dealerId = await resolveDealerId(user.id);
+  if (!dealerId) return NextResponse.json({ error: 'Not a dealer account' }, { status: 403 });
   const { data: dealer } = await admin
     .from('dealers')
     .select('id, name')
-    .eq('id', user.id)
+    .eq('id', dealerId)
     .maybeSingle();
   if (!dealer) return NextResponse.json({ error: 'Not a dealer account' }, { status: 403 });
 
   const { data: listings, error } = await admin
     .from('listings')
     .select('id,title,year,make,model,price,mileage,condition,body_style,transmission,engine,color,interior_color,horsepower,torque,cylinders,displacement,forced_induction,fuel_type,num_speeds,drive_type,seat_material,seating_type,location,state,description,vin,vin_verified,status,is_sold,images,created_at,listed_at')
-    .eq('seller_id', user.id)
+    .eq('seller_id', dealer.id)
     .order('created_at', { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

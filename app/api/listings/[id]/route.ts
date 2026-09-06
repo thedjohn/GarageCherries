@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { isAuthorizedForSeller } from '@/lib/dealerAuth';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -37,7 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .eq('id', id)
     .single();
 
-  if (!listing || listing.seller_id !== user.id) {
+  if (!listing || !(await isAuthorizedForSeller(user.id, listing.seller_id))) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
@@ -135,7 +136,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     .eq('id', id)
     .single();
 
-  if (!listing || listing.seller_id !== user.id) {
+  if (!listing || !(await isAuthorizedForSeller(user.id, listing.seller_id))) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 

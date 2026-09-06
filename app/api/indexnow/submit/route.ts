@@ -3,6 +3,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { submitToIndexNow } from '@/lib/indexNow';
 import { toSegment } from '@/lib/data';
 import { rateLimit, getClientIP } from '@/lib/rateLimit';
+import { isAuthorizedForSeller } from '@/lib/dealerAuth';
 
 // POST /api/indexnow/submit — called client-side right after a dealer creates
 // a new listing, which goes live immediately (mirrors /api/facebook/post-listing,
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     .eq('id', carId)
     .single();
 
-  if (!listing || listing.seller_id !== user.id) {
+  if (!listing || !(await isAuthorizedForSeller(user.id, listing.seller_id))) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 

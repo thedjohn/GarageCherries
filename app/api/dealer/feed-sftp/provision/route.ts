@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { createLogger } from '@/lib/logger';
+import { resolveDealerId } from '@/lib/dealerAuth';
 
 const log = createLogger('dealer/feed-sftp/provision');
 
@@ -15,7 +16,9 @@ async function requireOwnDealer() {
   if (!user) return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
 
   const admin = createAdminClient();
-  const { data: dealer } = await admin.from('dealers').select('id').eq('id', user.id).single();
+  const dealerId = await resolveDealerId(user.id);
+  if (!dealerId) return { error: NextResponse.json({ error: 'Dealer not found' }, { status: 403 }) };
+  const { data: dealer } = await admin.from('dealers').select('id').eq('id', dealerId).single();
   if (!dealer) return { error: NextResponse.json({ error: 'Dealer not found' }, { status: 403 }) };
 
   return { admin, dealer };

@@ -100,6 +100,7 @@ describe('POST /api/notify-watchers', () => {
   it('returns 403 when the caller does not own the listing', async () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { seller_id: 'other-dealer' } }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) }) };
       return {};
     });
     const res: any = await notifyWatchersPost(makeRequest({ carId: 'c1', oldPrice: 1000, newPrice: 500 }));

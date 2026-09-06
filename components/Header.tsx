@@ -33,6 +33,12 @@ export default function Header() {
         supabase.from('advertisers').select('id').eq('user_id', userId).maybeSingle(),
       ]);
       if (dealer) { setAuth({ status: 'dealer' }); return; }
+      // Not the dealer itself -- check whether this user is a team member on
+      // someone else's dealer account (see app/dealer/dashboard/page.tsx's
+      // loadData(), which resolves the same way). Without this, a team
+      // member never sees the "Dashboard" link/menu anywhere on the site.
+      const { data: membership } = await supabase.from('dealer_members').select('dealer_id').eq('user_id', userId).maybeSingle();
+      if (membership) { setAuth({ status: 'dealer' }); return; }
       if (advertiser) { setAuth({ status: 'advertiser' }); return; }
       setAuth({ status: 'buyer', email: email ?? '', name: name ?? email ?? '' });
       // Fetch counts for badge display + check admin status in parallel

@@ -2,12 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Supabase mocks ────────────────────────────────────────────────────────────
 
-const { mockGetUser, mockFrom, mockSelect, mockEq, mockOrder } = vi.hoisted(() => ({
+const { mockGetUser, mockFrom } = vi.hoisted(() => ({
   mockGetUser:  vi.fn(),
   mockFrom:     vi.fn(),
-  mockSelect:   vi.fn(),
-  mockEq:       vi.fn(),
-  mockOrder:    vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -30,11 +27,34 @@ import { NextResponse } from 'next/server';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// resolveDealerId() always checks `dealers` then `dealer_members` before the
+// real listings query -- neither table is exercised by these tests (they're
+// all private-seller scenarios), so both consistently miss, matching the
+// pre-existing "query by the caller's own id" behavior exactly.
 function mockChain(result: { data: unknown; error: unknown }) {
-  mockOrder.mockResolvedValue(result);
-  mockEq.mockReturnValue({ order: mockOrder });
-  mockSelect.mockReturnValue({ eq: mockEq });
-  mockFrom.mockReturnValue({ select: mockSelect });
+  const selectCalls: any[] = [];
+  const eqCalls: any[] = [];
+  let orderMock: ReturnType<typeof vi.fn> | undefined;
+
+  mockFrom.mockImplementation((table: string) => {
+    if (table === 'dealers' || table === 'dealer_members') {
+      return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null }) }) }) };
+    }
+    return {
+      select: (cols: string) => {
+        selectCalls.push(cols);
+        return {
+          eq: (...args: unknown[]) => {
+            eqCalls.push(args);
+            orderMock = vi.fn().mockResolvedValue(result);
+            return { order: orderMock };
+          },
+        };
+      },
+    };
+  });
+
+  return { selectCalls, eqCalls, getOrderMock: () => orderMock };
 }
 
 function getResponse(call = 0) {
@@ -68,22 +88,22 @@ describe('GET /api/listings/my', () => {
     expect(res._data).toEqual({ listings });
   });
 
-  it('queries by seller_id', async () => {
+  it('queries by seller_id, falling back to the caller\'s own id when not a dealer or team member', async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'user-42' } } });
-    mockChain({ data: [], error: null });
+    const { eqCalls } = mockChain({ data: [], error: null });
 
     await GET();
 
-    expect(mockEq).toHaveBeenCalledWith('seller_id', 'user-42');
+    expect(eqCalls).toContainEqual(['seller_id', 'user-42']);
   });
 
   it('selects fuel_type, interior_color, and seat_material', async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
-    mockChain({ data: [], error: null });
+    const { selectCalls } = mockChain({ data: [], error: null });
 
     await GET();
 
-    const selectArg: string = mockSelect.mock.calls[0][0];
+    const selectArg = selectCalls.find(c => typeof c === 'string' && c.includes('fuel_type'));
     expect(selectArg).toContain('fuel_type');
     expect(selectArg).toContain('interior_color');
     expect(selectArg).toContain('seat_material');
@@ -91,11 +111,11 @@ describe('GET /api/listings/my', () => {
 
   it('orders by created_at descending', async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
-    mockChain({ data: [], error: null });
+    const { getOrderMock } = mockChain({ data: [], error: null });
 
     await GET();
 
-    expect(mockOrder).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(getOrderMock()).toHaveBeenCalledWith('created_at', { ascending: false });
   });
 
   it('returns empty array when user has no listings', async () => {

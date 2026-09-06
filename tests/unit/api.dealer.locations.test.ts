@@ -43,10 +43,19 @@ function makeFromMock(opts: {
 
   mockFrom.mockImplementation((table: string) => {
     if (table === 'dealers') {
+      const dealerData = opts.dealerLookup !== undefined ? opts.dealerLookup : DEALER_ROW;
       return {
-        select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: opts.dealerLookup !== undefined ? opts.dealerLookup : DEALER_ROW }) }) }),
+        select: () => ({ eq: () => ({
+          single: () => Promise.resolve({ data: dealerData }),
+          maybeSingle: () => Promise.resolve({ data: dealerData }),
+        }) }),
         update: (payload: any) => { calls.push({ table, op: 'update', payload }); return { eq: () => Promise.resolve({ error: null }) }; },
       };
+    }
+    if (table === 'dealer_members') {
+      // resolveDealerId()'s fallback lookup -- no test here exercises team
+      // membership, so this always misses, matching pre-existing behavior.
+      return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null }) }) }) };
     }
     if (table === 'dealer_locations') {
       return {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { resolveDealerId } from '@/lib/dealerAuth';
 
 async function requireOwnDealer(request: NextRequest) {
   const supabase = await createClient();
@@ -7,10 +8,10 @@ async function requireOwnDealer(request: NextRequest) {
   if (!user) return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
 
   const admin = createAdminClient();
-  const { data: dealer } = await admin.from('dealers').select('id').eq('id', user.id).single();
-  if (!dealer) return { error: NextResponse.json({ error: 'Dealer not found' }, { status: 403 }) };
+  const dealerId = await resolveDealerId(user.id);
+  if (!dealerId) return { error: NextResponse.json({ error: 'Dealer not found' }, { status: 403 }) };
 
-  return { admin, dealerId: dealer.id as string };
+  return { admin, dealerId };
 }
 
 // Mirrors a dealer's primary location onto the dealers table's own phone/address/etc,

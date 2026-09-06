@@ -17,6 +17,12 @@ export default function MessengerWidget() {
   const { open, minimized, conversationId, listingTitle, closeChat, toggleMinimize } = useMessenger();
   const [messages, setMessages] = useState<Message[]>([]);
   const [listingImage, setListingImage] = useState<string | null>(null);
+  // Which side of the conversation a message is on -- distinct from "did I
+  // personally send this", since a dealer's team members can now also send
+  // seller-side messages (see dealer team access). Without this, a message
+  // from a colleague (not the buyer) rendered identically to one from the
+  // actual buyer, told apart only by a small name label.
+  const [buyerId, setBuyerId] = useState<string | null>(null);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -38,18 +44,19 @@ export default function MessengerWidget() {
 
   // Load messages + listing image when conversation opens
   useEffect(() => {
-    if (!conversationId) { setMessages([]); setListingImage(null); return; }
+    if (!conversationId) { setMessages([]); setListingImage(null); setBuyerId(null); return; }
     fetch(`/api/conversations/${conversationId}/messages`)
       .then(r => r.json())
       .then(({ messages: msgs }) => setMessages(msgs ?? []));
-    // Fetch listing image via conversation → listing
+    // Fetch listing image + the buyer's id via conversation → listing
     const supabase = createClient();
     supabase
       .from('conversations')
-      .select('listing_id')
+      .select('listing_id, buyer_id')
       .eq('id', conversationId)
       .single()
       .then(({ data: conv }) => {
+        setBuyerId(conv?.buyer_id ?? null);
         if (!conv?.listing_id) return;
         supabase
           .from('listings')
@@ -176,27 +183,35 @@ export default function MessengerWidget() {
             )}
             {messages.map(msg => {
               const isMe = msg.sender_id === userId;
+              // Alignment/color reflect which SIDE of the conversation a message
+              // is on (buyer vs. seller), not just whether the current viewer
+              // personally sent it -- a dealer's team members can now also send
+              // seller-side messages, so "not me" alone would render a
+              // colleague's message identically to the buyer's, told apart only
+              // by the small name label below. Falls back to isMe if buyerId
+              // hasn't loaded yet, matching the prior (pre-team-access) behavior.
+              const isBuyerMsg = buyerId ? msg.sender_id === buyerId : !isMe;
               const isReported = reported.has(msg.id) || msg.reported;
               return (
-                <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} group`}>
-                  <div className={`max-w-[80%] flex flex-col gap-0.5 ${isMe ? 'items-end' : 'items-start'}`}>
+                <div key={msg.id} className={`flex ${isBuyerMsg ? 'justify-start' : 'justify-end'} group`}>
+                  <div className={`max-w-[80%] flex flex-col gap-0.5 ${isBuyerMsg ? 'items-start' : 'items-end'}`}>
                     {!isMe && (
                       <span className="text-xs text-zinc-400 px-1">{msg.sender_name}</span>
                     )}
                     <div className={`px-3 py-2 rounded-2xl text-sm leading-relaxed ${
-                      isMe
-                        ? 'bg-red-600 text-white rounded-br-sm'
-                        : 'bg-white border border-zinc-200 text-zinc-800 rounded-bl-sm shadow-sm'
+                      isBuyerMsg
+                        ? 'bg-white border border-zinc-200 text-zinc-800 rounded-bl-sm shadow-sm'
+                        : 'bg-red-600 text-white rounded-br-sm'
                     }`}>
                       {isReported ? (
                         <span className="italic text-xs opacity-60">Message reported</span>
                       ) : msg.body}
                     </div>
-                    <div className={`flex items-center gap-1.5 px-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`flex items-center gap-1.5 px-1 ${isBuyerMsg ? 'justify-start' : 'justify-end'}`}>
                       <span className="text-xs text-zinc-300">
                         {new Date(msg.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                       </span>
-                      {!isMe && !isReported && (
+                      {isBuyerMsg && !isMe && !isReported && (
                         <button
                           onClick={() => reportMessage(msg.id)}
                           className="text-xs text-zinc-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">

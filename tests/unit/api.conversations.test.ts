@@ -254,6 +254,8 @@ describe('GET /api/conversations', () => {
         };
       }
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [{ id: 'listing-1' }] }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
 
@@ -267,6 +269,8 @@ describe('GET /api/conversations', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'conversations') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({ data: [] }) }) }) };
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [] }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
     const res: any = await GET(makeGetRequest());

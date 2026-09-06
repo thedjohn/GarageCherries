@@ -34,9 +34,15 @@ function makeFromMock(dealerLookup: any, updateCalls: any[] = []) {
   mockFrom.mockImplementation((table: string) => {
     if (table === 'dealers') {
       return {
-        select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: dealerLookup }) }) }),
+        select: () => ({ eq: () => ({
+          single: () => Promise.resolve({ data: dealerLookup }),
+          maybeSingle: () => Promise.resolve({ data: dealerLookup }),
+        }) }),
         update: (payload: any) => { updateCalls.push(payload); return { eq: () => Promise.resolve({ error: null }) }; },
       };
+    }
+    if (table === 'dealer_members') {
+      return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null }) }) }) };
     }
     throw new Error(`Unexpected table: ${table}`);
   });

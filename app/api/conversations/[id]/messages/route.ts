@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { rateLimit, getClientIP } from '@/lib/rateLimit';
 import { createLogger } from '@/lib/logger';
+import { isAuthorizedForSeller } from '@/lib/dealerAuth';
 
 const log = createLogger('api/conversations/messages');
 
@@ -16,13 +17,13 @@ async function verifyAccess(conversationId: string, userId: string): Promise<boo
     .single();
   if (!conv) return false;
   if (conv.buyer_id === userId) return true;
-  // Is seller of the listing?
+  // Is seller of the listing (or a team member acting on that seller's behalf)?
   const { data: listing } = await admin
     .from('listings')
     .select('seller_id')
     .eq('id', conv.listing_id)
     .single();
-  return listing?.seller_id === userId;
+  return isAuthorizedForSeller(userId, listing?.seller_id);
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

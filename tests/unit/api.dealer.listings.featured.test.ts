@@ -47,6 +47,9 @@ function makeFromMock(opts: {
   }
 
   mockFrom.mockImplementation((table: string) => {
+    if (table === 'dealer_members') {
+      return { select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null }) }) }) }) };
+    }
     if (table !== 'listings') throw new Error(`Unexpected table: ${table}`);
     return {
       select: (cols: string) => {

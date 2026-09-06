@@ -45,7 +45,11 @@ function makeFromMock(opts: {
 
   mockFrom.mockImplementation((table: string) => {
     if (table === 'dealers') {
-      return { select: () => ({ or: () => ({ single: () => Promise.resolve({ data: opts.dealerLookup !== undefined ? opts.dealerLookup : DEALER_ROW }) }) }) };
+      const dealerData = opts.dealerLookup !== undefined ? opts.dealerLookup : DEALER_ROW;
+      return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: dealerData }) }) }) };
+    }
+    if (table === 'dealer_members') {
+      return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null }) }) }) };
     }
     if (table === 'listings') {
       return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: opts.listingLookup !== undefined ? opts.listingLookup : OWNED_LISTING }) }) }) };

@@ -54,6 +54,7 @@ describe('POST /api/cars/sold', () => {
   it('returns 403 when the caller does not own the listing', async () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'c1', seller_id: 'other-dealer', title: 'Car' } }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) }) };
       return {};
     });
     const res: any = await soldPost(makeRequest({ carId: 'c1' }));

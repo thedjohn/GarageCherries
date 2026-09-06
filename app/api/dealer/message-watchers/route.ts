@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
+import { resolveDealerId } from '@/lib/dealerAuth';
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -12,8 +13,10 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Verify this car belongs to the authenticated dealer
-  const { data: dealer } = await admin.from('dealers').select('id, name').or(`id.eq.${user.id},email.eq.${user.email}`).single();
+  // Verify this car belongs to the authenticated dealer (or their team member)
+  const dealerId = await resolveDealerId(user.id);
+  if (!dealerId) return NextResponse.json({ error: 'Dealer not found' }, { status: 403 });
+  const { data: dealer } = await admin.from('dealers').select('id, name').eq('id', dealerId).single();
   if (!dealer) return NextResponse.json({ error: 'Dealer not found' }, { status: 403 });
 
   const { data: car } = await admin.from('listings').select('id, title, slug, make, model').eq('id', carId).eq('seller_id', dealer.id).single();

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { resolveDealerId } from '@/lib/dealerAuth';
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -13,11 +14,13 @@ export async function GET(request: NextRequest) {
 
   // Verify all requested carIds belong to this user (ownership check) — works for
   // both dealers and private sellers, since listings.seller_id is set to the
-  // authenticated user's id either way.
+  // authenticated user's id either way; falls back to the resolved dealer id
+  // for a team member acting on their dealer's listings.
+  const sellerId = (await resolveDealerId(user.id)) ?? user.id;
   const { data: ownedListings } = await admin
     .from('listings')
     .select('id')
-    .eq('seller_id', user.id)
+    .eq('seller_id', sellerId)
     .in('id', carIds);
   const ownedIds = new Set((ownedListings ?? []).map((r: { id: string }) => r.id));
   const safeCarIds = carIds.filter(id => ownedIds.has(id));

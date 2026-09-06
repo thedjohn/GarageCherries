@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { rateLimit, getClientIP } from '@/lib/rateLimit';
 import { createLogger } from '@/lib/logger';
+import { isAuthorizedForSeller } from '@/lib/dealerAuth';
 
 const log = createLogger('api/notify-watchers');
 
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     .select('seller_id')
     .eq('id', carId)
     .single();
-  if (!listing || listing.seller_id !== user.id) {
+  if (!(await isAuthorizedForSeller(user.id, listing?.seller_id))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

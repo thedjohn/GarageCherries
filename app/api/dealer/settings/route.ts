@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { resolveDealerId } from '@/lib/dealerAuth';
 
 export async function POST(request: NextRequest) {
   // Verify the caller is authenticated
@@ -25,11 +26,13 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Verify the authenticated user owns this dealer record
+  // Verify the authenticated user owns (or is a team member of) this dealer record
+  const resolvedDealerId = await resolveDealerId(user.id);
+  if (!resolvedDealerId) return NextResponse.json({ error: 'Dealer not found' }, { status: 403 });
   const { data: dealer } = await admin
     .from('dealers')
     .select('id, plan, beta_expires_at')
-    .eq('id', user.id)
+    .eq('id', resolvedDealerId)
     .single();
 
   if (!dealer) return NextResponse.json({ error: 'Dealer not found' }, { status: 403 });

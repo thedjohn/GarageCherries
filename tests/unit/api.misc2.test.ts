@@ -51,14 +51,20 @@ describe('GET /api/listings/my', () => {
   });
 
   it('returns the seller\'s listings', async () => {
-    mockFrom.mockReturnValue({ select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({ data: [{ id: 'l1' }], error: null }) }) }) });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'dealers' || table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({ data: [{ id: 'l1' }], error: null }) }) }) };
+    });
     const res: any = await myListingsGet();
     expect(res._status).toBe(200);
     expect(res._data.listings).toHaveLength(1);
   });
 
   it('returns 500 on a query error', async () => {
-    mockFrom.mockReturnValue({ select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({ data: null, error: { message: 'db down' } }) }) }) });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'dealers' || table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({ data: null, error: { message: 'db down' } }) }) }) };
+    });
     const res: any = await myListingsGet();
     expect(res._status).toBe(500);
   });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { postListingToFacebook } from '@/lib/facebook/postToPage';
 import { rateLimit, getClientIP } from '@/lib/rateLimit';
+import { isAuthorizedForSeller } from '@/lib/dealerAuth';
 
 // POST /api/facebook/post-listing — called client-side right after a dealer
 // creates a new listing, which goes live immediately (unlike public listing
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest) {
     .eq('id', carId)
     .single();
 
-  if (!listing || listing.seller_id !== user.id) {
+  if (!listing || !(await isAuthorizedForSeller(user.id, listing.seller_id))) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 

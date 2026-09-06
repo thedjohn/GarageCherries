@@ -76,6 +76,7 @@ describe('GET /api/conversations/[id]/messages', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'conversations') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { buyer_id: 'other-buyer', listing_id: 'listing-1' } }) }) }) };
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { seller_id: 'other-seller' } }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) }) };
       return {};
     });
     const res: any = await GET(makeGetReq(), makeParams('conv-1'));

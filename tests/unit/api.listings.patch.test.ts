@@ -60,6 +60,9 @@ function setupListing(listing: Record<string, unknown> | null, ownerId = 'user-1
     if (table === 'dealers') {
       return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
     }
+    if (table === 'dealer_members') {
+      return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) }) };
+    }
     if (table === 'listings') {
       callCount++;
       if (callCount === 1) {
@@ -379,6 +382,7 @@ describe('DELETE /api/listings/[id]', () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
     mockFrom.mockImplementation((table: string) => {
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { seller_id: 'other-user', images: [] } }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) }) };
       return {};
     });
     await DELETE(makeRequest({}), makeParams('listing-1'));
@@ -402,6 +406,32 @@ describe('DELETE /api/listings/[id]', () => {
     await DELETE(makeRequest({}), makeParams('listing-1'));
     const res = getResponse();
     expect(mockStorageRemove).toHaveBeenCalled();
+    expect(res._data.success).toBe(true);
+  });
+
+  it('allows a dealer team member to delete their dealer\'s listing, without changing the private-seller path above', async () => {
+    // Caller is 'member-user-1', not the listing's own seller_id ('dealer-1')
+    // -- this is exactly the new capability, gated by a real dealer_members
+    // row rather than a direct id match. The prior test in this file proves
+    // the ordinary private-seller/direct-owner path (caller id === seller_id)
+    // is completely unchanged by this addition.
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'member-user-1' } } });
+    const deleteEq = vi.fn().mockResolvedValue({ error: null });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') {
+        return {
+          select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { seller_id: 'dealer-1', images: [] } }) }) }),
+          delete: vi.fn().mockReturnValue({ eq: deleteEq }),
+        };
+      }
+      if (table === 'dealer_members') {
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'membership-1' } }) }) }) }) };
+      }
+      return { delete: vi.fn().mockReturnValue({ eq: deleteEq }) };
+    });
+
+    await DELETE(makeRequest({}), makeParams('listing-1'));
+    const res = getResponse();
     expect(res._data.success).toBe(true);
   });
 

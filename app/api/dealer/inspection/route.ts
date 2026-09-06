@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { resolveDealerId } from '@/lib/dealerAuth';
 
 async function requireOwnListing(carId: string) {
   const supabase = await createClient();
@@ -7,18 +8,15 @@ async function requireOwnListing(carId: string) {
   if (!user) return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
 
   const admin = createAdminClient();
-  const { data: dealer } = await admin
-    .from('dealers').select('id')
-    .or(`id.eq.${user.id},email.eq.${user.email}`)
-    .single();
-  if (!dealer) return { error: NextResponse.json({ error: 'Dealer not found' }, { status: 403 }) };
+  const dealerId = await resolveDealerId(user.id);
+  if (!dealerId) return { error: NextResponse.json({ error: 'Dealer not found' }, { status: 403 }) };
 
   const { data: listing } = await admin.from('listings').select('id, seller_id').eq('id', carId).single();
-  if (!listing || listing.seller_id !== dealer.id) {
+  if (!listing || listing.seller_id !== dealerId) {
     return { error: NextResponse.json({ error: 'Listing not found' }, { status: 404 }) };
   }
 
-  return { admin, dealerId: dealer.id as string };
+  return { admin, dealerId };
 }
 
 // GET /api/dealer/inspection?carId=... -- fetch the report attached to a listing

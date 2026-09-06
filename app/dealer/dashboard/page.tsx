@@ -10,6 +10,7 @@ import { resizeImageFiles } from '@/lib/resizeImage';
 import VehicleFieldsForm, { type VehicleFieldsValues } from '@/components/VehicleFieldsForm';
 import TrendChart, { type TrendPoint } from '@/components/TrendChart';
 import InspectionReportSection from '@/components/InspectionReportSection';
+import { useMessenger } from '@/lib/messenger-context';
 
 interface DbCar {
   id: string; slug: string; title: string; year: number;
@@ -479,9 +480,13 @@ function DashboardDeepLinkReader({ onParams }: { onParams: (tab: string | null, 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 export default function DealerDashboard() {
   const router = useRouter();
-  const [tab, setTab] = useState<'overview' | 'inventory' | 'inquiries' | 'offers' | 'settings'>('overview');
+  const [tab, setTab] = useState<'overview' | 'inventory' | 'inquiries' | 'offers' | 'settings' | 'team'>('overview');
   const [modalCar, setModalCar] = useState<DbCar | null | 'new'>(null); // null=closed, 'new'=add, DbCar=edit
   const [dealer, setDealer] = useState<DbDealer | null>(null);
+  // True when the signed-in user is a team member acting on this dealer's
+  // account, not the account owner ("parent") themselves -- gates the Team
+  // management controls in Settings, which only the parent can use.
+  const [isTeamMember, setIsTeamMember] = useState(false);
   const [listings, setListings] = useState<DbCar[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -509,7 +514,7 @@ export default function DealerDashboard() {
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   const handleDeepLinkParams = useCallback((paramTab: string | null, add: boolean) => {
-    if (paramTab === 'overview' || paramTab === 'inventory' || paramTab === 'inquiries' || paramTab === 'offers' || paramTab === 'settings') {
+    if (paramTab === 'overview' || paramTab === 'inventory' || paramTab === 'inquiries' || paramTab === 'offers' || paramTab === 'settings' || paramTab === 'team') {
       setTab(paramTab);
     }
     if (add) setModalCar('new');
@@ -530,9 +535,18 @@ export default function DealerDashboard() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.replace('/dealer/login'); return; }
 
+    // A team member acts on their dealer's account, not their own -- check
+    // real membership first before falling back to "is this user the dealer
+    // itself". Replaces a prior coincidental id-or-email match that was never
+    // a real membership mechanism.
+    const { data: membership } = await supabase
+      .from('dealer_members').select('dealer_id').eq('user_id', user.id).maybeSingle();
+    const effectiveDealerId = membership?.dealer_id ?? user.id;
+    setIsTeamMember(!!membership?.dealer_id);
+
     const { data: dealerRow } = await supabase
       .from('dealers').select('id, slug, name, phone, email, notification_email, address, location, state, zip, description, website, specialties, since, logo, plan, beta_expires_at, feed_url, feed_sync_hour, feed_last_synced_at, feed_last_sync_summary, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path, feed_sftp_username, feed_sftp_provisioned_at, feed_sftp_last_received_at')
-      .or(`id.eq.${user.id},email.eq.${user.email}`)
+      .eq('id', effectiveDealerId)
       .single();
 
     if (dealerRow) {
@@ -822,7 +836,7 @@ export default function DealerDashboard() {
       </div>
 
       <div className="bg-white border-b border-zinc-200 px-6 flex gap-1">
-        {(['overview', 'inventory', 'inquiries', 'offers', 'settings'] as const).map(t => (
+        {([...['overview', 'inventory', 'inquiries', 'offers', 'settings'] as const, ...(isTeamMember ? [] : ['team' as const])]).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-3 text-sm font-medium capitalize border-b-2 transition-colors ${
               tab === t ? 'border-red-600 text-red-600' : 'border-transparent text-zinc-500 hover:text-zinc-800'
@@ -1102,6 +1116,12 @@ export default function DealerDashboard() {
           </>
         )}
 
+        {tab === 'team' && !isTeamMember && (
+          <div className="max-w-2xl">
+            <DealerTeam />
+          </div>
+        )}
+
       </div>
     </div>
     </>
@@ -1205,8 +1225,10 @@ function OffersTab({ dealerId }: { dealerId: string }) {
 
 // ─── Inquiries Tab ───────────────────────────────────────────────────────────
 function InquiriesTab({ realInquiries }: { realInquiries?: any[] }) {
+  const { openChat } = useMessenger();
   const inquiries = realInquiries && realInquiries.length > 0
     ? realInquiries.map(i => ({
+        id: i.id,
         name: i.buyer_name,
         vehicle: i.carTitle,
         type: 'Message',
@@ -1225,7 +1247,8 @@ function InquiriesTab({ realInquiries }: { realInquiries?: any[] }) {
           No inquiries yet — they'll appear here when buyers message you.
         </div>
       ) : inquiries.map((inq, i) => (
-        <div key={i} className="px-5 py-4">
+        <button key={i} onClick={() => openChat(inq.id, inq.vehicle)}
+          className="w-full text-left px-5 py-4 hover:bg-zinc-50 transition-colors">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center text-sm font-bold text-red-600 shrink-0">
               {inq.name[0]}
@@ -1238,8 +1261,9 @@ function InquiriesTab({ realInquiries }: { realInquiries?: any[] }) {
               <p className="text-sm text-zinc-600">{inq.msg}</p>
               <p className="text-xs text-zinc-400 mt-1">{inq.time}</p>
             </div>
+            <span className="text-xs font-semibold text-red-600 shrink-0">Reply →</span>
           </div>
-        </div>
+        </button>
       ))}
     </div>
   );
@@ -1550,6 +1574,99 @@ function DealerLocations({ dealerId }: { dealerId: string }) {
               {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Add Location'}
             </button>
             <button onClick={resetForm} className="text-sm text-zinc-400 hover:text-zinc-600">Cancel</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Dealer Team ──────────────────────────────────────────────────────────────
+interface TeamMember { id: string; email: string | null; invitedAt: string; }
+
+function DealerTeam() {
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [email, setEmail] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = async () => {
+    setLoading(true);
+    const res = await fetch('/api/dealer/team');
+    const json = await res.json();
+    if (res.ok) setTeam(json.team ?? []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const handleInvite = async () => {
+    if (!email.trim()) { setError('Email is required.'); return; }
+    setSaving(true); setError('');
+    const res = await fetch('/api/dealer/team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const json = await res.json();
+    setSaving(false);
+    if (!res.ok) { setError(json.error ?? 'Invite failed'); return; }
+    setEmail(''); setAdding(false); setError('');
+    load();
+  };
+
+  const handleRemove = async (id: string) => {
+    if (!confirm('Remove this team member? They will lose access to this dealer account.')) return;
+    await fetch('/api/dealer/team', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    load();
+  };
+
+  const inp = "w-full border border-zinc-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500";
+
+  return (
+    <div className="bg-white rounded-xl border border-zinc-100 shadow-sm p-6">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="font-bold text-zinc-800 text-lg">Team</h2>
+        {!adding && (
+          <button onClick={() => { setAdding(true); setError(''); }}
+            className="text-sm font-semibold text-red-600 hover:underline">+ Invite Team Member</button>
+        )}
+      </div>
+      <p className="text-sm text-zinc-400 mb-6">Team members can log in and manage this dealer account exactly as you do — listings, messages, and settings. Only you can add or remove team members.</p>
+
+      {loading ? (
+        <p className="text-sm text-zinc-400">Loading…</p>
+      ) : team.length === 0 && !adding ? (
+        <p className="text-sm text-zinc-400">No team members yet — invite someone above to give them access to this account.</p>
+      ) : (
+        <div className="space-y-3 mb-4">
+          {team.map(member => (
+            <div key={member.id} className="border border-zinc-100 rounded-xl p-4 flex items-center justify-between gap-4">
+              <p className="font-semibold text-zinc-800 text-sm">{member.email ?? 'Unknown'}</p>
+              <button onClick={() => handleRemove(member.id)} className="text-xs font-semibold text-red-600 hover:text-red-700 shrink-0">Remove</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {adding && (
+        <div className="border-t border-zinc-100 pt-5 space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1.5">Email</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="sales@yourdealership.com" className={inp} />
+          </div>
+          {error && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2">{error}</p>}
+          <div className="flex items-center gap-3">
+            <button onClick={handleInvite} disabled={saving}
+              className="bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors">
+              {saving ? 'Sending…' : 'Send Invite'}
+            </button>
+            <button onClick={() => { setAdding(false); setError(''); }} className="text-sm text-zinc-400 hover:text-zinc-600">Cancel</button>
           </div>
         </div>
       )}

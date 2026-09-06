@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdmin, hasRole } from '@/lib/admin';
+import { resolveDealerId } from '@/lib/dealerAuth';
 
 // Buckets raw timestamps into a zero-filled daily series (oldest first), so
 // the trend chart shows a real flat 0 on quiet days instead of a gap.
@@ -38,13 +39,9 @@ export async function GET(request: NextRequest) {
     if (!role || !hasRole(role, 'admin')) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     dealerId = requestedDealerId;
   } else {
-    const { data: dealer } = await admin
-      .from('dealers')
-      .select('id')
-      .or(`id.eq.${user.id},email.eq.${user.email}`)
-      .single();
-    if (!dealer) return NextResponse.json({ error: 'Dealer not found' }, { status: 404 });
-    dealerId = dealer.id;
+    const resolvedDealerId = await resolveDealerId(user.id);
+    if (!resolvedDealerId) return NextResponse.json({ error: 'Dealer not found' }, { status: 404 });
+    dealerId = resolvedDealerId;
   }
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();

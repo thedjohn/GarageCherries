@@ -5,6 +5,7 @@ import { notifyAdmin } from '@/lib/notifyAdmin';
 import { createLogger } from '@/lib/logger';
 import { Resend } from 'resend';
 import { emailWrap } from '@/lib/emailBranding';
+import { resolveDealerId } from '@/lib/dealerAuth';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -146,12 +147,14 @@ export async function GET(req: NextRequest) {
     .eq('buyer_id', user.id)
     .order('last_message_at', { ascending: false });
 
-  // Seller conversations (listings where this user is the seller)
+  // Seller conversations (listings where this user is the seller, or the
+  // seller's dealer if this user is a team member acting on their behalf)
   const adminClient = createAdminClient();
+  const sellerId = (await resolveDealerId(user.id)) ?? user.id;
   const { data: sellerListings } = await adminClient
     .from('listings')
     .select('id')
-    .eq('seller_id', user.id);
+    .eq('seller_id', sellerId);
 
   const sellerListingIds = (sellerListings ?? []).map(l => l.id);
 

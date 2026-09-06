@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
+import { isAuthorizedForSeller } from '@/lib/dealerAuth';
 
 // POST /api/listings/[id]/renew — seller extends their listing 30 more days
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .eq('id', id)
     .single();
 
-  if (!listing || listing.seller_id !== user.id) {
+  if (!listing || !(await isAuthorizedForSeller(user.id, listing.seller_id))) {
     return NextResponse.json({ error: 'Not authorized to update this listing' }, { status: 403 });
   }
   if (listing.status !== 'approved') {

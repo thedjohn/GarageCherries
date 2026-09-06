@@ -60,6 +60,8 @@ describe('GET /api/dealer/export', () => {
   it('returns 403 when the caller is not a dealer', async () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
     const res: any = await exportGet(makeGetRequest('https://x.com/api/dealer/export'));
@@ -70,6 +72,8 @@ describe('GET /api/dealer/export', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'dealer-1', name: 'Classic Cars Co' } }) }) }) };
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({ data: null, error: { message: 'db down' } }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
     const res: any = await exportGet(makeGetRequest('https://x.com/api/dealer/export'));
@@ -80,6 +84,8 @@ describe('GET /api/dealer/export', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'dealer-1', name: 'Classic Cars Co!' } }) }) }) };
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({ data: [{ id: 'l1', title: 'Nice, "classic" car\ntitle' }], error: null }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
   }
@@ -104,6 +110,8 @@ describe('GET /api/dealer/export', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'dealer-1', name: 'Empty Co' } }) }) }) };
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({ data: [], error: null }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
     const res: any = await exportGet(makeGetRequest('https://x.com/api/dealer/export'));
@@ -128,7 +136,9 @@ describe('POST /api/dealer/message-watchers', () => {
 
   it('returns 403 when the dealer is not found', async () => {
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ or: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
     const res: any = await messageWatchers(makePostRequest({ carId: 'c1', message: 'hi' }));
@@ -137,8 +147,10 @@ describe('POST /api/dealer/message-watchers', () => {
 
   it('returns 403 when the car is not owned by this dealer', async () => {
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ or: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'dealer-1', name: 'Dealer' } }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'dealer-1', name: 'Dealer' } }), single: vi.fn().mockResolvedValue({ data: { id: 'dealer-1', name: 'Dealer' } }) }) }) };
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null }) }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
     const res: any = await messageWatchers(makePostRequest({ carId: 'c1', message: 'hi' }));
@@ -147,12 +159,14 @@ describe('POST /api/dealer/message-watchers', () => {
 
   function setupOwnedCar(watchers: any[] | null) {
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ or: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'dealer-1', name: 'Dealer' } }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'dealer-1', name: 'Dealer' } }), single: vi.fn().mockResolvedValue({ data: { id: 'dealer-1', name: 'Dealer' } }) }) }) };
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'c1', title: 'Nice Car', slug: 'nice-car', make: 'Dodge', model: 'Charger' } }) }) }) }) };
       if (table === 'watchlists') return {
         select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ is: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: watchers }) }) }) }) }),
         update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({}) }),
       };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
   }
@@ -202,7 +216,9 @@ describe('GET /api/dealer/metrics', () => {
 
   it('returns 404 when the dealer is not found', async () => {
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ or: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
     const res: any = await metricsGet(makeGetRequest('https://x.com/api/dealer/metrics'));
@@ -215,7 +231,7 @@ describe('GET /api/dealer/metrics', () => {
     let conversationsCall = 0;
     let clicksCall = 0;
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ or: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'dealer-1' } }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'dealer-1' } }) }) }) };
       if (table === 'listing_views') {
         listingViewsCall++;
         // Call 1 (views30d): .select().eq().gte() is awaited directly, no .lt().
@@ -271,6 +287,8 @@ describe('GET /api/dealer/metrics', () => {
         const today = new Date().toISOString().slice(0, 10);
         return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ data: [{ clicked_at: `${today}T09:00:00Z` }] }) }) }) };
       }
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
 
@@ -299,7 +317,7 @@ describe('GET /api/dealer/metrics', () => {
     let listingsCall = 0;
     let clicksCall = 0;
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ or: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'dealer-1' } }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'dealer-1' } }) }) }) };
       if (table === 'listing_views') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ lt: vi.fn().mockResolvedValue({ count: 0 }) }) }) }) };
       if (table === 'listings') {
         listingsCall++;
@@ -316,6 +334,8 @@ describe('GET /api/dealer/metrics', () => {
         // Call 4 (clicksTrend): .select('clicked_at').eq().gte() awaited directly, raw rows.
         return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ data: [] }) }) }) };
       }
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
     const res: any = await metricsGet(makeGetRequest('https://x.com/api/dealer/metrics'));
@@ -341,7 +361,9 @@ describe('POST /api/dealer/settings', () => {
 
   it('returns 403 when the dealer is not found', async () => {
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null }), maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
     const res: any = await settingsPost(makePostRequest({ name: 'X' }));
@@ -350,7 +372,9 @@ describe('POST /api/dealer/settings', () => {
 
   it('returns 403 when dealerId in the body does not match the owned dealer', async () => {
     mockFrom.mockImplementation((table: string) => {
-      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'dealer-1', plan: 'beta', beta_expires_at: null } }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'dealer-1', plan: 'beta', beta_expires_at: null } }), maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'dealer-1' } }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
     const res: any = await settingsPost(makePostRequest({ dealerId: 'other-dealer', name: 'X' }));
@@ -361,10 +385,12 @@ describe('POST /api/dealer/settings', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'dealers') {
         return {
-          select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'dealer-1', plan: 'beta', beta_expires_at: null } }) }) }),
+          select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'dealer-1', plan: 'beta', beta_expires_at: null } }), maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'dealer-1' } }) }) }),
           update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: { message: 'db down' } }) }),
         };
       }
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
     const res: any = await settingsPost(makePostRequest({ name: 'X' }));
@@ -375,10 +401,12 @@ describe('POST /api/dealer/settings', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'dealers') {
         return {
-          select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'dealer-1', plan: 'beta', beta_expires_at: '2026-12-31T00:00:00Z' } }) }) }),
+          select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'dealer-1', plan: 'beta', beta_expires_at: '2026-12-31T00:00:00Z' } }), maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'dealer-1' } }) }) }),
           update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
         };
       }
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
     const res: any = await settingsPost(makePostRequest({ dealerId: 'dealer-1', name: 'New Name', phone: '314-555-0100' }));
@@ -405,6 +433,8 @@ describe('GET /api/dealer/watcher-counts', () => {
   it('returns empty counts when none of the requested carIds are owned by the caller', async () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [] }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
     const res: any = await watcherCountsGet(makeGetRequest('https://x.com/api/dealer/watcher-counts?carIds=c1,c2'));
@@ -415,6 +445,8 @@ describe('GET /api/dealer/watcher-counts', () => {
   it('computes eligible-watcher counts, messaged flags, total watchers, and view counts, filtering to owned cars', async () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [{ id: 'c1' }] }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
     mockRpc.mockImplementation((fn: string) => {
@@ -438,6 +470,8 @@ describe('GET /api/dealer/watcher-counts', () => {
   it('correctly reflects eligible counts and messaged flags beyond what a raw 1000-row select would return (regression guard)', async () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [{ id: 'c1' }] }) }) }) };
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
       return {};
     });
     // Unlike a plain count, this RPC also carries eligible_count/messaged — the old

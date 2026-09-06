@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { isAuthorizedForSeller } from '@/lib/dealerAuth';
 
 // Dedicated route so a dealer's Featured toggle goes through a server-side
 // ownership + cap check, rather than the raw client-side Supabase write the
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .eq('id', id)
     .single();
 
-  if (!listing || listing.seller_id !== user.id) {
+  if (!listing || !(await isAuthorizedForSeller(user.id, listing.seller_id))) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { count: activeCount } = await admin
       .from('listings')
       .select('id', { count: 'exact', head: true })
-      .eq('seller_id', user.id)
+      .eq('seller_id', listing.seller_id)
       .eq('status', 'approved')
       .eq('is_sold', false)
       .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const { count: featuredCount } = await admin
       .from('listings')
       .select('id', { count: 'exact', head: true })
-      .eq('seller_id', user.id)
+      .eq('seller_id', listing.seller_id)
       .eq('featured', true);
 
     if ((featuredCount ?? 0) >= cap) {
