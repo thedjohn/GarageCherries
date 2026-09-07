@@ -37,7 +37,7 @@ export default function ImageGallery({ images, title }: { images: string[]; titl
         <div key={`preload-${i}`} className="fixed top-0 left-0 w-px h-px overflow-hidden opacity-0 pointer-events-none" aria-hidden="true">
           <Image
             src={images[i]}
-            alt=""
+            alt={`${title} — photo ${i + 1}`}
             fill
             className="object-cover"
             sizes="(max-width: 1024px) 100vw, 66vw"
