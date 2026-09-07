@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
 const {
-  mockGetUser, mockFrom, mockGetUserById, mockRateLimit, mockGetClientIP, mockNotifyAdmin, mockSend, mockLoggerError, mockLoggerInfo, mockLoggerFlush,
+  mockGetUser, mockFrom, mockGetUserById, mockRateLimit, mockGetClientIP, mockNotifyAdmin, mockSend, mockLoggerError, mockLoggerInfo, mockLoggerFlush, mockRequireAdmin,
 } = vi.hoisted(() => ({
   mockGetUser:     vi.fn(),
   mockFrom:        vi.fn(),
@@ -14,6 +14,7 @@ const {
   mockLoggerError: vi.fn(),
   mockLoggerInfo:  vi.fn(),
   mockLoggerFlush: vi.fn().mockResolvedValue(undefined),
+  mockRequireAdmin: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -25,6 +26,13 @@ vi.mock('@/lib/supabase/server', () => ({
 }));
 vi.mock('@/lib/rateLimit', () => ({ rateLimit: mockRateLimit, getClientIP: mockGetClientIP }));
 vi.mock('@/lib/notifyAdmin', () => ({ notifyAdmin: mockNotifyAdmin }));
+vi.mock('@/lib/admin', () => ({
+  requireAdmin: mockRequireAdmin,
+  hasRole: (role: string, minRole: string) => {
+    const order = ['support', 'moderator', 'admin', 'superadmin'];
+    return order.indexOf(role) >= order.indexOf(minRole);
+  },
+}));
 vi.mock('resend', () => ({ Resend: vi.fn(function (this: any) { return { emails: { send: mockSend } }; }) }));
 vi.mock('@/lib/emailBranding', () => ({ emailWrap: (body: string) => body }));
 vi.mock('@/lib/logger', () => ({
@@ -59,6 +67,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockRateLimit.mockReturnValue({ allowed: true, firstBlock: false });
   mockGetUser.mockResolvedValue({ data: { user: { id: 'buyer-1' } } });
+  mockRequireAdmin.mockResolvedValue(null);
 });
 
 describe('POST /api/listings/[id]/comments', () => {
@@ -217,6 +226,33 @@ describe('DELETE /api/listings/[id]/comments/[commentId]', () => {
   });
 
   it('returns 403 when the caller is neither the author nor the seller/team', async () => {
+    mockFrom.mockImplementation(tableChain({
+      listing_comments: { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'c1', author_id: 'someone-else', listings: { seller_id: 'seller-1' } } }) }) }) }) },
+      dealer_members: { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) }) },
+    }));
+    const res: any = await DELETE(makeRequest({}) as any, makeCommentParams('listing-1', 'c1'));
+    expect(res._status).toBe(403);
+  });
+
+  it('lets a moderator-or-above admin delete a comment that is neither theirs nor on their own listing', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'admin-1' } } });
+    mockRequireAdmin.mockResolvedValue('moderator');
+    const deleteEq = vi.fn().mockResolvedValue({ error: null });
+    mockFrom.mockImplementation(tableChain({
+      listing_comments: {
+        select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'c1', author_id: 'someone-else', listings: { seller_id: 'seller-1' } } }) }) }) }),
+        delete: vi.fn().mockReturnValue({ eq: deleteEq }),
+      },
+      dealer_members: { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) }) },
+    }));
+    const res: any = await DELETE(makeRequest({}) as any, makeCommentParams('listing-1', 'c1'));
+    expect(res._status).toBe(200);
+    expect(deleteEq).toHaveBeenCalledWith('id', 'c1');
+  });
+
+  it('rejects a "support" role admin -- restricted to moderator and up, decided with Derek', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'support-1' } } });
+    mockRequireAdmin.mockResolvedValue('support');
     mockFrom.mockImplementation(tableChain({
       listing_comments: { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'c1', author_id: 'someone-else', listings: { seller_id: 'seller-1' } } }) }) }) }) },
       dealer_members: { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) }) },

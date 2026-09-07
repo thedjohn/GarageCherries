@@ -163,6 +163,7 @@ export default function AdminPage() {
   const [reported, setReported] = useState<ReportedMessage[]>([]);
   const [reportedComments, setReportedComments] = useState<ReportedComment[]>([]);
   const [dismissing, setDismissing] = useState<string | null>(null);
+  const [deletingComment, setDeletingComment] = useState<string | null>(null);
   const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
   const [convThreads, setConvThreads] = useState<Record<string, ConvMsg[]>>({});
   const [threadLoading, setThreadLoading] = useState<string | null>(null);
@@ -786,6 +787,13 @@ export default function AdminPage() {
     await fetch(`/api/messages/${msgId}/report`, { method: 'DELETE' }).catch(() => {});
     setReported(prev => prev.filter(r => r.id !== msgId));
     setDismissing(null);
+  }
+
+  async function deleteReportedComment(listingId: string, commentId: string) {
+    setDeletingComment(commentId);
+    await fetch(`/api/listings/${listingId}/comments/${commentId}`, { method: 'DELETE' }).catch(() => {});
+    setReportedComments(prev => prev.filter(c => c.id !== commentId));
+    setDeletingComment(null);
   }
 
   async function loadThread(convId: string) {
@@ -1524,9 +1532,17 @@ export default function AdminPage() {
           )}
           {reportedComments.map(c => (
             <div key={c.id} className="bg-white rounded-2xl border border-red-100 shadow-sm p-5">
-              <p className="text-xs text-zinc-400 mb-1">
-                {c.listings?.title} · reported {new Date(c.created_at).toLocaleDateString()}
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-xs text-zinc-400 mb-1">
+                  {c.listings?.title} · reported {new Date(c.created_at).toLocaleDateString()}
+                </p>
+                <button
+                  onClick={() => deleteReportedComment(c.listing_id, c.id)}
+                  disabled={deletingComment === c.id}
+                  className="px-3 py-1 text-xs font-semibold border border-zinc-200 rounded-lg text-zinc-500 hover:bg-zinc-50 disabled:opacity-50 shrink-0">
+                  {deletingComment === c.id ? 'Deleting…' : 'Delete'}
+                </button>
+              </div>
               <p className="font-semibold text-zinc-900 mb-1">{c.author_name}</p>
               <p className="text-sm text-zinc-600 bg-red-50 rounded-lg px-3 py-2">&ldquo;{c.body}&rdquo;</p>
             </div>
