@@ -23,7 +23,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const entry = getEntry(makeSlug, modelSlug);
   if (!entry) return { title: 'Not Found' };
   return {
-    title: `${entry.make} ${entry.model} (${entry.years}) — Specs, History & Buyer's Guide`,
+    // Kept short and consistent with the openGraph title below -- the fuller
+    // "(years) — Specs, History & Buyer's Guide" version was flagged by Bing
+    // Webmaster Tools as "Title too long" (>70 chars) on 6 pages with longer
+    // make/model names; checked against all 148 encyclopedia entries and the
+    // old template put 29 of them over the limit, not just those 6. Years
+    // are still shown prominently on-page (the badge next to the H1) even
+    // though they're dropped from this <title> tag specifically.
+    title: `${entry.make} ${entry.model} Buyer's Guide`,
     description: entry.overview,
     alternates: { canonical: `https://www.garagecherries.com/cars/${makeSlug}/${modelSlug}` },
     openGraph: {
