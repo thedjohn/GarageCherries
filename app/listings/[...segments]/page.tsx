@@ -56,7 +56,7 @@ export async function generateMetadata({ params }: { params: Promise<{ segments:
     }
     if (!car) return {};
     const title = `${car.title} For Sale`;
-    const desc = `${car.year} ${car.make} ${car.model} in ${car.condition} condition${car.mileage ? ` with ${Number(car.mileage).toLocaleString()} miles` : ''}${car.price ? `. Asking ${formatListingPrice(car.price)}` : ''}. View photos and full details on GarageCherries.`;
+    const desc = `${car.year} ${car.make} ${car.model}${car.condition ? ` in ${car.condition} condition` : ''}${car.mileage ? ` with ${Number(car.mileage).toLocaleString()} miles` : ''}${car.price ? `. Asking ${formatListingPrice(car.price)}` : ''}. View photos and full details on GarageCherries.`;
     const image = car.images?.[0];
     const url = `${BASE_URL}/listings/${toSegment(car.make)}/${toSegment(car.model)}/${car.id}/${car.slug}`;
     return {
