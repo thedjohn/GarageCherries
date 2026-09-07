@@ -16,5 +16,13 @@ export async function GET() {
     .order('created_at', { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ reported: data ?? [] });
+
+  const { data: reportedComments, error: commentsError } = await admin
+    .from('listing_comments')
+    .select('id, body, author_name, author_id, created_at, listing_id, listings(title)')
+    .eq('reported', true)
+    .order('created_at', { ascending: false });
+
+  if (commentsError) return NextResponse.json({ error: commentsError.message }, { status: 500 });
+  return NextResponse.json({ reported: data ?? [], reportedComments: reportedComments ?? [] });
 }

@@ -10,6 +10,8 @@ import AdSlot from '@/components/AdSlot';
 import MakeOfferButton from '@/components/MakeOfferButton';
 import FinancingCalculator from '@/components/FinancingCalculator';
 import InspectionReportCard from '@/components/InspectionReportCard';
+import ListingComments from '@/components/ListingComments';
+import { isAuthorizedForSeller } from '@/lib/dealerAuth';
 import TrackedLink from '@/components/TrackedLink';
 import {
   getCar, getDealerById, formatPrice, formatListingPrice, formatMileage, formatPhone,
@@ -231,6 +233,13 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
       .eq('listing_id', car.id)
       .maybeSingle();
 
+    const { data: commentRows } = await supabaseForInspection
+      .from('listing_comments')
+      .select('id, author_id, author_name, is_seller, body, parent_id, reported, created_at')
+      .eq('listing_id', car.id)
+      .order('created_at', { ascending: true });
+    const canModerateComments = authUser ? await isAuthorizedForSeller(authUser.id, car.sellerId) : false;
+
     const mapAddressParts = [(dealer as any)?.address, (dealer as any)?.location ?? car.location, (dealer as any)?.state ?? car.state, (dealer as any)?.zip].filter(Boolean);
     const mapQuery = encodeURIComponent(mapAddressParts.join(', '));
     const mapSrc = `https://maps.google.com/maps?q=${mapQuery}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
@@ -442,6 +451,15 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
             </div>
 
             {car.price > 0 && <FinancingCalculator price={car.price} />}
+
+            <ListingComments
+              listingId={car.id}
+              isLoggedIn={isLoggedIn}
+              userId={authUser?.id ?? null}
+              canModerate={canModerateComments}
+              sellerName={car.sellerName}
+              initialComments={commentRows ?? []}
+            />
           </div>
 
           <div className="space-y-5 lg:sticky lg:top-24">

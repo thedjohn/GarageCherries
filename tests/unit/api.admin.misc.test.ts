@@ -131,4 +131,28 @@ describe('GET /api/admin/reported', () => {
     const res: any = await reportedGet();
     expect(res._status).toBe(500);
   });
+
+  it('also returns reported listing comments alongside reported messages', async () => {
+    mockRequireAdmin.mockResolvedValue('support');
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'messages') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({ data: [{ id: 'm1' }], error: null }) }) }) };
+      if (table === 'listing_comments') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({ data: [{ id: 'c1', body: 'spam', author_name: 'Bob', listing_id: 'l1' }], error: null }) }) }) };
+      throw new Error(`Unexpected table: ${table}`);
+    });
+    const res: any = await reportedGet();
+    expect(res._status).toBe(200);
+    expect(res._data.reported).toEqual([{ id: 'm1' }]);
+    expect(res._data.reportedComments).toEqual([{ id: 'c1', body: 'spam', author_name: 'Bob', listing_id: 'l1' }]);
+  });
+
+  it('returns 500 when the reported-comments query fails', async () => {
+    mockRequireAdmin.mockResolvedValue('support');
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'messages') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({ data: [], error: null }) }) }) };
+      if (table === 'listing_comments') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({ data: null, error: { message: 'db down' } }) }) }) };
+      throw new Error(`Unexpected table: ${table}`);
+    });
+    const res: any = await reportedGet();
+    expect(res._status).toBe(500);
+  });
 });

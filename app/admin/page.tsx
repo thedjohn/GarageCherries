@@ -32,6 +32,11 @@ interface ReportedMessage {
   conversation_id: string;
   conversations: { listing_title: string; buyer_name: string; buyer_email: string } | null;
 }
+interface ReportedComment {
+  id: string; body: string; author_name: string; author_id: string; created_at: string;
+  listing_id: string;
+  listings: { title: string } | null;
+}
 interface ConvMsg {
   id: string; sender_id: string; sender_name: string; body: string; reported: boolean; created_at: string;
 }
@@ -156,6 +161,7 @@ export default function AdminPage() {
 
   // Reported
   const [reported, setReported] = useState<ReportedMessage[]>([]);
+  const [reportedComments, setReportedComments] = useState<ReportedComment[]>([]);
   const [dismissing, setDismissing] = useState<string | null>(null);
   const [expandedConvId, setExpandedConvId] = useState<string | null>(null);
   const [convThreads, setConvThreads] = useState<Record<string, ConvMsg[]>>({});
@@ -279,8 +285,9 @@ export default function AdminPage() {
           setTab('reported');
           const reportedRes = await fetch('/api/admin/reported');
           if (reportedRes.ok) {
-            const { reported: rep } = await reportedRes.json();
+            const { reported: rep, reportedComments: repComments } = await reportedRes.json();
             setReported(rep ?? []);
+            setReportedComments(repComments ?? []);
           }
           setLoading(false);
           return;
@@ -294,8 +301,9 @@ export default function AdminPage() {
           fetch('/api/admin/reported'),
         ]);
         if (reportedRes.ok) {
-          const { reported: rep } = await reportedRes.json();
+          const { reported: rep, reportedComments: repComments } = await reportedRes.json();
           setReported(rep ?? []);
+          setReportedComments(repComments ?? []);
         }
         setLoading(false);
       } catch (err) {
@@ -910,8 +918,8 @@ export default function AdminPage() {
 
         <button onClick={() => setTab('reported')} className={tabCls('reported')}>
           Reported
-          {reported.length > 0 && (
-            <span className="ml-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{reported.length}</span>
+          {(reported.length + reportedComments.length) > 0 && (
+            <span className="ml-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{reported.length + reportedComments.length}</span>
           )}
         </button>
         {adminRole !== 'support' && (
@@ -1333,7 +1341,9 @@ export default function AdminPage() {
 
       {/* Reported tab */}
       {tab === 'reported' && (
+        <>
         <div className="space-y-3">
+          <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">Reported Messages</h2>
           {reported.length === 0 && (
             <div className="text-center py-20 text-zinc-400">
               <p className="text-3xl mb-3">✅</p>
@@ -1499,6 +1509,30 @@ export default function AdminPage() {
             );
           })}
         </div>
+
+        {/* Reported public listing comments -- simple visibility queue, no
+            warn/suspend tooling like private messages have (out of scope for
+            this v1, decided with Derek: report + seller-can-delete is enough
+            moderation for now). */}
+        <div className="space-y-3 mt-8">
+          <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-1">Reported Comments</h2>
+          {reportedComments.length === 0 && (
+            <div className="text-center py-12 text-zinc-400">
+              <p className="text-3xl mb-3">✅</p>
+              <p>No reported comments.</p>
+            </div>
+          )}
+          {reportedComments.map(c => (
+            <div key={c.id} className="bg-white rounded-2xl border border-red-100 shadow-sm p-5">
+              <p className="text-xs text-zinc-400 mb-1">
+                {c.listings?.title} · reported {new Date(c.created_at).toLocaleDateString()}
+              </p>
+              <p className="font-semibold text-zinc-900 mb-1">{c.author_name}</p>
+              <p className="text-sm text-zinc-600 bg-red-50 rounded-lg px-3 py-2">&ldquo;{c.body}&rdquo;</p>
+            </div>
+          ))}
+        </div>
+        </>
       )}
 
       {/* Team tab — admin and superadmin */}
