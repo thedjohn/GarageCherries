@@ -89,12 +89,17 @@ export default function ListingComments({ listingId, isLoggedIn, userId, canMode
 
   return (
     <div className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="text-xl font-bold text-zinc-900">Questions &amp; Comments</h2>
+      <div className="flex items-start justify-between mb-5 gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-zinc-900">Questions &amp; Comments</h2>
+          <p className="text-sm text-zinc-500 mt-1">
+            Ask the seller a public question about this vehicle. Your question and their reply will be visible to anyone viewing this listing — for a private message instead, use Message Seller.
+          </p>
+        </div>
         {isLoggedIn && !showForm && (
           <button
             onClick={() => setShowForm(true)}
-            className="text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 px-4 py-2 rounded-xl transition-colors"
+            className="text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 px-4 py-2 rounded-xl transition-colors shrink-0"
           >
             Ask a Question
           </button>
