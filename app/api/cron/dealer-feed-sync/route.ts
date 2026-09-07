@@ -566,7 +566,13 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
         ...(make ? { make } : {}),
         ...(model ? { model } : {}),
         location: listingLocation, state: listingState,
-        condition: 'Good',
+        // condition is deliberately NOT written here at all -- no dealer
+        // feed format has a real condition/grade column (confirmed by
+        // reading every FeedFormatColumns definition and a live sample),
+        // and this used to hardcode 'Good' on every sync, silently
+        // reverting any manual correction a dealer or admin had made.
+        // Condition is now dealer/admin-owned data: set once through the
+        // dashboard or admin edit, and the sync never touches it again.
         body_style: bodyStyle,
         transmission, engine, color, images, description,
         seller_phone: listingPhone,
@@ -590,7 +596,9 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
         p_mileage: mileage,
         p_location: listingLocation,
         p_state: listingState,
-        p_condition: 'Good',
+        // No feed format has real condition data (see the comment on the
+        // update path above) -- null until a dealer/admin sets a real value.
+        p_condition: null,
         p_body_style: bodyStyle,
         p_transmission: transmission,
         p_engine: engine,

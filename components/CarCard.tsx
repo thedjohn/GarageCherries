@@ -28,9 +28,11 @@ export default function CarCard({ car }: { car: Car }) {
             FEATURED
           </span>
         )}
-        <span className={`absolute top-2 right-2 text-xs font-semibold px-2 py-1 rounded ${CONDITION_COLORS[car.condition]}`}>
-          {car.condition}
-        </span>
+        {car.condition && (
+          <span className={`absolute top-2 right-2 text-xs font-semibold px-2 py-1 rounded ${CONDITION_COLORS[car.condition]}`}>
+            {car.condition}
+          </span>
+        )}
         <CarCardHeart carId={car.id} currentPrice={car.price} />
       </div>
 

@@ -201,7 +201,7 @@ describe('GET /api/cron/dealer-feed-sync', () => {
       p_model: 'Wrangler',
       p_body_style: 'SUV',
       p_transmission: 'Manual',
-      p_condition: 'Good',
+      p_condition: null,
       p_seller_id: 'dealer-1',
       p_status: 'approved',
       p_images: ['https://example.com/1.jpg', 'https://example.com/2.jpg'],

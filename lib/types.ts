@@ -9,7 +9,7 @@ export interface Car {
   mileage: number | null;
   location: string;
   state: string;
-  condition: string;
+  condition: string | null;
   bodyStyle: string;
   transmission: string;
   engine: string | null;

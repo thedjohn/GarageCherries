@@ -16,7 +16,7 @@ interface SoldCar {
   id: string; slug: string; title: string; year: number;
   make: string; model: string; price: number; mileage: number | null;
   location: string | null; state: string | null;
-  condition: string; body_style: string; images: string[];
+  condition: string | null; body_style: string; images: string[];
   sold_at: string | null;
 }
 
@@ -107,9 +107,11 @@ function SoldCard({ car }: { car: SoldCar }) {
         ) : (
           <div className="w-full h-full flex items-center justify-center text-zinc-400 text-sm">No photo</div>
         )}
-        <span className={`absolute bottom-2 right-2 text-xs font-semibold px-2 py-1 rounded ${CONDITION_COLORS[car.condition] ?? 'bg-zinc-100 text-zinc-600'}`}>
-          {car.condition}
-        </span>
+        {car.condition && (
+          <span className={`absolute bottom-2 right-2 text-xs font-semibold px-2 py-1 rounded ${CONDITION_COLORS[car.condition] ?? 'bg-zinc-100 text-zinc-600'}`}>
+            {car.condition}
+          </span>
+        )}
       </div>
 
       {/* Info */}

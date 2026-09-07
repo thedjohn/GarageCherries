@@ -273,7 +273,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
         numberOfForwardGears: (car as any).numSpeeds ?? undefined,
         vehicleEngine: (car as any).engine ? { '@type': 'EngineSpecification', name: (car as any).engine } : undefined,
         mileageFromOdometer: car.mileage ? { '@type': 'QuantitativeValue', value: car.mileage, unitCode: 'SMI' } : undefined,
-        vehicleCondition: conditionMap[car.condition] ?? 'https://schema.org/UsedCondition',
+        vehicleCondition: (car.condition && conditionMap[car.condition]) || 'https://schema.org/UsedCondition',
         offers: {
           '@type': 'Offer',
           price: car.price > 0 ? car.price : undefined,
@@ -342,7 +342,9 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
             <div className="lg:hidden">
               <div className="flex items-start justify-between gap-4">
                 <h1 className="text-2xl font-extrabold text-zinc-900 leading-tight">{car.title}</h1>
-                <span className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-full border ${CONDITION_COLORS[car.condition]}`}>{car.condition}</span>
+                {car.condition && (
+                  <span className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-full border ${CONDITION_COLORS[car.condition]}`}>{car.condition}</span>
+                )}
               </div>
               <p className="text-3xl font-bold text-red-600 mt-2">{formatListingPrice(car.price)}</p>
             </div>
@@ -466,7 +468,9 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
             <div className="hidden lg:block bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
               <div className="flex items-start justify-between gap-2 mb-1">
                 <p className="text-xl font-extrabold text-zinc-900 leading-tight">{car.title}</p>
-                <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full border ${CONDITION_COLORS[car.condition]}`}>{car.condition}</span>
+                {car.condition && (
+                  <span className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full border ${CONDITION_COLORS[car.condition]}`}>{car.condition}</span>
+                )}
               </div>
               <p className="text-3xl font-bold text-red-600 mt-2 mb-5">{formatListingPrice(car.price)}</p>
 
