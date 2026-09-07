@@ -241,7 +241,7 @@ All tables are in Supabase Postgres. Fields derived from code reads; no migratio
 | `mileage` | integer \| null | |
 | `location` | text | City |
 | `state` | text | 2-char state code |
-| `condition` | text | Excellent / Good / Fair / Project |
+| `condition` | text \| null | Excellent / Good / Fair / Project; null = not yet rated. `syncDealerFeed()` (`app/api/cron/dealer-feed-sync/route.ts`) never writes this field — no dealer feed format carries real condition/grade data — so it's set once via the seller/dealer/admin edit form and never touched again by a sync. Prior to 2026-09-07 the sync hardcoded every feed-managed listing to `'Good'` on both insert and update, silently overwriting manual corrections; fixed that day along with a one-time cleanup resetting the 2,209 affected feed-managed rows to null (the 22 real private-seller `'Good'` listings were left untouched). |
 | `body_style` | text | Coupe / Convertible / Sedan / etc. |
 | `transmission` | text | Manual / Automatic |
 | `engine` | text \| null | Free text, e.g. "396 V8" |
