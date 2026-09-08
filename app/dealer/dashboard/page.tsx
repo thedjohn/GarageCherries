@@ -11,6 +11,7 @@ import VehicleFieldsForm, { type VehicleFieldsValues } from '@/components/Vehicl
 import TrendChart, { type TrendPoint } from '@/components/TrendChart';
 import InspectionReportSection from '@/components/InspectionReportSection';
 import { useMessenger } from '@/lib/messenger-context';
+import { trackEvent } from '@/lib/gtag';
 
 interface DbCar {
   id: string; slug: string; title: string; year: number;
@@ -1148,7 +1149,13 @@ function OffersTab({ dealerId }: { dealerId: string }) {
     setUpdating(offerId);
     const supabase = createClient();
     const { error } = await supabase.from('offers').update({ status }).eq('id', offerId);
-    if (!error) setOffers(prev => prev.map(o => o.id === offerId ? { ...o, status } : o));
+    if (!error) {
+      setOffers(prev => prev.map(o => o.id === offerId ? { ...o, status } : o));
+      if (status === 'accepted') {
+        const offer = offers.find(o => o.id === offerId);
+        trackEvent('converted_lead', { car_id: offer?.car_id, amount: offer?.amount, source: 'offer_accepted' });
+      }
+    }
     setUpdating(null);
   }
 

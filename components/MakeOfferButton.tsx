@@ -36,6 +36,8 @@ export default function MakeOfferButton({ carId, carTitle, askingPrice, dealerId
     if (res.ok) {
       setSent(true);
       trackEvent('make_offer', { car_id: carId, amount: Number(amount) });
+      trackEvent('generate_lead', { car_id: carId, source: 'make_offer' });
+      trackEvent('qualified_lead', { car_id: carId, amount: Number(amount), source: 'make_offer' });
     }
     else {
       const d = await res.json().catch(() => ({}));

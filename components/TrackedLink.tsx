@@ -37,6 +37,11 @@ export default function TrackedLink({ href, eventName, eventParams, listingId, c
   const handleClick = (e: React.MouseEvent) => {
     if (stopPropagation) e.stopPropagation();
     trackEvent(eventName, eventParams);
+    // A dealer phone click is a real top-of-funnel lead action -- fire the
+    // funnel-stage event alongside the specific click event, same idea as
+    // ContactSellerForm/MakeOfferButton firing generate_lead next to their
+    // own specific event.
+    if (eventName === 'dealer_phone_click') trackEvent('generate_lead', { ...eventParams, source: 'dealer_phone_click' });
 
     const clickType = DEALER_CLICK_TYPES[eventName];
     const dealerId = eventParams?.dealer_id;

@@ -54,6 +54,7 @@ export default function ContactSellerForm({ carId, carTitle, sellerName, sellerE
       setOpen(false);
       setMessage('');
       trackEvent('contact_seller', { car_id: carId });
+      trackEvent('generate_lead', { car_id: carId, source: 'contact_seller' });
       // Open the floating messenger widget
       openChat(json.conversationId, carTitle);
     } catch {
