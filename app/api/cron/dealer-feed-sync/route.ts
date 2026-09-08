@@ -426,7 +426,13 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     } else if (dealer.feed_protocol === 'sftp') {
       csvText = await fetchViaSftp(dealer);
     } else {
-      const res = await fetch(feedUrl ?? '');
+      // Some dealer feed hosts sit behind Cloudflare (or similar) WAF rules that
+      // block requests carrying Node's default 'User-Agent: node' -- a browser-like
+      // UA avoids tripping that, cheaply, regardless of whether the real cause
+      // turns out to be the UA or Vercel's outbound IP range.
+      const res = await fetch(feedUrl ?? '', {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GarageCherriesFeedSync/1.0; +https://www.garagecherries.com)' },
+      });
       if (!res.ok) throw new Error(`Feed fetch failed: ${res.status}`);
       csvText = await res.text();
     }
