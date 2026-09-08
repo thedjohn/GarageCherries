@@ -7,7 +7,7 @@ import { PRICE_TIERS_CONTENT } from '@/lib/priceTiers';
 
 export const metadata: Metadata = {
   title: "Classic Car Encyclopedia — Specs & History",
-  description: 'Research classic American muscle cars before you buy. Specs, history, buying tips, and market values for Camaro, Mustang, Charger, Corvette, GTO, and 20+ iconic models.',
+  description: 'Research classic, muscle, exotic, and sports cars before you buy. Specs, history, buying tips, and market values for Camaro, Mustang, Porsche 911, Jaguar E-Type, and 150+ iconic models.',
   alternates: { canonical: 'https://www.garagecherries.com/cars' },
 };
 
@@ -31,7 +31,7 @@ export default function EncyclopediaPage() {
         <p className="text-xs font-semibold text-red-600 uppercase tracking-widest mb-3">GarageCherries</p>
         <h1 className="text-4xl md:text-5xl font-extrabold text-zinc-900 mb-4">Classic Car Encyclopedia</h1>
         <p className="text-lg text-zinc-500 max-w-2xl mx-auto">
-          Research specs, history, buying tips, and market values for the most iconic American classics — before you make an offer.
+          Research specs, history, buying tips, and market values for the world's most iconic classics, muscle cars, and exotics — before you make an offer.
         </p>
       </div>
 
