@@ -508,7 +508,7 @@ Dealer-side upload/edit/remove UI: `components/InspectionReportSection.tsx`, mou
 | `buyer_name` | text \| null | |
 | `amount` | integer | Must be > 0 |
 | `message` | text \| null | |
-| `status` | text | pending / accepted / declined |
+| `status` | text | pending / accepted / declined. Added 2026-09-08: accepting an offer (dealer dashboard `updateStatus`) fires the GA4 `converted_lead` event — the funnel-stage counterpart to `generate_lead` (fires on `contact_seller`, `dealer_phone_click`, or `make_offer`) and `qualified_lead` (fires on `make_offer` specifically, alongside `generate_lead`). Added to close a gap where GA4's Lead acquisition report showed zero leads all month despite real form submits/calls happening — those three funnel-stage events had simply never been implemented. |
 | `created_at` | timestamptz | |
 
 ### `price_history`
