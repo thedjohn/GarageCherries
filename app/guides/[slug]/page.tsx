@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import Link from 'next/link';
+import ShopToolsCard from '@/components/ShopToolsCard';
 
 interface LinkedParagraph { text: string; linkText: string; linkHref: string }
 
@@ -372,6 +373,8 @@ export default async function GuidePage({ params }: Props) {
           </section>
         ))}
       </div>
+
+      {(slug === 'pre-purchase-inspection-checklist' || slug === 'classic-car-red-flags') && <ShopToolsCard />}
 
       {/* Nav */}
       <div className="mt-12 pt-8 border-t border-zinc-100 flex items-center justify-between">

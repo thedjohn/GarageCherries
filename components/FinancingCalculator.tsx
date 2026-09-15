@@ -1,6 +1,19 @@
 'use client';
 import { useState } from 'react';
 
+// Referral/affiliate IDs for classic car lenders -- not yet confirmed with either
+// partner (per IMPLEMENTATION_STATUS.md, both are still "awaiting replies"). Fill
+// these in once a real ID exists and financingLink() will start appending it
+// automatically -- no other code needs to change. The `ref` param name is a
+// placeholder; confirm the actual tracking param each program expects before
+// filling in an ID.
+const JJ_BEST_AFFILIATE_ID = '';
+const WOODSIDE_AFFILIATE_ID = '';
+
+function financingLink(baseUrl: string, affiliateId: string) {
+  return affiliateId ? `${baseUrl}?ref=${affiliateId}` : baseUrl;
+}
+
 export default function FinancingCalculator({ price }: { price: number }) {
   const [down, setDown] = useState(20);
   const [rate, setRate] = useState(6.9);
@@ -82,9 +95,9 @@ export default function FinancingCalculator({ price }: { price: number }) {
           <p className="text-xs text-zinc-400">
             This is an estimate only and not an offer of credit. Actual rates and terms are subject to credit
             approval and may vary. GarageCherries is not a lender.{' '}
-            <a href="https://www.jjbest.com" target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">JJ Best</a>
+            <a href={financingLink('https://www.jjbest.com', JJ_BEST_AFFILIATE_ID)} target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">JJ Best</a>
             {' '}and{' '}
-            <a href="https://www.woodsidecredit.com" target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">Woodside Credit</a>
+            <a href={financingLink('https://www.woodsidecredit.com', WOODSIDE_AFFILIATE_ID)} target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">Woodside Credit</a>
             {' '}specialize in classic car loans — contact them directly for your actual rate.
           </p>
         </div>
