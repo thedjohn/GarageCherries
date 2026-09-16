@@ -10,6 +10,7 @@ import AdSlot from '@/components/AdSlot';
 import MakeOfferButton from '@/components/MakeOfferButton';
 import FinancingCalculator from '@/components/FinancingCalculator';
 import InspectionReportCard from '@/components/InspectionReportCard';
+import ShopToolsCard from '@/components/ShopToolsCard';
 import ListingComments from '@/components/ListingComments';
 import { isAuthorizedForSeller } from '@/lib/dealerAuth';
 import TrackedLink from '@/components/TrackedLink';
@@ -598,6 +599,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
             </div>
 
             <AdSlot carState={car.state} pagePath={`/listings/${makeSeg}/${modelSeg}/${car.id}/${car.slug}`} />
+            <ShopToolsCard />
           </div>
         </div>
 

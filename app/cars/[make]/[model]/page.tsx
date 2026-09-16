@@ -4,6 +4,7 @@ import Link from 'next/link';
 import CarCard from '@/components/CarCard';
 import Pagination from '@/components/Pagination';
 import EbayPartsCard from '@/components/EbayPartsCard';
+import ShopToolsCard from '@/components/ShopToolsCard';
 import { getEntry, ENCYCLOPEDIA } from '@/lib/encyclopedia';
 import { createClient } from '@/lib/supabase/server';
 import type { Car } from '@/lib/types';
@@ -248,6 +249,7 @@ export default async function ModelPage({ params, searchParams }: Props) {
           </div>
 
           <EbayPartsCard make={entry.make} model={entry.model} />
+          <ShopToolsCard />
         </div>
       </div>
 
