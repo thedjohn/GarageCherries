@@ -49,6 +49,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .from('listings')
       .select('id, slug, make, model, featured, listed_at, created_at')
       .eq('status', 'approved')
+      // Same filter the browse/search queries already use (see
+      // app/listings/[...segments]/page.tsx) -- an expired listing falls out
+      // of every internal nav path, so advertising it in the sitemap just
+      // sends crawlers to an orphaned page.
+      .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .order('id', { ascending: true })
       .range(from, to)),
     supabase.from('dealers').select('slug, created_at'),

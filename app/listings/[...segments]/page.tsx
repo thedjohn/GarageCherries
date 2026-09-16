@@ -52,7 +52,7 @@ export async function generateMetadata({ params }: { params: Promise<{ segments:
       // RLS hides pending/rejected listings from anon reads -- let a logged-in
       // admin preview any status via the admin "View" link in the dashboard.
       if (!data) data = await fetchListingForAdminPreview(id);
-      if (data) car = { ...data, bodyStyle: data.body_style, listedAt: data.listed_at, sellerId: data.seller_id, sellerName: data.seller_name, sellerPhone: data.seller_phone } as any;
+      if (data) car = { ...data, bodyStyle: data.body_style, listedAt: data.listed_at, sellerId: data.seller_id, sellerName: data.seller_name, sellerPhone: data.seller_phone, isExpired: !!(data.expires_at && new Date(data.expires_at) < new Date()) } as any;
     }
     if (!car) return {};
     const title = `${car.title} For Sale`;
@@ -71,6 +71,12 @@ export async function generateMetadata({ params }: { params: Promise<{ segments:
         ...(image ? { images: [{ url: image, width: 1200, height: 800, alt: car.title }] } : {}),
       },
       twitter: { card: 'summary_large_image', title, description: desc, ...(image ? { images: [image] } : {}) },
+      // Expired listings fall out of every browse/search query (they're
+      // orphaned -- nothing links to them internally anymore), so leaving
+      // them indexable just accumulates stale pages in search results. Kept
+      // reachable and rendered normally for anyone with a direct link,
+      // matching how "sold" listings stay up for reference.
+      ...((car as any).isExpired ? { robots: { index: false, follow: true } } : {}),
     };
   }
 
@@ -175,6 +181,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
         lotNumber: data.lot_number,
         descriptionParagraphs: data.description_paragraphs,
         isSold: data.is_sold ?? false,
+        isExpired: !!(data.expires_at && new Date(data.expires_at) < new Date()),
       } as any;
     }
     if (!car) notFound();
@@ -321,6 +328,22 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
               <div>
                 <p className="font-bold text-lg leading-tight">This vehicle has sold</p>
                 <p className="text-zinc-400 text-sm">This listing is kept online for reference. Browse similar vehicles below.</p>
+              </div>
+            </div>
+            <Link href={`/listings?make=${encodeURIComponent(car.make)}`}
+              className="shrink-0 bg-red-600 hover:bg-red-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors">
+              View Similar Listings →
+            </Link>
+          </div>
+        )}
+
+        {!(car as any).isSold && (car as any).isExpired && (
+          <div className="mb-6 bg-zinc-900 text-white rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⏳</span>
+              <div>
+                <p className="font-bold text-lg leading-tight">This listing has expired</p>
+                <p className="text-zinc-400 text-sm">Details may be out of date. Browse similar vehicles below.</p>
               </div>
             </div>
             <Link href={`/listings?make=${encodeURIComponent(car.make)}`}
