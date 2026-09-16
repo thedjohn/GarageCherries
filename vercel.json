@@ -23,6 +23,14 @@
     {
       "path": "/api/cron/dealer-feed-staleness",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/digest",
+      "schedule": "0 15 * * 1"
+    },
+    {
+      "path": "/api/cron/price-drops",
+      "schedule": "0 16 * * 1"
     }
   ]
 }
