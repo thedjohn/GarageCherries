@@ -86,8 +86,14 @@ export async function GET(request: NextRequest) {
 
   const pending = [...(needsCore ?? []), ...tiktokOnly];
 
+  // Sequential, not fire-and-forget-all-at-once: the VPS only renders one
+  // video at a time (MAX_CONCURRENT_JOBS = 1), so firing the whole batch in
+  // parallel meant most requests piled up waiting to even be accepted and
+  // some timed out (the "TypeError: fetch failed" / ETIMEDOUT Sentry noise
+  // this route was producing). Awaiting each call keeps at most one request
+  // in flight to the VPS at a time, matching its real capacity.
   for (const listing of pending) {
-    triggerListingVideo(listing).catch(() => {});
+    await triggerListingVideo(listing).catch(() => {});
   }
 
   log.info('Video reel backfill batch triggered', { triggered: pending.length, needsCore: needsCore?.length ?? 0, tiktokOnly: tiktokOnly.length });

@@ -70,6 +70,18 @@ describe('postListingToFacebook', () => {
     );
   });
 
+  it('posts to /feed instead of uploading when images[0] is not a valid http(s) URL', async () => {
+    process.env.FACEBOOK_PAGE_ID = 'page1';
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'fb-post-3' }) }));
+    await expect(postListingToFacebook({ ...listing, images: ['not-a-url'] })).resolves.toBe(true);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/feed'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
   it('logs, does not throw, and returns false when the Facebook API returns an error', async () => {
     process.env.FACEBOOK_PAGE_ID = 'page1';
     process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
@@ -330,6 +342,15 @@ describe('deleteFacebookReel', () => {
     process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ error: { message: 'not found' } }) }));
     await expect(deleteFacebookReel('vid1')).resolves.toBe(false);
+  });
+
+  it('treats "does not exist" as a successful no-op rather than an error', async () => {
+    process.env.FACEBOOK_PAGE_ACCESS_TOKEN = 'token1';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ error: { message: "Unsupported delete request. Object with ID 'vid1' does not exist, cannot be loaded due to missing permissions, or does not support this operation." } }),
+    }));
+    await expect(deleteFacebookReel('vid1')).resolves.toBe(true);
   });
 
   it('catches a thrown fetch error without propagating it and returns false', async () => {

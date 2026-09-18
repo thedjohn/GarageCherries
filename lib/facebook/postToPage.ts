@@ -72,7 +72,10 @@ export async function postListingToFacebook(listing: ListingPostInput): Promise<
   const caption = buildListingCaption(listing);
 
   try {
-    if (listing.images?.[0]) {
+    // Defensive sanity check on the URL shape before handing it to Facebook --
+    // doesn't catch every way an image could be bad, but cheaply rules out an
+    // empty string or a relative/malformed path ending up in a photos upload.
+    if (listing.images?.[0] && /^https?:\/\//i.test(listing.images[0])) {
       // Upload the photo unpublished first, then create a proper feed post with it
       // attached via attached_media. A plain /photos post still creates a story by
       // default, but Facebook's mobile app surfaces it primarily under the Photos
@@ -225,6 +228,16 @@ export async function deleteFacebookReel(videoId: string): Promise<boolean> {
     const res = await fetch(`https://graph.facebook.com/${GRAPH_VERSION}/${videoId}?access_token=${token}`, { method: 'DELETE' });
     const data = await res.json();
     if (!res.ok || data.error || data.success === false) {
+      // Facebook returns this same ambiguous message whether the object is
+      // already gone or we lack permission on it -- but by far the common
+      // case here is a Reel that was already deleted on a prior run (or
+      // manually), not a real permission problem. Treat it as a successful
+      // no-op rather than an error: the desired end state (no Reel with this
+      // ID) is already true either way.
+      if (/does not exist/i.test(data.error?.message ?? '')) {
+        log.info('Facebook Reel delete no-op — already gone', { videoId });
+        return true;
+      }
       log.error('Facebook Reel delete failed', new Error(data.error?.message ?? `HTTP ${res.status}`), { videoId });
       return false;
     }

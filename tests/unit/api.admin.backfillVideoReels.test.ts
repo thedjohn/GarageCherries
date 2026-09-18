@@ -97,6 +97,23 @@ describe('GET /api/admin/backfill-video-reels', () => {
     expect(res._data).toEqual({ ok: true, triggered: 0 });
   });
 
+  it('awaits each trigger call sequentially instead of firing them all at once (VPS only renders one at a time)', async () => {
+    const listing2 = { ...LISTING, id: 'l2' };
+    makeSupabaseMock([LISTING, listing2]);
+
+    let inFlight = 0;
+    let maxInFlight = 0;
+    mockTriggerListingVideo.mockImplementation(async () => {
+      inFlight++;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise((r) => setTimeout(r, 0));
+      inFlight--;
+    });
+
+    await GET(makeRequest('Bearer cron-secret'));
+    expect(maxInFlight).toBe(1);
+  });
+
   it('does not let a rejected trigger call break the response', async () => {
     makeSupabaseMock([LISTING]);
     mockTriggerListingVideo.mockRejectedValue(new Error('VPS unreachable'));

@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { cache } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -72,10 +73,19 @@ function buildEventTitle(name: string, dateStr: string): string {
   return `${trimmedName}… — ${dateStr}`;
 }
 
+// Shared between generateMetadata and the page component, which Next.js runs
+// separately for the same request -- without this, every event page load
+// queried Supabase for the exact same row twice. React's cache() dedupes
+// calls with the same argument within a single request/render pass.
+const getEvent = cache(async (slug: string) => {
+  const admin = createAdminClient();
+  const { data } = await admin.from('events').select('*').eq('slug', slug).eq('status', 'approved').single();
+  return data as Event | null;
+});
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const admin = createAdminClient();
-  const { data } = await admin.from('events').select('name, description, date, location, state').eq('slug', slug).eq('status', 'approved').single();
+  const data = await getEvent(slug);
   if (!data) return { title: 'Event Not Found' };
   const dateStr = new Date(data.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   const title = buildEventTitle(data.name, dateStr);
@@ -93,17 +103,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function EventDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const admin = createAdminClient();
-  const { data: event } = await admin
-    .from('events')
-    .select('*')
-    .eq('slug', slug)
-    .eq('status', 'approved')
-    .single();
+  const event = await getEvent(slug);
 
   if (!event) notFound();
 
-  const e = event as Event;
+  const e = event;
+  const admin = createAdminClient();
 
   // "More Upcoming Events" -- same state first (more likely to actually be
   // relevant to someone reading about this one), falling back to any other

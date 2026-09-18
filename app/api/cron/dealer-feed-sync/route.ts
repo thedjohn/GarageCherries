@@ -453,7 +453,7 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
 
   const { data: existingListings } = await admin
     .from('listings')
-    .select('id, vin, stock_number, title, youtube_video_id, facebook_reel_id, instagram_media_id, is_feed_managed')
+    .select('id, vin, stock_number, title, youtube_video_id, facebook_reel_id, instagram_media_id, is_feed_managed, is_sold')
     .eq('seller_id', dealer.id);
   // VIN is the primary match key (globally unique). Stock number is a fallback --
   // only unique *within* this dealer's own inventory, which is fine here since
@@ -657,6 +657,12 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
   // first sync regardless of whether the car is actually still for sale.
   for (const l of existingListings ?? []) {
     if (!l.is_feed_managed) continue;
+    // Already processed on a prior run -- without this, every historically-sold
+    // listing gets re-marked, re-notified to watchers, and re-attempted for
+    // video cleanup on every single hourly sync, forever (confirmed live via
+    // Sentry: this was the actual driver behind two separate high-volume error
+    // reports, not two independent bugs).
+    if (l.is_sold) continue;
     if (!seenIds.has(l.id)) {
       const { error } = await admin.from('listings').update({ is_sold: true, sold_at: new Date().toISOString() }).eq('id', l.id);
       if (error) result.errors.push(`Mark-sold failed for listing ${l.id}: ${error.message}`);

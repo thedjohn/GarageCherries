@@ -27,7 +27,7 @@ function makeRequest(authHeader?: string) {
   return { headers: { get: (k: string) => (k === 'Authorization' ? authHeader ?? null : null) } } as unknown as NextRequest;
 }
 
-const LISTING = { id: 'l1', title: '1970 Ford Mustang', make: 'Ford', model: 'Mustang', year: 1970, price: 30000, slug: 'mustang', images: ['https://example.com/1.jpg'] };
+const LISTING = { id: 'l1', title: '1970 Ford Mustang', make: 'Ford', model: 'Mustang', year: 1970, price: 30000, slug: 'mustang', images: ['https://example.com/1.jpg'], fb_post_attempts: 0 };
 
 function makeSupabaseMock(pending: typeof LISTING[]) {
   const updateCalls: { id: string; payload: any }[] = [];
@@ -38,8 +38,10 @@ function makeSupabaseMock(pending: typeof LISTING[]) {
           eq: () => ({
             eq: () => ({
               is: () => ({
-                order: () => ({
-                  limit: () => Promise.resolve({ data: pending }),
+                lt: () => ({
+                  order: () => ({
+                    limit: () => Promise.resolve({ data: pending }),
+                  }),
                 }),
               }),
             }),
@@ -75,16 +77,28 @@ describe('GET /api/cron/facebook-post-queue', () => {
     expect(updateCalls).toHaveLength(1);
     expect(updateCalls[0].id).toBe('l1');
     expect(updateCalls[0].payload.fb_posted_at).toBeTruthy();
-    expect(res._data).toEqual({ ok: true, checked: 1, posted: 1 });
+    expect(res._data).toEqual({ ok: true, checked: 1, posted: 1, gaveUp: 0 });
   });
 
-  it('does not stamp fb_posted_at when the post fails, leaving it for a later retry', async () => {
+  it('does not stamp fb_posted_at when the post fails, but increments fb_post_attempts for a later retry', async () => {
     const { updateCalls } = makeSupabaseMock([LISTING]);
     mockPostListingToFacebook.mockResolvedValue(false);
 
     const res: any = await GET(makeRequest('Bearer cron-secret'));
-    expect(updateCalls).toHaveLength(0);
-    expect(res._data).toEqual({ ok: true, checked: 1, posted: 0 });
+    expect(updateCalls).toHaveLength(1);
+    expect(updateCalls[0].id).toBe('l1');
+    expect(updateCalls[0].payload.fb_post_attempts).toBe(1);
+    expect(res._data).toEqual({ ok: true, checked: 1, posted: 0, gaveUp: 0 });
+  });
+
+  it('logs and counts a listing as given up once it reaches the max attempts', async () => {
+    const nearCap = { ...LISTING, fb_post_attempts: 4 };
+    makeSupabaseMock([nearCap]);
+    mockPostListingToFacebook.mockResolvedValue(false);
+
+    const res: any = await GET(makeRequest('Bearer cron-secret'));
+    expect(res._data).toEqual({ ok: true, checked: 1, posted: 0, gaveUp: 1 });
+    expect(mockLoggerInfo).toHaveBeenCalledWith('Facebook post gave up after max attempts', { listingId: 'l1', attempts: 5 });
   });
 
   it('processes multiple pending listings independently', async () => {
@@ -93,15 +107,16 @@ describe('GET /api/cron/facebook-post-queue', () => {
     mockPostListingToFacebook.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 
     const res: any = await GET(makeRequest('Bearer cron-secret'));
-    expect(updateCalls).toHaveLength(1);
+    expect(updateCalls).toHaveLength(2);
     expect(updateCalls[0].id).toBe('l1');
-    expect(res._data).toEqual({ ok: true, checked: 2, posted: 1 });
+    expect(updateCalls[1].id).toBe('l2');
+    expect(res._data).toEqual({ ok: true, checked: 2, posted: 1, gaveUp: 0 });
   });
 
   it('is a no-op when nothing is pending', async () => {
     makeSupabaseMock([]);
     const res: any = await GET(makeRequest('Bearer cron-secret'));
     expect(mockPostListingToFacebook).not.toHaveBeenCalled();
-    expect(res._data).toEqual({ ok: true, checked: 0, posted: 0 });
+    expect(res._data).toEqual({ ok: true, checked: 0, posted: 0, gaveUp: 0 });
   });
 });
