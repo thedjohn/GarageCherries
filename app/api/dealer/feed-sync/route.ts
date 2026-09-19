@@ -34,6 +34,11 @@ export async function POST(request: NextRequest) {
     feed_last_sync_summary: summary,
     // Gated on no errors -- see the matching comment in the cron route for why.
     ...(result.errors.length === 0 && result.sourceMtime ? { feed_sftp_last_received_at: result.sourceMtime } : {}),
+    // Same stamp the cron route sets. Without it, a dealer whose overnight sync
+    // is failing can run a clean manual sync (green check) and still get the
+    // daily "feed has stopped updating" email, since dealer-feed-staleness
+    // only looks at this column.
+    ...(result.errors.length === 0 ? { feed_last_success_at: new Date().toISOString() } : {}),
   }).eq('id', dealer.id);
 
   return NextResponse.json({ ok: result.errors.length === 0, result, summary });

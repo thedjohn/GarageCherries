@@ -86,6 +86,7 @@ describe('POST /api/dealer/feed-sync', () => {
     expect(res._data.summary).toBe('1 inserted, 0 updated, 0 sold, 0 skipped');
     expect(updateCalls[0].feed_last_synced_at).toBeTruthy();
     expect(updateCalls[0].feed_last_sync_summary).toBe('1 inserted, 0 updated, 0 sold, 0 skipped');
+    expect(updateCalls[0].feed_last_success_at).toBeTruthy();
   });
 
   it('reports ok:false when the sync result has errors', async () => {
@@ -95,5 +96,15 @@ describe('POST /api/dealer/feed-sync', () => {
 
     const res: any = await POST(makeReq());
     expect(res._data.ok).toBe(false);
+  });
+
+  it('does not stamp feed_last_success_at when the sync had errors', async () => {
+    const updateCalls: any[] = [];
+    makeFromMock(DEALER_ROW, updateCalls);
+    mockSyncDealerFeed.mockResolvedValue({ inserted: 0, updated: 0, markedSold: 0, skipped: 0, errors: ['Could not fetch feed: 500'], unrecognizedMakes: [] });
+    mockSummarizeFeedSync.mockReturnValue('Error: Could not fetch feed: 500');
+
+    await POST(makeReq());
+    expect(updateCalls[0].feed_last_success_at).toBeUndefined();
   });
 });

@@ -1,28 +1,22 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-09-18 — Sentry error backlog for garage-cherries (production) triage complete: all 6 issues addressed, 5 fully done, 1 (Issue 1) is a code-side dead end waiting on Derek to re-authorize a Google OAuth scope outside the codebase. 9 files uncommitted, all verified. See below for what's still open before this can be committed/deployed.*
+*Last updated: 2026-09-19 — Sentry error backlog for garage-cherries (production) triage complete and shipped (commit `7c59d3b`, pushed 2026-09-18). Also shipped: manual feed sync now clears the "feed has stopped updating" alert. One investigation still open (Garage Kept Motors' overnight sync) — see below.*
 
-## 🔶 Sentry backlog triage — complete, pending commit decision
+## ✅ Sentry backlog triage — shipped 2026-09-18 (commit `7c59d3b`)
 
 **Workflow used: one issue at a time, explain the root cause and proposed fix, wait for Derek's go-ahead, implement, verify, then stop before moving to the next issue.**
 
-**Uncommitted changes currently in the working tree** (not committed or pushed — do not assume these are live):
-- `app/api/cron/dealer-feed-sync/route.ts`
-- `lib/facebook/postToPage.ts`
-- `app/api/cron/facebook-post-queue/route.ts`
-- `app/api/admin/backfill-video-reels/route.ts`
-- `lib/types.ts`
-- `app/events/[slug]/page.tsx`
-- `tests/unit/facebookPostToPage.test.ts`
-- `tests/unit/api.cron.facebookPostQueue.test.ts`
-- `tests/unit/api.admin.backfillVideoReels.test.ts`
+All 6 issues are addressed in the table below. Verified with `tsc --noEmit` clean and the full suite passing. Two changes were also confirmed live in the dev server: `lib/types.ts` (new makes appear in the search dropdown and "Shop by Make") and `app/events/[slug]/page.tsx` (event page renders correctly after removing the duplicate Supabase fetch).
 
-All nine are verified (`tsc --noEmit` clean, full suite passing — 87 files / 1353 tests). Two changes were also confirmed live in the dev server: `lib/types.ts` (new makes appear correctly in the search dropdown and "Shop by Make") and `app/events/[slug]/page.tsx` (event page renders correctly — title, date, map, related events — after removing the duplicate Supabase fetch). Derek has not yet said whether to commit now.
+**Non-code steps, done by Derek 2026-09-18:**
+- Issue 1 — YouTube OAuth re-authorized with the `youtube` scope (scope added on the Google Auth Platform Data Access page, new refresh token generated and confirmed to include `https://www.googleapis.com/auth/youtube`), `YOUTUBE_REFRESH_TOKEN` replaced in Vercel (Production and Preview); the push of `7c59d3b` triggered a fresh deployment that picks it up. Worth confirming in Sentry that the `ACCESS_TOKEN_SCOPE_INSUFFICIENT` errors have stopped.
+- Issue 3 migration `supabase/migrations/20260918_fb_post_attempts.sql` (adds `listings.fb_post_attempts integer not null default 0`) run in the Supabase SQL editor, confirmed "Success. No rows returned".
 
-**Still open / not code:**
-- Issue 1 — Derek needs to re-authorize the YouTube OAuth app with the `youtube` (or `youtube.force-ssl`) scope in Google Cloud Console and update `YOUTUBE_REFRESH_TOKEN`. Not fixable in code.
-- Issue 3's migration (`supabase/migrations/20260918_fb_post_attempts.sql`) has already been run by Derek in Supabase — confirmed live.
+## 🔶 Feed staleness alert — fixed 2026-09-19; underlying overnight failure still open
 
-**Migration run** — `supabase/migrations/20260918_fb_post_attempts.sql` (adds `listings.fb_post_attempts integer not null default 0`) was run successfully by Derek in the Supabase SQL editor (garage-cherries/main, confirmed "Success. No rows returned"). The `facebook-post-queue` cron's `fb_post_attempts` column now exists in production.
+Garage Kept Motors, LLC (feed_sync_hour 3 UTC, https, All Auto Network CSV) kept getting the daily "Your inventory feed has stopped updating" email even though the owner clicked Save in the dashboard and got a green check.
+- **Fixed (committed):** `dealer-feed-staleness` reads `dealers.feed_last_success_at`, which only the overnight cron (`dealer-feed-sync/route.ts`) stamped; the manual sync route (`app/api/dealer/feed-sync/route.ts`) updated `feed_last_synced_at` and the summary but never `feed_last_success_at`. The manual route now stamps it when the sync has no errors. Test added.
+- **Still open:** why the scheduled 03:00 UTC sync stopped succeeding for this dealer after 2026-09-16 (every other feed dealer synced fine at its own hour). Evidence is inferred, not confirmed: the owner's manual sync on 2026-09-19 found 10 new and 8 sold cars that had piled up, and it overwrote the error message from the failed runs. The feed URL (`garagekeptmotors.com/feeds/garagecherries.csv`, served via Cloudflare, ~2.5 MB) loads fine now. Owner says nothing changed on their end. Leading guess, unproven: Cloudflare intermittently blocking or throttling Vercel's servers, similar to Beverly Hills Car Club's 403. To confirm, read Sentry/Axiom for `dealer-feed-sync` around 03:00 UTC on Sep 17-19, or check Garage Kept's `feed_last_sync_summary` after a night with no manual sync.
+- Separately, Beverly Hills Car Club's feed is still returning 403 to our fetch (last success 2026-09-16); not related to this change.
 
 | # | Sentry issue | Status | Notes |
 |---|---|---|---|
