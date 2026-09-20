@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
-const { mockGetUser, mockFrom, mockListUsers, mockSend, mockRateLimit, mockGetClientIP, mockDeleteListingVideos } = vi.hoisted(() => ({
+const { mockGetUser, mockFrom, mockGetUserById, mockSend, mockRateLimit, mockGetClientIP, mockDeleteListingVideos } = vi.hoisted(() => ({
   mockGetUser:     vi.fn(),
   mockFrom:        vi.fn(),
-  mockListUsers:   vi.fn(),
+  mockGetUserById: vi.fn(),
   mockSend:        vi.fn().mockResolvedValue({ id: 'email-1' }),
   mockRateLimit:   vi.fn(),
   mockGetClientIP: vi.fn(() => '1.2.3.4'),
@@ -13,7 +13,7 @@ const { mockGetUser, mockFrom, mockListUsers, mockSend, mockRateLimit, mockGetCl
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({ auth: { getUser: mockGetUser } })),
-  createAdminClient: vi.fn(() => ({ from: mockFrom, auth: { admin: { listUsers: mockListUsers } } })),
+  createAdminClient: vi.fn(() => ({ from: mockFrom, auth: { admin: { getUserById: mockGetUserById } } })),
 }));
 vi.mock('resend', () => ({ Resend: vi.fn(function (this: any) { return { emails: { send: mockSend } }; }) }));
 vi.mock('@/lib/rateLimit', () => ({ rateLimit: mockRateLimit, getClientIP: mockGetClientIP }));
@@ -97,7 +97,7 @@ describe('POST /api/cars/sold', () => {
       if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { slug: 'survivor-classic', name: 'Survivor Classic Car Services' } }) }) }) };
       return {};
     });
-    mockListUsers.mockResolvedValue({ data: { users: [{ id: 'buyer-1', email: 'buyer@x.com' }] } });
+    mockGetUserById.mockResolvedValue({ data: { user: { id: 'buyer-1', email: 'buyer@x.com' } } });
     const res: any = await soldPost(makeRequest({ carId: 'c1', soldPrice: 45000 }));
     expect(res._status).toBe(200);
     await new Promise(process.nextTick);
@@ -158,7 +158,7 @@ describe('POST /api/cars/sold', () => {
       if (table === 'watchlists') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [{ user_id: 'buyer-1' }] }) }) };
       return {};
     });
-    mockListUsers.mockResolvedValue({ data: { users: [] } });
+    mockGetUserById.mockResolvedValue({ data: { user: null } });
     const res: any = await soldPost(makeRequest({ carId: 'c1' }));
     expect(res._status).toBe(200);
     await new Promise(process.nextTick);

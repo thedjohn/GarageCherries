@@ -19,12 +19,15 @@ export async function notifyWatchersCarSold(
     .eq('car_id', carId);
   if (!watchers?.length) return;
 
-  const userIds = watchers.map((w: { user_id: string }) => w.user_id);
-  const { data: { users } } = await admin.auth.admin.listUsers();
-  const recipients = users
-    .filter((u: { id: string; email?: string; user_metadata?: { car_sold_opt_out?: boolean } }) =>
-      userIds.includes(u.id) && u.email && !u.user_metadata?.car_sold_opt_out)
-    .map((u: { id: string; email?: string }) => ({ id: u.id, email: u.email! }));
+  const userIds = [...new Set(watchers.map((w: { user_id: string }) => w.user_id))];
+  // Look up only the watchers by id. listUsers() with no paging returns just the
+  // first 50 accounts, so watchers beyond that page were silently never emailed.
+  const found = await Promise.all(
+    userIds.map(id => admin.auth.admin.getUserById(id).then(r => r.data?.user ?? null, () => null)),
+  );
+  const recipients = found
+    .filter(u => u && u.email && !u.user_metadata?.car_sold_opt_out)
+    .map(u => ({ id: u!.id, email: u!.email! }));
   if (!recipients.length) return;
 
   const { data: dealer } = await admin.from('dealers').select('slug, name').eq('id', dealerId).maybeSingle();

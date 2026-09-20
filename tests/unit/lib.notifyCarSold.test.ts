@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { mockFrom, mockListUsers, mockSend } = vi.hoisted(() => ({
+const { mockFrom, mockGetUserById, mockSend } = vi.hoisted(() => ({
   mockFrom: vi.fn(),
-  mockListUsers: vi.fn(),
+  mockGetUserById: vi.fn(),
   mockSend: vi.fn().mockResolvedValue({ id: 'email-1' }),
 }));
 
@@ -11,7 +11,7 @@ vi.mock('resend', () => ({ Resend: vi.fn(function (this: any) { return { emails:
 import { notifyWatchersCarSold } from '@/lib/notifyCarSold';
 
 function makeAdmin() {
-  return { from: mockFrom, auth: { admin: { listUsers: mockListUsers } } } as any;
+  return { from: mockFrom, auth: { admin: { getUserById: mockGetUserById } } } as any;
 }
 
 function mockTables(opts: {
@@ -28,7 +28,7 @@ function mockTables(opts: {
     }
     throw new Error(`Unexpected table: ${table}`);
   });
-  mockListUsers.mockResolvedValue({ data: { users: opts.users ?? [] } });
+  mockGetUserById.mockImplementation((id: string) => Promise.resolve({ data: { user: (opts.users ?? []).find(u => u.id === id) ?? null } }));
 }
 
 beforeEach(() => {
@@ -39,7 +39,7 @@ describe('notifyWatchersCarSold', () => {
   it('sends nothing when there are no watchers', async () => {
     mockTables({ watchers: [] });
     await notifyWatchersCarSold(makeAdmin(), 'car-1', 'Nice Car', 'dealer-1');
-    expect(mockListUsers).not.toHaveBeenCalled();
+    expect(mockGetUserById).not.toHaveBeenCalled();
     expect(mockSend).not.toHaveBeenCalled();
   });
 
@@ -108,6 +108,37 @@ describe('notifyWatchersCarSold', () => {
     });
     await notifyWatchersCarSold(makeAdmin(), 'car-1', 'Nice Car', 'dealer-1');
     expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it('looks up each watcher by id, so watchers beyond the first page of accounts are still emailed', async () => {
+    const watchers = Array.from({ length: 60 }, (_, i) => ({ user_id: `buyer-${i}` }));
+    const users = watchers.map(w => ({ id: w.user_id, email: `${w.user_id}@x.com` }));
+    mockTables({ watchers, users });
+    await notifyWatchersCarSold(makeAdmin(), 'car-1', 'Nice Car', 'dealer-1');
+    expect(mockGetUserById).toHaveBeenCalledTimes(60);
+    expect(mockSend).toHaveBeenCalledTimes(60);
+  });
+
+  it('emails a watcher only once even if they appear twice in the watchlist', async () => {
+    mockTables({
+      watchers: [{ user_id: 'buyer-1' }, { user_id: 'buyer-1' }],
+      users: [{ id: 'buyer-1', email: 'buyer1@x.com' }],
+    });
+    await notifyWatchersCarSold(makeAdmin(), 'car-1', 'Nice Car', 'dealer-1');
+    expect(mockGetUserById).toHaveBeenCalledTimes(1);
+    expect(mockSend).toHaveBeenCalledOnce();
+  });
+
+  it('still emails the other watchers when one lookup fails', async () => {
+    mockTables({
+      watchers: [{ user_id: 'buyer-1' }, { user_id: 'buyer-2' }],
+      users: [{ id: 'buyer-1', email: 'buyer1@x.com' }, { id: 'buyer-2', email: 'buyer2@x.com' }],
+    });
+    mockGetUserById.mockImplementation((id: string) =>
+      id === 'buyer-1' ? Promise.reject(new Error('lookup failed')) : Promise.resolve({ data: { user: { id, email: 'buyer2@x.com' } } }));
+    await notifyWatchersCarSold(makeAdmin(), 'car-1', 'Nice Car', 'dealer-1');
+    expect(mockSend).toHaveBeenCalledOnce();
+    expect(mockSend.mock.calls[0][0].to).toBe('buyer2@x.com');
   });
 
   it('includes an unsubscribe link scoped to the recipient\'s user id', async () => {
