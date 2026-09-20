@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { notifyWatchersCarSold } from '@/lib/notifyCarSold';
 import { deleteListingVideos } from '@/lib/deleteListingVideos';
@@ -32,8 +32,10 @@ export async function POST(request: NextRequest) {
   void notifyWatchersCarSold(admin, carId, car.title, car.seller_id);
 
   // Clean up the sold car's social videos so they don't keep advertising it
-  // as available (fire-and-forget, same tolerance as the notification above)
-  void deleteListingVideos(admin, carId, car);
+  // as available. Wrapped in after() so the runtime keeps the function alive
+  // until the deletes and the ID-clearing write finish, instead of freezing
+  // it right after the response goes out.
+  after(() => deleteListingVideos(admin, carId, car));
 
   return NextResponse.json({ ok: true });
 }

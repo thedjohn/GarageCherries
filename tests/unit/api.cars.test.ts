@@ -22,6 +22,7 @@ vi.mock('next/server', () => ({
   NextResponse: {
     json: vi.fn((data: unknown, init?: { status?: number }) => ({ _data: data, _status: init?.status ?? 200 })),
   },
+  after: (fn: () => unknown) => { void fn(); },
 }));
 
 import { POST as soldPost } from '@/app/api/cars/sold/route';

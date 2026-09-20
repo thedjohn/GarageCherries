@@ -79,6 +79,22 @@ describe('deleteListingVideos', () => {
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 
+  it('waits for the ID-clearing update to finish before resolving', async () => {
+    const admin = makeAdmin();
+    let updateFinished = false;
+    mockUpdateEq.mockImplementation(() => new Promise(resolve => setTimeout(() => { updateFinished = true; resolve({ error: null }); }, 10)));
+
+    await deleteListingVideos(admin, 'l1', { youtube_video_id: 'yt-1' });
+    expect(updateFinished).toBe(true);
+  });
+
+  it('does not throw when the ID-clearing update itself rejects', async () => {
+    const admin = makeAdmin();
+    mockUpdateEq.mockRejectedValue(new Error('fetch failed'));
+
+    await expect(deleteListingVideos(admin, 'l1', { youtube_video_id: 'yt-1' })).resolves.not.toThrow();
+  });
+
   it('does not throw when a delete call itself rejects', async () => {
     const admin = makeAdmin();
     mockDeleteYouTubeVideo.mockRejectedValue(new Error('YouTube API down'));

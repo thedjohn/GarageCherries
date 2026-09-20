@@ -36,6 +36,7 @@ vi.mock('next/server', () => ({
   NextResponse: {
     json: vi.fn((data: unknown, init?: { status?: number }) => ({ _data: data, _status: init?.status ?? 200 })),
   },
+  after: (fn: () => unknown) => { void fn(); },
 }));
 
 import { GET } from '@/app/api/cron/dealer-feed-sync/route';

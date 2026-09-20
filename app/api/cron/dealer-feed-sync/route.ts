@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { notifyAdmin } from '@/lib/notifyAdmin';
 import { createLogger } from '@/lib/logger';
@@ -669,7 +669,7 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
       else {
         result.markedSold++;
         void notifyWatchersCarSold(admin, l.id, l.title, dealer.id);
-        void deleteListingVideos(admin, l.id, l);
+        after(() => deleteListingVideos(admin, l.id, l));
       }
     }
   }

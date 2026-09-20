@@ -37,6 +37,11 @@ export async function deleteListingVideos(admin: ReturnType<typeof createAdminCl
   }
 
   if (Object.keys(update).length > 0) {
-    void admin.from('listings').update(update).eq('id', listingId);
+    // Awaited so the ID-clearing write can't be dropped after the delete already succeeded.
+    try {
+      await admin.from('listings').update(update).eq('id', listingId);
+    } catch {
+      // never throws, per the contract above
+    }
   }
 }
