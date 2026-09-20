@@ -41,9 +41,12 @@ export async function POST(request: NextRequest) {
 
   // Resolve emails for each user via auth.users (admin only)
   // Filter out users who have opted out of digest emails
-  const { data: { users } } = await admin.auth.admin.listUsers();
-  const subscriberUsers = (users ?? [])
-    .filter((u: any) => uniqueUserIds.includes(u.id) && u.email && !u.user_metadata?.digest_opt_out)
+  // Looked up by id: listUsers() with no paging returns only the first 50 accounts.
+  const found = await Promise.all(
+    uniqueUserIds.map(id => admin.auth.admin.getUserById(id as string).then(r => r.data?.user ?? null, () => null)),
+  );
+  const subscriberUsers = found
+    .filter((u: any) => u && u.email && !u.user_metadata?.digest_opt_out)
     .map((u: any) => ({ id: u.id as string, email: u.email as string }));
 
   if (subscriberUsers.length === 0) {

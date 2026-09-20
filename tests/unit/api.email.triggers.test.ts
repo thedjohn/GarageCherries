@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
-const { mockFrom, mockGetUserById, mockListUsers, mockSend, mockGetSiteSettings } = vi.hoisted(() => ({
+const { mockFrom, mockGetUserById, mockSend, mockGetSiteSettings } = vi.hoisted(() => ({
   mockFrom:        vi.fn(),
   mockGetUserById: vi.fn(),
-  mockListUsers:   vi.fn(),
   mockSend:        vi.fn().mockResolvedValue({ id: 'email-1' }),
   mockGetSiteSettings: vi.fn(),
 }));
@@ -12,7 +11,7 @@ const { mockFrom, mockGetUserById, mockListUsers, mockSend, mockGetSiteSettings 
 vi.mock('@/lib/supabase/server', () => ({
   createAdminClient: vi.fn(() => ({
     from: mockFrom,
-    auth: { admin: { getUserById: mockGetUserById, listUsers: mockListUsers } },
+    auth: { admin: { getUserById: mockGetUserById } },
   })),
 }));
 vi.mock('resend', () => ({ Resend: vi.fn(function (this: any) { return { emails: { send: mockSend } }; }) }));
@@ -26,6 +25,10 @@ vi.mock('next/server', () => ({
     json: vi.fn((data: unknown, init?: { status?: number }) => ({ _data: data, _status: init?.status ?? 200 })),
   },
 }));
+
+function mockUsers(users: { id: string; email?: string; user_metadata?: Record<string, unknown> }[]) {
+  mockGetUserById.mockImplementation((id: string) => Promise.resolve({ data: { user: users.find(u => u.id === id) ?? null } }));
+}
 
 import { POST as dealerReportPost } from '@/app/api/email/dealer-report/route';
 import { POST as digestPost } from '@/app/api/email/digest/route';
@@ -137,7 +140,7 @@ describe('POST /api/email/digest', () => {
       if (table === 'watchlists') return { select: vi.fn().mockReturnValue({ not: vi.fn().mockResolvedValue({ data: [{ user_id: 'u1' }] }) }) };
       return {};
     });
-    mockListUsers.mockResolvedValue({ data: { users: [{ id: 'u1', email: 'u1@x.com', user_metadata: { digest_opt_out: true } }] } });
+    mockUsers([{ id: 'u1', email: 'u1@x.com', user_metadata: { digest_opt_out: true } }]);
     const res: any = await digestPost(makeRequest(AUTH));
     expect(res._status).toBe(200);
     expect(res._data.message).toBe('No subscribers found');
@@ -149,15 +152,27 @@ describe('POST /api/email/digest', () => {
       if (table === 'watchlists') return { select: vi.fn().mockReturnValue({ not: vi.fn().mockResolvedValue({ data: [{ user_id: 'u1' }, { user_id: 'u2' }] }) }) };
       return {};
     });
-    mockListUsers.mockResolvedValue({ data: { users: [
+    mockUsers([
       { id: 'u1', email: 'u1@x.com', user_metadata: {} },
       { id: 'u2', email: 'u2@x.com', user_metadata: {} },
-    ] } });
+    ]);
     mockSend.mockRejectedValueOnce(new Error('resend down'));
     const res: any = await digestPost(makeRequest(AUTH));
     expect(res._status).toBe(200);
     expect(res._data.sent).toBe(1);
     expect(res._data.total).toBe(2);
+  });
+
+  it('emails every watcher by id, including ones beyond the first page of accounts', async () => {
+    const ids = Array.from({ length: 60 }, (_, i) => `u${i}`);
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'listings') return { select: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue({ data: [{ id: 'c1', title: 'Car', make: 'Dodge', model: 'Charger', slug: 'x', price: 1000, condition: 'Good', location: 'STL', state: 'MO' }] }) }) }) }) }) };
+      if (table === 'watchlists') return { select: vi.fn().mockReturnValue({ not: vi.fn().mockResolvedValue({ data: ids.map(id => ({ user_id: id })) }) }) };
+      return {};
+    });
+    mockUsers(ids.map(id => ({ id, email: `${id}@x.com`, user_metadata: {} })));
+    const res: any = await digestPost(makeRequest(AUTH));
+    expect(res._data.sent).toBe(60);
   });
 });
 
@@ -265,11 +280,24 @@ describe('POST /api/email/price-drops', () => {
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [{ id: 'c1', title: 'Nice Car', price: 9000, make: 'Dodge', model: 'Charger', slug: 'x' }] }) }) };
       return {};
     });
-    mockListUsers.mockResolvedValue({ data: { users: [{ id: 'u1', email: 'u1@x.com' }] } });
+    mockUsers([{ id: 'u1', email: 'u1@x.com' }]);
     const res: any = await priceDropsPost(makeRequest(AUTH));
     expect(res._status).toBe(200);
     expect(res._data.sent).toBe(1);
     expect(mockSend.mock.calls[0][0].to).toBe('u1@x.com');
+  });
+
+  it('emails every watcher by id, including ones beyond the first page of accounts', async () => {
+    const ids = Array.from({ length: 60 }, (_, i) => `u${i}`);
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'price_history') return { select: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ order: vi.fn().mockResolvedValue({ data: [{ car_id: 'c1', price: 9000, changed_at: '2026-01-01' }] }) }) }) };
+      if (table === 'watchlists') return { select: vi.fn().mockReturnValue({ in: vi.fn().mockReturnValue({ not: vi.fn().mockResolvedValue({ data: ids.map(id => ({ user_id: id, car_id: 'c1' })) }) }) }) };
+      if (table === 'listings') return { select: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [{ id: 'c1', title: 'Nice Car', price: 9000, make: 'Dodge', model: 'Charger', slug: 'x' }] }) }) };
+      return {};
+    });
+    mockUsers(ids.map(id => ({ id, email: `${id}@x.com` })));
+    const res: any = await priceDropsPost(makeRequest(AUTH));
+    expect(res._data.sent).toBe(60);
   });
 
   it('continues past a send failure (logged via console.error)', async () => {
@@ -279,7 +307,7 @@ describe('POST /api/email/price-drops', () => {
       if (table === 'listings') return { select: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: [{ id: 'c1', title: 'Nice Car', price: 9000, make: 'Dodge', model: 'Charger', slug: 'x' }] }) }) };
       return {};
     });
-    mockListUsers.mockResolvedValue({ data: { users: [{ id: 'u1', email: 'u1@x.com' }] } });
+    mockUsers([{ id: 'u1', email: 'u1@x.com' }]);
     mockSend.mockRejectedValueOnce(new Error('resend down'));
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const res: any = await priceDropsPost(makeRequest(AUTH));

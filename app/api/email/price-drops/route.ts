@@ -46,9 +46,12 @@ export async function POST(request: NextRequest) {
 
   // Get user emails
   const userIds = [...new Set(watchlists.map((w: any) => w.user_id))];
-  const { data: { users } } = await admin.auth.admin.listUsers();
+  // Looked up by id: listUsers() with no paging returns only the first 50 accounts.
+  const found = await Promise.all(
+    userIds.map(id => admin.auth.admin.getUserById(id as string).then(r => r.data?.user ?? null, () => null)),
+  );
   const userEmailMap = Object.fromEntries(
-    (users ?? []).filter((u: any) => userIds.includes(u.id) && u.email).map((u: any) => [u.id, u.email])
+    found.filter((u: any) => u && u.email).map((u: any) => [u.id, u.email])
   );
 
   // Group watchlists by user
