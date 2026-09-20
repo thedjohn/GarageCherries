@@ -668,7 +668,7 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
       if (error) result.errors.push(`Mark-sold failed for listing ${l.id}: ${error.message}`);
       else {
         result.markedSold++;
-        void notifyWatchersCarSold(admin, l.id, l.title, dealer.id);
+        after(() => notifyWatchersCarSold(admin, l.id, l.title, dealer.id));
         after(() => deleteListingVideos(admin, l.id, l));
       }
     }

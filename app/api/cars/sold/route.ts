@@ -28,8 +28,10 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Notify watchlist users that this car has sold (fire-and-forget)
-  void notifyWatchersCarSold(admin, carId, car.title, car.seller_id);
+  // Notify watchlist users that this car has sold. Wrapped in after() for the
+  // same reason as the video cleanup below: keeps the function alive until the
+  // emails are sent instead of freezing it once the response goes out.
+  after(() => notifyWatchersCarSold(admin, carId, car.title, car.seller_id));
 
   // Clean up the sold car's social videos so they don't keep advertising it
   // as available. Wrapped in after() so the runtime keeps the function alive
