@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
-const { mockGetUser, mockFrom, mockCreateUser, mockGenerateLink, mockListUsers, mockGetUserById, mockSend } = vi.hoisted(() => ({
+const { mockGetUser, mockFrom, mockCreateUser, mockGenerateLink, mockFindUserByEmail, mockGetUserById, mockSend } = vi.hoisted(() => ({
   mockGetUser:      vi.fn(),
   mockFrom:         vi.fn(),
   mockCreateUser:   vi.fn(),
   mockGenerateLink: vi.fn(),
-  mockListUsers:    vi.fn(),
+  mockFindUserByEmail: vi.fn(),
   mockGetUserById:  vi.fn(),
   mockSend:         vi.fn().mockResolvedValue({ id: 'email-1' }),
 }));
@@ -18,12 +18,12 @@ vi.mock('@/lib/supabase/server', () => ({
     auth: { admin: {
       createUser: mockCreateUser,
       generateLink: mockGenerateLink,
-      listUsers: mockListUsers,
       getUserById: mockGetUserById,
     } },
   })),
 }));
 vi.mock('resend', () => ({ Resend: vi.fn(function (this: any) { return { emails: { send: mockSend } }; }) }));
+vi.mock('@/lib/findUserByEmail', () => ({ findUserByEmail: mockFindUserByEmail }));
 vi.mock('@/lib/emailBranding', () => ({ emailWrap: (body: string) => body }));
 vi.mock('next/server', () => ({
   NextResponse: {
@@ -204,7 +204,7 @@ describe('POST /api/dealer/team', () => {
       throw new Error(`Unexpected table: ${table}`);
     });
     mockCreateUser.mockResolvedValue({ data: null, error: { message: 'A user with this email already exists' } });
-    mockListUsers.mockResolvedValue({ data: { users: [{ id: 'existing-user-1', email: 'sales@bhcc.com' }] } });
+    mockFindUserByEmail.mockResolvedValue({ user: { id: 'existing-user-1', email: 'sales@bhcc.com' }, error: null });
 
     const res: any = await POST(makeRequest({ email: 'sales@bhcc.com' }));
     expect(res._status).toBe(200);
@@ -220,7 +220,7 @@ describe('POST /api/dealer/team', () => {
       throw new Error(`Unexpected table: ${table}`);
     });
     mockCreateUser.mockResolvedValue({ data: null, error: { message: 'something else broke' } });
-    mockListUsers.mockResolvedValue({ data: { users: [] } });
+    mockFindUserByEmail.mockResolvedValue({ user: null, error: null });
 
     const res: any = await POST(makeRequest({ email: 'sales@bhcc.com' }));
     expect(res._status).toBe(500);
@@ -232,7 +232,7 @@ describe('POST /api/dealer/team', () => {
       throw new Error(`Unexpected table: ${table}`);
     });
     mockCreateUser.mockResolvedValue({ data: null, error: { message: 'A user with this email already exists' } });
-    mockListUsers.mockResolvedValue({ data: { users: [{ id: 'dealer-1', email: 'owner@bhcc.com' }] } });
+    mockFindUserByEmail.mockResolvedValue({ user: { id: 'dealer-1', email: 'owner@bhcc.com' }, error: null });
 
     const res: any = await POST(makeRequest({ email: 'owner@bhcc.com' }));
     expect(res._status).toBe(400);

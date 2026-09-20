@@ -1,17 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
-const { mockGetUser, mockFrom, mockRequireAdmin, mockListUsers } = vi.hoisted(() => ({
+const { mockGetUser, mockFrom, mockRequireAdmin, mockFindUserByEmail } = vi.hoisted(() => ({
   mockGetUser:      vi.fn(),
   mockFrom:         vi.fn(),
   mockRequireAdmin: vi.fn(),
-  mockListUsers:    vi.fn(),
+  mockFindUserByEmail: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({ auth: { getUser: mockGetUser } })),
-  createAdminClient: vi.fn(() => ({ from: mockFrom, auth: { admin: { listUsers: mockListUsers } } })),
+  createAdminClient: vi.fn(() => ({ from: mockFrom })),
 }));
+vi.mock('@/lib/findUserByEmail', () => ({ findUserByEmail: mockFindUserByEmail }));
 vi.mock('@/lib/admin', () => ({ requireAdmin: mockRequireAdmin }));
 vi.mock('next/server', () => ({
   NextResponse: {
@@ -68,21 +69,21 @@ describe('POST /api/admin/team', () => {
 
   it('returns 500 when listing users fails', async () => {
     mockRequireAdmin.mockResolvedValue('superadmin');
-    mockListUsers.mockResolvedValue({ data: { users: [] }, error: { message: 'db down' } });
+    mockFindUserByEmail.mockResolvedValue({ user: null, error: 'db down' });
     const res: any = await POST(makeRequest({ email: 'x@x.com', role: 'moderator' }));
     expect(res._status).toBe(500);
   });
 
   it('returns 404 when no account exists for that email', async () => {
     mockRequireAdmin.mockResolvedValue('superadmin');
-    mockListUsers.mockResolvedValue({ data: { users: [] }, error: null });
+    mockFindUserByEmail.mockResolvedValue({ user: null, error: null });
     const res: any = await POST(makeRequest({ email: 'x@x.com', role: 'moderator' }));
     expect(res._status).toBe(404);
   });
 
   it('upserts the team member on success', async () => {
     mockRequireAdmin.mockResolvedValue('superadmin');
-    mockListUsers.mockResolvedValue({ data: { users: [{ id: 'target-1', email: 'x@x.com' }] }, error: null });
+    mockFindUserByEmail.mockResolvedValue({ user: { id: 'target-1', email: 'x@x.com' }, error: null });
     const upsert = vi.fn().mockResolvedValue({ error: null });
     mockFrom.mockReturnValue({ upsert });
     const res: any = await POST(makeRequest({ email: 'x@x.com', role: 'moderator' }));
@@ -92,7 +93,7 @@ describe('POST /api/admin/team', () => {
 
   it('returns 500 when the upsert fails', async () => {
     mockRequireAdmin.mockResolvedValue('superadmin');
-    mockListUsers.mockResolvedValue({ data: { users: [{ id: 'target-1', email: 'x@x.com' }] }, error: null });
+    mockFindUserByEmail.mockResolvedValue({ user: { id: 'target-1', email: 'x@x.com' }, error: null });
     mockFrom.mockReturnValue({ upsert: vi.fn().mockResolvedValue({ error: { message: 'db down' } }) });
     const res: any = await POST(makeRequest({ email: 'x@x.com', role: 'moderator' }));
     expect(res._status).toBe(500);

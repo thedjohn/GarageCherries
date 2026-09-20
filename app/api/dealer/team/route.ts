@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
 import { emailWrap } from '@/lib/emailBranding';
+import { findUserByEmail } from '@/lib/findUserByEmail';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -70,8 +71,7 @@ export async function POST(request: NextRequest) {
     // dealer, or already a team member elsewhere) -- Supabase Auth requires
     // unique emails, so a brand-new account can't be created for it. Falls
     // back to linking their existing account instead of hard-failing.
-    const { data: { users } } = await admin.auth.admin.listUsers();
-    const existing = users.find(u => u.email?.toLowerCase() === trimmedEmail);
+    const { user: existing } = await findUserByEmail(admin, trimmedEmail);
     if (!existing) return NextResponse.json({ error: createErr.message }, { status: 500 });
     memberUserId = existing.id;
     isNewAccount = false;

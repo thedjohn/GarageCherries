@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/admin';
+import { findUserByEmail } from '@/lib/findUserByEmail';
 
 async function authSuperadmin() {
   const supabase = await createClient();
@@ -38,10 +39,8 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient();
   // Look up the user by email in auth.users
-  const { data: { users }, error: listErr } = await admin.auth.admin.listUsers();
-  if (listErr) return NextResponse.json({ error: listErr.message }, { status: 500 });
-
-  const target = users.find(u => u.email === email);
+  const { user: target, error: listErr } = await findUserByEmail(admin, email);
+  if (listErr) return NextResponse.json({ error: listErr }, { status: 500 });
   if (!target) return NextResponse.json({ error: 'No account found with that email. They must sign up first.' }, { status: 404 });
 
   const { error } = await admin.from('admin_users').upsert({
