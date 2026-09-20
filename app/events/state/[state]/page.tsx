@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { unstable_cache } from 'next/cache';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/db';
@@ -9,14 +10,30 @@ import { CarShowEvent, EventCard } from '../../page';
 import SubmitEventForm from '../../SubmitEventForm';
 import EventFilters from '@/components/EventFilters';
 import Pagination from '@/components/Pagination';
+import { eventsCutoff, isCurrentEvent, applyCurrentEvents, applyPastEvents } from '@/lib/eventDates';
 
 export const revalidate = 0;
 const PAGE_SIZE = 20;
 const NEARBY_RADIUS_MILES = 50;
 
+// Every location row for a state, fetched on each load just to build the city
+// dropdown; the list barely changes, so it's remembered for 10 minutes. Pass a
+// cutoff to list only cities that still have an upcoming event.
+const getStateLocations = unstable_cache(
+  async (code: string, cutoff: string | null) => {
+    const admin = createAdminClient();
+    return fetchAllRows<{ location: string }>((from, to) => {
+      const q = admin.from('events').select('location').eq('status', 'approved').eq('state', code).order('location').range(from, to);
+      return cutoff ? applyCurrentEvents(q, cutoff) : q;
+    });
+  },
+  ['events-state-locations'],
+  { revalidate: 600 },
+);
+
 interface Props {
   params: Promise<{ state: string }>;
-  searchParams: Promise<{ page?: string; city?: string; zip?: string }>;
+  searchParams: Promise<{ page?: string; city?: string; zip?: string; past?: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -25,7 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!code) return {};
 
   const admin = createAdminClient();
-  const { count } = await admin.from('events').select('id', { count: 'exact', head: true }).eq('status', 'approved').eq('state', code);
+  const { count } = await applyCurrentEvents(admin.from('events').select('id', { count: 'exact', head: true }).eq('status', 'approved').eq('state', code), eventsCutoff());
   const stateName = STATE_NAMES[code];
   const year = new Date().getFullYear();
 
@@ -44,6 +61,8 @@ export default async function StateEventsPage({ params, searchParams }: Props) {
   const stateName = STATE_NAMES[code];
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
   const zipCoords = sp.zip ? resolveZipCoords(sp.zip) : null;
+  const cutoff = eventsCutoff();
+  const showPast = sp.past === '1';
 
   const admin = createAdminClient();
 
@@ -58,7 +77,7 @@ export default async function StateEventsPage({ params, searchParams }: Props) {
   // including respecting the ZIP radius below so a "Featured" event hundreds of
   // miles away doesn't undercut a "near me" search).
   let featuredQuery = admin.from('events').select('*').eq('status', 'approved').eq('state', code).eq('featured', true).order('date', { ascending: true });
-  featuredQuery = applyCity(featuredQuery);
+  featuredQuery = applyCurrentEvents(applyCity(featuredQuery), cutoff);
 
   let events: CarShowEvent[];
   let totalCount: number;
@@ -66,9 +85,7 @@ export default async function StateEventsPage({ params, searchParams }: Props) {
   let featured: CarShowEvent[];
   let cityOptions: string[];
 
-  const locationRowsPromise = fetchAllRows<{ location: string }>((from, to) =>
-    admin.from('events').select('location').eq('status', 'approved').eq('state', code).order('location').range(from, to)
-  );
+  const locationRowsPromise = getStateLocations(code, showPast ? null : cutoff);
 
   if (zipCoords) {
     // Same hybrid pattern as app/events/page.tsx: PostgREST can't sort by a
@@ -85,9 +102,9 @@ export default async function StateEventsPage({ params, searchParams }: Props) {
           .not('lat', 'is', null).not('lng', 'is', null)
           .gte('lat', box.minLat).lte('lat', box.maxLat).gte('lng', box.minLng).lte('lng', box.maxLng)
           .range(from, to);
-        return applyCity(q);
+        return showPast ? applyPastEvents(applyCity(q), cutoff) : applyCurrentEvents(applyCity(q), cutoff);
       }),
-      featuredQuery,
+      showPast ? Promise.resolve({ data: [] as CarShowEvent[] }) : featuredQuery,
       locationRowsPromise,
     ]);
     const withinRadius = nearbyRows
@@ -100,12 +117,12 @@ export default async function StateEventsPage({ params, searchParams }: Props) {
     featured = (featuredData ?? []).filter(e => haversineMiles(zipCoords.lat, zipCoords.lng, e.lat!, e.lng!) <= NEARBY_RADIUS_MILES);
     cityOptions = [...new Set(locationRows.map(r => r.location.split(',')[0].trim()))].sort();
   } else {
-    let mainQuery = admin.from('events').select('*', { count: 'exact' }).eq('status', 'approved').eq('state', code).eq('featured', false).order('date', { ascending: true });
-    mainQuery = applyCity(mainQuery);
+    let mainQuery = admin.from('events').select('*', { count: 'exact' }).eq('status', 'approved').eq('state', code).eq('featured', false).order('date', { ascending: !showPast });
+    mainQuery = showPast ? applyPastEvents(applyCity(mainQuery), cutoff) : applyCurrentEvents(applyCity(mainQuery), cutoff);
     mainQuery = mainQuery.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
     const [{ data: featuredData }, { data, count }, locationRows] = await Promise.all([
-      featuredQuery,
+      showPast ? Promise.resolve({ data: [] as CarShowEvent[] }) : featuredQuery,
       mainQuery,
       locationRowsPromise,
     ]);
@@ -116,9 +133,13 @@ export default async function StateEventsPage({ params, searchParams }: Props) {
     cityOptions = [...new Set(locationRows.map(r => r.location.split(',')[0].trim()))].sort();
   }
 
-  const now = new Date().toISOString().slice(0, 10);
-  const upcoming = events.filter(e => e.date >= now);
-  const past = events.filter(e => e.date < now);
+  const upcoming = events.filter(e => isCurrentEvent(e, cutoff));
+  const past = events.filter(e => !isCurrentEvent(e, cutoff));
+  // Keeps the user's other filters when flipping between upcoming and past.
+  const toggleParams = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) if (v && k !== 'page' && k !== 'past') toggleParams.set(k, v);
+  if (!showPast) toggleParams.set('past', '1');
+  const toggleHref = `/events/state/${stateSlugParam}${toggleParams.toString() ? '?' + toggleParams.toString() : ''}`;
 
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
@@ -198,6 +219,12 @@ export default async function StateEventsPage({ params, searchParams }: Props) {
         )}
 
         <Pagination currentPage={page} totalPages={totalPages} basePath={`/events/state/${stateSlugParam}`} searchParams={sp} />
+
+        <p className="mb-10 text-center text-sm">
+          <Link href={toggleHref} className="font-semibold text-red-600 hover:underline">
+            {showPast ? '← Back to upcoming events' : 'Show past events →'}
+          </Link>
+        </p>
 
         <SubmitEventForm />
 
