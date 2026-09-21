@@ -1,6 +1,72 @@
 # GarageCherries — Implementation Status
 *Last updated: 2026-09-20 — Sentry error backlog triage complete and shipped (`7c59d3b`), plus follow-ups (`d7b138d` manual sync clears the staleness alert, `b29833f` video cleanup wrapped in `after()`, `bbfa4ff` watcher email wrapped in `after()`, `da4825f` + `1ca818d` watcher/digest/price-drop emails no longer stop at the first 50 accounts). Sold-car video cleanup finished except Instagram (manual only). Garage Kept and Beverly Hills Car Club overnight feed syncs are blocked by a 403 from All Auto Network's host; both dealers have been asked to have it lifted. Open items are listed at the bottom of this section block, under "Still open".*
 
+## 🔶 PICK UP HERE — handoff written 2026-09-21 (Derek is continuing from a different Claude account)
+
+**State of the repo:** everything through commit `03b94d3` is committed, pushed, and deployed (Vercel: Production, "Ready"). Working tree was clean apart from this doc edit. Nothing risky is half-done; the one open thread below is analysis + a proposal, no code or data changed yet.
+
+**How Derek wants to work (from his CLAUDE.md and this session):** one step at a time, stop between steps; explain what will change and ask before touching >3 files; never commit/push without an explicit ask each time; smallest possible diff, don't refactor unrelated code; **plain "layman" language** (he asks for it often); show real evidence (read files, cite file:line, check the live site) instead of guessing; run tsc + the full vitest suite before calling anything done; paste SQL/commands inline as fenced blocks with a direct URL. Scripts that modify production data or delete things get blocked by the auto-mode safety classifier, so for those give Derek the exact command to run himself in his terminal (that worked every time) or the SQL to run in the Supabase editor.
+
+### Where the code lives (all paths relative to the repo root `C:\Users\derek\source\GarageCherries_real`; Next.js 16 App Router + Supabase + Vercel)
+**Start any session in the repo root.** Commands: `npm run dev` (dev server; `.claude/launch.json` names it `garage-cherries`, port 3000), `npx tsc --noEmit`, `npx vitest run` (same as `npm test`). Tests are in `tests/unit/` (one file per route/lib, named like `api.cron.dealerFeedSync.test.ts`, `lib.eventDates.test.ts`). Migrations are in `supabase/migrations/` and are run **by hand** in the Supabase SQL editor. Cron schedules are in `vercel.json`. Other docs: `SPEC.md`, `UAT-CHECKLIST.md`.
+
+- **Events calendar (the open thread):**
+  - `app/events/page.tsx` — main `/events` page; also exports `EventCard`, `CarShowEvent`, `formatEventDate` used by the state page. Featured / upcoming / past sections, paging (20 per page), ZIP "near me", the 10-minute `unstable_cache` for state counts.
+  - `app/events/state/[state]/page.tsx` — `/events/state/missouri` etc.; the SEO landing pages Google indexes; same logic plus its own metadata and a cached city dropdown.
+  - `app/events/[slug]/page.tsx` — single event page (JSON-LD, map, related events, the "already taken place" banner).
+  - `lib/eventDates.ts` — the shared "is this event still current" rule (`eventsCutoff` = today in Pacific time, `isCurrentEvent`, `applyCurrentEvents`, `applyPastEvents`); tests in `tests/unit/lib.eventDates.test.ts`.
+  - `app/events/SubmitEventForm.tsx` + `app/api/events/submit/route.ts` — public "Submit an Event" (goes to `status = pending`); `app/api/admin/events/route.ts` — admin create/approve (also posts to Facebook and IndexNow); Admin → Events tab is in `app/admin/page.tsx`.
+  - `app/sitemap.ts` — sitemap (includes every approved event, past and upcoming); `lib/geo.ts` (ZIP/city coordinates, distance), `lib/usStates.ts` (state names/slugs), `components/EventFilters.tsx`, `components/Pagination.tsx`.
+  - Table: `events` (schema in `supabase/migrations/20260707_events_table.sql`; `date`/`end_date` are Postgres `date`).
+- **Dealer feed sync:** `app/api/cron/dealer-feed-sync/route.ts` (hourly cron; per-dealer column maps in `FEED_FORMATS`), `app/api/dealer/feed-sync/route.ts` (dealer's manual "Save/Sync now"), `app/api/cron/dealer-feed-staleness/route.ts` (daily "feed has stopped updating" emails). Dealer dashboard UI: `app/dealer/dashboard/page.tsx`.
+- **Sold-car cleanup and notifications:** `lib/deleteListingVideos.ts`, `lib/youtube/postShort.ts`, `lib/facebook/postToPage.ts`, `lib/notifyCarSold.ts`, `app/api/cars/sold/route.ts`; Facebook posting queue `app/api/cron/facebook-post-queue/route.ts`; video backfill `app/api/admin/backfill-video-reels/route.ts`.
+- **Emails and accounts:** `app/api/email/digest/route.ts`, `app/api/email/price-drops/route.ts`, `lib/findUserByEmail.ts` (used by `app/api/dealer/team/route.ts` and `app/api/admin/team/route.ts`); database function `find_user_id_by_email` from `supabase/migrations/20260920_find_user_id_by_email.sql`.
+- **Shared plumbing:** `lib/supabase/server.ts` (`createAdminClient` = service-role client), `lib/logger.ts` (Axiom + Sentry; every `log.error` reports to Sentry), `lib/types.ts` (canonical `MAKES` list used by search, the sell form, sitemap, and feed validation).
+
+### Open thread 1 (next up): event end dates are wrong for ~2,000 imported events, so ended events linger a day and "upcoming" shows odd date badges
+
+**Evidence gathered 2026-09-21 (all read-only):**
+- 2,300 approved events have an `end_date`; **all 2,300 are imports (no `submitted_by`)**, 2,290 of them with no `start_time`/`end_time`. 2,072 have an end date exactly 1 day after the start. Weekday pattern of those 2-day events: Sat→Sun 528, Fri→Sat 391, Thu→Fri 303, **Tue→Wed 289**, Wed→Thu 259, Mon→Tue 152, Sun→Mon 150. That spread matches single-day cruise-ins/shows, not real 2-day shows, so the import most likely stored an *exclusive* end date (the calendar-feed convention where an all-day event's end is the next day). Hypothesis, not proven. The 5 two-day events that do have times (e.g. Del Rods at Dover Speedway Aug 20–21) look genuinely 2-day.
+- Effect: with the Pacific-time cutoff (see "Events calendar" section below) those events still show for one extra day, and would fill a "happening now" list wrongly. On 2026-09-21 only 20 events had started-but-not-ended; 11 were Sunday 9/20 cruise-ins with end date 9/21.
+- "Caffeine and Chrome – Gateway Classic Cars of Houston" and "Proauto 15 Year Anniversary Open House & Car Show" both have `2026-08-29 → 2026-09-26` (29 days). Web search confirmed Caffeine and Chrome is a **monthly** event, last Saturday 9 AM–noon (so Aug 29 was one show and Sep 26 is the next one); Proauto couldn't be verified but has identical dates, so likely the same artifact. No events have source `url`s stored, so individual events can't be re-verified from the DB.
+- There is **no importer in the repo**; events were imported by something outside it. **Open question for Derek: where do events get imported from?** A future import from the same source will repeat the mistake.
+
+**Proposed fix (not yet approved or run) — two parts, do in this order:**
+1. **Data correction** (touches ~2,290 rows, needs Derek's OK, do a backup + preview first). `end_date` is a Postgres `date`, `submitted_by`/`start_time`/`end_time` exist. Suggested SQL for the Supabase editor (https://supabase.com/dashboard/project/comiuxnpvngcrvtgzpae/sql/new), backup first:
+   ```sql
+   create table events_end_date_backup_20260921 as
+     select id, date, end_date from events
+     where end_date is not null and submitted_by is null and start_time is null and end_time is null;
+
+   -- preview: how many become single-day vs stay multi-day
+   select count(*) filter (where end_date - 1 <= date) as become_single_day,
+          count(*) filter (where end_date - 1 >  date) as stay_multi_day
+   from events_end_date_backup_20260921;
+
+   update events e
+   set end_date = case when e.end_date - 1 <= e.date then null else e.end_date - 1 end
+   from events_end_date_backup_20260921 b
+   where e.id = b.id;
+   ```
+   Undo = `update events e set end_date = b.end_date from events_end_date_backup_20260921 b where e.id = b.id;`. Also set the two 29-day events to single-day (Aug 29 only) by name. Derek's call whether to include Proauto (unverified).
+2. **"Happening Now" section** (small code change, needs approval, ~4 files: `app/events/page.tsx` (`EventCard` is exported from here and reused), `app/events/state/[state]/page.tsx`, `lib/eventDates.ts`, tests): show started-but-not-ended events (`date < today Pacific AND end_date >= today`) as a fixed section on **page 1 only** (like the Featured section, not part of pagination, respecting state/type/ZIP filters), keep "Upcoming Events" to `date >= today` only, and have happening-now cards show "Through {end date}" instead of a start-date badge. Sitemap, event pages, and indexing are unaffected. After part 1 this section would hold only real multi-day events.
+
+### Waiting on other people (nothing for the next session to do until they reply)
+- **Drew Schneider (Historical Motors):** asked 2026-09-20 for the street number (6121 per his application vs 6126 per his website; the map pin uses it) and the year founded (page shows "Est." with no year). Then update the `dealers` row (slug `historical-motors`, id `5110df52-ced3-48e8-99aa-7b9e8d426fb6`). Specialty tag is still the lowercase "foreign and american classic".
+- **Joe Harwick (Beverly Hills Car Club):** waiting on the Salesforce ADF email address; then build ADF lead delivery (not built) and send a test lead before enabling. BHCC's overnight feed sync started succeeding again 2026-09-21 08:00 UTC.
+- **All Auto Network / Jeremy Brunan (Garage Kept Motors):** Garage Kept's overnight feed sync still gets a 403 (last success 2026-09-16); Jeremy was emailed twice (Sat and Mon). His manual Save in the dashboard works and clears the warning email. If still failing in a couple of days, ask him again or rerun the catch-up.
+
+### Small optional items
+- 111 Instagram posts on sold cars need manual removal in the Instagram app (API can't delete posts); leave or ignore.
+- Biggest remaining SEO idea: city landing pages ("Car shows in Jefferson City, MO"); not scoped yet.
+- Possible follow-up: a "this event has passed"/series handling for recurring events imported as one long range.
+
+### Handy facts for a fresh session
+- Repo `C:\Users\derek\source\GarageCherries_real`; prod https://www.garagecherries.com; Vercel team/project `garage-cherries/garage-cherries`; Supabase project ref `comiuxnpvngcrvtgzpae`; Sentry https://garage-cherries.sentry.io (project 4511691656134656). GitHub `thedjohn/GarageCherries`, branch `main` (pushes show a harmless "required status check bypassed" notice).
+- Read-only prod queries work with the service role key in `.env.local` via the Supabase REST API (no supabase-js needed). The local `CRON_SECRET` does **not** match production's, so cron routes can't be called by hand.
+- Throwaway helper scripts (BHCC catch-up sync `scratch-bhcc-sync.js` with a `--restore` mode, `bhcc-original-settings.json`) live in the previous session's scratchpad under `C:\Users\derek\AppData\Local\Temp\claude\...\scratchpad\`; they are not in the repo and can be recreated from the "Feed staleness alert fixed 2026-09-19; feed 403 block…" section below.
+- The event "Cruise In Classic Car Show" (Oct 24 2026, Jefferson City MO, flyer attached) was inserted directly into `events`; direct inserts skip the admin form's Facebook post and IndexNow ping.
+
 ## ✅ Sentry backlog triage — shipped 2026-09-18 (commit `7c59d3b`)
 
 **Workflow used: one issue at a time, explain the root cause and proposed fix, wait for Derek's go-ahead, implement, verify, then stop before moving to the next issue.**
