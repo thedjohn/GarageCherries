@@ -8,7 +8,7 @@ import Pagination from '@/components/Pagination';
 import { stateSlug, STATE_NAMES } from '@/lib/usStates';
 import { resolveZipCoords, boundingBox, haversineMiles } from '@/lib/geo';
 import { fetchAllRows } from '@/lib/db';
-import { eventsCutoff, isCurrentEvent, applyCurrentEvents, applyPastEvents } from '@/lib/eventDates';
+import { eventsCutoff, isCurrentEvent, applyCurrentEvents, applyUpcomingEvents, applyHappeningNow, applyPastEvents } from '@/lib/eventDates';
 
 export const revalidate = 0;
 const PAGE_SIZE = 20;
@@ -115,6 +115,14 @@ export default async function EventsPage({ searchParams }: Props) {
   let featuredQuery = admin.from('events').select('*').eq('status', 'approved').eq('featured', true).order('date', { ascending: true });
   featuredQuery = applyCurrentEvents(applyFilters(featuredQuery), cutoff);
 
+  // "Happening Now" (started but not ended) is a small, fixed section like
+  // Featured -- shown on page 1 only, not subject to pagination, so a
+  // multi-day event doesn't get buried on a later page or show a stale
+  // start-date badge in the paginated Upcoming Events list.
+  const showHappeningNow = page === 1 && !showPast;
+  let happeningNowQuery = admin.from('events').select('*').eq('status', 'approved').eq('featured', false).order('end_date', { ascending: true });
+  happeningNowQuery = applyHappeningNow(applyFilters(happeningNowQuery), cutoff);
+
   let events: CarShowEvent[];
   let totalCount: number;
   let totalPages: number;
@@ -128,12 +136,15 @@ export default async function EventsPage({ searchParams }: Props) {
     featuredQuery = featuredQuery
       .not('lat', 'is', null).not('lng', 'is', null)
       .gte('lat', box.minLat).lte('lat', box.maxLat).gte('lng', box.minLng).lte('lng', box.maxLng);
+    happeningNowQuery = happeningNowQuery
+      .not('lat', 'is', null).not('lng', 'is', null)
+      .gte('lat', box.minLat).lte('lat', box.maxLat).gte('lng', box.minLng).lte('lng', box.maxLng);
     const nearbyRows = await fetchAllRows<CarShowEvent>((from, to) => {
       let q = admin.from('events').select('*').eq('status', 'approved').eq('featured', false)
         .not('lat', 'is', null).not('lng', 'is', null)
         .gte('lat', box.minLat).lte('lat', box.maxLat).gte('lng', box.minLng).lte('lng', box.maxLng)
         .range(from, to);
-      return showPast ? applyPastEvents(applyFilters(q), cutoff) : applyCurrentEvents(applyFilters(q), cutoff);
+      return showPast ? applyPastEvents(applyFilters(q), cutoff) : applyUpcomingEvents(applyFilters(q), cutoff);
     });
     const withinRadius = nearbyRows
       .map(e => ({ event: e, miles: haversineMiles(zipCoords.lat, zipCoords.lng, e.lat!, e.lng!) }))
@@ -144,7 +155,7 @@ export default async function EventsPage({ searchParams }: Props) {
     events = withinRadius.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(r => r.event);
   } else {
     let mainQuery = admin.from('events').select('*', { count: 'exact' }).eq('status', 'approved').eq('featured', false).order('date', { ascending: !showPast });
-    mainQuery = showPast ? applyPastEvents(applyFilters(mainQuery), cutoff) : applyCurrentEvents(applyFilters(mainQuery), cutoff);
+    mainQuery = showPast ? applyPastEvents(applyFilters(mainQuery), cutoff) : applyUpcomingEvents(applyFilters(mainQuery), cutoff);
     mainQuery = mainQuery.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
     const { data, count } = await mainQuery;
     events = data ?? [];
@@ -153,6 +164,7 @@ export default async function EventsPage({ searchParams }: Props) {
   }
 
   const { data: featuredData } = showPast ? { data: [] as CarShowEvent[] } : await featuredQuery;
+  const { data: happeningNowData } = showHappeningNow ? await happeningNowQuery : { data: [] as CarShowEvent[] };
   // Upcoming-events count for the header line below -- respects the same
   // state/type/city filters as the list itself (not the ZIP radius, which
   // already has its own "within 50 miles of X" status line).
@@ -168,6 +180,9 @@ export default async function EventsPage({ searchParams }: Props) {
   const featured: CarShowEvent[] = zipCoords
     ? (featuredData ?? []).filter(e => haversineMiles(zipCoords.lat, zipCoords.lng, e.lat!, e.lng!) <= NEARBY_RADIUS_MILES)
     : (featuredData ?? []);
+  const happeningNow: CarShowEvent[] = zipCoords
+    ? (happeningNowData ?? []).filter(e => haversineMiles(zipCoords.lat, zipCoords.lng, e.lat!, e.lng!) <= NEARBY_RADIUS_MILES)
+    : (happeningNowData ?? []);
   const hasActiveFilters = !!(sp.state || sp.type || sp.city || sp.zip);
   const upcoming = events.filter(e => isCurrentEvent(e, cutoff));
   const past = events.filter(e => !isCurrentEvent(e, cutoff));
@@ -197,7 +212,7 @@ export default async function EventsPage({ searchParams }: Props) {
 
       <EventFilters />
 
-      {totalCount === 0 && featured.length === 0 && hasActiveFilters && (
+      {totalCount === 0 && featured.length === 0 && happeningNow.length === 0 && hasActiveFilters && (
         <div className="bg-white border border-zinc-100 rounded-2xl p-16 text-center shadow-sm">
           <p className="text-4xl mb-4">📅</p>
           <h2 className="text-xl font-bold text-zinc-800 mb-2">No events match your filters</h2>
@@ -206,7 +221,7 @@ export default async function EventsPage({ searchParams }: Props) {
         </div>
       )}
 
-      {totalCount === 0 && featured.length === 0 && !hasActiveFilters && (
+      {totalCount === 0 && featured.length === 0 && happeningNow.length === 0 && !hasActiveFilters && (
         <div className="bg-white border border-zinc-100 rounded-2xl p-16 text-center shadow-sm">
           <p className="text-4xl mb-4">📅</p>
           <h2 className="text-xl font-bold text-zinc-800 mb-2">No events listed yet</h2>
@@ -220,6 +235,17 @@ export default async function EventsPage({ searchParams }: Props) {
           <div className="grid gap-4 md:grid-cols-2">
             {featured.map(e => (
               <EventCard key={e.id} event={e} highlight />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {happeningNow.length > 0 && (
+        <div className="mb-10">
+          <h2 className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-4">Happening Now</h2>
+          <div className="space-y-3">
+            {happeningNow.map(e => (
+              <EventCard key={e.id} event={e} happeningNow />
             ))}
           </div>
         </div>
@@ -280,17 +306,26 @@ export default async function EventsPage({ searchParams }: Props) {
   );
 }
 
-export function EventCard({ event, highlight }: { event: CarShowEvent; highlight?: boolean }) {
+export function EventCard({ event, highlight, happeningNow }: { event: CarShowEvent; highlight?: boolean; happeningNow?: boolean }) {
   return (
     <div className={`bg-white border rounded-xl p-5 flex gap-4 items-start ${highlight ? 'border-red-200 shadow-sm' : 'border-zinc-100'}`}>
-      <div className="shrink-0 text-center bg-zinc-50 rounded-lg px-3 py-2 min-w-[56px]">
-        <p className="text-xs font-bold text-zinc-400 uppercase">
-          {new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short' })}
-        </p>
-        <p className="text-xl font-extrabold text-zinc-900 leading-none">
-          {new Date(event.date + 'T12:00:00').getDate()}
-        </p>
-      </div>
+      {happeningNow && event.end_date ? (
+        <div className="shrink-0 text-center bg-red-50 rounded-lg px-3 py-2 min-w-[56px]">
+          <p className="text-[9px] font-bold text-red-400 uppercase leading-tight">Through</p>
+          <p className="text-sm font-extrabold text-red-600 leading-none mt-0.5">
+            {new Date(event.end_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </p>
+        </div>
+      ) : (
+        <div className="shrink-0 text-center bg-zinc-50 rounded-lg px-3 py-2 min-w-[56px]">
+          <p className="text-xs font-bold text-zinc-400 uppercase">
+            {new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short' })}
+          </p>
+          <p className="text-xl font-extrabold text-zinc-900 leading-none">
+            {new Date(event.date + 'T12:00:00').getDate()}
+          </p>
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${TYPE_COLORS[event.type]}`}>

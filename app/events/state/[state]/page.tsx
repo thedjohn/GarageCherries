@@ -10,7 +10,7 @@ import { CarShowEvent, EventCard } from '../../page';
 import SubmitEventForm from '../../SubmitEventForm';
 import EventFilters from '@/components/EventFilters';
 import Pagination from '@/components/Pagination';
-import { eventsCutoff, isCurrentEvent, applyCurrentEvents, applyPastEvents } from '@/lib/eventDates';
+import { eventsCutoff, isCurrentEvent, applyCurrentEvents, applyUpcomingEvents, applyHappeningNow, applyPastEvents } from '@/lib/eventDates';
 
 export const revalidate = 0;
 const PAGE_SIZE = 20;
@@ -79,10 +79,18 @@ export default async function StateEventsPage({ params, searchParams }: Props) {
   let featuredQuery = admin.from('events').select('*').eq('status', 'approved').eq('state', code).eq('featured', true).order('date', { ascending: true });
   featuredQuery = applyCurrentEvents(applyCity(featuredQuery), cutoff);
 
+  // "Happening Now" (started but not ended) is a small, fixed section like
+  // Featured -- shown on page 1 only, not subject to pagination (see
+  // app/events/page.tsx for the same pattern).
+  const showHappeningNow = page === 1 && !showPast;
+  let happeningNowQuery = admin.from('events').select('*').eq('status', 'approved').eq('state', code).eq('featured', false).order('end_date', { ascending: true });
+  happeningNowQuery = applyHappeningNow(applyCity(happeningNowQuery), cutoff);
+
   let events: CarShowEvent[];
   let totalCount: number;
   let totalPages: number;
   let featured: CarShowEvent[];
+  let happeningNow: CarShowEvent[];
   let cityOptions: string[];
 
   const locationRowsPromise = getStateLocations(code, showPast ? null : cutoff);
@@ -96,15 +104,19 @@ export default async function StateEventsPage({ params, searchParams }: Props) {
     featuredQuery = featuredQuery
       .not('lat', 'is', null).not('lng', 'is', null)
       .gte('lat', box.minLat).lte('lat', box.maxLat).gte('lng', box.minLng).lte('lng', box.maxLng);
-    const [nearbyRows, { data: featuredData }, locationRows] = await Promise.all([
+    happeningNowQuery = happeningNowQuery
+      .not('lat', 'is', null).not('lng', 'is', null)
+      .gte('lat', box.minLat).lte('lat', box.maxLat).gte('lng', box.minLng).lte('lng', box.maxLng);
+    const [nearbyRows, { data: featuredData }, { data: happeningNowData }, locationRows] = await Promise.all([
       fetchAllRows<CarShowEvent>((from, to) => {
         let q = admin.from('events').select('*').eq('status', 'approved').eq('state', code).eq('featured', false)
           .not('lat', 'is', null).not('lng', 'is', null)
           .gte('lat', box.minLat).lte('lat', box.maxLat).gte('lng', box.minLng).lte('lng', box.maxLng)
           .range(from, to);
-        return showPast ? applyPastEvents(applyCity(q), cutoff) : applyCurrentEvents(applyCity(q), cutoff);
+        return showPast ? applyPastEvents(applyCity(q), cutoff) : applyUpcomingEvents(applyCity(q), cutoff);
       }),
       showPast ? Promise.resolve({ data: [] as CarShowEvent[] }) : featuredQuery,
+      showHappeningNow ? happeningNowQuery : Promise.resolve({ data: [] as CarShowEvent[] }),
       locationRowsPromise,
     ]);
     const withinRadius = nearbyRows
@@ -115,14 +127,16 @@ export default async function StateEventsPage({ params, searchParams }: Props) {
     totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
     events = withinRadius.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(r => r.event);
     featured = (featuredData ?? []).filter(e => haversineMiles(zipCoords.lat, zipCoords.lng, e.lat!, e.lng!) <= NEARBY_RADIUS_MILES);
+    happeningNow = (happeningNowData ?? []).filter(e => haversineMiles(zipCoords.lat, zipCoords.lng, e.lat!, e.lng!) <= NEARBY_RADIUS_MILES);
     cityOptions = [...new Set(locationRows.map(r => r.location.split(',')[0].trim()))].sort();
   } else {
     let mainQuery = admin.from('events').select('*', { count: 'exact' }).eq('status', 'approved').eq('state', code).eq('featured', false).order('date', { ascending: !showPast });
-    mainQuery = showPast ? applyPastEvents(applyCity(mainQuery), cutoff) : applyCurrentEvents(applyCity(mainQuery), cutoff);
+    mainQuery = showPast ? applyPastEvents(applyCity(mainQuery), cutoff) : applyUpcomingEvents(applyCity(mainQuery), cutoff);
     mainQuery = mainQuery.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
-    const [{ data: featuredData }, { data, count }, locationRows] = await Promise.all([
+    const [{ data: featuredData }, { data: happeningNowData }, { data, count }, locationRows] = await Promise.all([
       showPast ? Promise.resolve({ data: [] as CarShowEvent[] }) : featuredQuery,
+      showHappeningNow ? happeningNowQuery : Promise.resolve({ data: [] as CarShowEvent[] }),
       mainQuery,
       locationRowsPromise,
     ]);
@@ -130,6 +144,7 @@ export default async function StateEventsPage({ params, searchParams }: Props) {
     totalCount = count ?? 0;
     totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
     featured = featuredData ?? [];
+    happeningNow = happeningNowData ?? [];
     cityOptions = [...new Set(locationRows.map(r => r.location.split(',')[0].trim()))].sort();
   }
 
@@ -176,7 +191,7 @@ export default async function StateEventsPage({ params, searchParams }: Props) {
 
         <EventFilters basePath={`/events/state/${stateSlugParam}`} hideStateSelect cityOptions={cityOptions} />
 
-        {totalCount === 0 && featured.length === 0 && (
+        {totalCount === 0 && featured.length === 0 && happeningNow.length === 0 && (
           <div className="bg-white border border-zinc-100 rounded-2xl p-16 text-center shadow-sm">
             <p className="text-4xl mb-4">📅</p>
             <h2 className="text-xl font-bold text-zinc-800 mb-2">
@@ -196,6 +211,15 @@ export default async function StateEventsPage({ params, searchParams }: Props) {
             <h2 className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-4">Featured Events</h2>
             <div className="grid gap-4 md:grid-cols-2">
               {featured.map(e => <EventCard key={e.id} event={e} highlight />)}
+            </div>
+          </div>
+        )}
+
+        {happeningNow.length > 0 && (
+          <div className="mb-10">
+            <h2 className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-4">Happening Now</h2>
+            <div className="space-y-3">
+              {happeningNow.map(e => <EventCard key={e.id} event={e} happeningNow />)}
             </div>
           </div>
         )}

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { eventsCutoff, isCurrentEvent, applyCurrentEvents, applyPastEvents } from '@/lib/eventDates';
+import { eventsCutoff, isCurrentEvent, isHappeningNow, applyCurrentEvents, applyUpcomingEvents, applyHappeningNow, applyPastEvents } from '@/lib/eventDates';
 
 describe('eventsCutoff (today in Pacific time)', () => {
   it('is today once the Pacific day has started', () => {
@@ -45,11 +45,44 @@ describe('isCurrentEvent', () => {
   });
 });
 
+describe('isHappeningNow', () => {
+  const cutoff = '2026-09-19';
+
+  it('is true for a multi-day event that started earlier but has not ended', () => {
+    expect(isHappeningNow({ date: '2026-09-17', end_date: '2026-09-20' }, cutoff)).toBe(true);
+  });
+
+  it('is false for an event that has not started yet', () => {
+    expect(isHappeningNow({ date: '2026-09-19', end_date: '2026-09-20' }, cutoff)).toBe(false);
+  });
+
+  it('is false for a single-day event with no end_date', () => {
+    expect(isHappeningNow({ date: '2026-09-17' }, cutoff)).toBe(false);
+  });
+
+  it('is false once the end_date has also passed', () => {
+    expect(isHappeningNow({ date: '2026-09-10', end_date: '2026-09-18' }, cutoff)).toBe(false);
+  });
+});
+
 describe('query helpers', () => {
   it('applyCurrentEvents keeps events starting or ending on/after the cutoff', () => {
     const q = { or: vi.fn().mockReturnThis() };
     applyCurrentEvents(q, '2026-09-19');
     expect(q.or).toHaveBeenCalledWith('date.gte.2026-09-19,end_date.gte.2026-09-19');
+  });
+
+  it('applyUpcomingEvents keeps only events that have not started yet', () => {
+    const q = { gte: vi.fn().mockReturnThis() };
+    applyUpcomingEvents(q, '2026-09-19');
+    expect(q.gte).toHaveBeenCalledWith('date', '2026-09-19');
+  });
+
+  it('applyHappeningNow keeps only events that started earlier but have not ended', () => {
+    const q = { lt: vi.fn().mockReturnThis(), gte: vi.fn().mockReturnThis() };
+    applyHappeningNow(q, '2026-09-19');
+    expect(q.lt).toHaveBeenCalledWith('date', '2026-09-19');
+    expect(q.gte).toHaveBeenCalledWith('end_date', '2026-09-19');
   });
 
   it('applyPastEvents keeps only events that started and ended before the cutoff', () => {
