@@ -35,6 +35,19 @@ async function navigateToPricedListing(page: Page): Promise<boolean> {
   return true;
 }
 
+// Like navigateToFirstListing, but filtered to a listing with a condition set
+// -- the condition badge only renders when car.condition is truthy (see
+// app/listings/[...segments]/page.tsx), so a plain "first listing" is flaky
+// whenever the newest listing happens to have no condition recorded.
+async function navigateToConditionedListing(page: Page): Promise<boolean> {
+  await page.goto('/listings?condition=Good');
+  const card = page.locator('a[href*="/listings/"]').first();
+  if (await card.count() === 0) return false;
+  await card.click();
+  await page.waitForLoadState('domcontentloaded');
+  return true;
+}
+
 // ── Browse → Filter → Results ─────────────────────────────────────────────────
 
 test.describe('Browse and filter', () => {
@@ -93,7 +106,7 @@ test.describe('Listing detail page — core content', () => {
   });
 
   test('shows condition badge', async ({ page }) => {
-    const found = await navigateToFirstListing(page);
+    const found = await navigateToConditionedListing(page);
     if (!found) { test.skip(); return; }
 
     // Scoped to visible `.rounded-full` condition badges with an exact match,

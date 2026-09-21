@@ -12,6 +12,8 @@ vi.mock('@/lib/siteSettings', () => ({ getSiteSettings: mockGetSiteSettings }));
 
 import { GET as expiringListingsGet } from '@/app/api/cron/expiring-listings/route';
 import { GET as promoExpiryGet } from '@/app/api/cron/promo-expiry/route';
+import { GET as digestGet } from '@/app/api/cron/digest/route';
+import { GET as priceDropsGet } from '@/app/api/cron/price-drops/route';
 
 function makeRequest(authHeader?: string) {
   return { headers: { get: (k: string) => (k === 'Authorization' ? authHeader ?? null : null) } } as unknown as NextRequest;
@@ -46,6 +48,40 @@ describe('GET /api/cron/expiring-listings', () => {
     expect(res._data).toEqual({ ok: true, sent: 3 });
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/email/expiring-listings'),
+      expect.objectContaining({ method: 'POST', headers: { Authorization: 'Bearer admin-secret' } }),
+    );
+  });
+});
+
+describe('GET /api/cron/digest', () => {
+  it('returns 401 without the correct CRON_SECRET', async () => {
+    const res: any = await digestGet(makeRequest('Bearer wrong'));
+    expect(res._status).toBe(401);
+  });
+
+  it('delegates to the email route and forwards its response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ json: async () => ({ ok: true, sent: 7 }) }));
+    const res: any = await digestGet(makeRequest('Bearer cron-secret'));
+    expect(res._data).toEqual({ ok: true, sent: 7 });
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/email/digest'),
+      expect.objectContaining({ method: 'POST', headers: { Authorization: 'Bearer admin-secret' } }),
+    );
+  });
+});
+
+describe('GET /api/cron/price-drops', () => {
+  it('returns 401 without the correct CRON_SECRET', async () => {
+    const res: any = await priceDropsGet(makeRequest('Bearer wrong'));
+    expect(res._status).toBe(401);
+  });
+
+  it('delegates to the email route and forwards its response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ json: async () => ({ ok: true, sent: 2 }) }));
+    const res: any = await priceDropsGet(makeRequest('Bearer cron-secret'));
+    expect(res._data).toEqual({ ok: true, sent: 2 });
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/email/price-drops'),
       expect.objectContaining({ method: 'POST', headers: { Authorization: 'Bearer admin-secret' } }),
     );
   });
