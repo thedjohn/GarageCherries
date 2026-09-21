@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
-const { mockFrom, mockTriggerListingVideo, mockLoggerInfo } = vi.hoisted(() => ({
+const { mockFrom, mockUpdate, mockUpdateEq, mockTriggerListingVideo, mockLoggerInfo } = vi.hoisted(() => ({
   mockFrom: vi.fn(),
+  mockUpdate: vi.fn(),
+  mockUpdateEq: vi.fn(),
   mockTriggerListingVideo: vi.fn(),
   mockLoggerInfo: vi.fn(),
 }));
@@ -20,9 +22,12 @@ vi.mock('next/server', () => ({
   },
 }));
 
-import { GET } from '@/app/api/admin/backfill-video-reels/route';
+import { GET, isBackfillDue } from '@/app/api/admin/backfill-video-reels/route';
 
-const LISTING = { id: 'l1', make: 'Ford', model: 'Mustang', year: 1970, price: 30000, images: ['https://example.com/1.jpg'] };
+const HOUR = 60 * 60 * 1000;
+const now = Date.now();
+
+const LISTING = { id: 'l1', make: 'Ford', model: 'Mustang', year: 1970, price: 30000, images: ['https://example.com/1.jpg'], video_backfill_last_attempted_at: null as string | null };
 
 function makeRequest(authHeader?: string) {
   return { headers: { get: (k: string) => (k === 'Authorization' ? authHeader ?? null : null) } } as unknown as NextRequest;
@@ -60,6 +65,7 @@ function makeSupabaseMock(tier1: typeof LISTING[], tier2: typeof LISTING[] = [])
           }),
         }),
       }),
+      update: mockUpdate.mockReturnValue({ eq: mockUpdateEq }),
     };
   });
 }
@@ -68,6 +74,21 @@ beforeEach(() => {
   vi.clearAllMocks();
   process.env.CRON_SECRET = 'cron-secret';
   mockTriggerListingVideo.mockResolvedValue(undefined);
+  mockUpdateEq.mockResolvedValue({ error: null });
+});
+
+describe('isBackfillDue', () => {
+  it('is due when never attempted before', () => {
+    expect(isBackfillDue({ video_backfill_last_attempted_at: null }, now)).toBe(true);
+  });
+
+  it('is not due when attempted recently (debounced)', () => {
+    expect(isBackfillDue({ video_backfill_last_attempted_at: new Date(now - 1 * HOUR).toISOString() }, now)).toBe(false);
+  });
+
+  it('is due again once the debounce window has passed', () => {
+    expect(isBackfillDue({ video_backfill_last_attempted_at: new Date(now - 25 * HOUR).toISOString() }, now)).toBe(true);
+  });
 });
 
 describe('GET /api/admin/backfill-video-reels', () => {
@@ -88,6 +109,27 @@ describe('GET /api/admin/backfill-video-reels', () => {
     expect(mockTriggerListingVideo).toHaveBeenCalledWith(LISTING);
     expect(mockTriggerListingVideo).toHaveBeenCalledWith(listing2);
     expect(res._data).toEqual({ ok: true, triggered: 2 });
+  });
+
+  it('skips a listing debounced recently, but still triggers one attempted long enough ago', async () => {
+    const debounced = { ...LISTING, id: 'l-debounced', video_backfill_last_attempted_at: new Date(now - 1 * HOUR).toISOString() };
+    const readyAgain = { ...LISTING, id: 'l-ready', video_backfill_last_attempted_at: new Date(now - 25 * HOUR).toISOString() };
+    makeSupabaseMock([debounced, readyAgain]);
+
+    const res: any = await GET(makeRequest('Bearer cron-secret'));
+
+    expect(mockTriggerListingVideo).toHaveBeenCalledTimes(1);
+    expect(mockTriggerListingVideo).toHaveBeenCalledWith(readyAgain);
+    expect(res._data).toEqual({ ok: true, triggered: 1 });
+  });
+
+  it('stamps video_backfill_last_attempted_at for each triggered listing', async () => {
+    makeSupabaseMock([LISTING]);
+
+    await GET(makeRequest('Bearer cron-secret'));
+
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ video_backfill_last_attempted_at: expect.any(String) }));
+    expect(mockUpdateEq).toHaveBeenCalledWith('id', LISTING.id);
   });
 
   it('is a no-op when nothing is pending in either tier', async () => {
@@ -159,6 +201,7 @@ describe('GET /api/admin/backfill-video-reels', () => {
             }),
           }),
         }),
+        update: mockUpdate.mockReturnValue({ eq: mockUpdateEq }),
       };
     });
 

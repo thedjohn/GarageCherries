@@ -10,6 +10,27 @@ const log = createLogger('admin/backfill-video-reels');
 // under that ceiling so a single run -- or the hourly workflow -- never
 // floods the VPS or gets silently dropped.
 const MAX_BATCH = 15;
+// Fetched per tier instead of MAX_BATCH directly -- debounced-out candidates
+// (see isBackfillDue below) still need to leave enough live candidates to
+// fill a full batch.
+const POOL_SIZE = MAX_BATCH * 6;
+// This runs hourly; without a debounce, a listing stuck on one platform
+// (e.g. YouTube hitting its daily upload quota -- a known, already-tracked
+// condition, see postListingReelToYouTube) matched the tier-1 query every
+// single run forever, each time triggering a full VPS re-render and
+// re-upload just to retry the one still-missing platform. Discovered via a
+// Supabase Cached Egress quota overage traced back to the same listing
+// videos being rebuilt and deleted 8-12+ times within 5 days.
+const DEBOUNCE_HOURS = 24;
+
+// Exported for testing. video_backfill_last_attempted_at is an
+// unconditional "we tried" stamp (not a success flag), same pattern as
+// video_refresh_last_attempted_at in video-price-refresh/route.ts.
+export function isBackfillDue(listing: { video_backfill_last_attempted_at: string | null }, now: number): boolean {
+  if (!listing.video_backfill_last_attempted_at) return true;
+  const debounceCutoff = now - DEBOUNCE_HOURS * 60 * 60 * 1000;
+  return new Date(listing.video_backfill_last_attempted_at).getTime() < debounceCutoff;
+}
 
 // GET /api/admin/backfill-video-reels — one-off, manually-triggered endpoint
 // (not on a schedule) for listings that are missing a video on at least one
@@ -38,7 +59,7 @@ export async function GET(request: NextRequest) {
   const baseQuery = () =>
     admin
       .from('listings')
-      .select('id, make, model, year, price, images')
+      .select('id, make, model, year, price, images, video_backfill_last_attempted_at')
       .eq('status', 'approved')
       .eq('is_sold', false)
       .not('fb_posted_at', 'is', null);
@@ -59,15 +80,17 @@ export async function GET(request: NextRequest) {
   // skipping this run. The hourly workflow retries naturally next cycle,
   // so failing loudly-but-gracefully here is enough; no need to retry
   // inline.
-  let needsCore: { id: string; make: string; model: string; year: number; price: number; images: string[] | null }[] | null;
+  const now = Date.now();
+  let needsCore: { id: string; make: string; model: string; year: number; price: number; images: string[] | null; video_backfill_last_attempted_at: string | null }[] | null;
   let tiktokOnly: typeof needsCore = [];
   try {
     ({ data: needsCore } = await baseQuery()
       .or('reel_posted_at.is.null,instagram_posted_at.is.null,youtube_posted_at.is.null')
       .order('created_at', { ascending: true })
-      .limit(MAX_BATCH));
+      .limit(POOL_SIZE));
+    needsCore = (needsCore ?? []).filter(l => isBackfillDue(l, now)).slice(0, MAX_BATCH);
 
-    const remaining = MAX_BATCH - (needsCore?.length ?? 0);
+    const remaining = MAX_BATCH - needsCore.length;
     if (remaining > 0) {
       const { data } = await baseQuery()
         .not('reel_posted_at', 'is', null)
@@ -75,8 +98,8 @@ export async function GET(request: NextRequest) {
         .not('youtube_posted_at', 'is', null)
         .is('tiktok_posted_at', null)
         .order('created_at', { ascending: true })
-        .limit(remaining);
-      tiktokOnly = data ?? [];
+        .limit(POOL_SIZE);
+      tiktokOnly = (data ?? []).filter(l => isBackfillDue(l, now)).slice(0, remaining);
     }
   } catch (err) {
     log.error('Video reel backfill query failed', err instanceof Error ? err : new Error(String(err)));
@@ -94,6 +117,7 @@ export async function GET(request: NextRequest) {
   // in flight to the VPS at a time, matching its real capacity.
   for (const listing of pending) {
     await triggerListingVideo(listing).catch(() => {});
+    void admin.from('listings').update({ video_backfill_last_attempted_at: new Date().toISOString() }).eq('id', listing.id);
   }
 
   log.info('Video reel backfill batch triggered', { triggered: pending.length, needsCore: needsCore?.length ?? 0, tiktokOnly: tiktokOnly.length });
