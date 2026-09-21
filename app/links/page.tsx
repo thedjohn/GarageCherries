@@ -1,0 +1,94 @@
+import Image from 'next/image';
+import AffiliateDisclosure from '@/components/AffiliateDisclosure';
+
+export const metadata = {
+  title: 'Links',
+  description: 'GarageCherries links.',
+  robots: { index: false, follow: true },
+  alternates: { canonical: 'https://www.garagecherries.com/links' },
+};
+
+// Amazon Associates tracking tag for clicks that come from Instagram/social,
+// kept separate from the site's own tag (garagecherrie-20 in
+// components/ShopToolsCard.tsx) so Associates Central can report social
+// traffic independently. Create this tracking ID first at Amazon Associates
+// -> menu (top right) -> Manage Your Tracking IDs -> Add Tracking ID, then
+// replace the placeholder below with the real one Amazon assigns.
+const AMAZON_SOCIAL_TAG = 'garagecherrie-20';
+
+function amazonLink(asin: string) {
+  return `https://www.amazon.com/dp/${asin}?tag=${AMAZON_SOCIAL_TAG}`;
+}
+
+const LINKS = [
+  {
+    label: 'Browse Cars for Sale',
+    blurb: 'Live listings from trusted dealers nationwide.',
+    href: 'https://www.garagecherries.com/listings?utm_source=instagram&utm_medium=bio',
+    emoji: '🚗',
+  },
+  {
+    label: 'OBD2 Code Reader',
+    // Same blurb as components/ShopToolsCard.tsx, kept in sync manually.
+    blurb: "Reads check-engine codes the seller may not have mentioned — plug in before you even pop the hood.",
+    href: amazonLink('B01G5EA74I'),
+    emoji: '🔌',
+  },
+  {
+    label: 'Compression Tester Kit',
+    blurb: 'Checks cylinder compression to catch worn rings or valve issues before you buy.',
+    href: amazonLink('B00SKSAB8U'),
+    emoji: '🛠️',
+  },
+  {
+    label: 'Magnetic Paint Thickness Tester',
+    blurb: 'A magnet pulls weaker over filler/bondo than bare metal — a quick way to spot hidden bodywork.',
+    href: amazonLink('B0DP9RFYCG'),
+    emoji: '🧲',
+  },
+  {
+    label: 'Telescoping Inspection Mirror & Light Set',
+    blurb: 'See up into wheel wells and behind components without crawling underneath.',
+    href: amazonLink('B0C2C28CVL'),
+    emoji: '🔦',
+  },
+];
+
+export default function LinksPage() {
+  return (
+    <div className="max-w-md mx-auto px-4 py-12 text-center">
+      <Image
+        src="https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/branding/cherries.png"
+        alt="GarageCherries"
+        width={64}
+        height={64}
+        unoptimized
+        className="mx-auto mb-4"
+      />
+      <h1 className="text-2xl font-extrabold text-zinc-900 mb-1">GarageCherries</h1>
+      <p className="text-sm text-zinc-500 mb-8">Classic, muscle &amp; collector cars</p>
+
+      <div className="space-y-3">
+        {LINKS.map(link => (
+          <a
+            key={link.href}
+            href={link.href}
+            target="_blank"
+            rel="noopener noreferrer sponsored"
+            className="block bg-white border border-zinc-100 rounded-2xl px-5 py-4 shadow-sm hover:border-red-200 transition-colors"
+          >
+            <p className="text-sm font-bold text-zinc-900">
+              <span className="mr-2">{link.emoji}</span>
+              {link.label}
+            </p>
+            <p className="text-xs text-zinc-500 mt-1">{link.blurb}</p>
+          </a>
+        ))}
+      </div>
+
+      <div className="mt-8">
+        <AffiliateDisclosure />
+      </div>
+    </div>
+  );
+}
