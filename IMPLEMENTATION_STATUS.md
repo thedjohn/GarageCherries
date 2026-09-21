@@ -35,7 +35,7 @@
 
 ### Waiting on other people (nothing for the next session to do until they reply)
 - **Drew Schneider (Historical Motors):** asked 2026-09-20 for the street number (6121 per his application vs 6126 per his website; the map pin uses it) and the year founded (page shows "Est." with no year). Then update the `dealers` row (slug `historical-motors`, id `5110df52-ced3-48e8-99aa-7b9e8d426fb6`). Specialty tag is still the lowercase "foreign and american classic".
-- **Joe Harwick (Beverly Hills Car Club):** waiting on the Salesforce ADF email address; then build ADF lead delivery (not built) and send a test lead before enabling. BHCC's overnight feed sync started succeeding again 2026-09-21 08:00 UTC.
+- **Joe Harwick (Beverly Hills Car Club):** waiting on the Salesforce ADF email address (Derek corresponds with Joe directly — not in the DB; only `sales@beverlyhillscarclub.com` and a dealer-portal login `john@beverlyhillscarclub.com` are on file); then build ADF lead delivery (not built) and send a test lead before enabling. BHCC's overnight feed sync started succeeding again 2026-09-21 08:00 UTC (`0 inserted, 492 updated, 0 sold, 8 skipped`). **Check again next session:** query the `dealers` table (`name ilike '%Beverly Hills%'`) for `feed_last_success_at`/`feed_last_sync_summary` and confirm it's still syncing daily rather than having gone stale/403'd again like Garage Kept below.
 - **All Auto Network / Jeremy Brunan (Garage Kept Motors):** Garage Kept's overnight feed sync still gets a 403 (last success 2026-09-16); Jeremy was emailed twice (Sat and Mon). His manual Save in the dashboard works and clears the warning email. If still failing in a couple of days, ask him again or rerun the catch-up.
 
 ### Small optional items
