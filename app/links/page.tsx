@@ -11,10 +11,8 @@ export const metadata = {
 // Amazon Associates tracking tag for clicks that come from Instagram/social,
 // kept separate from the site's own tag (garagecherrie-20 in
 // components/ShopToolsCard.tsx) so Associates Central can report social
-// traffic independently. Create this tracking ID first at Amazon Associates
-// -> menu (top right) -> Manage Your Tracking IDs -> Add Tracking ID, then
-// replace the placeholder below with the real one Amazon assigns.
-const AMAZON_SOCIAL_TAG = 'garagecherrie-20';
+// traffic independently.
+const AMAZON_SOCIAL_TAG = 'garagecherriesig-20';
 
 function amazonLink(asin: string) {
   return `https://www.amazon.com/dp/${asin}?tag=${AMAZON_SOCIAL_TAG}`;
