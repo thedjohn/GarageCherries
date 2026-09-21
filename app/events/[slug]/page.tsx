@@ -3,7 +3,8 @@ import { cache } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
-import { STATE_NAMES } from '@/lib/usStates';
+import { STATE_NAMES, stateSlug } from '@/lib/usStates';
+import { eventsCutoff, isCurrentEvent } from '@/lib/eventDates';
 import EventImageLightbox from '@/components/EventImageLightbox';
 
 export const revalidate = 0;
@@ -108,6 +109,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
   if (!event) notFound();
 
   const e = event;
+  const isPast = !isCurrentEvent(e, eventsCutoff());
   const admin = createAdminClient();
 
   // "More Upcoming Events" -- same state first (more likely to actually be
@@ -198,6 +200,20 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
         <Link href="/events" className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-red-600 transition-colors mb-8">
           ← Car Show Calendar
         </Link>
+
+        {isPast && (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-semibold">This event has already taken place.</p>
+            <p className="mt-1">
+              Looking for something coming up?{' '}
+              <Link href={`/events/state/${stateSlug(e.state)}`} className="font-semibold underline hover:text-red-700">
+                See upcoming car shows in {STATE_NAMES[e.state] ?? e.state}
+              </Link>{' '}
+              or{' '}
+              <Link href="/events" className="font-semibold underline hover:text-red-700">browse all upcoming events</Link>.
+            </p>
+          </div>
+        )}
 
         {/* Badges */}
         <div className="flex items-center gap-2 flex-wrap mb-4">

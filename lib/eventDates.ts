@@ -1,8 +1,10 @@
-// "Current" = hasn't ended yet. The cutoff is yesterday (UTC), not today, so an
-// evening event doesn't vanish early when UTC has already rolled to the next
-// day, and a multi-day event stays listed until its end_date has passed.
+// "Current" = hasn't ended yet. The cutoff is today's date in Pacific time, the
+// westernmost continental US zone: an event dated D stays listed until the
+// evening of D has ended even on the west coast (midnight Pacific = 2 AM Central,
+// 3 AM Eastern the next morning), but nothing from yesterday lingers. A
+// multi-day event stays until its end_date has passed.
 export function eventsCutoff(now: Date = new Date()): string {
-  return new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return now.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
 }
 
 export function isCurrentEvent(e: { date: string; end_date?: string | null }, cutoff: string): boolean {

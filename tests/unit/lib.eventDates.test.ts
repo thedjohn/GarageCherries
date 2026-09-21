@@ -1,13 +1,25 @@
 import { describe, it, expect, vi } from 'vitest';
 import { eventsCutoff, isCurrentEvent, applyCurrentEvents, applyPastEvents } from '@/lib/eventDates';
 
-describe('eventsCutoff', () => {
-  it('is yesterday in UTC', () => {
-    expect(eventsCutoff(new Date('2026-09-20T15:00:00Z'))).toBe('2026-09-19');
+describe('eventsCutoff (today in Pacific time)', () => {
+  it('is today once the Pacific day has started', () => {
+    // 14:00 UTC = 7 AM PDT on Sep 21, so yesterday's (Sep 20) events are gone
+    expect(eventsCutoff(new Date('2026-09-21T14:00:00Z'))).toBe('2026-09-21');
   });
 
-  it('rolls back across a month boundary', () => {
-    expect(eventsCutoff(new Date('2026-10-01T02:00:00Z'))).toBe('2026-09-30');
+  it('is still the previous day late in the evening Pacific, so a west-coast evening show stays listed', () => {
+    // 06:00 UTC on Sep 21 = 11 PM PDT on Sep 20
+    expect(eventsCutoff(new Date('2026-09-21T06:00:00Z'))).toBe('2026-09-20');
+  });
+
+  it('flips at midnight Pacific in daylight time (07:00 UTC)', () => {
+    expect(eventsCutoff(new Date('2026-09-21T06:59:00Z'))).toBe('2026-09-20');
+    expect(eventsCutoff(new Date('2026-09-21T07:00:00Z'))).toBe('2026-09-21');
+  });
+
+  it('flips at midnight Pacific in standard time (08:00 UTC)', () => {
+    expect(eventsCutoff(new Date('2027-01-15T07:59:00Z'))).toBe('2027-01-14');
+    expect(eventsCutoff(new Date('2027-01-15T08:00:00Z'))).toBe('2027-01-15');
   });
 });
 
