@@ -33,6 +33,14 @@ const LINKS = [
     emoji: '🔌',
   },
   {
+    label: 'BlueDriver Bluetooth Pro Scanner',
+    // Not in ShopToolsCard.tsx -- Instagram-only upgrade pick, added alongside
+    // the cheaper OBD2 reader above rather than replacing it.
+    blurb: 'The upgrade pick — pairs over Bluetooth and pulls ABS/SRS/TPMS codes most basic readers miss, with verified repair reports.',
+    href: amazonLink('B00652G4TS'),
+    emoji: '📡',
+  },
+  {
     label: 'Compression Tester Kit',
     blurb: 'Checks cylinder compression to catch worn rings or valve issues before you buy.',
     href: amazonLink('B00SKSAB8U'),
@@ -49,6 +57,21 @@ const LINKS = [
     blurb: 'See up into wheel wells and behind components without crawling underneath.',
     href: amazonLink('B0C2C28CVL'),
     emoji: '🔦',
+  },
+  {
+    label: 'Smoke Leak Tester',
+    // Not in ShopToolsCard.tsx -- Instagram-only pick, chosen for how visual
+    // it is on video (smoke pouring out of a vacuum/EVAP leak in real time).
+    blurb: 'Pumps visible smoke through the intake to show exactly where a hidden vacuum or EVAP leak is coming from.',
+    href: amazonLink('B0DNRY9NCV'),
+    emoji: '💨',
+  },
+  {
+    label: 'Borescope Inspection Camera',
+    // Not in ShopToolsCard.tsx -- Instagram-only pick.
+    blurb: 'A flexible camera on a cable that reaches into cylinders, frame rails, and behind panels to spot hidden rust or damage without disassembly.',
+    href: amazonLink('B0B28HRSBP'),
+    emoji: '🔬',
   },
 ];
 
