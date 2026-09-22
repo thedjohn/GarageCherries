@@ -439,7 +439,22 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
       // set, is a bearer token their side issued that guarantees a pass.
       if (dealer.feed_auth_token) headers['Authorization'] = `Bearer ${dealer.feed_auth_token}`;
       const res = await fetch(feedUrl ?? '', { headers });
-      if (!res.ok) throw new Error(`Feed fetch failed: ${res.status}`);
+      if (!res.ok) {
+        // 403s specifically are worth their own structured log line (never the
+        // token itself) -- this is the exact failure mode feed_auth_token exists
+        // to prevent, so seeing it recur, and whether the header was actually
+        // sent, is what tells us whether it's a new host needing a token or an
+        // existing token that's stopped working.
+        if (res.status === 403) {
+          log.warn('Dealer feed fetch got 403', {
+            dealer: dealer.name,
+            url: feedUrl,
+            status: res.status,
+            authHeaderSent: !!dealer.feed_auth_token,
+          });
+        }
+        throw new Error(`Feed fetch failed: ${res.status}`);
+      }
       csvText = await res.text();
     }
   } catch (e) {

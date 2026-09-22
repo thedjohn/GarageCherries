@@ -182,6 +182,38 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     expect(res._data.results['info@survivor-cars.com'].errors[0]).toContain('Could not fetch feed');
   });
 
+  it('logs a structured warning on a 403, noting the auth header was sent, without logging the token itself', async () => {
+    const dealer = { ...DEALER, feed_auth_token: 'aan-guaranteed-pass-token' };
+    makeSupabaseMock({ dealers: [dealer] });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403 }));
+
+    await GET(makeRequest('Bearer cron-secret'));
+    expect(mockLoggerWarn).toHaveBeenCalledWith('Dealer feed fetch got 403', {
+      dealer: DEALER.name,
+      url: DEALER.feed_url,
+      status: 403,
+      authHeaderSent: true,
+    });
+    const loggedPayload = JSON.stringify(mockLoggerWarn.mock.calls[0]);
+    expect(loggedPayload).not.toContain('aan-guaranteed-pass-token');
+  });
+
+  it('logs authHeaderSent: false on a 403 when the dealer has no feed_auth_token', async () => {
+    makeSupabaseMock({ dealers: [DEALER] });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403 }));
+
+    await GET(makeRequest('Bearer cron-secret'));
+    expect(mockLoggerWarn).toHaveBeenCalledWith('Dealer feed fetch got 403', expect.objectContaining({ authHeaderSent: false }));
+  });
+
+  it('does not log the 403-specific warning for a non-403 failure', async () => {
+    makeSupabaseMock({ dealers: [DEALER] });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+
+    await GET(makeRequest('Bearer cron-secret'));
+    expect(mockLoggerWarn).not.toHaveBeenCalledWith('Dealer feed fetch got 403', expect.anything());
+  });
+
   it('stamps feed_last_synced_at, feed_last_sync_summary, and feed_last_success_at on the dealer row after a successful sync', async () => {
     const { dealerUpdateCalls } = makeSupabaseMock({ dealers: [DEALER] });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => buildCsv([]) }));
