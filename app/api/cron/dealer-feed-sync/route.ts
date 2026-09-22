@@ -340,7 +340,7 @@ type FeedDealer = {
   id: string; name: string; phone: string | null; email: string; location: string | null; state: string | null;
   feed_protocol?: string | null; feed_host?: string | null; feed_port?: number | null;
   feed_username?: string | null; feed_password?: string | null; feed_remote_path?: string | null;
-  feed_sftp_last_received_at?: string | null; feed_format?: string | null;
+  feed_sftp_last_received_at?: string | null; feed_format?: string | null; feed_auth_token?: string | null;
 };
 
 // Downloads the feed file from an SFTP server instead of a plain HTTPS URL --
@@ -430,9 +430,15 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
       // block requests carrying Node's default 'User-Agent: node' -- a browser-like
       // UA avoids tripping that, cheaply, regardless of whether the real cause
       // turns out to be the UA or Vercel's outbound IP range.
-      const res = await fetch(feedUrl ?? '', {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; GarageCherriesFeedSync/1.0; +https://www.garagecherries.com)' },
-      });
+      const headers: Record<string, string> = {
+        'User-Agent': 'Mozilla/5.0 (compatible; GarageCherriesFeedSync/1.0; +https://www.garagecherries.com)',
+      };
+      // A handful of hosts (e.g. Garage Kept Motors / All Auto Network) run
+      // their own rate limiter that can 403 a legitimate request during a
+      // traffic burst from shared hosting IP ranges -- feed_auth_token, when
+      // set, is a bearer token their side issued that guarantees a pass.
+      if (dealer.feed_auth_token) headers['Authorization'] = `Bearer ${dealer.feed_auth_token}`;
+      const res = await fetch(feedUrl ?? '', { headers });
       if (!res.ok) throw new Error(`Feed fetch failed: ${res.status}`);
       csvText = await res.text();
     }
@@ -698,7 +704,7 @@ export async function GET(request: NextRequest) {
 
   const { data: dealers } = await admin
     .from('dealers')
-    .select('id, name, phone, email, location, state, feed_url, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path, feed_sftp_last_received_at, feed_format')
+    .select('id, name, phone, email, location, state, feed_url, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path, feed_sftp_last_received_at, feed_format, feed_auth_token')
     .eq('feed_sync_hour', currentHour)
     .or('feed_url.not.is.null,feed_protocol.eq.sftp,feed_protocol.eq.sftp_incoming');
 

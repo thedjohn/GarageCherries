@@ -70,7 +70,7 @@ type TestDealerRow = {
   feed_url: string | null;
   feed_protocol?: string; feed_host?: string; feed_port?: number;
   feed_username?: string; feed_password?: string; feed_remote_path?: string | null;
-  feed_sftp_last_received_at?: string | null; feed_format?: string;
+  feed_sftp_last_received_at?: string | null; feed_format?: string; feed_auth_token?: string | null;
 };
 const DEALER: TestDealerRow = {
   id: 'dealer-1', name: 'Survivor Classic Car Services', phone: '555-1234', email: 'info@survivor-cars.com',
@@ -153,6 +153,25 @@ describe('GET /api/cron/dealer-feed-sync', () => {
     await GET(makeRequest('Bearer cron-secret'));
     expect(dealerQueryCalls[0]).toEqual({ col: 'feed_sync_hour', val: CURRENT_HOUR });
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not send an Authorization header when the dealer has no feed_auth_token', async () => {
+    makeSupabaseMock({ dealers: [DEALER] });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => buildCsv([]) }));
+
+    await GET(makeRequest('Bearer cron-secret'));
+    const [, options] = (global.fetch as any).mock.calls[0];
+    expect(options.headers.Authorization).toBeUndefined();
+  });
+
+  it('sends an Authorization: Bearer header when the dealer has a feed_auth_token', async () => {
+    const dealer = { ...DEALER, feed_auth_token: 'aan-guaranteed-pass-token' };
+    makeSupabaseMock({ dealers: [dealer] });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => buildCsv([]) }));
+
+    await GET(makeRequest('Bearer cron-secret'));
+    const [, options] = (global.fetch as any).mock.calls[0];
+    expect(options.headers.Authorization).toBe('Bearer aan-guaranteed-pass-token');
   });
 
   it('records an error when the feed fetch fails', async () => {

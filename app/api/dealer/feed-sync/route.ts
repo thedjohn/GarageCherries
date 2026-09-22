@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   if (!dealerId) return NextResponse.json({ error: 'Dealer not found' }, { status: 403 });
   const { data: dealer } = await admin
     .from('dealers')
-    .select('id, name, phone, email, location, state, feed_url, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path, feed_sftp_last_received_at, feed_format')
+    .select('id, name, phone, email, location, state, feed_url, feed_protocol, feed_host, feed_port, feed_username, feed_password, feed_remote_path, feed_sftp_last_received_at, feed_format, feed_auth_token')
     .eq('id', dealerId)
     .single();
 
