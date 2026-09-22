@@ -99,6 +99,7 @@ describe('PATCH /api/listings/[id]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.BETA_MODE = 'true'; // skip dealer beta check
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://comiuxnpvngcrvtgzpae.supabase.co';
   });
 
   it('returns 401 when not logged in', async () => {
@@ -187,6 +188,31 @@ describe('PATCH /api/listings/[id]', () => {
     await PATCH(makeRequest({ price: 4000 }), makeParams('listing-1'));
     const res = getResponse();
     expect(res._status).toBe(400);
+  });
+
+  it('keeps only real Supabase listing-images URLs when updating images', async () => {
+    setupListing({ seller_id: 'user-1', status: 'pending', resubmission_count: 0, price: 5000, year: 2002, make: 'Dodge', model: 'Ram' });
+    await PATCH(
+      makeRequest({
+        images: [
+          'https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/cars/private/a.jpg',
+          'https://evil.example.com/not-our-bucket.jpg',
+          'not-even-a-url',
+        ],
+      }),
+      makeParams('listing-1'),
+    );
+    const updateArg = mockUpdate.mock.calls[0][0];
+    expect(updateArg.images).toEqual([
+      'https://comiuxnpvngcrvtgzpae.supabase.co/storage/v1/object/public/listing-images/cars/private/a.jpg',
+    ]);
+  });
+
+  it('saves an empty images array when images is not an array', async () => {
+    setupListing({ seller_id: 'user-1', status: 'pending', resubmission_count: 0, price: 5000, year: 2002, make: 'Dodge', model: 'Ram' });
+    await PATCH(makeRequest({ images: 'not-an-array' }), makeParams('listing-1'));
+    const updateArg = mockUpdate.mock.calls[0][0];
+    expect(updateArg.images).toEqual([]);
   });
 
   it('clears null color and interior_color', async () => {

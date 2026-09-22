@@ -6,6 +6,7 @@ import { notifyAdmin } from '@/lib/notifyAdmin';
 import { US_STATES } from '@/lib/constants';
 import { CONDITIONS, TRANSMISSIONS, DRIVE_TYPES } from '@/lib/types';
 import { createLogger } from '@/lib/logger';
+import { isValidListingImageUrl } from '@/lib/listingImages';
 
 export async function POST(req: NextRequest) {
   const log = createLogger('listings/submit');
@@ -76,14 +77,7 @@ export async function POST(req: NextRequest) {
   const imageUrls: string[] = JSON.parse((formData.get('imageUrls') as string) ?? '[]');
 
   // Validate all image URLs come from our own storage bucket
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-  const validImageUrls = imageUrls.filter((url: string) => {
-    if (typeof url !== 'string') return false;
-    if (!url.startsWith('https://')) return false;
-    if (!url.includes(supabaseUrl.replace('https://', ''))) return false;
-    if (!url.includes('/listing-images/')) return false;
-    return true;
-  }).slice(0, 30); // cap at 30 images -- matches the client UI and the dealer feed sync's own cap
+  const validImageUrls = imageUrls.filter(isValidListingImageUrl).slice(0, 30); // cap at 30 images -- matches the client UI and the dealer feed sync's own cap
 
   const stateVal = String(formData.get('state') ?? '').toUpperCase().trim();
   if (stateVal && !US_STATES.has(stateVal)) {

@@ -408,7 +408,10 @@ function AccountPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fileName: file.name, contentType: file.type }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      setEditImages(prev => prev.map(img => img.preview === stableId ? { ...img, uploadState: 'error' } : img));
+      return null;
+    }
     const { signedUrl, publicUrl } = await res.json();
     return new Promise((resolve) => {
       const xhr = new XMLHttpRequest();

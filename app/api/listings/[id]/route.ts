@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { isAuthorizedForSeller } from '@/lib/dealerAuth';
+import { isValidListingImageUrl } from '@/lib/listingImages';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -53,7 +54,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (price !== undefined) update.price = Number(price) || 0;
   if (mileage !== undefined) update.mileage = mileage !== '' && mileage != null ? Number(mileage) : null;
   if (description !== undefined) update.description = description;
-  if (images !== undefined) update.images = images;
+  if (images !== undefined) update.images = Array.isArray(images) ? images.filter(isValidListingImageUrl) : [];
   if (year !== undefined) update.year = Number(year);
   if (make !== undefined) update.make = make;
   if (model !== undefined) update.model = model;
