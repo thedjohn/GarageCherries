@@ -15,6 +15,9 @@ vi.mock('@/lib/supabase/server', () => ({
 }));
 vi.mock('@/lib/rateLimit', () => ({ rateLimit: mockRateLimit, getClientIP: mockGetClientIP }));
 vi.mock('resend', () => ({ Resend: vi.fn(function (this: any) { return { emails: { send: mockSend } }; }) }));
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), flush: vi.fn().mockResolvedValue(undefined) }),
+}));
 vi.mock('next/server', () => ({
   NextResponse: {
     json: vi.fn((data: unknown, init?: { status?: number }) => ({ _data: data, _status: init?.status ?? 200 })),
@@ -35,10 +38,11 @@ beforeEach(() => {
   mockGetUser.mockResolvedValue({ data: { user: null } });
 });
 
-function setupSuccess(dealer: Record<string, unknown> | null) {
+function setupSuccess(dealer: Record<string, unknown> | null, listing: Record<string, unknown> | null = null) {
   mockFrom.mockImplementation((table: string) => {
     if (table === 'offers') return { insert: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'offer-1' }, error: null }) }) }) };
     if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: dealer }) }) }) };
+    if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: listing }) }) }) };
     return {};
   });
 }
@@ -120,5 +124,34 @@ describe('POST /api/offers', () => {
     setupSuccess({ email: 'dealer@x.com', name: 'Classic Cars Co' });
     const res: any = await POST(makeRequest(validBody));
     expect(res._status).toBe(200);
+  });
+
+  it('also sends an ADF lead email folding the offer amount into comments when the dealer has adf_lead_email set', async () => {
+    setupSuccess(
+      { email: 'dealer@x.com', name: 'Beverly Hills Car Club', adf_lead_email: 'leads@dealer-crm.example' },
+      { year: 1986, make: 'Mercedes-Benz', model: '560SL', vin: 'VIN999', stock_number: 'STK9' },
+    );
+    const res: any = await POST(makeRequest(validBody));
+    expect(res._status).toBe(200);
+    expect(mockSend).toHaveBeenCalledTimes(3); // dealer HTML + buyer confirmation + ADF
+    const adfCall = mockSend.mock.calls.find(c => c[0].to === 'leads@dealer-crm.example');
+    expect(adfCall).toBeTruthy();
+    expect(adfCall![0].subject).toBe('ADF');
+    expect(adfCall![0].text).toContain('<make>Mercedes-Benz</make>');
+    expect(adfCall![0].text).toContain('<comments>Offer: $45,000 — Interested!</comments>');
+  });
+
+  it('does not send an ADF lead email when the dealer has no adf_lead_email', async () => {
+    setupSuccess({ email: 'dealer@x.com', name: 'Classic Cars Co' });
+    const res: any = await POST(makeRequest(validBody));
+    expect(res._status).toBe(200);
+    expect(mockSend).toHaveBeenCalledTimes(2);
+  });
+
+  it('skips the ADF lead email when the listing can no longer be found', async () => {
+    setupSuccess({ email: 'dealer@x.com', name: 'Beverly Hills Car Club', adf_lead_email: 'leads@dealer-crm.example' }, null);
+    const res: any = await POST(makeRequest(validBody));
+    expect(res._status).toBe(200);
+    expect(mockSend).toHaveBeenCalledTimes(2); // dealer HTML + buyer confirmation only, no ADF
   });
 });

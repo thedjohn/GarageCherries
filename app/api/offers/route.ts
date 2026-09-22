@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
 import { rateLimit, getClientIP } from '@/lib/rateLimit';
 import { emailWrap } from '@/lib/emailBranding';
+import { sendAdfLead } from '@/lib/adfLead';
 
 export async function POST(request: NextRequest) {
   const ip = getClientIP(request);
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Fetch dealer email
-  const { data: dealer } = await admin.from('dealers').select('email, name').eq('id', dealerId).single();
+  const { data: dealer } = await admin.from('dealers').select('email, name, adf_lead_email').eq('id', dealerId).single();
   const dealerEmail = dealer?.email;
 
   if (dealerEmail) {
@@ -86,6 +87,27 @@ export async function POST(request: NextRequest) {
         <p style="color:#71717a;font-size:14px;margin:0">The dealer will contact you directly at <strong style="color:#18181b">${buyerEmail}</strong> to respond.</p>
     `),
   }).catch(() => {});
+
+  // ADF/XML lead delivery to the dealer's own CRM -- opt-in per dealer, same
+  // pattern as app/api/conversations. Offer amount has no dedicated ADF
+  // field, so it's folded into the comments text alongside any buyer message.
+  if (dealer?.adf_lead_email) {
+    const { data: vehicle } = await admin.from('listings').select('year, make, model, vin, stock_number').eq('id', carId).maybeSingle();
+    if (vehicle) {
+      const fmt = (n: number) =>
+        new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+      void sendAdfLead(dealer.adf_lead_email, {
+        dealerName: dealer.name,
+        listingId: carId,
+        vehicle: { year: vehicle.year, make: vehicle.make, model: vehicle.model, vin: vehicle.vin, stockNumber: vehicle.stock_number },
+        customer: {
+          name: buyerName ?? 'Not provided',
+          email: buyerEmail,
+          comments: [`Offer: ${fmt(amount)}`, message].filter(Boolean).join(' — '),
+        },
+      });
+    }
+  }
 
   return NextResponse.json({ ok: true, offerId: offer.id });
 }

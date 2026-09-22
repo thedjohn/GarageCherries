@@ -6,6 +6,7 @@ import { createLogger } from '@/lib/logger';
 import { Resend } from 'resend';
 import { emailWrap } from '@/lib/emailBranding';
 import { resolveDealerId } from '@/lib/dealerAuth';
+import { sendAdfLead } from '@/lib/adfLead';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
   // Fetch seller email server-side — never trust the client for this
   const { data: listing } = await admin
     .from('listings')
-    .select('seller_email, seller_id, title')
+    .select('seller_email, seller_id, title, year, make, model, vin, stock_number')
     .eq('id', listingId)
     .single();
   if (!listing) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
@@ -52,11 +53,13 @@ export async function POST(req: NextRequest) {
   // a dealer's own notification_email (set in their dashboard settings) takes priority
   // over their login email, so leads can route to a shared inbox like sales@ instead.
   let resolvedSellerEmail = listing.seller_email ?? '';
+  let adfDealer: { name: string; adf_lead_email: string | null } | null = null;
   if (listing.seller_id) {
     const { data: { user: sellerUser } } = await admin.auth.admin.getUserById(listing.seller_id);
     if (sellerUser?.email) resolvedSellerEmail = sellerUser.email;
-    const { data: dealer } = await admin.from('dealers').select('notification_email').eq('id', listing.seller_id).maybeSingle();
+    const { data: dealer } = await admin.from('dealers').select('name, notification_email, adf_lead_email').eq('id', listing.seller_id).maybeSingle();
     if (dealer?.notification_email) resolvedSellerEmail = dealer.notification_email;
+    if (dealer?.adf_lead_email) adfDealer = { name: dealer.name, adf_lead_email: dealer.adf_lead_email };
   }
 
   const resolvedTitle = listingTitle || listing.title;
@@ -124,6 +127,17 @@ export async function POST(req: NextRequest) {
     }).catch((err: unknown) => {
       log.error('New conversation email failed', new Error(String(err)), { conversationId, listingId, sellerEmail: resolvedSellerEmail });
       void log.flush();
+    });
+  }
+
+  // ADF/XML lead delivery to the dealer's own CRM, on first contact only --
+  // same "new lead" trigger as the HTML email above, opt-in per dealer.
+  if (!existing && adfDealer) {
+    void sendAdfLead(adfDealer.adf_lead_email!, {
+      dealerName: adfDealer.name,
+      listingId,
+      vehicle: { year: listing.year, make: listing.make, model: listing.model, vin: listing.vin, stockNumber: listing.stock_number },
+      customer: { name: buyerName || user.email || '', email: user.email ?? '', comments: message.trim() },
     });
   }
 

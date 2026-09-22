@@ -92,13 +92,17 @@ describe('POST /api/conversations', () => {
     expect(res._status).toBe(404);
   });
 
-  function setupNewConversation(sellerId: string | null, sellerEmailOnListing: string | null, sellerAuthEmail?: string, dealerNotificationEmail: string | null = null) {
+  function setupNewConversation(sellerId: string | null, sellerEmailOnListing: string | null, sellerAuthEmail?: string, dealerNotificationEmail: string | null = null, dealerRow: { name?: string; adf_lead_email?: string | null } | null = null) {
     const convInsert = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { id: 'conv-1' } }) }) });
     const msgInsert = vi.fn().mockResolvedValue({ error: null });
     mockFrom.mockImplementation((table: string) => {
       if (table === 'suspended_users') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
-      if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { seller_email: sellerEmailOnListing, seller_id: sellerId, title: 'Listing Title' } }) }) }) };
-      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: dealerNotificationEmail ? { notification_email: dealerNotificationEmail } : null }) }) }) };
+      if (table === 'listings') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { seller_email: sellerEmailOnListing, seller_id: sellerId, title: 'Listing Title', year: 1969, make: 'Chevrolet', model: 'Camaro', vin: 'VIN123', stock_number: 'STK1' } }) }) }) };
+      if (table === 'dealers') {
+        const data = dealerRow ? { name: dealerRow.name ?? 'Test Dealer', notification_email: dealerNotificationEmail, adf_lead_email: dealerRow.adf_lead_email ?? null }
+          : (dealerNotificationEmail ? { name: 'Test Dealer', notification_email: dealerNotificationEmail, adf_lead_email: null } : null);
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data }) }) }) };
+      }
       if (table === 'conversations') {
         return {
           select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null }) }) }) }),
@@ -131,6 +135,25 @@ describe('POST /api/conversations', () => {
     const res: any = await POST(makeRequest({ listingId: 'l1', message: 'Is this still available?' }));
     expect(res._status).toBe(200);
     expect(mockSend.mock.calls[0][0].to).toBe('sales@gkm.com');
+  });
+
+  it('also sends an ADF lead email when the dealer has adf_lead_email set', async () => {
+    setupNewConversation('seller-1', null, 'seller-auth@x.com', null, { name: 'Beverly Hills Car Club', adf_lead_email: 'leads@dealer-crm.example' });
+    const res: any = await POST(makeRequest({ listingId: 'l1', message: 'Is this still available?' }));
+    expect(res._status).toBe(200);
+    expect(mockSend).toHaveBeenCalledTimes(2);
+    const adfCall = mockSend.mock.calls.find(c => c[0].to === 'leads@dealer-crm.example');
+    expect(adfCall).toBeTruthy();
+    expect(adfCall![0].subject).toBe('ADF');
+    expect(adfCall![0].text).toContain('<make>Chevrolet</make>');
+    expect(adfCall![0].text).toContain('<vendorname>Beverly Hills Car Club</vendorname>');
+  });
+
+  it('does not send an ADF lead email when the dealer has no adf_lead_email', async () => {
+    setupNewConversation('seller-1', null, 'seller-auth@x.com', 'sales@gkm.com');
+    const res: any = await POST(makeRequest({ listingId: 'l1', message: 'Is this still available?' }));
+    expect(res._status).toBe(200);
+    expect(mockSend).toHaveBeenCalledOnce();
   });
 
   it('falls back to the listing seller_email when the seller has no auth account', async () => {
