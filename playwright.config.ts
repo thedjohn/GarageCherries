@@ -10,7 +10,11 @@ export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: 0,
+  // CI has shown occasional single-test flakiness with no reproducible local
+  // cause (clean 194/194 local runs against the same test DB, twice) -- one
+  // retry in CI absorbs that without masking a real failure locally, where
+  // retries stay at 0 so a genuine bug fails immediately.
+  retries: process.env.CI ? 1 : 0,
   workers: 1,
   reporter: 'html',
   use: {
