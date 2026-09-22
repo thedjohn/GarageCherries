@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { formatPrice } from '@/lib/data';
 import AffiliateDisclosure from '@/components/AffiliateDisclosure';
+import TrackedLink from '@/components/TrackedLink';
 
 export const revalidate = 0;
 
@@ -53,12 +54,14 @@ export default async function GarageGearPage() {
           <h2 className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-4">{category}</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map(p => (
-              <a
+              <TrackedLink
                 key={p.id}
                 href={p.affiliate_url}
                 target="_blank"
                 rel="noopener noreferrer sponsored"
                 className={`block bg-white border rounded-2xl p-5 shadow-sm hover:border-red-200 transition-colors ${p.featured ? 'border-red-200' : 'border-zinc-100'}`}
+                eventName="affiliate_click"
+                eventParams={{ label: p.name, category: p.category, source: 'garage_gear_page' }}
               >
                 {p.image_url && (
                   // eslint-disable-next-line @next/next/no-img-element -- external merchant image hosts, not worth registering every one in next.config
@@ -77,7 +80,7 @@ export default async function GarageGearPage() {
                 {p.price != null && (
                   <p className="text-sm font-bold text-red-600 mt-2">{formatPrice(p.price)}</p>
                 )}
-              </a>
+              </TrackedLink>
             ))}
           </div>
         </div>

@@ -2,6 +2,7 @@
 import Image from 'next/image';
 import { useState, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { trackEvent } from '@/lib/gtag';
 import Turnstile from '@/components/Turnstile';
 import VehicleFieldsForm, { type VehicleFieldsValues } from '@/components/VehicleFieldsForm';
 import { MAKES } from '@/lib/types';
@@ -167,6 +168,7 @@ export default function SellClient() {
           setCaptchaKey(k => k + 1);
           return;
         }
+        trackEvent('sell_vehicle_lead', { source: 'sell_form' });
         setSubmitted(true);
       }} className="space-y-8">
         {/* Vehicle info */}

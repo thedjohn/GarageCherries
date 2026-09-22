@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import AffiliateDisclosure from './AffiliateDisclosure';
+import TrackedLink from './TrackedLink';
 
 // Reads from affiliate_products (category = 'Inspection Tools') instead of a
 // hardcoded list, so these can be managed from Admin -> Affiliate Products
@@ -29,14 +30,16 @@ export default async function ShopToolsCard() {
               <p className="text-sm font-semibold text-zinc-900">{tool.name}</p>
               <p className="text-xs text-zinc-500">{tool.description}</p>
             </div>
-            <a
+            <TrackedLink
               href={tool.affiliate_url}
               target="_blank"
               rel="noopener noreferrer sponsored"
               className="flex-shrink-0 bg-zinc-900 text-white font-bold text-xs text-center py-2 px-3 rounded-xl hover:bg-zinc-800 transition-colors"
+              eventName="affiliate_click"
+              eventParams={{ label: tool.name, source: 'shop_tools_card' }}
             >
               View &rarr;
-            </a>
+            </TrackedLink>
           </li>
         ))}
       </ul>
