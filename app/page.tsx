@@ -223,7 +223,7 @@ export default async function HomePage() {
               />
             </div>
             <div className="p-6 flex flex-col justify-center">
-              <p className="text-xs font-bold text-red-500 uppercase tracking-widest mb-2">🍒 GarageCherry of the Day</p>
+              <p className="text-xs font-bold text-red-500 uppercase tracking-widest mb-2">🍒 GarageCherry Pick of the Day</p>
               <h2 className="text-2xl font-extrabold text-white mb-1">{carOfTheDay.title}</h2>
               <p className="text-zinc-400 text-sm">See today&apos;s pick &rarr;</p>
             </div>

@@ -102,7 +102,7 @@ export default function AdminGarageCherryOfTheDay() {
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Delete this GarageCherry of the Day pick? This cannot be undone.')) return;
+    if (!confirm('Delete this GarageCherry Pick of the Day? This cannot be undone.')) return;
     await fetch('/api/admin/garagecherry-of-the-day', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -186,7 +186,7 @@ export default function AdminGarageCherryOfTheDay() {
       {loading ? (
         <p className="text-sm text-zinc-400">Loading…</p>
       ) : picks.length === 0 ? (
-        <p className="text-sm text-zinc-400">No GarageCherry of the Day picks yet.</p>
+        <p className="text-sm text-zinc-400">No GarageCherry Picks of the Day yet.</p>
       ) : (
         <div className="space-y-2">
           {picks.map(p => (

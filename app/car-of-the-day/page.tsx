@@ -6,7 +6,7 @@ import { formatListingPrice, formatMileage, toSegment } from '@/lib/data';
 export const revalidate = 0;
 
 export const metadata = {
-  title: 'GarageCherry of the Day',
+  title: 'GarageCherry Pick of the Day',
   description: 'A new classic, muscle, or collector car featured every day.',
   alternates: { canonical: 'https://www.garagecherries.com/car-of-the-day' },
 };
@@ -41,7 +41,7 @@ export default async function CarOfTheDayPage() {
     <div className="max-w-3xl mx-auto px-4 py-12">
       <div className="mb-8 text-center">
         <p className="text-xs font-semibold text-red-600 uppercase tracking-widest mb-3">GarageCherries</p>
-        <h1 className="text-4xl md:text-5xl font-extrabold text-zinc-900 mb-2">GarageCherry of the Day</h1>
+        <h1 className="text-4xl md:text-5xl font-extrabold text-zinc-900 mb-2">GarageCherry Pick of the Day</h1>
         <p className="text-zinc-500">A new classic, muscle, or collector car featured every day.</p>
       </div>
 

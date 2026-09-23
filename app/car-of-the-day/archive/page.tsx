@@ -6,8 +6,8 @@ import CarCard from '@/components/CarCard';
 export const revalidate = 0;
 
 export const metadata = {
-  title: 'GarageCherry of the Day Archive',
-  description: 'Every past GarageCherry of the Day, all in one place.',
+  title: 'GarageCherry Pick of the Day Archive',
+  description: 'Every past GarageCherry Pick of the Day, all in one place.',
   alternates: { canonical: 'https://www.garagecherries.com/car-of-the-day/archive' },
 };
 
@@ -39,7 +39,7 @@ export default async function CarOfTheDayArchivePage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
       <nav className="flex items-center gap-2 text-sm text-zinc-400 mb-8">
-        <Link href="/car-of-the-day" className="hover:text-red-600 transition-colors">GarageCherry of the Day</Link>
+        <Link href="/car-of-the-day" className="hover:text-red-600 transition-colors">GarageCherry Pick of the Day</Link>
         <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
@@ -47,7 +47,7 @@ export default async function CarOfTheDayArchivePage() {
       </nav>
 
       <div className="mb-10">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-zinc-900 mb-2">GarageCherry of the Day Archive</h1>
+        <h1 className="text-3xl md:text-4xl font-extrabold text-zinc-900 mb-2">GarageCherry Pick of the Day Archive</h1>
         <p className="text-zinc-500">Every past pick, all in one place.</p>
       </div>
 
@@ -55,7 +55,7 @@ export default async function CarOfTheDayArchivePage() {
         <div className="bg-white border border-zinc-100 rounded-2xl p-16 text-center shadow-sm">
           <p className="text-4xl mb-4">🍒</p>
           <h2 className="text-xl font-bold text-zinc-800 mb-2">No past picks yet</h2>
-          <p className="text-zinc-500 text-sm">Check back after today's GarageCherry of the Day has been featured.</p>
+          <p className="text-zinc-500 text-sm">Check back after today's GarageCherry Pick of the Day has been featured.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

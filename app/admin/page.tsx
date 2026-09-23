@@ -974,7 +974,7 @@ export default function AdminPage() {
         )}
         {(adminRole === 'superadmin' || adminRole === 'admin') && (
           <button onClick={() => setTab('car-of-the-day')} className={tabCls('car-of-the-day')}>
-            GarageCherry of the Day
+            GarageCherry Pick of the Day
           </button>
         )}
       </div>
