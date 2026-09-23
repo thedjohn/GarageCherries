@@ -35,40 +35,57 @@ function escapeXml(s: string): string {
     .replace(/'/g, '&apos;');
 }
 
-// Builds a standard ADF 1.0 (Auto-lead Data Format) lead document -- the
-// industry-standard schema dealer CRMs (including Salesforce Email Service
-// listeners) use to ingest third-party leads by email. Every field that
+// ADF elements expect separate first/last <name> elements (confirmed against
+// BHCC's own Salesforce parser 2026-09-22 -- see the split below), but every
+// call site here only has a single full-name string. Splits on the last
+// space; a one-word name (or "Jane" alone) becomes first-only with an empty
+// last, which is still valid ADF, just less precise than a real split name.
+function splitName(fullName: string): { first: string; last: string } {
+  const trimmed = fullName.trim();
+  const idx = trimmed.lastIndexOf(' ');
+  if (idx === -1) return { first: trimmed, last: '' };
+  return { first: trimmed.slice(0, idx).trim(), last: trimmed.slice(idx + 1).trim() };
+}
+
+// Builds an ADF 1.0 (Auto-lead Data Format) lead document -- the industry-
+// standard schema dealer CRMs use to ingest third-party leads by email. This
+// exact shape (the `<?adf?>` processing instruction, `status="new"`, split
+// first/last name, `phone type="voice"`) was confirmed working against
+// BHCC's own Salesforce Email Service parser 2026-09-22 -- their team tested
+// a sample in this shape and it created a real lead. Every field that
 // carries buyer-entered text is XML-escaped -- a buyer's message is free
 // text and must never be able to break out of the document.
 export function buildAdfLeadXml({ dealerName, listingId, vehicle, customer }: AdfLeadParams): string {
   const requestdate = new Date().toISOString();
-  return `<?xml version="1.0"?>
-<!DOCTYPE adf PUBLIC "-//ADF//DTD ADF 1.0//EN" "http://www.starstandard.org/ADF/adf1.0.dtd">
+  const { first, last } = splitName(customer.name);
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<?adf version="1.0"?>
 <adf>
-<prospect>
-<id sequence="1" source="GarageCherries.com">${escapeXml(listingId)}</id>
-<requestdate>${requestdate}</requestdate>
-<vehicle interest="buy" status="used">
-<year>${escapeXml(String(vehicle.year))}</year>
-<make>${escapeXml(vehicle.make)}</make>
-<model>${escapeXml(vehicle.model)}</model>
-${vehicle.vin ? `<vin>${escapeXml(vehicle.vin)}</vin>\n` : ''}${vehicle.stockNumber ? `<stock>${escapeXml(vehicle.stockNumber)}</stock>\n` : ''}</vehicle>
-<customer>
-<contact>
-<name part="full">${escapeXml(customer.name)}</name>
-<email>${escapeXml(customer.email)}</email>
-${customer.phone ? `<phone>${escapeXml(customer.phone)}</phone>\n` : ''}</contact>
-${customer.comments ? `<comments>${escapeXml(customer.comments)}</comments>\n` : ''}</customer>
-<vendor>
-<vendorname>${escapeXml(dealerName)}</vendorname>
-</vendor>
-<provider>
-<name part="full">GarageCherries</name>
-<service>Lead Provider</service>
-<url>https://www.garagecherries.com</url>
-<email>no-reply@garagecherries.com</email>
-</provider>
-</prospect>
+  <prospect status="new">
+    <id sequence="1" source="GarageCherries">${escapeXml(listingId)}</id>
+    <requestdate>${requestdate}</requestdate>
+    <vehicle interest="buy" status="used">
+      <year>${escapeXml(String(vehicle.year))}</year>
+      <make>${escapeXml(vehicle.make)}</make>
+      <model>${escapeXml(vehicle.model)}</model>
+${vehicle.vin ? `      <vin>${escapeXml(vehicle.vin)}</vin>\n` : ''}${vehicle.stockNumber ? `      <stock>${escapeXml(vehicle.stockNumber)}</stock>\n` : ''}    </vehicle>
+    <customer>
+      <contact>
+        <name part="first">${escapeXml(first)}</name>
+        <name part="last">${escapeXml(last)}</name>
+        <email>${escapeXml(customer.email)}</email>
+${customer.phone ? `        <phone type="voice">${escapeXml(customer.phone)}</phone>\n` : ''}      </contact>
+${customer.comments ? `      <comments>${escapeXml(customer.comments)}</comments>\n` : ''}    </customer>
+    <vendor>
+      <vendorname>${escapeXml(dealerName)}</vendorname>
+    </vendor>
+    <provider>
+      <name part="full">GarageCherries</name>
+      <service>Lead Provider</service>
+      <url>https://www.garagecherries.com</url>
+      <email>no-reply@garagecherries.com</email>
+    </provider>
+  </prospect>
 </adf>`;
 }
 

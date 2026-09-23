@@ -26,11 +26,12 @@ const baseParams = {
 };
 
 describe('buildAdfLeadXml', () => {
-  it('includes the standard ADF 1.0 document type and structure', () => {
+  it('includes the ADF 1.0 processing instruction and structure confirmed working against BHCC\'s Salesforce parser', () => {
     const xml = buildAdfLeadXml(baseParams);
-    expect(xml).toContain('<!DOCTYPE adf PUBLIC "-//ADF//DTD ADF 1.0//EN"');
+    expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+    expect(xml).toContain('<?adf version="1.0"?>');
     expect(xml).toContain('<adf>');
-    expect(xml).toContain('<prospect>');
+    expect(xml).toContain('<prospect status="new">');
   });
 
   it('includes vehicle, customer, vendor, and provider fields', () => {
@@ -45,22 +46,35 @@ describe('buildAdfLeadXml', () => {
     expect(xml).toContain('<name part="full">GarageCherries</name>');
   });
 
+  it('splits a full name into separate first/last <name> elements', () => {
+    const xml = buildAdfLeadXml(baseParams); // "Paul O'Brien"
+    expect(xml).toContain('<name part="first">Paul</name>');
+    expect(xml).toContain('<name part="last">O&apos;Brien</name>');
+  });
+
+  it('treats a single-word name as first-only, with an empty last', () => {
+    const xml = buildAdfLeadXml({ ...baseParams, customer: { ...baseParams.customer, name: 'Jane' } });
+    expect(xml).toContain('<name part="first">Jane</name>');
+    expect(xml).toContain('<name part="last"></name>');
+  });
+
   it('escapes XML special characters in buyer-entered fields so a message cannot break the document', () => {
     const xml = buildAdfLeadXml({
       ...baseParams,
       customer: { name: 'A & B <script>alert(1)</script>', email: 'x@y.com', comments: `"quoted" & <tag>` },
     });
-    expect(xml).toContain('A &amp; B &lt;script&gt;alert(1)&lt;/script&gt;');
+    expect(xml).toContain('<name part="first">A &amp; B</name>');
+    expect(xml).toContain('<name part="last">&lt;script&gt;alert(1)&lt;/script&gt;</name>');
     expect(xml).toContain('&quot;quoted&quot; &amp; &lt;tag&gt;');
     expect(xml).not.toContain('<script>');
   });
 
-  it('includes a phone element when provided', () => {
+  it('includes a phone element with type="voice" when provided', () => {
     const xml = buildAdfLeadXml({
       ...baseParams,
       customer: { ...baseParams.customer, phone: '555-123-4567' },
     });
-    expect(xml).toContain('<phone>555-123-4567</phone>');
+    expect(xml).toContain('<phone type="voice">555-123-4567</phone>');
   });
 
   it('omits vin/stock/phone/comments elements entirely when not provided', () => {
@@ -72,13 +86,8 @@ describe('buildAdfLeadXml', () => {
     });
     expect(xml).not.toContain('<vin>');
     expect(xml).not.toContain('<stock>');
-    expect(xml).not.toContain('<phone>');
+    expect(xml).not.toContain('<phone');
     expect(xml).not.toContain('<comments>');
-  });
-
-  it("apostrophes in a buyer's name are escaped", () => {
-    const xml = buildAdfLeadXml(baseParams);
-    expect(xml).toContain('<name part="full">Paul O&apos;Brien</name>');
   });
 });
 

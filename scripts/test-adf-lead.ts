@@ -38,6 +38,7 @@ const testLead = {
   customer: {
     name: 'GarageCherries Test',
     email: 'no-reply@garagecherries.com',
+    phone: '555-555-5555',
     comments: 'This is a test lead from GarageCherries to confirm ADF delivery into your CRM is working. Please disregard -- no action needed.',
   },
 };
