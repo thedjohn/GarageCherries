@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { captureFirstTouch, trackEvent } from '@/lib/gtag';
+import { captureFirstTouch, trackEvent, inferNewsletterSource } from '@/lib/gtag';
 
 function clearCookies() {
   document.cookie.split(';').forEach(c => {
@@ -40,6 +40,42 @@ describe('captureFirstTouch', () => {
     const match = document.cookie.match(/gc_first_touch=([^;]*)/);
     const stored = JSON.parse(decodeURIComponent(match![1]));
     expect(stored.utm_source).toBe('facebook');
+  });
+});
+
+describe('inferNewsletterSource', () => {
+  it('returns organic_website when no first touch has been captured', () => {
+    expect(inferNewsletterSource()).toBe('organic_website');
+  });
+
+  it('maps utm_source=ig to instagram (the live Instagram bio link\'s actual spelling)', () => {
+    window.history.pushState({}, '', '/?utm_source=ig&utm_medium=social');
+    captureFirstTouch();
+    expect(inferNewsletterSource()).toBe('instagram');
+  });
+
+  it('maps utm_source=instagram to instagram too (an internal link\'s different spelling for the same channel)', () => {
+    window.history.pushState({}, '', '/?utm_source=instagram&utm_medium=bio');
+    captureFirstTouch();
+    expect(inferNewsletterSource()).toBe('instagram');
+  });
+
+  it('maps utm_source=fb and utm_source=facebook to facebook', () => {
+    window.history.pushState({}, '', '/?utm_source=fb&utm_medium=social');
+    captureFirstTouch();
+    expect(inferNewsletterSource()).toBe('facebook');
+  });
+
+  it('is case-insensitive', () => {
+    window.history.pushState({}, '', '/?utm_source=IG&utm_medium=social');
+    captureFirstTouch();
+    expect(inferNewsletterSource()).toBe('instagram');
+  });
+
+  it('falls back to organic_website for an unrecognized utm_source', () => {
+    window.history.pushState({}, '', '/?utm_source=google&utm_medium=cpc');
+    captureFirstTouch();
+    expect(inferNewsletterSource()).toBe('organic_website');
   });
 });
 

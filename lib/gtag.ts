@@ -57,6 +57,36 @@ function getFirstTouch(): FirstTouch {
   }
 }
 
+// The newsletter's fixed source categories -- 'instagram'/'facebook'/
+// 'organic_website' describe where the *visitor* came from (inferrable from
+// UTM data, see inferNewsletterSource below); 'dealer_page'/'vehicle_page'/
+// 'affiliate_page' describe *where on the site* a signup happened, which a
+// page in that context passes explicitly rather than something inferred
+// from a URL param.
+export type NewsletterSource = 'instagram' | 'facebook' | 'organic_website' | 'dealer_page' | 'vehicle_page' | 'affiliate_page';
+
+// Real campaign links aren't consistent about how they spell a channel (the
+// live Instagram bio link uses utm_source=ig; an internal link on /links
+// itself uses utm_source=instagram) -- mapped here instead of trying to
+// force every link everywhere to agree on one spelling.
+const UTM_SOURCE_TO_NEWSLETTER_SOURCE: Record<string, 'instagram' | 'facebook'> = {
+  ig: 'instagram',
+  instagram: 'instagram',
+  fb: 'facebook',
+  facebook: 'facebook',
+};
+
+// Infers a newsletter signup's traffic-channel source from this visitor's
+// captured first-touch UTM data -- 'organic_website' when there's none, or
+// it doesn't match a known channel. Never returns a page-context category
+// (dealer_page/vehicle_page/affiliate_page); a placement on one of those
+// pages should pass its own `source` prop instead of relying on this.
+export function inferNewsletterSource(): NewsletterSource {
+  const { utm_source } = getFirstTouch();
+  if (!utm_source) return 'organic_website';
+  return UTM_SOURCE_TO_NEWSLETTER_SOURCE[utm_source.toLowerCase()] ?? 'organic_website';
+}
+
 // Fires a GA4 custom event, automatically attaching whatever first-touch
 // campaign data was captured for this visitor (if any) so events carry
 // campaign attribution even though GA4's own session-scoped attribution

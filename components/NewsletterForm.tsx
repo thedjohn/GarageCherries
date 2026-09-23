@@ -1,15 +1,15 @@
 'use client';
 import { useState } from 'react';
-import { trackEvent } from '@/lib/gtag';
-
-// The monetization plan's fixed source categories (mirrored from the
-// VALID_SOURCES whitelist in app/api/newsletter/subscribe/route.ts) -- every
-// placement of this component declares where its signups come from, so the
-// captured data can power a future "which channel drives signups" report.
-export type NewsletterSource = 'instagram' | 'facebook' | 'organic_website' | 'dealer_page' | 'vehicle_page' | 'affiliate_page';
+import { trackEvent, inferNewsletterSource, type NewsletterSource } from '@/lib/gtag';
 
 interface Props {
-  source: NewsletterSource;
+  // Explicit page-context categories (dealer_page/vehicle_page/affiliate_page)
+  // should always be passed -- there's no URL signal to infer those from.
+  // Omit it entirely for a general placement (footer, listings page) and the
+  // visitor's actual first-touch channel (Instagram, Facebook, or organic)
+  // is inferred instead, rather than every such placement guessing the same
+  // hardcoded value regardless of where the visitor actually came from.
+  source?: NewsletterSource;
   // Off by default so the two existing compact placements (footer, listings
   // page) keep their current look -- a future placement built for lead-gen
   // (e.g. the Instagram landing page) can opt in.
@@ -28,11 +28,12 @@ export default function NewsletterForm({ source, showFirstName = false, headline
     e.preventDefault();
     setStatus('loading');
     setErrorMsg('');
+    const resolvedSource = source ?? inferNewsletterSource();
     try {
       const res = await fetch('/api/newsletter/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, firstName: showFirstName ? firstName : undefined, source }),
+        body: JSON.stringify({ email, firstName: showFirstName ? firstName : undefined, source: resolvedSource }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -43,7 +44,7 @@ export default function NewsletterForm({ source, showFirstName = false, headline
         setEmail('');
         setFirstName('');
         trackEvent('newsletter_signup');
-        trackEvent('email_signup', { source });
+        trackEvent('email_signup', { source: resolvedSource });
       }
     } catch {
       setErrorMsg('Signup failed. Please try again.');

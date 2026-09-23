@@ -156,7 +156,7 @@ export default async function ListingsPage({ searchParams }: Props) {
                     <p className="text-zinc-400 text-xs mt-0.5">New listings, car news, and collector market updates — straight to your inbox.</p>
                   </div>
                   <div className="md:w-96 w-full">
-                    <NewsletterForm source="organic_website" />
+                    <NewsletterForm />
                   </div>
                 </div>
               </div>
