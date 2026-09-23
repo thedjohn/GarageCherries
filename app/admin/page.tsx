@@ -8,6 +8,7 @@ import { formatPhone, normalizeUrl, formatListingPrice } from '@/lib/data';
 import VehicleFieldsForm from '@/components/VehicleFieldsForm';
 import AdminEmailCampaigns from '@/components/AdminEmailCampaigns';
 import AdminAffiliateProducts from '@/components/AdminAffiliateProducts';
+import AdminGarageCherryOfTheDay from '@/components/AdminGarageCherryOfTheDay';
 import AdminVideoBackfill from '@/components/AdminVideoBackfill';
 import AdminVideoPriceRefresh from '@/components/AdminVideoPriceRefresh';
 import { resolveAdminRole, type TeamMember } from '@/lib/resolveAdminRole';
@@ -54,7 +55,7 @@ interface SiteUser {
   conversations: { id: string; listing_title: string; listing_url: string | null; seller_email: string }[];
 }
 
-type Tab = 'overview' | 'listings' | 'reported' | 'team' | 'users' | 'applications' | 'events' | 'email' | 'videos' | 'affiliate-products';
+type Tab = 'overview' | 'listings' | 'reported' | 'team' | 'users' | 'applications' | 'events' | 'email' | 'videos' | 'affiliate-products' | 'car-of-the-day';
 
 interface CarEvent {
   id: string; name: string; date: string; end_date: string | null;
@@ -971,6 +972,11 @@ export default function AdminPage() {
             Affiliate Products
           </button>
         )}
+        {(adminRole === 'superadmin' || adminRole === 'admin') && (
+          <button onClick={() => setTab('car-of-the-day')} className={tabCls('car-of-the-day')}>
+            GarageCherry of the Day
+          </button>
+        )}
       </div>
 
       {/* Overview tab */}
@@ -1867,6 +1873,11 @@ export default function AdminPage() {
       {/* Affiliate Products tab */}
       {tab === 'affiliate-products' && (adminRole === 'superadmin' || adminRole === 'admin') && (
         <AdminAffiliateProducts />
+      )}
+
+      {/* GarageCherry of the Day tab */}
+      {tab === 'car-of-the-day' && (adminRole === 'superadmin' || adminRole === 'admin') && (
+        <AdminGarageCherryOfTheDay />
       )}
 
       {/* Events tab */}

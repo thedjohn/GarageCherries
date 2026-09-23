@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
   const yearMax = params.get('yearMax');
   const priceMin = params.get('priceMin');
   const priceMax = params.get('priceMax');
+  const search = params.get('search');
   const status = params.get('status');
   const resubmissionsOnly = params.get('resubmissionsOnly') === 'true';
   const featuredOnly = params.get('featuredOnly') === 'true';
@@ -68,6 +69,7 @@ export async function GET(req: NextRequest) {
     if (sellerId) q = q.eq('seller_id', sellerId);
     if (make) q = q.eq('make', make);
     if (model) q = q.ilike('model', `%${model}%`);
+    if (search) q = q.ilike('title', `%${search}%`);
     if (yearMin) q = q.gte('year', Number(yearMin));
     if (yearMax) q = q.lte('year', Number(yearMax));
     if (priceMin) q = q.gte('price', Number(priceMin));

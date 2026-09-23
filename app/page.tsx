@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import CarCard from '@/components/CarCard';
 import { createClient } from '@/lib/supabase/server';
 import { MAKES, BODY_STYLES } from '@/lib/types';
@@ -44,7 +45,8 @@ export default async function HomePage() {
   // own targeted query that can never itself exceed the cap -- cheaper than
   // fetchAllRows() on the site's highest-traffic page, and avoids the bug
   // entirely rather than working around it.
-  const [{ data: recentRows }, { data: featuredRows }, { data: minYearRow }, { data: maxYearRow }] = await Promise.all([
+  const today = now.slice(0, 10);
+  const [{ data: recentRows }, { data: featuredRows }, { data: minYearRow }, { data: maxYearRow }, { data: carOfTheDayRow }] = await Promise.all([
     supabase.from('listings').select(LISTING_COLUMNS)
       .eq('status', 'approved').eq('is_sold', false)
       .or(`expires_at.is.null,expires_at.gt.${now}`)
@@ -62,10 +64,14 @@ export default async function HomePage() {
       .eq('status', 'approved').eq('is_sold', false)
       .or(`expires_at.is.null,expires_at.gt.${now}`)
       .order('year', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('garagecherry_of_the_day').select(`listings(${LISTING_COLUMNS})`)
+      .eq('featured_date', today).maybeSingle(),
   ]);
 
   const recent = (recentRows ?? []).map(toCarShape);
   const featured = (featuredRows ?? []).map(toCarShape);
+  const carOfTheDayListing = (carOfTheDayRow as unknown as { listings: Record<string, unknown> | null } | null)?.listings ?? null;
+  const carOfTheDay = carOfTheDayListing ? toCarShape(carOfTheDayListing) : null;
 
   const [{ count: activeCount }, { count: dealerCount }, { count: soldCount }, { count: eventCount }] = await Promise.all([
     supabase.from('listings').select('id', { count: 'exact', head: true })
@@ -199,6 +205,31 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* GarageCherry of the Day */}
+      {carOfTheDay && carOfTheDay.images[0] && (
+        <section className="max-w-7xl mx-auto px-4 py-6">
+          <Link
+            href="/car-of-the-day"
+            className="group flex flex-col sm:flex-row items-stretch bg-zinc-900 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all"
+          >
+            <div className="relative sm:w-80 h-48 sm:h-auto shrink-0 overflow-hidden">
+              <Image
+                src={carOfTheDay.images[0]}
+                alt={carOfTheDay.title}
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                sizes="(max-width: 640px) 100vw, 320px"
+              />
+            </div>
+            <div className="p-6 flex flex-col justify-center">
+              <p className="text-xs font-bold text-red-500 uppercase tracking-widest mb-2">🍒 GarageCherry of the Day</p>
+              <h2 className="text-2xl font-extrabold text-white mb-1">{carOfTheDay.title}</h2>
+              <p className="text-zinc-400 text-sm">See today&apos;s pick &rarr;</p>
+            </div>
+          </Link>
+        </section>
+      )}
 
       {/* Featured listings */}
       {featured.length > 0 && (

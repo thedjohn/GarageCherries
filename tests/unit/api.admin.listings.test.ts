@@ -209,10 +209,11 @@ describe('GET /api/admin/listings', () => {
     await GET(makeGetRequest({
       make: 'Dodge', model: 'Challenger', yearMin: '1970', yearMax: '1974',
       priceMin: '10000', priceMax: '50000', status: 'approved',
-      resubmissionsOnly: 'true', featuredOnly: 'true',
+      resubmissionsOnly: 'true', featuredOnly: 'true', search: 'Camaro',
     }));
     expect(builder.eq).toHaveBeenCalledWith('make', 'Dodge');
     expect(builder.ilike).toHaveBeenCalledWith('model', '%Challenger%');
+    expect(builder.ilike).toHaveBeenCalledWith('title', '%Camaro%');
     expect(builder.gte).toHaveBeenCalledWith('year', 1970);
     expect(builder.lte).toHaveBeenCalledWith('year', 1974);
     expect(builder.gte).toHaveBeenCalledWith('price', 10000);
