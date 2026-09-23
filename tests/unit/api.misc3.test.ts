@@ -74,6 +74,35 @@ describe('POST /api/newsletter/subscribe', () => {
     const res: any = await newsletterPost(makeRequest({ email: 'person@example.com' }));
     expect(res._status).toBe(500);
   });
+
+  it('stores first_name and a valid source when provided', async () => {
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    mockFrom.mockReturnValue({ insert });
+    const res: any = await newsletterPost(makeRequest({ email: 'person@example.com', firstName: '  Jane  ', source: 'instagram' }));
+    expect(res._status).toBe(200);
+    expect(insert).toHaveBeenCalledWith({ email: 'person@example.com', first_name: 'Jane', source: 'instagram' });
+  });
+
+  it('omits first_name and source when not provided', async () => {
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    mockFrom.mockReturnValue({ insert });
+    await newsletterPost(makeRequest({ email: 'person@example.com' }));
+    expect(insert).toHaveBeenCalledWith({ email: 'person@example.com' });
+  });
+
+  it('ignores an unrecognized source value instead of writing junk data', async () => {
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    mockFrom.mockReturnValue({ insert });
+    await newsletterPost(makeRequest({ email: 'person@example.com', source: 'not-a-real-source' }));
+    expect(insert).toHaveBeenCalledWith({ email: 'person@example.com' });
+  });
+
+  it('ignores a blank first name', async () => {
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    mockFrom.mockReturnValue({ insert });
+    await newsletterPost(makeRequest({ email: 'person@example.com', firstName: '   ' }));
+    expect(insert).toHaveBeenCalledWith({ email: 'person@example.com' });
+  });
 });
 
 // ── POST /api/notify-watchers ────────────────────────────────────────────────

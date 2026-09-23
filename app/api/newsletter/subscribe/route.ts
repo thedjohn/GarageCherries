@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 
+// The monetization plan's fixed source categories -- kept as a whitelist so
+// a public endpoint can't get arbitrary junk written into a field meant to
+// power a future "where did this lead come from" report.
+const VALID_SOURCES = ['instagram', 'facebook', 'organic_website', 'dealer_page', 'vehicle_page', 'affiliate_page'];
+
 export async function POST(req: NextRequest) {
-  const { email } = await req.json();
+  const { email, firstName, source } = await req.json();
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: 'Valid email required.' }, { status: 400 });
   }
@@ -10,7 +15,11 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
   const { error } = await admin
     .from('newsletter_subscribers')
-    .insert({ email: email.trim().toLowerCase() });
+    .insert({
+      email: email.trim().toLowerCase(),
+      ...(firstName?.trim() ? { first_name: firstName.trim() } : {}),
+      ...(VALID_SOURCES.includes(source) ? { source } : {}),
+    });
 
   if (error) {
     if (error.code === '23505') {
