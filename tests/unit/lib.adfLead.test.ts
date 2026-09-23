@@ -77,6 +77,23 @@ describe('buildAdfLeadXml', () => {
     expect(xml).toContain('<phone type="voice">555-123-4567</phone>');
   });
 
+  it('truncates a stock number over 10 characters -- BHCC\'s CRM silently drops the lead otherwise', () => {
+    const xml = buildAdfLeadXml({
+      ...baseParams,
+      vehicle: { ...baseParams.vehicle, stockNumber: 'TEST-STOCK-1' }, // 12 chars
+    });
+    expect(xml).toContain('<stock>TEST-STOCK</stock>'); // truncated to 10
+    expect(xml).not.toContain('TEST-STOCK-1');
+  });
+
+  it('leaves a stock number of 10 characters or fewer untouched', () => {
+    const xml = buildAdfLeadXml({
+      ...baseParams,
+      vehicle: { ...baseParams.vehicle, stockNumber: '1234567890' }, // exactly 10
+    });
+    expect(xml).toContain('<stock>1234567890</stock>');
+  });
+
   it('omits vin/stock/phone/comments elements entirely when not provided', () => {
     const xml = buildAdfLeadXml({
       dealerName: 'Test Dealer',

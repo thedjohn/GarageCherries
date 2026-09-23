@@ -26,6 +26,13 @@ export interface AdfLeadParams {
   customer: AdfCustomer;
 }
 
+// BHCC's Salesforce Web Form Stock Number field silently drops the lead
+// (no bounce, no error) if <stock> is over 10 characters -- confirmed by
+// their CRM team 2026-09-23 after a 12-char test value failed to insert.
+// Truncated rather than omitted: still useful partial info, and every stock
+// number seen from any dealer feed so far is well under this anyway.
+const MAX_STOCK_NUMBER_LENGTH = 10;
+
 function escapeXml(s: string): string {
   return s
     .replace(/&/g, '&amp;')
@@ -68,7 +75,7 @@ export function buildAdfLeadXml({ dealerName, listingId, vehicle, customer }: Ad
       <year>${escapeXml(String(vehicle.year))}</year>
       <make>${escapeXml(vehicle.make)}</make>
       <model>${escapeXml(vehicle.model)}</model>
-${vehicle.vin ? `      <vin>${escapeXml(vehicle.vin)}</vin>\n` : ''}${vehicle.stockNumber ? `      <stock>${escapeXml(vehicle.stockNumber)}</stock>\n` : ''}    </vehicle>
+${vehicle.vin ? `      <vin>${escapeXml(vehicle.vin)}</vin>\n` : ''}${vehicle.stockNumber ? `      <stock>${escapeXml(vehicle.stockNumber.slice(0, MAX_STOCK_NUMBER_LENGTH))}</stock>\n` : ''}    </vehicle>
     <customer>
       <contact>
         <name part="first">${escapeXml(first)}</name>
