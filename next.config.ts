@@ -19,6 +19,7 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'photos.autocorner.com' },
       { protocol: 'https', hostname: 'www.garagekeptmotors.com' },
       { protocol: 'https', hostname: 'www.totalwebmanager.com' },
+      { protocol: 'https', hostname: 'www.atouchofclassicstx.com' },
     ],
   },
   async redirects() {
