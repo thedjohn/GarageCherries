@@ -13,14 +13,26 @@ export async function POST() {
 
   const admin = createAdminClient();
 
-  // Collect all image paths currently referenced by listings
-  const { data: listings } = await admin.from('listings').select('images');
+  // Collect all image paths currently referenced by listings. Paginated past
+  // Supabase/PostgREST's default 1000-row cap on an unbounded .select() --
+  // the same gotcha count_listing_views_rpc was added to fix elsewhere in
+  // this codebase. Without this, any listing past the first 1000 had its
+  // images silently excluded from claimedPaths and permanently deleted by
+  // this route as "orphans" despite being actively in use.
   const claimedPaths = new Set<string>();
-  for (const listing of listings ?? []) {
-    for (const url of listing.images ?? []) {
-      const path = url.split(`/${BUCKET}/`)[1];
-      if (path) claimedPaths.add(path);
+  const LISTINGS_PAGE_SIZE = 1000;
+  for (let page = 0; ; page++) {
+    const { data: listings } = await admin
+      .from('listings')
+      .select('images')
+      .range(page * LISTINGS_PAGE_SIZE, page * LISTINGS_PAGE_SIZE + LISTINGS_PAGE_SIZE - 1);
+    for (const listing of listings ?? []) {
+      for (const url of listing.images ?? []) {
+        const path = url.split(`/${BUCKET}/`)[1];
+        if (path) claimedPaths.add(path);
+      }
     }
+    if (!listings || listings.length < LISTINGS_PAGE_SIZE) break;
   }
 
   // List all files in storage
