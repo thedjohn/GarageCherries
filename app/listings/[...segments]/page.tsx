@@ -227,15 +227,52 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
 
     const { createClient: createForSimilar } = await import('@/lib/supabase/server');
     const supabaseForSimilar = await createForSimilar();
-    const { data: similarRows } = await supabaseForSimilar
+    const SIMILAR_SELECT = 'id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,images,featured,listed_at';
+    const SIMILAR_YEAR_WINDOW = 7;
+    // "Similar Vehicles" used to match on make alone, which could surface a
+    // $9k daily driver next to an $85k restomod of the same make -- narrow to
+    // a comparable era/price band first, ranked by closeness, then fall back
+    // to same-make-only (the old behavior) to fill any remaining slots so
+    // rare/niche vehicles with few close matches still get a full section.
+    // Some listings are "Call For Price" (price stored as 0) -- skip the price
+    // band and scoring term for those instead of dividing by zero.
+    const hasPrice = car.price > 0;
+    let candidateQuery = supabaseForSimilar
       .from('listings')
-      .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,images,featured,listed_at')
+      .select(SIMILAR_SELECT)
       .eq('status', 'approved')
       .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
       .eq('make', car.make)
       .neq('id', car.id)
-      .limit(4);
-    const similar = (similarRows ?? []).map((r: any) => ({
+      .gte('year', car.year - SIMILAR_YEAR_WINDOW)
+      .lte('year', car.year + SIMILAR_YEAR_WINDOW);
+    if (hasPrice) {
+      candidateQuery = candidateQuery.gte('price', Math.round(car.price * 0.5)).lte('price', Math.round(car.price * 2));
+    }
+    const { data: candidateRows } = await candidateQuery.limit(20);
+    let similarRows = (candidateRows ?? [])
+      .map((r: any) => ({
+        row: r,
+        score: Math.abs(r.year - car.year) / SIMILAR_YEAR_WINDOW + (hasPrice ? Math.abs(r.price - car.price) / car.price : 0),
+      }))
+      .sort((a, b) => a.score - b.score)
+      .map(x => x.row)
+      .slice(0, 4);
+    if (similarRows.length < 4) {
+      const { data: fallbackRows } = await supabaseForSimilar
+        .from('listings')
+        .select(SIMILAR_SELECT)
+        .eq('status', 'approved')
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+        .eq('make', car.make)
+        .neq('id', car.id)
+        .order('listed_at', { ascending: false })
+        .limit(10);
+      const usedIds = new Set(similarRows.map((r: any) => r.id));
+      const extra = (fallbackRows ?? []).filter((r: any) => !usedIds.has(r.id)).slice(0, 4 - similarRows.length);
+      similarRows = [...similarRows, ...extra];
+    }
+    const similar = similarRows.map((r: any) => ({
       id: r.id, slug: r.slug, title: r.title,
       year: r.year, make: r.make, model: r.model,
       price: r.price, mileage: r.mileage,
