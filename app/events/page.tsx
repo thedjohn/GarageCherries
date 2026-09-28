@@ -4,6 +4,7 @@ import { unstable_cache } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
 import SubmitEventForm from './SubmitEventForm';
 import EventFilters from '@/components/EventFilters';
+import EventAlertSignup from '@/components/EventAlertSignup';
 import Pagination from '@/components/Pagination';
 import { stateSlug, STATE_NAMES } from '@/lib/usStates';
 import { resolveZipCoords, boundingBox, haversineMiles } from '@/lib/geo';
@@ -206,6 +207,12 @@ export default async function EventsPage({ searchParams }: Props) {
             {sp.state ? ` in ${STATE_NAMES[sp.state] ?? sp.state}` : ' nationwide'}
           </p>
         )}
+      </div>
+
+      <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-5 mb-8">
+        <p className="font-bold text-zinc-900 mb-1">Get this weekend's car shows in your state, every Thursday</p>
+        <p className="text-sm text-zinc-500 mb-3">Just your email and ZIP — no account needed.</p>
+        <EventAlertSignup />
       </div>
 
       <SubmitEventForm />

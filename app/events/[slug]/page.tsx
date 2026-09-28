@@ -7,6 +7,7 @@ import { STATE_NAMES, stateSlug } from '@/lib/usStates';
 import { eventsCutoff, isCurrentEvent } from '@/lib/eventDates';
 import EventImageLightbox from '@/components/EventImageLightbox';
 import CarCard from '@/components/CarCard';
+import EventAlertSignup from '@/components/EventAlertSignup';
 
 export const revalidate = 0;
 
@@ -351,6 +352,12 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             </Link>
           </div>
         )}
+
+        <div className="mt-10 bg-zinc-50 border border-zinc-100 rounded-2xl p-5">
+          <p className="font-bold text-zinc-900 mb-1">Get shows like this in your inbox every Thursday</p>
+          <p className="text-sm text-zinc-500 mb-3">Just your email and ZIP — no account needed.</p>
+          <EventAlertSignup />
+        </div>
 
         <p className="mt-10 text-xs text-zinc-400">
           Dates are subject to change. Verify with organizers before making travel arrangements.
