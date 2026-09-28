@@ -14,6 +14,20 @@ import ShopToolsCard from '@/components/ShopToolsCard';
 import ListingComments from '@/components/ListingComments';
 import { isAuthorizedForSeller } from '@/lib/dealerAuth';
 import TrackedLink from '@/components/TrackedLink';
+import { STATE_NAMES } from '@/lib/usStates';
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  'show': 'Car Show', 'swap-meet': 'Swap Meet', 'cruise': 'Cruise Night', 'auction': 'Auction',
+};
+
+function formatEventDateRange(date: string, endDate: string | null) {
+  const start = new Date(date + 'T12:00:00');
+  const opts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', year: 'numeric' };
+  if (!endDate) return start.toLocaleDateString('en-US', opts);
+  const end = new Date(endDate + 'T12:00:00');
+  const shortOpts: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric' };
+  return `${start.toLocaleDateString('en-US', shortOpts)} – ${end.toLocaleDateString('en-US', opts)}`;
+}
 import {
   getCar, getDealerById, formatPrice, formatListingPrice, formatMileage, formatPhone,
   toSegment, CARS,
@@ -232,6 +246,27 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
       sellerId: '', sellerName: '', sellerPhone: '',
       transmission: '', engine: null, color: null, description: '',
     }));
+
+    // "Car Shows Near This Car" -- the reverse direction of the "Cars For
+    // Sale Near This Show" section on event pages. Listings store state as
+    // either a 2-letter code or a full name inconsistently, but events always
+    // use 2-letter codes, so normalize before matching.
+    const carStateCode = car.state && car.state.length === 2
+      ? car.state.toUpperCase()
+      : Object.entries(STATE_NAMES).find(([, name]) => name.toLowerCase() === (car.state ?? '').toLowerCase())?.[0];
+    let nearbyEvents: { id: string; name: string; slug: string; date: string; end_date: string | null; location: string; state: string; type: string }[] = [];
+    if (carStateCode) {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: nearbyEventRows } = await supabaseForSimilar
+        .from('events')
+        .select('id, name, slug, date, end_date, location, state, type')
+        .eq('status', 'approved')
+        .eq('state', carStateCode)
+        .gte('date', today)
+        .order('date', { ascending: true })
+        .limit(3);
+      nearbyEvents = nearbyEventRows ?? [];
+    }
 
     const { createClient: createForInspection } = await import('@/lib/supabase/server');
     const supabaseForInspection = await createForInspection();
@@ -609,6 +644,29 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {similar.map((c: any) => <CarCard key={c.id} car={c} />)}
             </div>
+          </section>
+        )}
+
+        {nearbyEvents.length > 0 && (
+          <section className="mt-12">
+            <h2 className="text-2xl font-bold text-zinc-900 mb-6">Car Shows Near This Car</h2>
+            <div className="space-y-3">
+              {nearbyEvents.map(ev => (
+                <Link key={ev.id} href={`/events/${ev.slug}`}
+                  className="block bg-white border border-zinc-100 rounded-xl p-4 hover:border-red-200 hover:shadow-sm transition-all">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600">
+                      {EVENT_TYPE_LABELS[ev.type] ?? ev.type}
+                    </span>
+                    <p className="font-semibold text-zinc-900 text-sm">{ev.name}</p>
+                  </div>
+                  <p className="text-xs text-zinc-500">{formatEventDateRange(ev.date, ev.end_date)} · {ev.location}, {ev.state}</p>
+                </Link>
+              ))}
+            </div>
+            <Link href="/events" className="inline-block mt-4 text-sm font-semibold text-red-600 hover:underline">
+              View full car show calendar →
+            </Link>
           </section>
         )}
 

@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { STATE_NAMES, stateSlug } from '@/lib/usStates';
 import { eventsCutoff, isCurrentEvent } from '@/lib/eventDates';
 import EventImageLightbox from '@/components/EventImageLightbox';
+import CarCard from '@/components/CarCard';
 
 export const revalidate = 0;
 
@@ -139,6 +140,31 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
       .limit(3 - relatedEvents.length);
     relatedEvents = [...relatedEvents, ...(otherEvents ?? [])];
   }
+
+  // "Cars for sale near this show" -- same-state listings, replacing what was
+  // previously a single plain-text "Browse Cars For Sale in [State]" link.
+  // Real car cards give people something concrete to click on rather than a
+  // generic link, and close the loop between events and inventory (the
+  // reverse direction lives on the listing page as "Car Shows Near This Car").
+  const { data: nearbyListingRows } = await admin
+    .from('listings')
+    .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,images,featured,listed_at')
+    .eq('status', 'approved')
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+    .eq('state', e.state)
+    .limit(4);
+  const nearbyListings = (nearbyListingRows ?? []).map((r: any) => ({
+    id: r.id, slug: r.slug, title: r.title,
+    year: r.year, make: r.make, model: r.model,
+    price: r.price, mileage: r.mileage,
+    location: r.location ?? '', state: r.state ?? '',
+    condition: r.condition, bodyStyle: r.body_style,
+    images: r.images ?? [], featured: r.featured ?? false,
+    listedAt: r.listed_at ?? '',
+    sellerId: '', sellerName: '', sellerPhone: '',
+    transmission: '', engine: null, color: null, description: '',
+  }));
+
   const timeRange = e.start_time
     ? e.end_time
       ? `${formatTime(e.start_time)} – ${formatTime(e.end_time)}`
@@ -285,15 +311,23 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
               Visit Event Website →
             </a>
           )}
-          <Link href={`/listings?state=${e.state}`}
-            className="inline-flex items-center gap-2 border border-zinc-200 hover:border-red-300 text-zinc-700 font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors">
-            Browse Cars For Sale in {STATE_NAMES[e.state] ?? e.state} →
-          </Link>
           <Link href="/dealers"
             className="inline-flex items-center gap-2 border border-zinc-200 hover:border-red-300 text-zinc-700 font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors">
             Find a Dealer →
           </Link>
         </div>
+
+        {nearbyListings.length > 0 && (
+          <div className="mt-10 pt-8 border-t border-zinc-100">
+            <h2 className="text-lg font-bold text-zinc-900 mb-4">Cars For Sale Near This Show</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {nearbyListings.map((c: any) => <CarCard key={c.id} car={c} />)}
+            </div>
+            <Link href={`/listings?state=${e.state}`} className="inline-block mt-4 text-sm font-semibold text-red-600 hover:underline">
+              View all cars for sale in {STATE_NAMES[e.state] ?? e.state} →
+            </Link>
+          </div>
+        )}
 
         {relatedEvents.length > 0 && (
           <div className="mt-10 pt-8 border-t border-zinc-100">
