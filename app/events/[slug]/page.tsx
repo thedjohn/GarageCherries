@@ -8,6 +8,7 @@ import { eventsCutoff, isCurrentEvent } from '@/lib/eventDates';
 import EventImageLightbox from '@/components/EventImageLightbox';
 import CarCard from '@/components/CarCard';
 import EventAlertSignup from '@/components/EventAlertSignup';
+import EventWatchlistButton from '@/components/EventWatchlistButton';
 
 export const revalidate = 0;
 
@@ -308,6 +309,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
 
         {/* CTAs */}
         <div className="flex gap-3 flex-wrap">
+          <EventWatchlistButton eventId={e.id} />
           {e.url && (
             <a href={e.url} target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-2 border border-zinc-200 hover:border-red-300 text-zinc-700 font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors">

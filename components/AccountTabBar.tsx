@@ -4,13 +4,13 @@ import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-interface Counts { watchlist: number; messages: number; alerts: number }
+interface Counts { watchlist: number; messages: number; alerts: number; savedEvents: number }
 
 function AccountTabBarInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [counts, setCounts] = useState<Counts>({ watchlist: 0, messages: 0, alerts: 0 });
+  const [counts, setCounts] = useState<Counts>({ watchlist: 0, messages: 0, alerts: 0, savedEvents: 0 });
 
   const signOut = async () => {
     const supabase = createClient();
@@ -23,9 +23,10 @@ function AccountTabBarInner() {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
-      const [watchRes, alertRes, convRes] = await Promise.all([
+      const [watchRes, alertRes, eventWatchRes, convRes] = await Promise.all([
         supabase.from('watchlists').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('saved_searches').select('id', { count: 'exact', head: true }).eq('user_id', user.id).not('last_matched_at', 'is', null),
+        supabase.from('event_watchlists').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
         fetch('/api/conversations'),
       ]);
       const convJson = await convRes.json();
@@ -38,6 +39,7 @@ function AccountTabBarInner() {
       setCounts({
         watchlist: watchRes.count ?? 0,
         alerts: alertRes.count ?? 0,
+        savedEvents: eventWatchRes.count ?? 0,
         messages: unreadCount,
       });
     });
@@ -45,10 +47,14 @@ function AccountTabBarInner() {
     const onWatchlistChange = (e: Event) => {
       setCounts(c => ({ ...c, watchlist: (e as CustomEvent).detail.count }));
     };
+    const onEventWatchlistChange = (e: Event) => {
+      setCounts(c => ({ ...c, savedEvents: (e as CustomEvent).detail.count }));
+    };
     const onConvRead = () => {
       setCounts(c => ({ ...c, messages: Math.max(0, c.messages - 1) }));
     };
     window.addEventListener('gc:watchlist-change', onWatchlistChange);
+    window.addEventListener('gc:event-watchlist-change', onEventWatchlistChange);
     window.addEventListener('gc:conv-read', onConvRead);
 
     // Realtime: subscribe to new messages broadcast for this user
@@ -78,6 +84,7 @@ function AccountTabBarInner() {
 
     return () => {
       window.removeEventListener('gc:watchlist-change', onWatchlistChange);
+      window.removeEventListener('gc:event-watchlist-change', onEventWatchlistChange);
       window.removeEventListener('gc:conv-read', onConvRead);
     };
   }, []);
@@ -95,6 +102,7 @@ function AccountTabBarInner() {
 
   const tabs = [
     { key: 'watchlist', label: 'Watchlist', href: '/account?tab=watchlist', count: counts.watchlist },
+    { key: 'events', label: 'Saved Events', href: '/account?tab=events', count: counts.savedEvents },
     { key: 'messages', label: 'Messages', href: '/account?tab=messages', count: counts.messages },
     { key: 'alerts', label: 'Alerts', href: '/account?tab=alerts', count: counts.alerts },
     { key: 'listings', label: 'My Listings', href: '/account?tab=listings', count: 0 },

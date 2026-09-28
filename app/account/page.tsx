@@ -10,7 +10,7 @@ import { resizeImageFiles } from '@/lib/resizeImage';
 import AccountTabBar from '@/components/AccountTabBar';
 import { useMessenger } from '@/lib/messenger-context';
 
-type Tab = 'watchlist' | 'messages' | 'alerts' | 'listings' | 'settings';
+type Tab = 'watchlist' | 'events' | 'messages' | 'alerts' | 'listings' | 'settings';
 
 interface MyListing {
   id: string; slug: string; title: string; year: number; make: string; model: string;
@@ -42,6 +42,22 @@ interface WatchItem {
     images: string[];
     status: string;
     condition: string | null;
+  } | null;
+}
+
+interface EventWatchItem {
+  id: string;
+  event_id: string;
+  added_at: string;
+  event: {
+    id: string;
+    name: string;
+    slug: string;
+    date: string;
+    end_date: string | null;
+    location: string;
+    state: string;
+    type: string;
   } | null;
 }
 
@@ -127,11 +143,15 @@ function AccountPage() {
 
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState('');
-  const [counts, setCounts] = useState({ watchlist: 0, messages: 0, alerts: 0 });
+  const [counts, setCounts] = useState({ watchlist: 0, messages: 0, alerts: 0, savedEvents: 0 });
 
   // Watchlist
   const [watchItems, setWatchItems] = useState<WatchItem[]>([]);
   const [watchLoading, setWatchLoading] = useState(false);
+
+  // Saved Events
+  const [eventWatchItems, setEventWatchItems] = useState<EventWatchItem[]>([]);
+  const [eventWatchLoading, setEventWatchLoading] = useState(false);
 
   // Messages
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -242,15 +262,17 @@ function AccountPage() {
   const fetchCounts = useCallback(async () => {
     if (!userId) return;
     const supabase = createClient();
-    const [watchRes, alertRes, convRes] = await Promise.all([
+    const [watchRes, alertRes, eventWatchRes, convRes] = await Promise.all([
       supabase.from('watchlists').select('id', { count: 'exact', head: true }).eq('user_id', userId),
       supabase.from('saved_searches').select('id', { count: 'exact', head: true }).eq('user_id', userId).not('last_matched_at', 'is', null),
+      supabase.from('event_watchlists').select('id', { count: 'exact', head: true }).eq('user_id', userId),
       fetch('/api/conversations'),
     ]);
     const convJson = await convRes.json();
     setCounts({
       watchlist: watchRes.count ?? 0,
       alerts: alertRes.count ?? 0,
+      savedEvents: eventWatchRes.count ?? 0,
       messages: convJson.conversations?.length ?? 0,
     });
   }, [userId]);
@@ -273,6 +295,23 @@ function AccountPage() {
     setWatchItems((rows ?? []).map((r: any) => ({ ...r, car: byId[r.car_id] ?? null })).filter((r: any) => r.car));
     setWatchLoading(false);
   }, [userId, watchItems.length]);
+
+  // Load saved-events tab data
+  const loadSavedEvents = useCallback(async () => {
+    if (!userId || eventWatchItems.length > 0) return;
+    setEventWatchLoading(true);
+    const supabase = createClient();
+    const { data: rows } = await supabase
+      .from('event_watchlists').select('id, event_id, added_at')
+      .eq('user_id', userId).order('added_at', { ascending: false });
+    const eventIds = (rows ?? []).map((r: any) => r.event_id);
+    const { data: events } = eventIds.length
+      ? await supabase.from('events').select('id,name,slug,date,end_date,location,state,type').in('id', eventIds)
+      : { data: [] };
+    const byId = Object.fromEntries((events ?? []).map((e: any) => [e.id, e]));
+    setEventWatchItems((rows ?? []).map((r: any) => ({ ...r, event: byId[r.event_id] ?? null })).filter((r: any) => r.event));
+    setEventWatchLoading(false);
+  }, [userId, eventWatchItems.length]);
 
   // Load messages tab data
   const loadMessages = useCallback(async () => {
@@ -340,10 +379,11 @@ function AccountPage() {
 
   useEffect(() => {
     if (tab === 'watchlist') loadWatchlist();
+    if (tab === 'events') loadSavedEvents();
     if (tab === 'messages') loadMessages();
     if (tab === 'alerts') loadAlerts();
     if (tab === 'listings') loadMyListings();
-  }, [tab, loadWatchlist, loadMessages, loadAlerts, loadMyListings]);
+  }, [tab, loadWatchlist, loadSavedEvents, loadMessages, loadAlerts, loadMyListings]);
 
   // Listen for new inbound messages and mark that conversation unread
   useEffect(() => {
@@ -523,6 +563,17 @@ function AccountPage() {
     });
   };
 
+  const removeFromEventWatchlist = async (watchId: string) => {
+    const supabase = createClient();
+    await supabase.from('event_watchlists').delete().eq('id', watchId);
+    setEventWatchItems(prev => prev.filter(w => w.id !== watchId));
+    setCounts(c => {
+      const next = Math.max(0, c.savedEvents - 1);
+      window.dispatchEvent(new CustomEvent('gc:event-watchlist-change', { detail: { count: next } }));
+      return { ...c, savedEvents: next };
+    });
+  };
+
   const deleteAlert = async (alertId: string) => {
     const supabase = createClient();
     await supabase.from('saved_searches').delete().eq('id', alertId);
@@ -690,6 +741,7 @@ function AccountPage() {
 
   const TABS: { key: Tab; label: string; count?: number }[] = [
     { key: 'watchlist', label: 'Watchlist', count: counts.watchlist },
+    { key: 'events', label: 'Saved Events', count: counts.savedEvents },
     { key: 'messages', label: 'Messages', count: counts.messages },
     { key: 'alerts', label: 'Alerts', count: counts.alerts },
     { key: 'settings', label: 'Settings' },
@@ -775,6 +827,61 @@ function AccountPage() {
                     </div>
                     <button
                       onClick={() => removeFromWatchlist(item.id)}
+                      className="text-zinc-300 hover:text-red-500 transition-colors shrink-0 p-2"
+                      title="Remove">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Saved Events tab */}
+      {tab === 'events' && (
+        <div>
+          {eventWatchLoading ? (
+            <div className="space-y-4">
+              {[1,2,3].map(i => <div key={i} className="h-24 bg-zinc-100 rounded-2xl animate-pulse" />)}
+            </div>
+          ) : eventWatchItems.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-zinc-100 p-16 text-center">
+              <p className="text-5xl mb-4">📅</p>
+              <h2 className="text-xl font-bold text-zinc-800 mb-2">No saved events yet</h2>
+              <p className="text-zinc-500 text-sm mb-6">Click the heart on any car show to save it here.</p>
+              <Link href="/events" className="bg-red-600 hover:bg-red-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-colors">
+                Browse Events
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {eventWatchItems.map(item => {
+                const ev = item.event!;
+                return (
+                  <div key={item.id} className="bg-white rounded-2xl border border-zinc-100 shadow-sm p-4 flex gap-4 items-center">
+                    <div className="w-16 h-16 rounded-xl bg-zinc-50 shrink-0 flex flex-col items-center justify-center">
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase">
+                        {new Date(ev.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short' })}
+                      </p>
+                      <p className="text-lg font-extrabold text-zinc-900 leading-none">
+                        {new Date(ev.date + 'T12:00:00').getDate()}
+                      </p>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Link href={`/events/${ev.slug}`}
+                        className="font-bold text-zinc-900 hover:text-red-600 transition-colors line-clamp-1">
+                        {ev.name}
+                      </Link>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        {ev.location}, {ev.state} · Saved {new Date(item.added_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => removeFromEventWatchlist(item.id)}
                       className="text-zinc-300 hover:text-red-500 transition-colors shrink-0 p-2"
                       title="Remove">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

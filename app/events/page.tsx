@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import SubmitEventForm from './SubmitEventForm';
 import EventFilters from '@/components/EventFilters';
 import EventAlertSignup from '@/components/EventAlertSignup';
+import EventCardHeart from '@/components/EventCardHeart';
 import Pagination from '@/components/Pagination';
 import { stateSlug, STATE_NAMES } from '@/lib/usStates';
 import { resolveZipCoords, boundingBox, haversineMiles } from '@/lib/geo';
@@ -352,6 +353,15 @@ export function EventCard({ event, highlight, happeningNow }: { event: CarShowEv
           <p className="text-xl font-extrabold text-zinc-900 leading-none">
             {new Date(event.date + 'T12:00:00').getDate()}
           </p>
+          {/* Multi-day events (e.g. a Tue-Sat swap meet showing up under "This
+              Weekend") only show a single start-day number above by default,
+              which reads as "not actually this weekend" -- this makes the
+              full span visible on the badge itself. */}
+          {event.end_date && event.end_date !== event.date && (
+            <p className="text-[10px] font-semibold text-zinc-400 leading-none mt-0.5">
+              –{new Date(event.end_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </p>
+          )}
         </div>
       )}
       <div className="flex-1 min-w-0">
@@ -384,6 +394,7 @@ export function EventCard({ event, highlight, happeningNow }: { event: CarShowEv
       {event.image && (
         <img src={event.image} alt={event.name} className="hidden sm:block shrink-0 w-20 h-20 object-cover rounded-lg" />
       )}
+      <EventCardHeart eventId={event.id} />
     </div>
   );
 }
