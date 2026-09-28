@@ -35,3 +35,25 @@ export function applyHappeningNow<T>(q: T, cutoff: string): T {
 export function applyPastEvents<T>(q: T, cutoff: string): T {
   return (q as any).lt('date', cutoff).or(`end_date.is.null,end_date.lt.${cutoff}`);
 }
+
+// The upcoming Friday-Sunday window, in whatever timezone `from` is
+// constructed in -- callers pass a Date already anchored to the timezone
+// they care about. Never returns today even if today is a Friday/Saturday/
+// Sunday, matching the weekly alert email's "every Thursday, for the
+// weekend ahead" framing rather than "this instant."
+export function upcomingWeekendRange(from: Date): { fridayStr: string; sundayStr: string } {
+  const day = from.getDay(); // 0 = Sun, 5 = Fri
+  const daysUntilFriday = (5 - day + 7) % 7 || 7;
+  const friday = new Date(from);
+  friday.setDate(from.getDate() + daysUntilFriday);
+  const sunday = new Date(friday);
+  sunday.setDate(friday.getDate() + 2);
+  const toStr = (dt: Date) => dt.toISOString().slice(0, 10);
+  return { fridayStr: toStr(friday), sundayStr: toStr(sunday) };
+}
+
+// An event overlaps the [friday, sunday] window if it starts on/before
+// Sunday and ends (or, for single-day events, starts) on/after Friday.
+export function applyThisWeekend<T>(q: T, fridayStr: string, sundayStr: string): T {
+  return (q as any).lte('date', sundayStr).or(`end_date.gte.${fridayStr},and(end_date.is.null,date.gte.${fridayStr})`);
+}

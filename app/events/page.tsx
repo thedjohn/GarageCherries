@@ -9,7 +9,7 @@ import Pagination from '@/components/Pagination';
 import { stateSlug, STATE_NAMES } from '@/lib/usStates';
 import { resolveZipCoords, boundingBox, haversineMiles } from '@/lib/geo';
 import { fetchAllRows } from '@/lib/db';
-import { eventsCutoff, isCurrentEvent, applyCurrentEvents, applyUpcomingEvents, applyHappeningNow, applyPastEvents } from '@/lib/eventDates';
+import { eventsCutoff, isCurrentEvent, applyCurrentEvents, applyUpcomingEvents, applyHappeningNow, applyPastEvents, applyThisWeekend, upcomingWeekendRange } from '@/lib/eventDates';
 
 export const revalidate = 0;
 const PAGE_SIZE = 20;
@@ -89,7 +89,7 @@ export function formatTimeRange(start?: string | null, end?: string | null) {
 }
 
 interface Props {
-  searchParams: Promise<{ state?: string; type?: string; city?: string; zip?: string; page?: string; past?: string }>;
+  searchParams: Promise<{ state?: string; type?: string; city?: string; zip?: string; page?: string; past?: string; weekend?: string }>;
 }
 
 export default async function EventsPage({ searchParams }: Props) {
@@ -99,6 +99,11 @@ export default async function EventsPage({ searchParams }: Props) {
   const zipCoords = sp.zip ? resolveZipCoords(sp.zip) : null;
   const cutoff = eventsCutoff();
   const showPast = sp.past === '1';
+  // "This Weekend" is an opt-in quick filter, not the page's default view --
+  // /events stays indexable as the full upcoming calendar. Mutually exclusive
+  // with showPast (weekend wins if somehow both params are present).
+  const showWeekend = sp.weekend === '1' && !showPast;
+  const { fridayStr, sundayStr } = upcomingWeekendRange(new Date());
 
   const applyFilters = <T,>(q: T): T => {
     let query = q as any;
@@ -120,7 +125,7 @@ export default async function EventsPage({ searchParams }: Props) {
   // Featured -- shown on page 1 only, not subject to pagination, so a
   // multi-day event doesn't get buried on a later page or show a stale
   // start-date badge in the paginated Upcoming Events list.
-  const showHappeningNow = page === 1 && !showPast;
+  const showHappeningNow = page === 1 && !showPast && !showWeekend;
   let happeningNowQuery = admin.from('events').select('*').eq('status', 'approved').eq('featured', false).order('end_date', { ascending: true });
   happeningNowQuery = applyHappeningNow(applyFilters(happeningNowQuery), cutoff);
 
@@ -145,6 +150,7 @@ export default async function EventsPage({ searchParams }: Props) {
         .not('lat', 'is', null).not('lng', 'is', null)
         .gte('lat', box.minLat).lte('lat', box.maxLat).gte('lng', box.minLng).lte('lng', box.maxLng)
         .range(from, to);
+      if (showWeekend) return applyThisWeekend(applyFilters(q), fridayStr, sundayStr);
       return showPast ? applyPastEvents(applyFilters(q), cutoff) : applyUpcomingEvents(applyFilters(q), cutoff);
     });
     const withinRadius = nearbyRows
@@ -156,7 +162,9 @@ export default async function EventsPage({ searchParams }: Props) {
     events = withinRadius.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(r => r.event);
   } else {
     let mainQuery = admin.from('events').select('*', { count: 'exact' }).eq('status', 'approved').eq('featured', false).order('date', { ascending: !showPast });
-    mainQuery = showPast ? applyPastEvents(applyFilters(mainQuery), cutoff) : applyUpcomingEvents(applyFilters(mainQuery), cutoff);
+    mainQuery = showWeekend
+      ? applyThisWeekend(applyFilters(mainQuery), fridayStr, sundayStr)
+      : showPast ? applyPastEvents(applyFilters(mainQuery), cutoff) : applyUpcomingEvents(applyFilters(mainQuery), cutoff);
     mainQuery = mainQuery.range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
     const { data, count } = await mainQuery;
     events = data ?? [];
@@ -164,7 +172,7 @@ export default async function EventsPage({ searchParams }: Props) {
     totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   }
 
-  const { data: featuredData } = showPast ? { data: [] as CarShowEvent[] } : await featuredQuery;
+  const { data: featuredData } = (showPast || showWeekend) ? { data: [] as CarShowEvent[] } : await featuredQuery;
   const { data: happeningNowData } = showHappeningNow ? await happeningNowQuery : { data: [] as CarShowEvent[] };
   // Upcoming-events count for the header line below -- respects the same
   // state/type/city filters as the list itself (not the ZIP radius, which
@@ -184,7 +192,7 @@ export default async function EventsPage({ searchParams }: Props) {
   const happeningNow: CarShowEvent[] = zipCoords
     ? (happeningNowData ?? []).filter(e => haversineMiles(zipCoords.lat, zipCoords.lng, e.lat!, e.lng!) <= NEARBY_RADIUS_MILES)
     : (happeningNowData ?? []);
-  const hasActiveFilters = !!(sp.state || sp.type || sp.city || sp.zip);
+  const hasActiveFilters = !!(sp.state || sp.type || sp.city || sp.zip || showWeekend);
   const upcoming = events.filter(e => isCurrentEvent(e, cutoff));
   const past = events.filter(e => !isCurrentEvent(e, cutoff));
   // Keeps the user's other filters when flipping between upcoming and past.
@@ -192,6 +200,13 @@ export default async function EventsPage({ searchParams }: Props) {
   for (const [k, v] of Object.entries(sp)) if (v && k !== 'page' && k !== 'past') toggleParams.set(k, v);
   if (!showPast) toggleParams.set('past', '1');
   const toggleHref = `/events${toggleParams.toString() ? '?' + toggleParams.toString() : ''}`;
+
+  // Same "keep other filters" pattern as the past/upcoming toggle above.
+  const weekendParams = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) if (v && k !== 'page' && k !== 'weekend' && k !== 'past') weekendParams.set(k, v);
+  if (!showWeekend) weekendParams.set('weekend', '1');
+  const weekendToggleHref = `/events${weekendParams.toString() ? '?' + weekendParams.toString() : ''}`;
+  const weekendLabel = `${new Date(fridayStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${new Date(sundayStr + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
@@ -201,12 +216,18 @@ export default async function EventsPage({ searchParams }: Props) {
         <p className="text-lg text-zinc-500 max-w-2xl">
           Major classic car shows, auctions, swap meets, and cruise nights across the USA for {new Date().getFullYear()}.
         </p>
-        {!zipCoords && (
+        {!zipCoords && !showWeekend && (
           <p className="mt-3 text-sm font-semibold text-red-600">
             {(upcomingCount ?? 0).toLocaleString()} upcoming event{upcomingCount === 1 ? '' : 's'}
             {sp.state ? ` in ${STATE_NAMES[sp.state] ?? sp.state}` : ' nationwide'}
           </p>
         )}
+        <Link href={weekendToggleHref}
+          className={`inline-flex items-center gap-1.5 mt-4 text-sm font-bold px-4 py-2 rounded-full transition-colors ${
+            showWeekend ? 'bg-zinc-900 text-white' : 'bg-red-50 text-red-600 hover:bg-red-100'
+          }`}>
+          {showWeekend ? `← All Upcoming Events` : `📅 This Weekend Only (${weekendLabel})`}
+        </Link>
       </div>
 
       <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-5 mb-8">

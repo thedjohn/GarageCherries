@@ -4,21 +4,10 @@ import { Resend } from 'resend';
 import { emailWrap } from '@/lib/emailBranding';
 import { STATE_NAMES } from '@/lib/usStates';
 import { createLogger } from '@/lib/logger';
+import { upcomingWeekendRange } from '@/lib/eventDates';
 
 const log = createLogger('api/email/event-alerts');
 const MAX_EVENTS_PER_EMAIL = 8;
-
-function nextFridayAndSunday(from: Date) {
-  const d = new Date(from);
-  const day = d.getDay(); // 0 = Sun, 5 = Fri
-  const daysUntilFriday = (5 - day + 7) % 7 || 7; // always the *upcoming* Friday, never today
-  const friday = new Date(d);
-  friday.setDate(d.getDate() + daysUntilFriday);
-  const sunday = new Date(friday);
-  sunday.setDate(friday.getDate() + 2);
-  const toStr = (dt: Date) => dt.toISOString().slice(0, 10);
-  return { fridayStr: toStr(friday), sundayStr: toStr(sunday) };
-}
 
 function formatEventDate(date: string, endDate: string | null) {
   const start = new Date(date + 'T12:00:00');
@@ -39,7 +28,7 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const { fridayStr, sundayStr } = nextFridayAndSunday(new Date());
+  const { fridayStr, sundayStr } = upcomingWeekendRange(new Date());
 
   const { data: subscribers } = await admin
     .from('event_alert_subscribers')

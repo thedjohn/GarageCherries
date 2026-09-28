@@ -6,6 +6,7 @@ import SearchFilters from '@/components/SearchFilters';
 import Pagination from '@/components/Pagination';
 import SortSelect from '@/components/SortSelect';
 import SaveSearchButton from '@/components/SaveSearchButton';
+import TopSearchBar from '@/components/TopSearchBar';
 import NewsletterForm from '@/components/NewsletterForm';
 import { createClient } from '@/lib/supabase/server';
 import type { Car } from '@/lib/types';
@@ -125,6 +126,10 @@ export default async function ListingsPage({ searchParams }: Props) {
           </Suspense>
         </div>
       </div>
+
+      <Suspense>
+        <TopSearchBar />
+      </Suspense>
 
       <Suspense>
         <QuickFilters />

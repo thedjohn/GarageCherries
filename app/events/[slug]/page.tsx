@@ -259,12 +259,18 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
 
         {/* Details */}
         <div className="bg-white border border-zinc-100 rounded-2xl shadow-sm p-6 mb-6 space-y-4">
-          <div className="flex items-start gap-3">
-            <span className="text-xl mt-0.5">📅</span>
-            <div>
-              <p className="font-semibold text-zinc-900">{formatDate(e.date, e.end_date)}</p>
-              {timeRange && <p className="text-sm text-zinc-500 mt-0.5">{timeRange}</p>}
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-start gap-3">
+              <span className="text-xl mt-0.5">📅</span>
+              <div>
+                <p className="font-semibold text-zinc-900">{formatDate(e.date, e.end_date)}</p>
+                {timeRange && <p className="text-sm text-zinc-500 mt-0.5">{timeRange}</p>}
+              </div>
             </div>
+            <a href={gcalUrl(e)} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-zinc-900 hover:bg-zinc-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
+              + Add to Google Calendar
+            </a>
           </div>
           <div className="flex items-start gap-3">
             <span className="text-xl mt-0.5">📍</span>
@@ -302,10 +308,6 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
 
         {/* CTAs */}
         <div className="flex gap-3 flex-wrap">
-          <a href={gcalUrl(e)} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-zinc-900 hover:bg-zinc-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors">
-            + Add to Google Calendar
-          </a>
           {e.url && (
             <a href={e.url} target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-2 border border-zinc-200 hover:border-red-300 text-zinc-700 font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors">
