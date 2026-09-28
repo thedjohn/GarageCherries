@@ -37,6 +37,7 @@ function SignupForm() {
       options: {
         emailRedirectTo: `${window.location.origin}/account?tab=watchlist`,
         data: { full_name: fullName, ...(promo && { promo }) },
+        captchaToken: cfToken,
       },
     });
 
