@@ -51,8 +51,9 @@ export default function EventFilters({ basePath = '/events', hideStateSelect = f
       <div className="flex flex-wrap items-end gap-3">
         {!hideStateSelect && (
           <div>
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">State</label>
+            <label htmlFor="event-filter-state" className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">State</label>
             <select
+              id="event-filter-state"
               value={state}
               onChange={e => { setState(e.target.value); apply(e.target.value, type, city, zip); }}
               className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -63,8 +64,9 @@ export default function EventFilters({ basePath = '/events', hideStateSelect = f
           </div>
         )}
         <div>
-          <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Type</label>
+          <label htmlFor="event-filter-type" className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Type</label>
           <select
+            id="event-filter-type"
             value={type}
             onChange={e => { setType(e.target.value); apply(state, e.target.value, city, zip); }}
             className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -74,8 +76,9 @@ export default function EventFilters({ basePath = '/events', hideStateSelect = f
           </select>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">City</label>
+          <label htmlFor="event-filter-city" className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">City</label>
           <input
+            id="event-filter-city"
             type="text"
             value={city}
             placeholder="e.g. Austin"
@@ -92,8 +95,9 @@ export default function EventFilters({ basePath = '/events', hideStateSelect = f
           )}
         </div>
         <div>
-          <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">ZIP</label>
+          <label htmlFor="event-filter-zip" className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">ZIP</label>
           <input
+            id="event-filter-zip"
             type="text"
             inputMode="numeric"
             maxLength={5}

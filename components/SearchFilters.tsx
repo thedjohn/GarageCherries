@@ -77,8 +77,9 @@ export default function SearchFilters({ initialMakes, minYear, maxYear }: { init
         <div className="space-y-4">
           {/* Keyword search */}
           <div>
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Search</label>
+            <label htmlFor="search-filter-q" className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Search</label>
             <input
+              id="search-filter-q"
               type="text"
               placeholder="e.g. Mustang, barn find, numbers matching"
               value={filters.q}
@@ -90,8 +91,8 @@ export default function SearchFilters({ initialMakes, minYear, maxYear }: { init
 
           {/* Make */}
           <div>
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Make</label>
-            <select value={filters.make} onChange={e => set('make', e.target.value === 'All Makes' ? '' : e.target.value)}
+            <label htmlFor="search-filter-make" className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Make</label>
+            <select id="search-filter-make" value={filters.make} onChange={e => set('make', e.target.value === 'All Makes' ? '' : e.target.value)}
               className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
               <option value="">All Makes</option>
               {makes.map(m => <option key={m} value={m}>{m}</option>)}
@@ -101,8 +102,8 @@ export default function SearchFilters({ initialMakes, minYear, maxYear }: { init
           {/* Model — only shown when a make is selected and models exist */}
           {filters.make && models.length > 0 && (
             <div>
-              <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Model</label>
-              <select value={filters.model} onChange={e => set('model', e.target.value)}
+              <label htmlFor="search-filter-model" className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Model</label>
+              <select id="search-filter-model" value={filters.model} onChange={e => set('model', e.target.value)}
                 className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
                 <option value="">All Models</option>
                 {models.map(m => <option key={m} value={m}>{m}</option>)}
@@ -112,9 +113,9 @@ export default function SearchFilters({ initialMakes, minYear, maxYear }: { init
 
           {/* Year */}
           <div>
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Year</label>
+            <label htmlFor="search-filter-year-min" className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Year</label>
             <div className="flex gap-2">
-              <select value={filters.yearMin} onChange={e => set('yearMin', e.target.value)}
+              <select id="search-filter-year-min" value={filters.yearMin} onChange={e => set('yearMin', e.target.value)}
                 className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
                 <option value="">Min</option>
                 {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -129,9 +130,9 @@ export default function SearchFilters({ initialMakes, minYear, maxYear }: { init
 
           {/* Price */}
           <div>
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Price</label>
+            <label htmlFor="search-filter-price-min" className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Price</label>
             <div className="flex gap-2">
-              <input type="number" placeholder="Min $" value={filters.priceMin} min={0} onChange={e => set('priceMin', e.target.value)}
+              <input id="search-filter-price-min" type="number" placeholder="Min $" value={filters.priceMin} min={0} onChange={e => set('priceMin', e.target.value)}
                 className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
               <input type="number" placeholder="Max $" value={filters.priceMax} min={0} onChange={e => set('priceMax', e.target.value)}
                 className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500" />
@@ -158,8 +159,8 @@ export default function SearchFilters({ initialMakes, minYear, maxYear }: { init
 
           {/* Body Style */}
           <div>
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Body Style</label>
-            <select value={filters.bodyStyle} onChange={e => set('bodyStyle', e.target.value === 'All Styles' ? '' : e.target.value)}
+            <label htmlFor="search-filter-body-style" className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">Body Style</label>
+            <select id="search-filter-body-style" value={filters.bodyStyle} onChange={e => set('bodyStyle', e.target.value === 'All Styles' ? '' : e.target.value)}
               className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
               <option value="">All Styles</option>
               {BODY_STYLES.filter(b => b !== 'All Styles').map(b => <option key={b} value={b}>{b}</option>)}
@@ -186,8 +187,8 @@ export default function SearchFilters({ initialMakes, minYear, maxYear }: { init
 
           {/* State */}
           <div>
-            <label className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">State</label>
-            <select value={filters.state} onChange={e => set('state', e.target.value === 'All States' ? '' : e.target.value)}
+            <label htmlFor="search-filter-state" className="block text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">State</label>
+            <select id="search-filter-state" value={filters.state} onChange={e => set('state', e.target.value === 'All States' ? '' : e.target.value)}
               className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
               <option value="">All States</option>
               {STATES.filter(s => s !== 'All States').map(s => <option key={s} value={s}>{s}</option>)}
