@@ -1,7 +1,57 @@
 # GarageCherries — Implementation Status
-*Last updated: 2026-09-20 — Sentry error backlog triage complete and shipped (`7c59d3b`), plus follow-ups (`d7b138d` manual sync clears the staleness alert, `b29833f` video cleanup wrapped in `after()`, `bbfa4ff` watcher email wrapped in `after()`, `da4825f` + `1ca818d` watcher/digest/price-drop emails no longer stop at the first 50 accounts). Sold-car video cleanup finished except Instagram (manual only). Garage Kept and Beverly Hills Car Club overnight feed syncs are blocked by a 403 from All Auto Network's host; both dealers have been asked to have it lifted. Open items are listed at the bottom of this section block, under "Still open".*
+*Last updated: 2026-10-01 — Four new features shipped end-to-end (My Garage, public Build Profiles, Showcase, an anonymous like button on Build Profiles), Historical Motors onboarded as a new feed dealer with two real sync bugs fixed along the way, and a real limitation of the "run the feed sync manually via tsx" workaround discovered (crashes if the sync needs to mark anything sold — see "Still open" below). See the new 2026-10-01 section right below for full detail; the 2026-09-21 handoff beneath it is prior history.*
 
-## 🔶 PICK UP HERE — handoff written 2026-09-21 (Derek is continuing from a different Claude account)
+## 🔶 PICK UP HERE — handoff written 2026-10-01
+
+**State of the repo:** everything described below is committed and pushed to `main` (commits `e713aab`, `b6fd46e`, `c3debbc`, `226882c`, `417d23e`, `b5aceb7`, `2a9b855`). No migrations are pending beyond what's already been run (see each feature below).
+
+### ✅ My Garage + public Build Profiles — shipped 2026-10-01, commit `e713aab`
+
+Logged-in users can track vehicles they own from a new **My Garage** tab on `/account` (mirrors the existing Watchlist/Saved Events tabs): year/make/model, trim, nickname, mileage, notes, up to 20 optional photos, and a free-text mod list. New `garage_vehicles` table (migration `20260930_garage_vehicles.sql`) + a new `garage-images` Storage bucket (`app/api/garage/upload-image/route.ts` issues signed upload URLs, same pattern as listing-image uploads).
+
+Any garage vehicle can be toggled public (`is_public` + a stable `slug`, migration `20260930b_garage_vehicle_public.sql` + public-read RLS policy), which generates a shareable `/build/[slug]` Build Profile page — SEO metadata, `Vehicle` JSON-LD, the existing `ImageGallery` component, and a `sitemap.ts` entry. Un-publishing hides the page again without deleting the slug, so a previously-shared link never 404s if the owner re-publishes later. No owner name/email is shown on the public page, since no public-username system exists yet.
+
+### ✅ Showcase — shipped 2026-10-01, commit `b6fd46e`
+
+`/showcase` lists every public Build Profile in a grid (new `BuildCard` component), newest first, with a nav link added to both the desktop and mobile menus (`components/Header.tsx`) — Build Profiles were previously only reachable via a direct shared link, with no public discovery surface. Reuses two existing, proven patterns rather than inventing new ones:
+- **Featured Build rotation** (`components/AdminFeaturedBuild.tsx`, `app/api/admin/featured-build/route.ts`, new `featured_builds` table, migration `20261001_featured_builds.sql`) mirrors the GarageCherry Pick of the Day mechanism exactly — admin assigns a date, a unique-date constraint prevents double-booking a day, the public page checks "is there one for today."
+- **View counting** (`build_views` table, migration `20261001b_build_views.sql`, `app/api/track-build-view/route.ts`, `components/BuildViewTracker.tsx`) mirrors `listing_views`'s IP-hash/same-day-dedup pattern exactly, just scoped to `build_id` instead of `listing_id`.
+
+### ✅ Anonymous like button on Build Profiles — shipped 2026-10-01, commit `417d23e`
+
+Build Profile pages now show a heart/like button next to the view count (`components/BuildLikeButton.tsx`, `app/api/build-like/route.ts`). No login required — same IP-hash dedup approach already used for the view counter on this same page, deliberately not the login-gated Watchlist/Saved Events heart pattern, since most Showcase visitors are just browsing, not signed in. New `build_likes` table (migration `20261001c_build_likes.sql`) has one row per `(build_id, ip_hash)` rather than being an append-only log like `build_views` — the `UNIQUE` constraint is what makes it a real toggle: insert to like, delete the matching row to unlike. `GET /api/build-like?buildId=` returns the requesting visitor's current state + total count; `POST` toggles and returns the same shape so the client reconciles in one round trip.
+
+**Two small follow-up link fixes same day, commit `c3debbc`:** the Build Profile page's breadcrumb now points back to `/showcase` (was the homepage) and the footer "Browse more" link now points to `/listings` (was also the homepage) — both just-shipped links were pointing somewhere less useful than where a Showcase visitor actually came from or would want to go next.
+
+**Account menu, commit `226882c`:** "Saved Events" and "My Garage" were added to both the desktop account dropdown and the mobile menu (`components/Header.tsx`) — both tabs already existed on `/account` but had no entry point from the site nav, same gap Showcase itself had before this session.
+
+Not done (deliberately out of scope for this round, obvious fast-follows): like counts are not shown on `BuildCard`/the Showcase grid, no sort-by-popularity, no comments on builds, builds aren't tied to events.
+
+### ✅ Historical Motors onboarded as a new feed dealer — shipped 2026-10-01, commits `b5aceb7`, `2a9b855`
+
+First dealer onboarded via **SFTP (we host)** this session end-to-end: credentials provisioned, and their export turned out to be a genuinely new feed shape — no VIN column at all (matches by stock number only) and photos split across 13 separate columns instead of one delimited field. Both extensions to `FeedFormatColumns`/`FEED_FORMATS` (`app/api/cron/dealer-feed-sync/route.ts`) are additive — verified against the existing 71 feed-sync tests, no other vendor's behavior changed.
+
+Two real bugs surfaced and fixed along the way:
+- A missing optional column (this vendor has no `bodyStyle` column) resolved to `undefined`, and `JSON.stringify` silently drops `undefined`-valued keys — so the `p_body_style` parameter was dropped from the `insert_listing_with_limit` RPC call entirely rather than sent as a blank value like every other vendor's missing column does, which broke every insert for this dealer outright. Fixed with an explicit `?? null` fallback.
+- `parseInt()` on this vendor's `"$85,500"` / `"29,000"`-style price/mileage fields returned `0` or silently truncated (`parseInt("29,000")` → `29`) — added a `parseNumericField` helper that strips non-digit characters first. No-op for every other vendor's plain-digit feeds.
+
+Also fixed: their MG T-series cars are entered as Make `"MGTD"`/`"MGTF"` with Model left blank, which (beyond being the wrong taxonomy) produced a listing URL with an empty path segment that 404'd outright — normalized to Make `"MG"` + Model `"TD"`/`"TF"`, scoped tightly to this exact pattern so it can't misfire on any other vendor's real make. `historicalmotorsllc.com` (their image host) was added to `next.config.ts`'s allowed image domains. Confirmed healthy as of this session: 29 listings live, feed syncing cleanly.
+
+### 🔶 HaggleMe — a real limitation found in the "run the sync manually" workaround, nothing broken
+
+Checking HaggleMe's feed found a new file on the SFTP bridge (mtime newer than the dealer's stored `feed_sftp_last_received_at`) waiting for its next scheduled sync hour. Running `syncDealerFeed()` directly via a standalone `tsx` script — the workaround this project has used before to force an out-of-band sync without `VPS_URL`/`VPS_SFTP_BRIDGE_SECRET` in `.env.local` — crashed with `Error: 'after' was called outside a request scope`. Root cause: the sync's "mark previously-synced listings not seen in today's feed as sold" loop calls Next's `after()` to send the sold-watcher notification (see `bbfa4ff`/`b29833f` above), and `after()` requires a real Next.js request-handling context that a standalone script doesn't have. This hadn't surfaced in earlier out-of-band runs for this same dealer or for Historical Motors because neither run needed to mark anything sold (everything matched as inserts/updates); this run did.
+
+**Nothing was corrupted.** The dealer's `feed_sftp_last_received_at` was never advanced (the crash happened before that final write), so the file is still seen as "new" — tonight's regular 23:00 UTC scheduled cron will reprocess it fully and correctly in its proper request context, where `after()` works. No manual correction needed. **Still open:** confirm after tonight's cron that the sync completed cleanly (dealer's `feed_last_sync_summary` should show a real insert/update/sold count, not stale).
+
+### Still open (non-code)
+
+- **Park-Ward Motors (Rodd Sala):** a corrected outreach email (removed an unverified "featured placement at top of category" claim that didn't match how the make/model pages actually sort) was drafted and handed to Derek. Not yet confirmed sent.
+- **Arizona Classic Car Sales:** a nudge email (real inventory references) was sent; no reply yet.
+- **Hanksters Hot Rods (Gary Hankinson):** a getting-started reply was sent; no reply yet.
+
+---
+
+## 🔶 Prior handoff — written 2026-09-21 (Derek is continuing from a different Claude account)
 
 **State of the repo:** everything through commit `b2ec68c` is committed, pushed, and deployed (Vercel: Production, "Ready"). Both threads that were open when this handoff was first written are now closed and shipped — see "Closed threads" below for what shipped and what's still worth a follow-up look.
 
