@@ -82,6 +82,18 @@ function mapTransmission(raw: string): string {
   return /manual/i.test(raw) ? 'Manual' : 'Automatic';
 }
 
+// Strips everything but digits before parsing -- every vendor seen until
+// Historical Motors exports Price/Mileage as plain digit strings, where this
+// is a no-op. Historical Motors' export formats them as "$85,500" and
+// "29,000": parseInt() alone stops at the first non-digit character, so
+// "$85,500" silently parsed to NaN (-> price 0) and "29,000" silently
+// truncated to 29 instead of 29000.
+function parseNumericField(raw: string | undefined): number {
+  if (!raw) return NaN;
+  const digitsOnly = raw.replace(/[^0-9]/g, '');
+  return digitsOnly ? parseInt(digitsOnly, 10) : NaN;
+}
+
 // Per-vendor column-name mapping. Different dealer inventory platforms export
 // the same underlying data under different header names -- this is the only
 // thing that varies by `dealer.feed_format`; the matching/insert/update/sold
@@ -106,7 +118,11 @@ interface FeedFormatColumns {
   engineSize?: string;
   // Tried in order, first non-blank wins.
   color: string[];
-  images: string;
+  // A single column name (every vendor seen until Historical Motors), or a
+  // list of column names when the vendor splits photos across several
+  // columns instead of one delimited field -- URLs from every listed column
+  // are concatenated.
+  images: string | string[];
   bodyStyle: string;
   // null = this vendor has no per-vehicle description field at all.
   description: string | null;
@@ -115,7 +131,11 @@ interface FeedFormatColumns {
   // 'Dealer Phone Number') when left unset -- only set these for a vendor
   // whose export actually spells them differently, confirmed by reading real
   // rows, same bar as every other field here.
-  vin?: string;
+  // `vin: null` (as opposed to leaving it unset) means this vendor's export
+  // has no VIN column at all -- Historical Motors matches by stock number
+  // only. Distinct from `undefined`, which still requires/reads a literal
+  // 'VIN' column.
+  vin?: string | null;
   year?: string;
   model?: string;
   make?: string;
@@ -272,6 +292,27 @@ const FEED_FORMATS: Record<string, FeedFormatColumns> = {
     bodyStyle: 'BodyStyle',
     description: 'SellerDescription',
   },
+  // Historical Motors' export (pushed via SFTP) -- confirmed against the real
+  // file they uploaded, not assumed. No VIN column at all (matched by "ID
+  // Number" alone) and no Sub-Model/Engine/Body Style columns either -- all
+  // three safely resolve to blank the same way AutoCorner's missing optional
+  // columns do above. Photos are split across 13 separate columns instead of
+  // one delimited field.
+  historical_motors: {
+    stockNumber: 'ID Number',
+    subModel: 'Sub-Model',
+    price: 'Price',
+    transmission: 'Transmission',
+    engine: 'Engine',
+    color: ['Exterior Color'],
+    images: [
+      'Main Image', 'Image 2', 'Image 3', 'Image 4', 'Image 5', 'Image 6',
+      'Image 7', 'Image 8', 'Image 9', 'Image 10', 'Image 11', 'Image 12', 'Image 13',
+    ],
+    bodyStyle: 'Body Style',
+    description: 'Text Description',
+    vin: null,
+  },
 };
 
 const STATE_NAME_TO_ABBR: Record<string, string> = {
@@ -403,8 +444,11 @@ async function fetchViaSftpPush(dealer: FeedDealer): Promise<{ text: string; mti
 // Club uses "StockNumber", no space).
 function isValidFeedHeader(header: string[] | undefined, format: FeedFormatColumns): boolean {
   const required = [
-    format.vin ?? 'VIN', format.year ?? 'Year', format.make ?? 'Make', format.model ?? 'Model',
+    format.year ?? 'Year', format.make ?? 'Make', format.model ?? 'Model',
     format.stockNumber,
+    // format.vin === null means this vendor has no VIN column at all --
+    // every other vendor still requires one (a custom name, or the 'VIN' default).
+    ...(format.vin === null ? [] : [format.vin ?? 'VIN']),
   ];
   return !!header && required.every(col => header.includes(col));
 }
@@ -500,7 +544,7 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     const bodyStyleRaw = r[idx(format.bodyStyle)]?.trim();
     if (SKIP_BODY_STYLES.has(bodyStyleRaw)) { result.skipped++; continue; }
 
-    const vin = r[idx(format.vin ?? 'VIN')]?.trim() || null;
+    const vin = format.vin === null ? null : r[idx(format.vin ?? 'VIN')]?.trim() || null;
     const stockNumber = r[idx(format.stockNumber)]?.trim() || null;
     if (!vin && !stockNumber) { result.skipped++; continue; }
     const existingId = (vin && existingByVin.get(vin)) || (stockNumber && existingByStock.get(stockNumber)) || undefined;
@@ -530,18 +574,25 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     if (make && !knownMakes.has(make.toLowerCase()) && !result.unrecognizedMakes.includes(make)) {
       result.unrecognizedMakes.push(make);
     }
-    const price = parseInt(r[idx(format.price)], 10)
-      || (format.priceFallback ? parseInt(r[idx(format.priceFallback)], 10) : 0)
+    const price = parseNumericField(r[idx(format.price)])
+      || (format.priceFallback ? parseNumericField(r[idx(format.priceFallback)]) : 0)
       || 0;
-    const mileage = parseInt(r[idx(format.mileage ?? 'Mileage')], 10) || null;
-    const bodyStyle = BODY_STYLE_MAP[bodyStyleRaw] ?? bodyStyleRaw;
+    const mileage = parseNumericField(r[idx(format.mileage ?? 'Mileage')]) || null;
+    // ?? null (not just ?? bodyStyleRaw) matters for a vendor with no body-style
+    // column at all (bodyStyleRaw undefined): Supabase silently drops an
+    // `undefined` RPC parameter from the request entirely, which breaks the
+    // insert_listing_with_limit call outright (wrong arg count) rather than
+    // just storing a blank value the way every other optional field already
+    // handles a missing column (e.g. `engine`'s `|| null` below).
+    const bodyStyle = BODY_STYLE_MAP[bodyStyleRaw] ?? bodyStyleRaw ?? null;
     const transmission = mapTransmission(r[idx(format.transmission)] ?? '');
     const engine = [
       format.engineSize ? r[idx(format.engineSize)]?.trim() : null,
       r[idx(format.engine)]?.trim(),
     ].filter(Boolean).join(' ') || null;
     const color = format.color.map(col => r[idx(col)]?.trim()).find(Boolean) ?? null;
-    const rawImages = extractImageUrls(r[idx(format.images)] ?? '');
+    const imageColumns = Array.isArray(format.images) ? format.images : [format.images];
+    const rawImages = imageColumns.flatMap(col => extractImageUrls(r[idx(col)] ?? ''));
     const images = selectRepresentativeImages(rawImages, 30);
     // A listing with no photos at all isn't sellable-looking; manual listings
     // already require at least one photo to save (dealer dashboard's Add

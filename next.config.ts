@@ -20,6 +20,7 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'www.garagekeptmotors.com' },
       { protocol: 'https', hostname: 'www.totalwebmanager.com' },
       { protocol: 'https', hostname: 'www.atouchofclassicstx.com' },
+      { protocol: 'http', hostname: 'historicalmotorsllc.com' },
     ],
   },
   async redirects() {
