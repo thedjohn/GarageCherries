@@ -12,14 +12,14 @@ type AuthState =
   | { status: 'advertiser' }
   | { status: 'buyer'; email: string; name: string };
 
-interface Counts { watchlist: number; messages: number; alerts: number }
+interface Counts { watchlist: number; messages: number; alerts: number; savedEvents: number; garageVehicles: number }
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [auth, setAuth] = useState<AuthState>({ status: 'loading' });
-  const [counts, setCounts] = useState<Counts>({ watchlist: 0, messages: 0, alerts: 0 });
+  const [counts, setCounts] = useState<Counts>({ watchlist: 0, messages: 0, alerts: 0, savedEvents: 0, garageVehicles: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -42,9 +42,11 @@ export default function Header() {
       if (advertiser) { setAuth({ status: 'advertiser' }); return; }
       setAuth({ status: 'buyer', email: email ?? '', name: name ?? email ?? '' });
       // Fetch counts for badge display + check admin status in parallel
-      const [watchRes, alertRes, convRes, adminRes] = await Promise.all([
+      const [watchRes, alertRes, eventWatchRes, garageRes, convRes, adminRes] = await Promise.all([
         supabase.from('watchlists').select('id', { count: 'exact', head: true }).eq('user_id', userId),
         supabase.from('saved_searches').select('id', { count: 'exact', head: true }).eq('user_id', userId).not('last_matched_at', 'is', null),
+        supabase.from('event_watchlists').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+        supabase.from('garage_vehicles').select('id', { count: 'exact', head: true }).eq('user_id', userId),
         fetch('/api/conversations'),
         fetch('/api/admin/team'),
       ]);
@@ -59,6 +61,8 @@ export default function Header() {
       setCounts({
         watchlist: watchRes.count ?? 0,
         alerts: alertRes.count ?? 0,
+        savedEvents: eventWatchRes.count ?? 0,
+        garageVehicles: garageRes.count ?? 0,
         messages: unreadCount,
       });
     }
@@ -77,17 +81,22 @@ export default function Header() {
     const handleWatchlistChange = (e: Event) => {
       setCounts(prev => ({ ...prev, watchlist: (e as CustomEvent).detail.count }));
     };
+    const handleEventWatchlistChange = (e: Event) => {
+      setCounts(prev => ({ ...prev, savedEvents: (e as CustomEvent).detail.count }));
+    };
     const handleNewMessage = () => {
       setCounts(prev => ({ ...prev, messages: prev.messages + 1 }));
     };
     window.addEventListener('gc:conv-read', handleConvRead);
     window.addEventListener('gc:watchlist-change', handleWatchlistChange);
+    window.addEventListener('gc:event-watchlist-change', handleEventWatchlistChange);
     window.addEventListener('gc:new-message', handleNewMessage);
 
     return () => {
       subscription.unsubscribe();
       window.removeEventListener('gc:conv-read', handleConvRead);
       window.removeEventListener('gc:watchlist-change', handleWatchlistChange);
+      window.removeEventListener('gc:event-watchlist-change', handleEventWatchlistChange);
       window.removeEventListener('gc:new-message', handleNewMessage);
     };
   }, []);
@@ -209,6 +218,22 @@ export default function Header() {
                           <span className="bg-zinc-100 text-zinc-600 text-xs font-bold rounded-full px-2 py-0.5">{counts.alerts}</span>
                         )}
                       </Link>
+                      <Link href="/account?tab=events"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center justify-between px-5 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors">
+                        <span>Saved Events</span>
+                        {counts.savedEvents > 0 && (
+                          <span className="bg-zinc-100 text-zinc-600 text-xs font-bold rounded-full px-2 py-0.5">{counts.savedEvents}</span>
+                        )}
+                      </Link>
+                      <Link href="/account?tab=garage"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center justify-between px-5 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors">
+                        <span>My Garage</span>
+                        {counts.garageVehicles > 0 && (
+                          <span className="bg-zinc-100 text-zinc-600 text-xs font-bold rounded-full px-2 py-0.5">{counts.garageVehicles}</span>
+                        )}
+                      </Link>
                       <Link href="/account?tab=listings"
                         onClick={() => setDropdownOpen(false)}
                         className="flex items-center px-5 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50 transition-colors">
@@ -313,6 +338,14 @@ export default function Header() {
                   <Link href="/account?tab=alerts" className="flex justify-between py-2 font-semibold hover:text-red-400" onClick={() => setMenuOpen(false)}>
                     <span>Alerts</span>
                     {counts.alerts > 0 && <span className="bg-zinc-700 text-white text-xs font-bold rounded-full px-2 py-0.5">{counts.alerts}</span>}
+                  </Link>
+                  <Link href="/account?tab=events" className="flex justify-between py-2 font-semibold hover:text-red-400" onClick={() => setMenuOpen(false)}>
+                    <span>Saved Events</span>
+                    {counts.savedEvents > 0 && <span className="bg-zinc-700 text-white text-xs font-bold rounded-full px-2 py-0.5">{counts.savedEvents}</span>}
+                  </Link>
+                  <Link href="/account?tab=garage" className="flex justify-between py-2 font-semibold hover:text-red-400" onClick={() => setMenuOpen(false)}>
+                    <span>My Garage</span>
+                    {counts.garageVehicles > 0 && <span className="bg-zinc-700 text-white text-xs font-bold rounded-full px-2 py-0.5">{counts.garageVehicles}</span>}
                   </Link>
                   <Link href="/account?tab=listings" className="block py-2 font-semibold hover:text-red-400" onClick={() => setMenuOpen(false)}>My Listings</Link>
                   <Link href="/account?tab=settings" className="block py-2 text-zinc-400 hover:text-red-400" onClick={() => setMenuOpen(false)}>Account Settings</Link>
