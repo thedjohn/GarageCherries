@@ -9,8 +9,10 @@ import { MAKES, BODY_STYLES, CONDITIONS, TRANSMISSIONS, STATES } from '@/lib/typ
 import { resizeImageFiles } from '@/lib/resizeImage';
 import AccountTabBar from '@/components/AccountTabBar';
 import { useMessenger } from '@/lib/messenger-context';
+import GarageVehicleForm, { type GarageVehicle } from '@/components/GarageVehicleForm';
+import GarageVehicleCard from '@/components/GarageVehicleCard';
 
-type Tab = 'watchlist' | 'events' | 'messages' | 'alerts' | 'listings' | 'settings';
+type Tab = 'watchlist' | 'events' | 'garage' | 'messages' | 'alerts' | 'listings' | 'settings';
 
 interface MyListing {
   id: string; slug: string; title: string; year: number; make: string; model: string;
@@ -152,6 +154,12 @@ function AccountPage() {
   // Saved Events
   const [eventWatchItems, setEventWatchItems] = useState<EventWatchItem[]>([]);
   const [eventWatchLoading, setEventWatchLoading] = useState(false);
+
+  // My Garage
+  const [garageVehicles, setGarageVehicles] = useState<GarageVehicle[]>([]);
+  const [garageLoading, setGarageLoading] = useState(false);
+  const [showGarageForm, setShowGarageForm] = useState(false);
+  const [editingGarageVehicle, setEditingGarageVehicle] = useState<GarageVehicle | null>(null);
 
   // Messages
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -313,6 +321,18 @@ function AccountPage() {
     setEventWatchLoading(false);
   }, [userId, eventWatchItems.length]);
 
+  // Load My Garage tab data
+  const loadGarageVehicles = useCallback(async () => {
+    if (!userId || garageVehicles.length > 0) return;
+    setGarageLoading(true);
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('garage_vehicles').select('*')
+      .eq('user_id', userId).order('created_at', { ascending: false });
+    setGarageVehicles((data ?? []) as GarageVehicle[]);
+    setGarageLoading(false);
+  }, [userId, garageVehicles.length]);
+
   // Load messages tab data
   const loadMessages = useCallback(async () => {
     if (conversations.length > 0) return;
@@ -380,10 +400,11 @@ function AccountPage() {
   useEffect(() => {
     if (tab === 'watchlist') loadWatchlist();
     if (tab === 'events') loadSavedEvents();
+    if (tab === 'garage') loadGarageVehicles();
     if (tab === 'messages') loadMessages();
     if (tab === 'alerts') loadAlerts();
     if (tab === 'listings') loadMyListings();
-  }, [tab, loadWatchlist, loadSavedEvents, loadMessages, loadAlerts, loadMyListings]);
+  }, [tab, loadWatchlist, loadSavedEvents, loadGarageVehicles, loadMessages, loadAlerts, loadMyListings]);
 
   // Listen for new inbound messages and mark that conversation unread
   useEffect(() => {
@@ -561,6 +582,12 @@ function AccountPage() {
       window.dispatchEvent(new CustomEvent('gc:watchlist-change', { detail: { count: next } }));
       return { ...c, watchlist: next };
     });
+  };
+
+  const deleteGarageVehicle = async (id: string) => {
+    const supabase = createClient();
+    await supabase.from('garage_vehicles').delete().eq('id', id);
+    setGarageVehicles(prev => prev.filter(v => v.id !== id));
   };
 
   const removeFromEventWatchlist = async (watchId: string) => {
@@ -742,6 +769,7 @@ function AccountPage() {
   const TABS: { key: Tab; label: string; count?: number }[] = [
     { key: 'watchlist', label: 'Watchlist', count: counts.watchlist },
     { key: 'events', label: 'Saved Events', count: counts.savedEvents },
+    { key: 'garage', label: 'My Garage', count: garageVehicles.length },
     { key: 'messages', label: 'Messages', count: counts.messages },
     { key: 'alerts', label: 'Alerts', count: counts.alerts },
     { key: 'settings', label: 'Settings' },
@@ -891,6 +919,61 @@ function AccountPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* My Garage tab */}
+      {tab === 'garage' && (
+        <div>
+          {!showGarageForm && (
+            <div className="flex justify-end mb-5">
+              <button onClick={() => { setEditingGarageVehicle(null); setShowGarageForm(true); }}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors">
+                + Add Vehicle
+              </button>
+            </div>
+          )}
+
+          {showGarageForm && (
+            <GarageVehicleForm
+              vehicle={editingGarageVehicle ?? undefined}
+              onCancel={() => { setShowGarageForm(false); setEditingGarageVehicle(null); }}
+              onSaved={(saved) => {
+                setGarageVehicles(prev => editingGarageVehicle
+                  ? prev.map(v => v.id === saved.id ? saved : v)
+                  : [saved, ...prev]);
+                setShowGarageForm(false);
+                setEditingGarageVehicle(null);
+              }}
+            />
+          )}
+
+          {garageLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[1,2].map(i => <div key={i} className="h-64 bg-zinc-100 rounded-2xl animate-pulse" />)}
+            </div>
+          ) : garageVehicles.length === 0 && !showGarageForm ? (
+            <div className="bg-white rounded-2xl border border-zinc-100 p-16 text-center">
+              <p className="text-5xl mb-4">🚗</p>
+              <h2 className="text-xl font-bold text-zinc-800 mb-2">No vehicles in your garage yet</h2>
+              <p className="text-zinc-500 text-sm mb-6">Add a car you own to track mods, mileage, and photos.</p>
+              <button onClick={() => setShowGarageForm(true)}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl transition-colors">
+                Add Your First Vehicle
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {garageVehicles.map(v => (
+                <GarageVehicleCard
+                  key={v.id}
+                  vehicle={v}
+                  onEdit={() => { setEditingGarageVehicle(v); setShowGarageForm(true); }}
+                  onDelete={() => deleteGarageVehicle(v.id)}
+                />
+              ))}
             </div>
           )}
         </div>

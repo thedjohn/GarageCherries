@@ -36,6 +36,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     id: string; slug: string; date: string | null; state: string | null;
   }
 
+  interface SitemapBuildRow {
+    id: string; slug: string; updated_at: string | null;
+  }
+
   // Paged past Supabase's default 1000-row cap on an uncapped select -- with
   // 1086 approved listings as of this fix, the old raw .select() silently
   // dropped every listing past the first 1000 from the sitemap (confirmed
@@ -44,7 +48,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // care about row order). Events hit the same cap once approved events
   // passed 1000 (a state-by-state events import pushed the total past 13,000),
   // silently dropping most event pages from the sitemap -- same fix applies.
-  const [cars, { data: dealers }, { data: advertisers }, events] = await Promise.all([
+  const [cars, { data: dealers }, { data: advertisers }, events, builds] = await Promise.all([
     fetchAllRows<SitemapCarRow>((from, to) => supabase
       .from('listings')
       .select('id, slug, make, model, featured, listed_at, created_at')
@@ -62,6 +66,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .from('events')
       .select('id, slug, date, state')
       .eq('status', 'approved')
+      .not('slug', 'is', null)
+      .order('id', { ascending: true })
+      .range(from, to)),
+    fetchAllRows<SitemapBuildRow>((from, to) => supabase
+      .from('garage_vehicles')
+      .select('id, slug, updated_at')
+      .eq('is_public', true)
       .not('slug', 'is', null)
       .order('id', { ascending: true })
       .range(from, to)),
@@ -229,6 +240,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  const buildPages: MetadataRoute.Sitemap = (builds ?? [])
+    .filter(b => b.slug)
+    .map(b => ({
+      url: `${BASE_URL}/build/${b.slug}`,
+      lastModified: new Date(b.updated_at ?? new Date()),
+      changeFrequency: 'monthly' as const,
+      priority: 0.5,
+    }));
+
   return [
     ...staticPages,
     ...listingPages,
@@ -245,5 +265,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...guidePages,
     ...eventPages,
     ...eventStatePages,
+    ...buildPages,
   ];
 }
