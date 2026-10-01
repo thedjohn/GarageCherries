@@ -85,8 +85,8 @@ export default async function BuildProfilePage({ params }: { params: Promise<{ s
       <BuildViewTracker buildId={build.id} />
 
       <div className="max-w-3xl mx-auto px-4 py-12">
-        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-red-600 transition-colors mb-8">
-          ← GarageCherries
+        <Link href="/showcase" className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-red-600 transition-colors mb-8">
+          ← Showcase
         </Link>
 
         <div className="flex items-center gap-2 mb-3">
@@ -154,7 +154,7 @@ export default async function BuildProfilePage({ params }: { params: Promise<{ s
 
         <p className="mt-10 text-xs text-zinc-400 text-center">
           Shared from a GarageCherries member's garage.{' '}
-          <Link href="/" className="text-red-600 hover:underline">Browse more at GarageCherries.com →</Link>
+          <Link href="/listings" className="text-red-600 hover:underline">Browse more at GarageCherries.com →</Link>
         </p>
       </div>
     </>
