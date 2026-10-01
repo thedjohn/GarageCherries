@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import ImageGallery from '@/components/ImageGallery';
+import BuildViewTracker from '@/components/BuildViewTracker';
 
 export const revalidate = 0;
 
@@ -63,6 +64,9 @@ export default async function BuildProfilePage({ params }: { params: Promise<{ s
   if (!build) notFound();
 
   const title = buildTitle(build);
+  const admin = createAdminClient();
+  const { count: viewCount } = await admin
+    .from('build_views').select('id', { count: 'exact', head: true }).eq('build_id', build.id);
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -78,13 +82,17 @@ export default async function BuildProfilePage({ params }: { params: Promise<{ s
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <BuildViewTracker buildId={build.id} />
 
       <div className="max-w-3xl mx-auto px-4 py-12">
         <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-red-600 transition-colors mb-8">
           ← GarageCherries
         </Link>
 
-        <p className="text-xs font-semibold text-red-600 uppercase tracking-widest mb-3">Build Profile</p>
+        <div className="flex items-center gap-2 mb-3">
+          <p className="text-xs font-semibold text-red-600 uppercase tracking-widest">Build Profile</p>
+          {!!viewCount && <p className="text-xs text-zinc-400">· {viewCount.toLocaleString()} view{viewCount === 1 ? '' : 's'}</p>}
+        </div>
         <h1 className="text-3xl md:text-4xl font-extrabold text-zinc-900 mb-2 leading-tight">
           {build.nickname || title}
         </h1>

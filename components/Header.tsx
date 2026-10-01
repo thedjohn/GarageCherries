@@ -128,6 +128,7 @@ export default function Header() {
             <Link href="/cars" className="hover:text-red-400 transition-colors">Car Guide</Link>
             <Link href="/guides" className="hover:text-red-400 transition-colors">Guides</Link>
             <Link href="/events" className="hover:text-red-400 transition-colors">Events</Link>
+            <Link href="/showcase" className="hover:text-red-400 transition-colors">Showcase</Link>
             <Link href="/dealers" className="hover:text-red-400 transition-colors">Dealers</Link>
             <Link href="/sell" className="hover:text-red-400 transition-colors">Sell</Link>
             <Link href="/pricing" className="hover:text-red-400 transition-colors">Pricing</Link>
@@ -283,6 +284,7 @@ export default function Header() {
             <Link href="/cars" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Car Guide</Link>
             <Link href="/guides" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Buyer's Guides</Link>
             <Link href="/events" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Car Show Calendar</Link>
+            <Link href="/showcase" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Showcase</Link>
             <Link href="/reports" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Market Report</Link>
             <Link href="/dealers" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Dealers</Link>
             <Link href="/sell" className="block py-2 hover:text-red-400" onClick={() => setMenuOpen(false)}>Sell Your Car</Link>
