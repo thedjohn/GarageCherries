@@ -561,13 +561,21 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     // in our catalog at all) -- isNaN alone missed this since "0000" parses
     // to a valid, if nonsensical, number rather than NaN.
     if (isNaN(year) || year <= 0) { result.skipped++; continue; }
-    const model = r[idx(format.model ?? 'Model')]?.trim();
+    const rawModel = r[idx(format.model ?? 'Model')]?.trim();
     const subModel = r[idx(format.subModel)]?.trim();
     // Not every vendor's export has this column; idx() returns -1 when absent,
     // and r[-1] is safely undefined -- ?.trim() handles that the same as any
     // other optional column.
     const vdpUrl = r[idx('VDP URL')]?.trim() ?? '';
-    const make = normalizeMake(r[idx(format.make ?? 'Make')]?.trim(), subModel, vdpUrl);
+    const rawMake = normalizeMake(r[idx(format.make ?? 'Make')]?.trim(), subModel, vdpUrl);
+    // Historical Motors enters MG T-series cars as Make "MGTD"/"MGTF" with
+    // Model left blank, rather than Make "MG" + Model "TD"/"TF" -- beyond
+    // being the wrong taxonomy, a blank model produces a broken listing URL
+    // (an empty path segment that 404s outright). Scoped tightly to this
+    // exact pattern so it can't misfire on some other vendor's real make.
+    const isMgTSeries = !rawModel && /^mgt[df]$/i.test(rawMake);
+    const make = isMgTSeries ? 'MG' : rawMake;
+    const model = isMgTSeries ? rawMake.slice(-2).toUpperCase() : rawModel;
     // Import the car regardless -- a make not yet in our official MAKES list is a
     // real data-review item, not a reason to drop otherwise-sellable inventory.
     // Flagged here so it surfaces for a deliberate add/reject decision.
