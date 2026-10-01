@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import ImageGallery from '@/components/ImageGallery';
 import BuildViewTracker from '@/components/BuildViewTracker';
+import BuildLikeButton from '@/components/BuildLikeButton';
 
 export const revalidate = 0;
 
@@ -89,9 +90,10 @@ export default async function BuildProfilePage({ params }: { params: Promise<{ s
           ← Showcase
         </Link>
 
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
           <p className="text-xs font-semibold text-red-600 uppercase tracking-widest">Build Profile</p>
           {!!viewCount && <p className="text-xs text-zinc-400">· {viewCount.toLocaleString()} view{viewCount === 1 ? '' : 's'}</p>}
+          <BuildLikeButton buildId={build.id} />
         </div>
         <h1 className="text-3xl md:text-4xl font-extrabold text-zinc-900 mb-2 leading-tight">
           {build.nickname || title}
