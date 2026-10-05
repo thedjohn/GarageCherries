@@ -1094,4 +1094,38 @@ describe('GET /api/cron/dealer-feed-sync', () => {
       expect(res._data.results['mcgintymotorcars@gmail.com'].errors[0]).toContain('failed validation');
     });
   });
+
+  describe('autorevo format (Arizona Classic Car Sales)', () => {
+    // Same layout as the sample file sent to AutoRevo on 2026-10-05.
+    const SAMPLE_CSV = [
+      'DealerID,StockNumber,VIN,Year,Make,Model,Trim,Mileage,WebPrice,ExteriorColor,InteriorColor,Engine,Transmission,BodyStyle,Description,PhotoURLs,Status',
+      'ACCS001,A1042,124379N600001,1969,Chevrolet,Camaro,SS,68420,54900,Hugger Orange,Black,396 CI V8,4-Speed Manual,Coupe,"Numbers-matching SS 396, fresh brakes.",https://example.com/photos/A1042-1.jpg|https://example.com/photos/A1042-2.jpg,Available',
+      'ACCS001,A1057,,1931,Ford,Model A,Deluxe,,22500,Black,Brown,201 CI I4,3-Speed Manual,Roadster,"Rumble seat and the original ""Ford"" script emblem.",https://example.com/photos/A1057-1.jpg,Available',
+    ].join('\n');
+    const DEALER_AR: TestDealerRow = { ...DEALER, id: 'dealer-ar', email: 'danny@arizonaccs.com', feed_format: 'autorevo' };
+
+    it('imports a row using the sample file\'s column names, including pipe-separated photos', async () => {
+      makeSupabaseMock({ dealers: [DEALER_AR], existingListings: [] });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => SAMPLE_CSV }));
+
+      await GET(makeRequest('Bearer cron-secret'));
+      expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({
+        p_vin: '124379N600001', p_year: 1969, p_make: 'Chevrolet', p_model: 'Camaro', p_title: '1969 Chevrolet Camaro SS',
+        p_price: 54900, p_mileage: 68420, p_color: 'Hugger Orange', p_body_style: 'Coupe',
+        p_transmission: 'Manual', p_engine: '396 CI V8',
+        p_images: ['https://example.com/photos/A1042-1.jpg', 'https://example.com/photos/A1042-2.jpg'],
+      }));
+    });
+
+    it('imports a pre-1981 car with a blank VIN', async () => {
+      makeSupabaseMock({ dealers: [DEALER_AR], existingListings: [] });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, text: async () => SAMPLE_CSV }));
+
+      const res: any = await GET(makeRequest('Bearer cron-secret'));
+      expect(res._data.results['danny@arizonaccs.com'].errors).toEqual([]);
+      expect(mockRpc).toHaveBeenCalledWith('insert_listing_with_limit', expect.objectContaining({
+        p_year: 1931, p_make: 'Ford', p_model: 'Model A', p_price: 22500,
+      }));
+    });
+  });
 });

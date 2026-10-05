@@ -313,6 +313,23 @@ const FEED_FORMATS: Record<string, FeedFormatColumns> = {
     description: 'Text Description',
     vin: null,
   },
+  // AutoRevo custom export (pushed via SFTP) for Arizona Classic Car Sales.
+  // AutoRevo has no fixed export spec -- they write to whatever layout we
+  // ask for, so this matches the sample file we sent them (2026-10-05):
+  // pipe-separated PhotoURLs, blank VIN allowed for pre-1981 cars, and a
+  // Status column that's ignored (a car missing from the file is sold).
+  // Not yet confirmed against a real AutoRevo file -- check the first upload.
+  autorevo: {
+    stockNumber: 'StockNumber',
+    subModel: 'Trim',
+    price: 'WebPrice',
+    transmission: 'Transmission',
+    engine: 'Engine',
+    color: ['ExteriorColor'],
+    images: 'PhotoURLs',
+    bodyStyle: 'BodyStyle',
+    description: 'Description',
+  },
 };
 
 const STATE_NAME_TO_ABBR: Record<string, string> = {
