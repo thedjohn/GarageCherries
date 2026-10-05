@@ -1,12 +1,13 @@
 import type { Car } from '@/lib/types';
 import { STATE_NAMES } from '@/lib/usStates';
+import { neighborStates } from '@/lib/stateNeighbors';
 
 // Listings shown on event pages (and the /events index, state pages) so a
 // visitor who lands on one event from search has a relevant next click into
 // inventory. Matching order: the event's make/model theme (if its name says
-// it's e.g. a Mopar or Corvette show), then same-state listings, then
-// featured/newest as a fallback -- so the block is never empty while any
-// active listing exists.
+// it's e.g. a Mopar or Corvette show, closest first), then same-state and
+// neighboring-state listings, then featured/newest as a fallback -- so the
+// block is never empty while any active listing exists.
 
 export interface EventTheme {
   // Plural noun used in the heading, e.g. "Mopars" -> "Mopars for sale".
@@ -50,7 +51,7 @@ export function detectEventTheme(name: string): EventTheme | null {
   return null;
 }
 
-export type ListingsMatch = 'theme' | 'state' | 'fallback';
+export type ListingsMatch = 'theme' | 'local' | 'fallback';
 
 export interface ListingsBlock {
   cars: Car[];
@@ -62,53 +63,89 @@ export interface ListingsBlock {
 
 export const PAST_EVENT_HEADING = 'Seen something you liked? Browse similar cars';
 
-// Pure selection: fills up to `max` cards from the pools in priority order,
-// skipping duplicates and cars without a photo (CarCard needs images[0]).
-// The heading/link follow whichever pool supplied the first card. Returns
+// A tier (theme, or in-state + nearby) is only used if it can fill at least
+// this many cards; otherwise the next tier is tried. Keeps a lone card from
+// standing in for a whole block.
+export const MIN_TIER_CARDS = 2;
+
+function usable(pool: Car[] | undefined, seen: Set<string>): Car[] {
+  const out: Car[] = [];
+  for (const car of pool ?? []) {
+    if (seen.has(car.id) || !car.images?.[0]) continue;
+    seen.add(car.id);
+    out.push(car);
+  }
+  return out;
+}
+
+// Pure selection. Cards come from ONE tier only, so the heading always
+// describes every card under it (a Missouri truck never appears under "Cars
+// for sale in New York"):
+//   1. theme   -- the event's make/model, closest first (same state, then
+//                 neighboring states, then anywhere)
+//   2. local   -- same state, then neighboring states
+//   3. fallback -- featured/newest nationwide
+// A tier with fewer than MIN_TIER_CARDS usable cars is skipped. Duplicates
+// and cars without a photo (CarCard needs images[0]) are dropped. Returns
 // null only when every pool is empty, so callers never render an empty block.
 export function pickListings(
-  pools: { theme?: Car[]; state?: Car[]; fallback: Car[] },
+  pools: { theme?: Car[]; state?: Car[]; nearby?: Car[]; fallback: Car[] },
   opts: { theme?: EventTheme | null; state?: string | null; max?: number; isPast?: boolean },
 ): ListingsBlock | null {
   const max = opts.max ?? 4;
-  const seen = new Set<string>();
-  const cars: Car[] = [];
+  const state = opts.state ?? null;
+  const neighbors = neighborStates(state);
+  const stateName = state ? (STATE_NAMES[state] ?? state) : null;
+
+  let cars: Car[] = [];
   let match: ListingsMatch | null = null;
+  let heading = '';
+  let browseHref = '/listings';
+  let browseLabel = 'Browse all listings';
 
-  const take = (pool: Car[] | undefined, kind: ListingsMatch) => {
-    for (const car of pool ?? []) {
-      if (cars.length >= max) return;
-      if (seen.has(car.id) || !car.images?.[0]) continue;
-      seen.add(car.id);
-      cars.push(car);
-      match ??= kind;
+  if (opts.theme) {
+    // Stable sort by distance tier, keeping the featured/newest order within each.
+    const rank = (c: Car) => (c.state === state ? 0 : neighbors.includes(c.state) ? 1 : 2);
+    const sorted = usable(pools.theme, new Set()).map((c, i) => ({ c, i }))
+      .sort((a, b) => rank(a.c) - rank(b.c) || a.i - b.i).map(x => x.c);
+    if (sorted.length >= MIN_TIER_CARDS) {
+      cars = sorted.slice(0, max);
+      match = 'theme';
+      heading = `${opts.theme.label} for sale`;
+      browseHref = opts.theme.browseHref;
+      browseLabel = `Browse all ${opts.theme.label}`;
     }
-  };
-  if (opts.theme) take(pools.theme, 'theme');
-  if (opts.state) take(pools.state, 'state');
-  take(pools.fallback, 'fallback');
-
-  if (cars.length === 0 || !match) return null;
-
-  const stateName = opts.state ? (STATE_NAMES[opts.state] ?? opts.state) : null;
-  let heading: string;
-  let browseHref: string;
-  let browseLabel: string;
-  if (match === 'theme' && opts.theme) {
-    heading = `${opts.theme.label} for sale`;
-    browseHref = opts.theme.browseHref;
-    browseLabel = `Browse all ${opts.theme.label}`;
-  } else if (match === 'state' && opts.state) {
-    heading = `Cars for sale in ${stateName}`;
-    browseHref = `/listings?state=${encodeURIComponent(opts.state)}`;
-    browseLabel = `Browse all cars for sale in ${stateName}`;
-  } else {
-    heading = 'Featured cars for sale';
-    browseHref = '/listings';
-    browseLabel = 'Browse all listings';
   }
-  if (opts.isPast) heading = PAST_EVENT_HEADING;
 
+  if (!match && state) {
+    const seen = new Set<string>();
+    const inState = usable(pools.state, seen);
+    const nearby = usable(pools.nearby, seen).filter(c => neighbors.includes(c.state));
+    const local = [...inState, ...nearby].slice(0, max);
+    if (local.length >= MIN_TIER_CARDS) {
+      cars = local;
+      match = 'local';
+      const anyInState = local.some(c => c.state === state);
+      const anyNearby = local.some(c => c.state !== state);
+      heading = anyInState && anyNearby ? `Cars for sale in and near ${stateName}`
+        : anyInState ? `Cars for sale in ${stateName}`
+        : `Cars for sale near ${stateName}`;
+      if (anyInState) {
+        browseHref = `/listings?state=${encodeURIComponent(state)}`;
+        browseLabel = `Browse all cars for sale in ${stateName}`;
+      }
+    }
+  }
+
+  if (!match) {
+    const fallback = usable(pools.fallback, new Set()).slice(0, max);
+    if (fallback.length === 0) return null;
+    cars = fallback;
+    match = 'fallback';
+    heading = 'Featured cars for sale';
+  }
+
+  if (opts.isPast) heading = PAST_EVENT_HEADING;
   return { cars, match, heading, browseHref, browseLabel };
 }
 
@@ -128,9 +165,11 @@ export function rowToCar(r: Record<string, unknown>): Car {
   };
 }
 
-// Fetches the three pools in parallel (each a small capped query) and picks
-// from them. Pools are over-fetched slightly so de-duplication and the
-// no-photo skip can still fill `max` cards.
+// Fetches the pools in parallel (each a small capped query) and picks from
+// them. Pools are over-fetched so de-duplication and the no-photo skip can
+// still fill `max` cards. The theme is queried twice -- once limited to the
+// event's state and its neighbors, once nationwide -- so nearby matches are
+// found even when the nationwide top-N is all far away.
 export async function getEventListings(
   // Typed loosely, same as the query helpers in lib/eventDates.ts.
   supabase: any,
@@ -139,27 +178,30 @@ export async function getEventListings(
   const max = opts.max ?? 4;
   const poolSize = max * 2;
   const now = new Date().toISOString();
+  const neighbors = neighborStates(opts.state);
+  const empty = Promise.resolve({ data: [] });
   const active = () => supabase.from('listings').select(LISTING_CARD_COLUMNS)
     .eq('status', 'approved').eq('is_sold', false)
     .or(`expires_at.is.null,expires_at.gt.${now}`);
+  const newestFirst = (q: any) => q.order('featured', { ascending: false }).order('listed_at', { ascending: false }).limit(poolSize);
+  const themed = () => {
+    let q = active().in('make', opts.theme!.makes);
+    if (opts.theme!.model) q = q.ilike('model', `${opts.theme!.model}%`);
+    return q;
+  };
 
-  const themeQuery = opts.theme
-    ? (() => {
-        let q = active().in('make', opts.theme!.makes);
-        if (opts.theme!.model) q = q.ilike('model', `${opts.theme!.model}%`);
-        return q.order('featured', { ascending: false }).order('listed_at', { ascending: false }).limit(poolSize);
-      })()
-    : Promise.resolve({ data: [] });
-  const stateQuery = opts.state
-    ? active().eq('state', opts.state).order('featured', { ascending: false }).order('listed_at', { ascending: false }).limit(poolSize)
-    : Promise.resolve({ data: [] });
-  const fallbackQuery = active().order('featured', { ascending: false }).order('listed_at', { ascending: false }).limit(poolSize);
-
-  const [{ data: themeRows }, { data: stateRows }, { data: fallbackRows }] = await Promise.all([themeQuery, stateQuery, fallbackQuery]);
+  const [{ data: themeLocalRows }, { data: themeRows }, { data: stateRows }, { data: nearbyRows }, { data: fallbackRows }] = await Promise.all([
+    opts.theme && opts.state ? newestFirst(themed().in('state', [opts.state, ...neighbors])) : empty,
+    opts.theme ? newestFirst(themed()) : empty,
+    opts.state ? newestFirst(active().eq('state', opts.state)) : empty,
+    neighbors.length > 0 ? newestFirst(active().in('state', neighbors)) : empty,
+    newestFirst(active()),
+  ]);
   return pickListings(
     {
-      theme: (themeRows ?? []).map(rowToCar),
+      theme: [...(themeLocalRows ?? []), ...(themeRows ?? [])].map(rowToCar),
       state: (stateRows ?? []).map(rowToCar),
+      nearby: (nearbyRows ?? []).map(rowToCar),
       fallback: (fallbackRows ?? []).map(rowToCar),
     },
     opts,
