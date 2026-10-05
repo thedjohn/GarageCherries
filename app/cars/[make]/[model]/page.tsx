@@ -249,7 +249,7 @@ export default async function ModelPage({ params, searchParams }: Props) {
           </div>
 
           <EbayPartsCard make={entry.make} model={entry.model} />
-          <ShopToolsCard />
+          <ShopToolsCard tag="garagecherriesblog-20" />
         </div>
       </div>
 

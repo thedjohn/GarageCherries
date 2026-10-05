@@ -671,7 +671,7 @@ export default async function ListingsCatchAll({ params }: { params: Promise<{ s
             </div>
 
             <AdSlot carState={car.state} pagePath={`/listings/${makeSeg}/${modelSeg}/${car.id}/${car.slug}`} />
-            <ShopToolsCard />
+            <ShopToolsCard tag="garagecherrieslisting-20" />
           </div>
         </div>
 

@@ -7,7 +7,24 @@ import TrackedLink from './TrackedLink';
 // without a code change. Scoped to this one category on purpose -- this card
 // is meant to stay a short, focused "bring these" list, not every product in
 // the shop (see app/garage-gear/page.tsx for the full catalog).
-export default async function ShopToolsCard() {
+//
+// `tag` overrides the Amazon Associates tracking ID saved in each product's
+// affiliate_url, so each page type can report separately in Associates
+// Central (e.g. garagecherrieslisting-20 on listing pages). Only amazon.com
+// links are rewritten; without `tag` the saved URL is used unchanged.
+export function withAmazonTag(url: string, tag?: string): string {
+  if (!tag) return url;
+  try {
+    const parsed = new URL(url);
+    if (!/(^|\.)amazon\.com$/i.test(parsed.hostname)) return url;
+    parsed.searchParams.set('tag', tag);
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+export default async function ShopToolsCard({ tag }: { tag?: string } = {}) {
   const admin = createAdminClient();
   const { data } = await admin
     .from('affiliate_products')
@@ -31,7 +48,7 @@ export default async function ShopToolsCard() {
               <p className="text-xs text-zinc-500">{tool.description}</p>
             </div>
             <TrackedLink
-              href={tool.affiliate_url}
+              href={withAmazonTag(tool.affiliate_url, tag)}
               target="_blank"
               rel="noopener noreferrer sponsored"
               className="flex-shrink-0 bg-zinc-900 text-white font-bold text-xs text-center py-2 px-3 rounded-xl hover:bg-zinc-800 transition-colors"
