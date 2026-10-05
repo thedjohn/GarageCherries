@@ -128,7 +128,7 @@ describe('GET /api/cron/dealer-feed-staleness', () => {
       makeDealersMock([{
         id: 'd1', name: 'Stale Pull Motors', email: 'stalepull@dealer.com', feed_protocol: 'https',
         feed_sftp_provisioned_at: null, feed_sftp_last_received_at: null,
-        feed_last_success_at: new Date(now - 90 * HOUR).toISOString(),
+        feed_last_success_at: new Date(now - 50 * HOUR).toISOString(),
       }]);
       const res: any = await GET(makeRequest('Bearer cron-secret'));
       expect(res._data.staleCount).toBe(1);
@@ -171,7 +171,48 @@ describe('GET /api/cron/dealer-feed-staleness', () => {
     expect(body).toContain('Stale Motors');
     expect(body).toContain('Stale Pull Motors');
     expect(body).not.toContain('Fresh Motors');
-    expect(mockSend).toHaveBeenCalledTimes(2);
+    // Both stale dealers are 100h stale -- past their one-email window.
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  describe('dealer email is sent once per stale episode, not daily', () => {
+    it('emails a dealer on the first day past the threshold (48-72h stale)', async () => {
+      makeDealersMock([{
+        id: 'd1', name: 'Day One Motors', email: 'dayone@dealer.com', feed_protocol: 'sftp_incoming',
+        feed_sftp_provisioned_at: new Date(now - 200 * HOUR).toISOString(),
+        feed_sftp_last_received_at: new Date(now - 70 * HOUR).toISOString(),
+        feed_last_success_at: null,
+      }]);
+      await GET(makeRequest('Bearer cron-secret'));
+      expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({ to: 'dayone@dealer.com' }));
+    });
+
+    it('does not email a dealer again once past 72h, but still includes them in the admin list', async () => {
+      makeDealersMock([
+        { id: 'd1', name: 'Day One Motors', email: 'dayone@dealer.com', feed_protocol: 'sftp_incoming', feed_sftp_provisioned_at: new Date(now - 200 * HOUR).toISOString(), feed_sftp_last_received_at: new Date(now - 50 * HOUR).toISOString(), feed_last_success_at: null },
+        { id: 'd2', name: 'Quiet Motors', email: 'quiet@dealer.com', feed_protocol: 'sftp_incoming', feed_sftp_provisioned_at: new Date(now - 500 * HOUR).toISOString(), feed_sftp_last_received_at: new Date(now - 240 * HOUR).toISOString(), feed_last_success_at: null },
+        { id: 'd3', name: 'Long Stale Pull Motors', email: 'longpull@dealer.com', feed_protocol: 'https', feed_sftp_provisioned_at: null, feed_sftp_last_received_at: null, feed_last_success_at: new Date(now - 73 * HOUR).toISOString() },
+      ]);
+      const res: any = await GET(makeRequest('Bearer cron-secret'));
+      expect(res._data.staleCount).toBe(3);
+      const [, body] = mockNotifyAdmin.mock.calls[0];
+      expect(body).toContain('Day One Motors');
+      expect(body).toContain('Quiet Motors');
+      expect(body).toContain('Long Stale Pull Motors');
+      expect(mockSend).toHaveBeenCalledTimes(1);
+      expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({ to: 'dayone@dealer.com' }));
+    });
+
+    it('applies the same one-email window to a dealer who never received a file', async () => {
+      makeDealersMock([{
+        id: 'd1', name: 'Ghost Motors', email: 'ghost@dealer.com', feed_protocol: 'sftp_incoming',
+        feed_sftp_provisioned_at: new Date(now - 300 * HOUR).toISOString(),
+        feed_sftp_last_received_at: null, feed_last_success_at: null,
+      }]);
+      const res: any = await GET(makeRequest('Bearer cron-secret'));
+      expect(res._data.staleCount).toBe(1);
+      expect(mockSend).not.toHaveBeenCalled();
+    });
   });
 
   it('does not fail the whole run if one dealer alert email fails to send', async () => {

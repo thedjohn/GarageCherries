@@ -7,6 +7,13 @@ import { emailWrap } from '@/lib/emailBranding';
 
 const log = createLogger('cron/dealer-feed-staleness');
 const STALE_THRESHOLD_MS = 48 * 60 * 60 * 1000;
+// This cron runs once a day, so only dealers whose staleness falls inside the
+// first 24h past the threshold get emailed -- one email per stale episode,
+// not a fresh one every day. A push dealer whose system only uploads when
+// inventory changes otherwise got a daily "feed needs attention" email for
+// as long as nothing changed (Historical Motors, 2026-10-05). The admin list
+// still includes every stale dealer, every day.
+const DEALER_ALERT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 interface DealerRow {
   id: string; name: string; email: string; feed_protocol: string | null;
@@ -15,7 +22,7 @@ interface DealerRow {
 }
 
 interface StaleDealer {
-  id: string; name: string; email: string; protocol: string; detail: string;
+  id: string; name: string; email: string; protocol: string; detail: string; ageMs: number;
 }
 
 function findStale(dealers: DealerRow[], now: number): StaleDealer[] {
@@ -25,7 +32,7 @@ function findStale(dealers: DealerRow[], now: number): StaleDealer[] {
       const lastReceived = d.feed_sftp_last_received_at ? new Date(d.feed_sftp_last_received_at).getTime() : null;
       if (lastReceived !== null) {
         if (now - lastReceived > STALE_THRESHOLD_MS) {
-          stale.push({ id: d.id, name: d.name, email: d.email, protocol: d.feed_protocol, detail: `last file received ${new Date(d.feed_sftp_last_received_at!).toLocaleString()}` });
+          stale.push({ id: d.id, name: d.name, email: d.email, protocol: d.feed_protocol, detail: `last file received ${new Date(d.feed_sftp_last_received_at!).toLocaleString()}`, ageMs: now - lastReceived });
         }
       } else {
         // Never received anything -- only worth flagging once they've had a
@@ -33,7 +40,7 @@ function findStale(dealers: DealerRow[], now: number): StaleDealer[] {
         // the very next run after they provisioned.
         const provisioned = d.feed_sftp_provisioned_at ? new Date(d.feed_sftp_provisioned_at).getTime() : null;
         if (provisioned !== null && now - provisioned > STALE_THRESHOLD_MS) {
-          stale.push({ id: d.id, name: d.name, email: d.email, protocol: d.feed_protocol, detail: `never received a file (provisioned ${new Date(d.feed_sftp_provisioned_at!).toLocaleString()})` });
+          stale.push({ id: d.id, name: d.name, email: d.email, protocol: d.feed_protocol, detail: `never received a file (provisioned ${new Date(d.feed_sftp_provisioned_at!).toLocaleString()})`, ageMs: now - provisioned });
         }
       }
     } else if (d.feed_protocol === 'https' || d.feed_protocol === 'sftp') {
@@ -42,7 +49,7 @@ function findStale(dealers: DealerRow[], now: number): StaleDealer[] {
       // a staleness one, and isn't covered here.
       const lastSuccess = d.feed_last_success_at ? new Date(d.feed_last_success_at).getTime() : null;
       if (lastSuccess !== null && now - lastSuccess > STALE_THRESHOLD_MS) {
-        stale.push({ id: d.id, name: d.name, email: d.email, protocol: d.feed_protocol, detail: `last successful sync ${new Date(d.feed_last_success_at!).toLocaleString()}` });
+        stale.push({ id: d.id, name: d.name, email: d.email, protocol: d.feed_protocol, detail: `last successful sync ${new Date(d.feed_last_success_at!).toLocaleString()}`, ageMs: now - lastSuccess });
       }
     }
   }
@@ -99,7 +106,7 @@ export async function GET(request: NextRequest) {
     notifyAdmin('Dealer feeds gone stale', lines.join('<br/>'));
 
     const resend = new Resend(process.env.RESEND_API_KEY);
-    for (const dealer of stale) {
+    for (const dealer of stale.filter(d => d.ageMs < STALE_THRESHOLD_MS + DEALER_ALERT_WINDOW_MS)) {
       try {
         await alertDealer(resend, dealer);
       } catch (err) {
