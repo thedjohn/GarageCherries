@@ -10,6 +10,8 @@ import { CarShowEvent, EventCard } from '../../page';
 import SubmitEventForm from '../../SubmitEventForm';
 import EventFilters from '@/components/EventFilters';
 import Pagination from '@/components/Pagination';
+import EventListingsBlock from '@/components/EventListingsBlock';
+import { getEventListings } from '@/lib/eventListings';
 import { eventsCutoff, isCurrentEvent, applyCurrentEvents, applyUpcomingEvents, applyHappeningNow, applyPastEvents } from '@/lib/eventDates';
 
 export const revalidate = 0;
@@ -150,6 +152,9 @@ export default async function StateEventsPage({ params, searchParams }: Props) {
 
   const upcoming = events.filter(e => isCurrentEvent(e, cutoff));
   const past = events.filter(e => !isCurrentEvent(e, cutoff));
+  // Listings from this state, falling back to featured/newest when the state
+  // has none, so the block is never empty.
+  const listingsBlock = await getEventListings(admin, { state: code, max: 4 });
   // Keeps the user's other filters when flipping between upcoming and past.
   const toggleParams = new URLSearchParams();
   for (const [k, v] of Object.entries(sp)) if (v && k !== 'page' && k !== 'past') toggleParams.set(k, v);
@@ -249,6 +254,10 @@ export default async function StateEventsPage({ params, searchParams }: Props) {
             {showPast ? '← Back to upcoming events' : 'Show past events →'}
           </Link>
         </p>
+
+        {listingsBlock && (
+          <EventListingsBlock block={listingsBlock} source="events-state-listings" columns={4} className="mb-10 pt-8 border-t border-zinc-100" />
+        )}
 
         <SubmitEventForm />
 

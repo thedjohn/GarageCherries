@@ -7,6 +7,8 @@ import EventFilters from '@/components/EventFilters';
 import EventAlertSignup from '@/components/EventAlertSignup';
 import EventCardHeart from '@/components/EventCardHeart';
 import Pagination from '@/components/Pagination';
+import EventListingsBlock from '@/components/EventListingsBlock';
+import { getEventListings } from '@/lib/eventListings';
 import { stateSlug, STATE_NAMES } from '@/lib/usStates';
 import { resolveZipCoords, boundingBox, haversineMiles } from '@/lib/geo';
 import { fetchAllRows } from '@/lib/db';
@@ -186,6 +188,9 @@ export default async function EventsPage({ searchParams }: Props) {
   // the way fetching every row's `state` column and tallying in JS would be.
   const stateCountPairs = await getStateEventCounts(cutoff);
   const statesWithEvents = stateCountPairs.filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1]);
+  // Featured-listings row: same-state listings when the calendar is filtered
+  // to a state, otherwise featured/newest -- a next click into inventory.
+  const listingsBlock = await getEventListings(admin, { state: sp.state ?? null, max: 4 });
 
   const featured: CarShowEvent[] = zipCoords
     ? (featuredData ?? []).filter(e => haversineMiles(zipCoords.lat, zipCoords.lng, e.lat!, e.lng!) <= NEARBY_RADIUS_MILES)
@@ -309,6 +314,10 @@ export default async function EventsPage({ searchParams }: Props) {
           {showPast ? '← Back to upcoming events' : 'Show past events →'}
         </Link>
       </p>
+
+      {listingsBlock && (
+        <EventListingsBlock block={listingsBlock} source="events-index-listings" columns={4} className="mb-10 pt-8 border-t border-zinc-100" />
+      )}
 
       {statesWithEvents.length > 0 && (
         <div className="mb-10">

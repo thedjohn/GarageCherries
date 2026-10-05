@@ -211,6 +211,7 @@ export default async function HomePage() {
         <section className="max-w-7xl mx-auto px-4 py-6">
           <Link
             href="/car-of-the-day"
+            data-source="home-car-of-the-day"
             className="group flex flex-col sm:flex-row items-stretch bg-zinc-900 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all"
           >
             <div className="relative sm:w-80 h-48 sm:h-auto shrink-0 overflow-hidden">
@@ -239,7 +240,7 @@ export default async function HomePage() {
             <Link href="/listings" className="text-red-600 hover:underline text-sm font-medium">View all</Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {featured.map(car => <CarCard key={car.id} car={car} />)}
+            {featured.map(car => <CarCard key={car.id} car={car} dataSource="home-featured" />)}
           </div>
         </section>
       )}
@@ -251,7 +252,16 @@ export default async function HomePage() {
           <Link href="/listings" className="text-red-600 hover:underline text-sm font-medium">View all listings</Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {recent.map(car => <CarCard key={car.id} car={car} />)}
+          {recent.map(car => <CarCard key={car.id} car={car} dataSource="home-recent" />)}
+        </div>
+        <div className="mt-8 text-center">
+          <Link
+            href="/listings"
+            data-source="home-browse-all"
+            className="inline-flex items-center justify-center w-full sm:w-auto bg-zinc-900 hover:bg-zinc-700 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
+          >
+            Browse all {(activeCount ?? 0).toLocaleString()} listings →
+          </Link>
         </div>
       </section>
 

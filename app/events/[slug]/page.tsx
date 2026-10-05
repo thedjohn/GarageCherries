@@ -6,7 +6,8 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { STATE_NAMES, stateSlug } from '@/lib/usStates';
 import { eventsCutoff, isCurrentEvent } from '@/lib/eventDates';
 import EventImageLightbox from '@/components/EventImageLightbox';
-import CarCard from '@/components/CarCard';
+import EventListingsBlock from '@/components/EventListingsBlock';
+import { detectEventTheme, getEventListings } from '@/lib/eventListings';
 import EventAlertSignup from '@/components/EventAlertSignup';
 import EventWatchlistButton from '@/components/EventWatchlistButton';
 
@@ -143,29 +144,14 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
     relatedEvents = [...relatedEvents, ...(otherEvents ?? [])];
   }
 
-  // "Cars for sale near this show" -- same-state listings, replacing what was
-  // previously a single plain-text "Browse Cars For Sale in [State]" link.
-  // Real car cards give people something concrete to click on rather than a
-  // generic link, and close the loop between events and inventory (the
+  // "Cars for sale" -- the event's make/model theme first (e.g. a Mopar or
+  // Corvette show), then same-state listings, then featured/newest so the
+  // block is never empty. Most visitors land on one event page from search
+  // and leave; this gives them a relevant next click into inventory (the
   // reverse direction lives on the listing page as "Car Shows Near This Car").
-  const { data: nearbyListingRows } = await admin
-    .from('listings')
-    .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,images,featured,listed_at')
-    .eq('status', 'approved')
-    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
-    .eq('state', e.state)
-    .limit(4);
-  const nearbyListings = (nearbyListingRows ?? []).map((r: any) => ({
-    id: r.id, slug: r.slug, title: r.title,
-    year: r.year, make: r.make, model: r.model,
-    price: r.price, mileage: r.mileage,
-    location: r.location ?? '', state: r.state ?? '',
-    condition: r.condition, bodyStyle: r.body_style,
-    images: r.images ?? [], featured: r.featured ?? false,
-    listedAt: r.listed_at ?? '',
-    sellerId: '', sellerName: '', sellerPhone: '',
-    transmission: '', engine: null, color: null, description: '',
-  }));
+  const listingsBlock = await getEventListings(admin, {
+    theme: detectEventTheme(e.name), state: e.state, max: 4, isPast,
+  });
 
   const timeRange = e.start_time
     ? e.end_time
@@ -307,6 +293,12 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
           </div>
         )}
 
+        {/* Past events: the show's over, so listings move up -- right after
+            the event content -- with a "browse similar cars" heading. */}
+        {isPast && listingsBlock && (
+          <EventListingsBlock block={listingsBlock} source="event-listings-block" className="mb-8" />
+        )}
+
         {/* CTAs */}
         <div className="flex gap-3 flex-wrap">
           <EventWatchlistButton eventId={e.id} />
@@ -322,16 +314,8 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
           </Link>
         </div>
 
-        {nearbyListings.length > 0 && (
-          <div className="mt-10 pt-8 border-t border-zinc-100">
-            <h2 className="text-lg font-bold text-zinc-900 mb-4">Cars For Sale Near This Show</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {nearbyListings.map((c: any) => <CarCard key={c.id} car={c} />)}
-            </div>
-            <Link href={`/listings?state=${e.state}`} className="inline-block mt-4 text-sm font-semibold text-red-600 hover:underline">
-              View all cars for sale in {STATE_NAMES[e.state] ?? e.state} →
-            </Link>
-          </div>
+        {!isPast && listingsBlock && (
+          <EventListingsBlock block={listingsBlock} source="event-listings-block" className="mt-10 pt-8 border-t border-zinc-100" />
         )}
 
         {relatedEvents.length > 0 && (
