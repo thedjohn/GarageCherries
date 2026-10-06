@@ -6,6 +6,7 @@ import { submitToIndexNow } from '@/lib/indexNow';
 import { notifyWatchersCarSold } from '@/lib/notifyCarSold';
 import { deleteListingVideos } from '@/lib/deleteListingVideos';
 import { MAKES } from '@/lib/types';
+import { inferBodyStyle } from '@/lib/inferBodyStyle';
 import Client from 'ssh2-sftp-client';
 
 const log = createLogger('cron/dealer-feed-sync');
@@ -609,7 +610,12 @@ export async function syncDealerFeed(admin: ReturnType<typeof createAdminClient>
     // insert_listing_with_limit call outright (wrong arg count) rather than
     // just storing a blank value the way every other optional field already
     // handles a missing column (e.g. `engine`'s `|| null` below).
-    const bodyStyle = BODY_STYLE_MAP[bodyStyleRaw] ?? bodyStyleRaw ?? null;
+    // A blank/missing feed value falls back to a guess from the car's own
+    // make/model/trim (lib/inferBodyStyle.ts) -- otherwise every sync
+    // re-blanks it, since this column is rewritten on each update.
+    const bodyStyle = (BODY_STYLE_MAP[bodyStyleRaw] ?? bodyStyleRaw)
+      || inferBodyStyle(`${make} ${model} ${subModel ?? ''}`)
+      || null;
     const transmission = mapTransmission(r[idx(format.transmission)] ?? '');
     const engine = [
       format.engineSize ? r[idx(format.engineSize)]?.trim() : null,
