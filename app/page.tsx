@@ -46,7 +46,7 @@ export default async function HomePage() {
   // fetchAllRows() on the site's highest-traffic page, and avoids the bug
   // entirely rather than working around it.
   const today = now.slice(0, 10);
-  const [{ data: recentRows }, { data: featuredRows }, { data: minYearRow }, { data: maxYearRow }, { data: carOfTheDayRow }] = await Promise.all([
+  const [{ data: recentRows }, { data: featuredRows }, { data: minYearRow }, { data: maxYearRow }, { data: carOfTheDayRow }, { data: featuredBuildRow }] = await Promise.all([
     supabase.from('listings').select(LISTING_COLUMNS)
       .eq('status', 'approved').eq('is_sold', false)
       .or(`expires_at.is.null,expires_at.gt.${now}`)
@@ -66,12 +66,15 @@ export default async function HomePage() {
       .order('year', { ascending: false }).limit(1).maybeSingle(),
     supabase.from('garagecherry_of_the_day').select(`listings(${LISTING_COLUMNS})`)
       .eq('featured_date', today).maybeSingle(),
+    supabase.from('featured_builds').select('garage_vehicles(year,make,model,trim,nickname,images,slug)')
+      .eq('featured_date', today).maybeSingle(),
   ]);
 
   const recent = (recentRows ?? []).map(toCarShape);
   const featured = (featuredRows ?? []).map(toCarShape);
   const carOfTheDayListing = (carOfTheDayRow as unknown as { listings: Record<string, unknown> | null } | null)?.listings ?? null;
   const carOfTheDay = carOfTheDayListing ? toCarShape(carOfTheDayListing) : null;
+  const featuredBuild = (featuredBuildRow as unknown as { garage_vehicles: { year: number; make: string; model: string; trim: string | null; nickname: string | null; images: string[]; slug: string } | null } | null)?.garage_vehicles ?? null;
 
   const [{ count: activeCount }, { count: dealerCount }, { count: soldCount }, { count: eventCount }] = await Promise.all([
     supabase.from('listings').select('id', { count: 'exact', head: true })
@@ -227,6 +230,34 @@ export default async function HomePage() {
               <p className="text-xs font-bold text-red-500 uppercase tracking-widest mb-2">🍒 GarageCherry Pick of the Day</p>
               <h2 className="text-2xl font-extrabold text-white mb-1">{carOfTheDay.title}</h2>
               <p className="text-zinc-400 text-sm">See today&apos;s pick &rarr;</p>
+            </div>
+          </Link>
+        </section>
+      )}
+
+      {/* Featured Build (Showcase) */}
+      {featuredBuild && featuredBuild.images[0] && (
+        <section className="max-w-7xl mx-auto px-4 py-6">
+          <Link
+            href="/showcase"
+            data-source="home-featured-build"
+            className="group flex flex-col sm:flex-row items-stretch bg-zinc-900 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all"
+          >
+            <div className="relative sm:w-80 h-48 sm:h-auto shrink-0 overflow-hidden">
+              <Image
+                src={featuredBuild.images[0]}
+                alt={featuredBuild.nickname || `${featuredBuild.year} ${featuredBuild.make} ${featuredBuild.model}`}
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                sizes="(max-width: 640px) 100vw, 320px"
+              />
+            </div>
+            <div className="p-6 flex flex-col justify-center">
+              <p className="text-xs font-bold text-red-500 uppercase tracking-widest mb-2">🏆 Featured Build</p>
+              <h2 className="text-2xl font-extrabold text-white mb-1">
+                {featuredBuild.nickname || `${featuredBuild.year} ${featuredBuild.make} ${featuredBuild.model}${featuredBuild.trim ? ` ${featuredBuild.trim}` : ''}`}
+              </h2>
+              <p className="text-zinc-400 text-sm">See this build &amp; more in the Showcase &rarr;</p>
             </div>
           </Link>
         </section>
