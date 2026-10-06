@@ -36,6 +36,16 @@ beforeEach(() => {
 });
 
 describe('POST /api/admin/cleanup-images', () => {
+  // The route reads listings page by page via .select().range() (see the
+  // 1000-row-cap comment in the route); each call to range() returns the
+  // next page from `pages`, then an empty page.
+  function listingsPages(...pages: { images: string[] }[][]) {
+    const range = vi.fn();
+    for (const p of pages) range.mockResolvedValueOnce({ data: p });
+    range.mockResolvedValue({ data: [] });
+    return { select: vi.fn().mockReturnValue({ range }), range };
+  }
+
   it('returns 401 when role is below superadmin', async () => {
     mockRequireAdmin.mockResolvedValue('admin');
     const res: any = await cleanupImages();
@@ -44,7 +54,7 @@ describe('POST /api/admin/cleanup-images', () => {
 
   it('returns 500 when storage listing fails', async () => {
     mockRequireAdmin.mockResolvedValue('superadmin');
-    mockFrom.mockReturnValue({ select: vi.fn().mockResolvedValue({ data: [] }) });
+    mockFrom.mockReturnValue(listingsPages([]));
     mockStorageList.mockResolvedValue({ data: null, error: { message: 'storage down' } });
     const res: any = await cleanupImages();
     expect(res._status).toBe(500);
@@ -52,7 +62,7 @@ describe('POST /api/admin/cleanup-images', () => {
 
   it('returns 500 when removal fails', async () => {
     mockRequireAdmin.mockResolvedValue('superadmin');
-    mockFrom.mockReturnValue({ select: vi.fn().mockResolvedValue({ data: [] }) });
+    mockFrom.mockReturnValue(listingsPages([]));
     mockStorageList.mockResolvedValue({ data: [{ name: 'orphan.jpg', created_at: '2020-01-01T00:00:00Z' }] });
     mockStorageRemove.mockResolvedValue({ error: { message: 'remove failed' } });
     const res: any = await cleanupImages();
@@ -61,7 +71,7 @@ describe('POST /api/admin/cleanup-images', () => {
 
   it('reports zero deletions when there are no orphans', async () => {
     mockRequireAdmin.mockResolvedValue('superadmin');
-    mockFrom.mockReturnValue({ select: vi.fn().mockResolvedValue({ data: [{ images: ['https://x.com/listing-images/claimed.jpg'] }] }) });
+    mockFrom.mockReturnValue(listingsPages([{ images: ['https://x.com/listing-images/claimed.jpg'] }]));
     mockStorageList.mockResolvedValue({ data: [{ name: 'claimed.jpg', created_at: '2020-01-01T00:00:00Z' }] });
     const res: any = await cleanupImages();
     expect(res._status).toBe(200);
@@ -70,7 +80,7 @@ describe('POST /api/admin/cleanup-images', () => {
 
   it('deletes orphans older than 24h, skipping claimed and recent files', async () => {
     mockRequireAdmin.mockResolvedValue('superadmin');
-    mockFrom.mockReturnValue({ select: vi.fn().mockResolvedValue({ data: [{ images: ['https://x.com/listing-images/claimed.jpg'] }] }) });
+    mockFrom.mockReturnValue(listingsPages([{ images: ['https://x.com/listing-images/claimed.jpg'] }]));
     mockStorageList.mockResolvedValue({
       data: [
         { name: 'claimed.jpg', created_at: '2020-01-01T00:00:00Z' },
@@ -83,6 +93,24 @@ describe('POST /api/admin/cleanup-images', () => {
     const res: any = await cleanupImages();
     expect(res._status).toBe(200);
     expect(res._data.deleted).toBe(1);
+    expect(res._data.paths).toEqual(['old-orphan.jpg']);
+  });
+
+  it('keeps images used by listings past the first 1000 rows (reads every page)', async () => {
+    mockRequireAdmin.mockResolvedValue('superadmin');
+    const fullPage = Array.from({ length: 1000 }, (_, i) => ({ images: [`https://x.com/listing-images/p1-${i}.jpg`] }));
+    const mock = listingsPages(fullPage, [{ images: ['https://x.com/listing-images/page-two.jpg'] }]);
+    mockFrom.mockReturnValue(mock);
+    mockStorageList.mockResolvedValue({
+      data: [
+        { name: 'page-two.jpg', created_at: '2020-01-01T00:00:00Z' },
+        { name: 'old-orphan.jpg', created_at: '2020-01-01T00:00:00Z' },
+      ],
+    });
+    mockStorageRemove.mockResolvedValue({ error: null });
+    const res: any = await cleanupImages();
+    expect(mock.range).toHaveBeenNthCalledWith(1, 0, 999);
+    expect(mock.range).toHaveBeenNthCalledWith(2, 1000, 1999);
     expect(res._data.paths).toEqual(['old-orphan.jpg']);
   });
 });
