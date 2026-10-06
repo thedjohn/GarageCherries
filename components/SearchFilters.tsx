@@ -166,6 +166,9 @@ export default function SearchFilters({ initialMakes, minYear, maxYear }: { init
             <select id="search-filter-body-style" value={filters.bodyStyle} onChange={e => set('bodyStyle', e.target.value === 'All Styles' ? '' : e.target.value)}
               className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
               <option value="">All Styles</option>
+              {/* Same as Make above: a multi-value filter from a link (e.g. the
+                  Trucks quick filter) shows as its own selected entry. */}
+              {filters.bodyStyle.includes(',') && <option value={filters.bodyStyle}>{filters.bodyStyle.split(',').join(', ')}</option>}
               {BODY_STYLES.filter(b => b !== 'All Styles').map(b => <option key={b} value={b}>{b}</option>)}
             </select>
           </div>

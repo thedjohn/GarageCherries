@@ -74,7 +74,12 @@ export default async function ListingsPage({ searchParams }: Props) {
   if (sp.priceMin)     query = query.gte('price', Number(sp.priceMin));
   if (sp.priceMax)     query = query.lte('price', Number(sp.priceMax));
   if (sp.condition && sp.condition !== 'All')      query = query.eq('condition', sp.condition);
-  if (sp.bodyStyle && sp.bodyStyle !== 'All Styles') query = query.eq('body_style', sp.bodyStyle);
+  // Comma-separated like `make` above -- feeds save trucks as both "Pickup"
+  // and "Pickup Truck", so the Trucks quick filter passes both.
+  if (sp.bodyStyle && sp.bodyStyle !== 'All Styles') {
+    const styles = sp.bodyStyle.split(',').map(s => s.trim()).filter(Boolean);
+    query = styles.length > 1 ? query.in('body_style', styles) : query.eq('body_style', sp.bodyStyle);
+  }
   if (sp.transmission) query = query.eq('transmission', sp.transmission);
   if (sp.state)        query = query.eq('state', sp.state);
 
