@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'www.totalwebmanager.com' },
       { protocol: 'https', hostname: 'www.atouchofclassicstx.com' },
       { protocol: 'http', hostname: 'historicalmotorsllc.com' },
+      { protocol: 'https', hostname: 'cf-img.autorevo.com' },
     ],
   },
   async redirects() {
