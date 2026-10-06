@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { eventsCutoff, isCurrentEvent, isHappeningNow, applyCurrentEvents, applyUpcomingEvents, applyHappeningNow, applyPastEvents } from '@/lib/eventDates';
+import { eventsCutoff, isCurrentEvent, isHappeningNow, applyCurrentEvents, applyUpcomingEvents, applyHappeningNow, applyPastEvents, upcomingWeekendRange, applyThisWeekend } from '@/lib/eventDates';
 
 describe('eventsCutoff (today in Pacific time)', () => {
   it('is today once the Pacific day has started', () => {
@@ -90,5 +90,35 @@ describe('query helpers', () => {
     applyPastEvents(q, '2026-09-19');
     expect(q.lt).toHaveBeenCalledWith('date', '2026-09-19');
     expect(q.or).toHaveBeenCalledWith('end_date.is.null,end_date.lt.2026-09-19');
+  });
+});
+
+describe('upcomingWeekendRange', () => {
+  // Local-time dates (noon) so getDay()/setDate() aren't thrown off by UTC.
+  const at = (y: number, m: number, d: number) => new Date(y, m - 1, d, 12);
+
+  it('returns the coming Friday-Sunday from a weekday', () => {
+    expect(upcomingWeekendRange(at(2026, 10, 8))).toEqual({ fridayStr: '2026-10-09', sundayStr: '2026-10-11' }); // Thursday
+    expect(upcomingWeekendRange(at(2026, 10, 5))).toEqual({ fridayStr: '2026-10-09', sundayStr: '2026-10-11' }); // Monday
+  });
+
+  it('never returns the current weekend, even on a Friday or Sunday', () => {
+    expect(upcomingWeekendRange(at(2026, 10, 9))).toEqual({ fridayStr: '2026-10-16', sundayStr: '2026-10-18' }); // Friday
+    expect(upcomingWeekendRange(at(2026, 10, 11))).toEqual({ fridayStr: '2026-10-16', sundayStr: '2026-10-18' }); // Sunday
+  });
+
+  it('crosses month boundaries', () => {
+    expect(upcomingWeekendRange(at(2026, 10, 27))).toEqual({ fridayStr: '2026-10-30', sundayStr: '2026-11-01' });
+  });
+});
+
+describe('applyThisWeekend', () => {
+  it('matches events that start by Sunday and end (or, single-day, start) by Friday', () => {
+    const q: any = {};
+    q.lte = vi.fn(() => q);
+    q.or = vi.fn(() => q);
+    applyThisWeekend(q, '2026-10-09', '2026-10-11');
+    expect(q.lte).toHaveBeenCalledWith('date', '2026-10-11');
+    expect(q.or).toHaveBeenCalledWith('end_date.gte.2026-10-09,and(end_date.is.null,date.gte.2026-10-09)');
   });
 });
