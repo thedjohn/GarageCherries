@@ -229,14 +229,15 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
           </div>
         )}
 
-        {/* Badges */}
+        {/* Badges -- the type badge links to the calendar filtered by that
+            type; it was one of the most-tapped dead spots in Clarity. */}
         <div className="flex items-center gap-2 flex-wrap mb-4">
-          <span className={`text-xs font-bold uppercase px-2.5 py-1 rounded-full ${
+          <Link href={`/events?type=${encodeURIComponent(e.type)}`} data-source="event-type-badge" className={`text-xs font-bold uppercase px-2.5 py-1 rounded-full hover:opacity-80 transition-opacity ${
             e.type === 'show' ? 'bg-blue-100 text-blue-700' :
             e.type === 'swap-meet' ? 'bg-amber-100 text-amber-700' :
             e.type === 'cruise' ? 'bg-green-100 text-green-700' :
             'bg-purple-100 text-purple-700'
-          }`}>{TYPE_LABELS[e.type] ?? e.type}</span>
+          }`}>{TYPE_LABELS[e.type] ?? e.type}</Link>
           {e.featured && <span className="text-xs font-bold uppercase px-2.5 py-1 rounded-full bg-red-100 text-red-600">Featured</span>}
         </div>
 
@@ -250,7 +251,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             <div className="flex items-start gap-3">
               <span className="text-xl mt-0.5">📅</span>
               <div>
-                <p className="font-semibold text-zinc-900">{formatDate(e.date, e.end_date)}</p>
+                <a href={gcalUrl(e)} target="_blank" rel="noopener noreferrer" data-source="event-date-link"
+                  className="font-semibold text-zinc-900 hover:text-red-600 hover:underline">
+                  {formatDate(e.date, e.end_date)}
+                </a>
                 {timeRange && <p className="text-sm text-zinc-500 mt-0.5">{timeRange}</p>}
               </div>
             </div>
@@ -261,7 +265,10 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
           </div>
           <div className="flex items-start gap-3">
             <span className="text-xl mt-0.5">📍</span>
-            <p className="font-semibold text-zinc-900">{addressParts.join(', ')}</p>
+            <a href={`https://www.google.com/maps/search/?api=1&query=${mapQuery}`} target="_blank" rel="noopener noreferrer" data-source="event-address-link"
+              className="font-semibold text-zinc-900 hover:text-red-600 hover:underline">
+              {addressParts.join(', ')}
+            </a>
           </div>
           {e.url && (
             <div className="flex items-start gap-3">
@@ -314,6 +321,15 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
           </Link>
         </div>
 
+        {/* Moved up from the bottom of the page -- most visitors land here
+            from search and leave without scrolling, so the signup needs to
+            sit right after the event details to be seen. */}
+        <div className="mt-8 bg-zinc-50 border border-zinc-100 rounded-2xl p-5">
+          <p className="font-bold text-zinc-900 mb-1">Get shows like this in your inbox every Thursday</p>
+          <p className="text-sm text-zinc-500 mb-3">Just your email and ZIP — no account needed.</p>
+          <EventAlertSignup />
+        </div>
+
         {!isPast && listingsBlock && (
           <EventListingsBlock block={listingsBlock} source="event-listings-block" className="mt-10 pt-8 border-t border-zinc-100" />
         )}
@@ -340,12 +356,6 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
             </Link>
           </div>
         )}
-
-        <div className="mt-10 bg-zinc-50 border border-zinc-100 rounded-2xl p-5">
-          <p className="font-bold text-zinc-900 mb-1">Get shows like this in your inbox every Thursday</p>
-          <p className="text-sm text-zinc-500 mb-3">Just your email and ZIP — no account needed.</p>
-          <EventAlertSignup />
-        </div>
 
         <p className="mt-10 text-xs text-zinc-400">
           Dates are subject to change. Verify with organizers before making travel arrangements.
