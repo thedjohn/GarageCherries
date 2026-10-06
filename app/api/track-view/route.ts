@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { createHash } from 'crypto';
+import { isBotUserAgent } from '@/lib/isBot';
 
 export async function POST(request: NextRequest) {
   const { listingId, dealerId } = await request.json();
   if (!listingId || !dealerId) return NextResponse.json({ ok: false });
+
+  // Crawlers and headless browsers can run the page's JS and hit this
+  // endpoint; don't let them count toward the Views dealers see.
+  if (isBotUserAgent(request.headers.get('user-agent'))) return NextResponse.json({ ok: true, skipped: 'bot' });
 
   // Hash the IP so we never store raw IPs
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()

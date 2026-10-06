@@ -278,7 +278,7 @@ describe('POST /api/track-view', () => {
       select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) }) }),
       insert,
     });
-    const res: any = await trackViewPost(makeRequest({ listingId: 'l1', dealerId: 'd1' }, { 'x-forwarded-for': '9.9.9.9' }));
+    const res: any = await trackViewPost(makeRequest({ listingId: 'l1', dealerId: 'd1' }, { 'x-forwarded-for': '9.9.9.9', 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1' }));
     expect(res._status).toBe(200);
     expect(insert).toHaveBeenCalledOnce();
   });
@@ -289,7 +289,7 @@ describe('POST /api/track-view', () => {
       select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'v1' } }) }) }) }) }),
       insert,
     });
-    const res: any = await trackViewPost(makeRequest({ listingId: 'l1', dealerId: 'd1' }));
+    const res: any = await trackViewPost(makeRequest({ listingId: 'l1', dealerId: 'd1' }, { 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1' }));
     expect(res._status).toBe(200);
     expect(insert).not.toHaveBeenCalled();
   });
@@ -300,7 +300,7 @@ describe('POST /api/track-view', () => {
       select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) }) }),
       insert,
     });
-    const res: any = await trackViewPost(makeRequest({ listingId: 'l1', dealerId: 'd1' }, { 'x-real-ip': '8.8.8.8' }));
+    const res: any = await trackViewPost(makeRequest({ listingId: 'l1', dealerId: 'd1' }, { 'x-real-ip': '8.8.8.8', 'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1' }));
     expect(res._status).toBe(200);
     expect(insert).toHaveBeenCalledOnce();
   });
