@@ -18,7 +18,7 @@ test.describe('Listings page', () => {
   });
 
   test('keyword search input is present', async ({ page }) => {
-    await expect(page.getByPlaceholder(/mustang|keyword|search/i)).toBeVisible();
+    await expect(page.getByPlaceholder(/search by make, model, or keyword/i)).toBeVisible();
   });
 
   test('Apply Filters button is present', async ({ page }) => {
@@ -34,7 +34,7 @@ test.describe('Listings page', () => {
   });
 
   test('keyword search updates URL and shows results heading', async ({ page }) => {
-    const searchInput = page.getByPlaceholder(/mustang|keyword|search/i);
+    const searchInput = page.getByPlaceholder(/search by make, model, or keyword/i);
     await searchInput.fill('Camaro');
     await searchInput.press('Enter');
     await expect(page).toHaveURL(/q=Camaro/i);

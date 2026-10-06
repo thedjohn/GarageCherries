@@ -15,7 +15,7 @@ import { test, expect, type Page } from '@playwright/test';
 
 async function navigateToFirstListing(page: Page): Promise<boolean> {
   await page.goto('/listings');
-  const card = page.locator('a[href*="/listings/"]').first();
+  const card = page.getByTestId('listing-card').first();
   if (await card.count() === 0) return false;
   await card.click();
   await page.waitForLoadState('domcontentloaded');
@@ -28,7 +28,7 @@ async function navigateToFirstListing(page: Page): Promise<boolean> {
 // Price" (no numeric price).
 async function navigateToPricedListing(page: Page): Promise<boolean> {
   await page.goto('/listings?priceMin=1');
-  const card = page.locator('a[href*="/listings/"]').first();
+  const card = page.getByTestId('listing-card').first();
   if (await card.count() === 0) return false;
   await card.click();
   await page.waitForLoadState('domcontentloaded');
@@ -41,7 +41,7 @@ async function navigateToPricedListing(page: Page): Promise<boolean> {
 // whenever the newest listing happens to have no condition recorded.
 async function navigateToConditionedListing(page: Page): Promise<boolean> {
   await page.goto('/listings?condition=Good');
-  const card = page.locator('a[href*="/listings/"]').first();
+  const card = page.getByTestId('listing-card').first();
   if (await card.count() === 0) return false;
   await card.click();
   await page.waitForLoadState('domcontentloaded');
@@ -53,7 +53,7 @@ async function navigateToConditionedListing(page: Page): Promise<boolean> {
 test.describe('Browse and filter', () => {
   test('keyword search from /listings navigates to results', async ({ page }) => {
     await page.goto('/listings');
-    const input = page.getByPlaceholder(/mustang|keyword|search/i);
+    const input = page.getByPlaceholder(/search by make, model, or keyword/i);
     await input.fill('Mustang');
     await input.press('Enter');
     await expect(page).toHaveURL(/q=Mustang/i);

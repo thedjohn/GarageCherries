@@ -12,7 +12,7 @@ test.describe('Browse listings (public)', () => {
     await page.goto('/listings');
     await expect(page.getByRole('heading', { name: /all cars|search results/i })).toBeVisible();
     // At least one car card should be present
-    const cards = page.locator('a[href*="/listings/"]');
+    const cards = page.getByTestId('listing-card');
     await expect(cards.first()).toBeVisible();
   });
 
@@ -30,7 +30,7 @@ test.describe('Browse listings (public)', () => {
 
   test('listing detail page loads', async ({ page }) => {
     await page.goto('/listings');
-    const firstCard = page.locator('a[href*="/listings/"]').first();
+    const firstCard = page.getByTestId('listing-card').first();
     const href = await firstCard.getAttribute('href');
     expect(href).toBeTruthy();
     await firstCard.click();

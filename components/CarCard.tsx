@@ -15,7 +15,7 @@ const CONDITION_COLORS: Record<string, string> = {
 // told apart in Clarity (e.g. "event-listings-block"); omitted by default.
 export default function CarCard({ car, dataSource }: { car: Car; dataSource?: string }) {
   return (
-    <Link href={`/listings/${toSegment(car.make)}/${toSegment(car.model)}/${car.id}/${car.slug}`} data-source={dataSource} className="group block bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-zinc-100">
+    <Link href={`/listings/${toSegment(car.make)}/${toSegment(car.model)}/${car.id}/${car.slug}`} data-source={dataSource} data-testid="listing-card" className="group block bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-zinc-100">
       {/* Image */}
       <div className="relative h-48 bg-zinc-200 overflow-hidden">
         <Image

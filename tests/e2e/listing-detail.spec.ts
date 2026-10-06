@@ -7,8 +7,9 @@ test.describe('Listing detail page', () => {
   test('can navigate to a listing from the listings page', async ({ page }) => {
     await page.goto('/listings');
 
-    // Click the first listing card link
-    const firstCard = page.getByRole('link').filter({ hasText: /\$|Call for price/i }).first();
+    // Click the first listing card -- scoped by test id, since links like the
+    // "Under $30k" quick filter also contain a "$".
+    const firstCard = page.getByTestId('listing-card').first();
     if (await firstCard.count() === 0) {
       // No listings in DB — skip gracefully
       test.skip();
@@ -20,7 +21,7 @@ test.describe('Listing detail page', () => {
 
   test('listing detail page shows expected sections', async ({ page }) => {
     await page.goto('/listings');
-    const cards = page.locator('a[href*="/listings/"]');
+    const cards = page.getByTestId('listing-card');
     const count = await cards.count();
     if (count === 0) { test.skip(); return; }
 
@@ -38,7 +39,7 @@ test.describe('Listing detail page', () => {
 
   test('listing detail page has no application errors', async ({ page }) => {
     await page.goto('/listings');
-    const cards = page.locator('a[href*="/listings/"]');
+    const cards = page.getByTestId('listing-card');
     if (await cards.count() === 0) { test.skip(); return; }
 
     await cards.first().click();
