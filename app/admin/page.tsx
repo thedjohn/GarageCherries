@@ -113,8 +113,27 @@ export default function AdminPage() {
     topListings: { id: string; title: string; price: number; condition: string; image: string | null; views: number }[];
   } | null>(null);
   const [dealerMetricsLoading, setDealerMetricsLoading] = useState(false);
+  // Admin "Sync feed now" for the selected dealer -- imports their latest feed
+  // file right away instead of waiting for their daily cron hour.
+  const [feedSyncing, setFeedSyncing] = useState(false);
+  const [feedSyncResult, setFeedSyncResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const syncDealerFeedNow = async () => {
+    if (!drilldownDealerId) return;
+    setFeedSyncing(true);
+    setFeedSyncResult(null);
+    const res = await fetch('/api/admin/dealers/feed-sync', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dealerId: drilldownDealerId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setFeedSyncResult(res.ok
+      ? { ok: data.ok, text: data.ok ? `Synced: ${data.summary}` : `Synced with errors: ${data.summary} — ${(data.result?.errors ?? []).join('; ')}` }
+      : { ok: false, text: data.error ?? `Sync failed (HTTP ${res.status})` });
+    setFeedSyncing(false);
+  };
   const loadDealerMetrics = async (dealerId: string) => {
     setDrilldownDealerId(dealerId);
+    setFeedSyncResult(null);
     setDealerMetrics(null);
     if (!dealerId) return;
     setDealerMetricsLoading(true);
@@ -1043,6 +1062,17 @@ export default function AdminPage() {
                   <option value="">Select a dealer…</option>
                   {overview.dealers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
+                {drilldownDealerId && (
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <button onClick={syncDealerFeedNow} disabled={feedSyncing}
+                      className="bg-zinc-900 hover:bg-zinc-700 disabled:opacity-50 text-white font-semibold text-sm px-4 py-2 rounded-lg transition-colors">
+                      {feedSyncing ? 'Syncing…' : 'Sync feed now'}
+                    </button>
+                    {feedSyncResult && (
+                      <span className={`text-sm ${feedSyncResult.ok ? 'text-green-700' : 'text-red-600'}`}>{feedSyncResult.text}</span>
+                    )}
+                  </div>
+                )}
               </div>
 
               {dealerMetricsLoading && <p className="text-sm text-zinc-400">Loading dealer metrics…</p>}
