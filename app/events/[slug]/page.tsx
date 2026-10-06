@@ -258,10 +258,17 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
                 {timeRange && <p className="text-sm text-zinc-500 mt-0.5">{timeRange}</p>}
               </div>
             </div>
-            <a href={gcalUrl(e)} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-zinc-900 hover:bg-zinc-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
-              + Add to Google Calendar
-            </a>
+            <div className="flex flex-wrap gap-2">
+              <a href={gcalUrl(e)} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-zinc-900 hover:bg-zinc-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
+                + Add to Google Calendar
+              </a>
+              {/* .ics file -- opens straight into Apple Calendar on iPhone, no sign-in. */}
+              <a href={`/events/${e.slug}/calendar.ics`} data-source="event-apple-calendar"
+                className="inline-flex items-center gap-2 border border-zinc-300 hover:border-zinc-500 text-zinc-900 font-bold text-xs px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
+                + Add to Apple Calendar
+              </a>
+            </div>
           </div>
           <div className="flex items-start gap-3">
             <span className="text-xl mt-0.5">📍</span>
