@@ -57,7 +57,12 @@ export default async function ListingsPage({ searchParams }: Props) {
   }
 
   if (sp.q) query = query.or(`title.ilike.%${sp.q}%,description.ilike.%${sp.q}%`);
-  if (sp.make && sp.make !== 'All Makes') query = query.eq('make', sp.make);
+  // A comma-separated list (e.g. "Dodge,Plymouth,Chrysler,DeSoto" from the
+  // Mopar event-page link) matches any of them; a single make is unchanged.
+  if (sp.make && sp.make !== 'All Makes') {
+    const makes = sp.make.split(',').map(m => m.trim()).filter(Boolean);
+    query = makes.length > 1 ? query.in('make', makes) : query.eq('make', sp.make);
+  }
   if (sp.model) query = query.eq('model', sp.model);
   const currentYear = new Date().getFullYear();
   const clampYear = (v: string) => {

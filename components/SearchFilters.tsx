@@ -95,6 +95,9 @@ export default function SearchFilters({ initialMakes, minYear, maxYear }: { init
             <select id="search-filter-make" value={filters.make} onChange={e => set('make', e.target.value === 'All Makes' ? '' : e.target.value)}
               className="w-full border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
               <option value="">All Makes</option>
+              {/* A multi-make filter from a link (e.g. Mopar) isn't one of the
+                  options, so show it as its own selected entry. */}
+              {filters.make.includes(',') && <option value={filters.make}>{filters.make.split(',').join(', ')}</option>}
               {makes.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>

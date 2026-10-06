@@ -64,7 +64,7 @@ describe('pickListings', () => {
     )!;
     expect(block.match).toBe('theme');
     expect(block.heading).toBe('Mopars for sale');
-    expect(block.browseHref).toBe('/listings?q=Mopar');
+    expect(block.browseHref).toBe('/listings?make=Dodge,Plymouth,Chrysler,DeSoto');
     // Never padded with non-theme cars.
     expect(block.cars.map(c => c.id)).toEqual(['t1', 't2']);
   });

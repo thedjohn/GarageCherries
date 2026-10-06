@@ -15,8 +15,9 @@ export interface EventTheme {
   makes: string[];
   // Matched as a prefix (ilike 'Corvette%') since model strings vary by feed.
   model?: string;
-  // /listings link for "Browse all"; /listings only filters one exact make,
-  // so multi-make themes (Mopar) use a text search instead.
+  // /listings link for "Browse all". Multi-make themes (Mopar) pass a
+  // comma-separated make list; model themes use a text search since model
+  // names vary ("Corvette Stingray", "Corvette C3").
   browseHref: string;
 }
 
@@ -28,7 +29,7 @@ const THEMES: { pattern: RegExp; theme: EventTheme }[] = [
   { pattern: /\bcamaros?\b/i, theme: { label: 'Camaros', makes: ['Chevrolet'], model: 'Camaro', browseHref: '/listings?q=Camaro' } },
   { pattern: /\bmustangs?\b/i, theme: { label: 'Mustangs', makes: ['Ford'], model: 'Mustang', browseHref: '/listings?q=Mustang' } },
   { pattern: /\bthunderbirds?\b|\bt-birds?\b/i, theme: { label: 'Thunderbirds', makes: ['Ford'], model: 'Thunderbird', browseHref: '/listings?q=Thunderbird' } },
-  { pattern: /\bmopars?\b/i, theme: { label: 'Mopars', makes: ['Dodge', 'Plymouth', 'Chrysler', 'DeSoto'], browseHref: '/listings?q=Mopar' } },
+  { pattern: /\bmopars?\b/i, theme: { label: 'Mopars', makes: ['Dodge', 'Plymouth', 'Chrysler', 'DeSoto'], browseHref: '/listings?make=Dodge,Plymouth,Chrysler,DeSoto' } },
   { pattern: /\bpontiacs?\b|\bgto\b/i, theme: { label: 'Pontiacs', makes: ['Pontiac'], browseHref: '/listings?make=Pontiac' } },
   { pattern: /\bchevy\b|\bchevys\b|\bchevrolets?\b/i, theme: { label: 'Chevys', makes: ['Chevrolet'], browseHref: '/listings?make=Chevrolet' } },
   { pattern: /\bfords?\b/i, theme: { label: 'Fords', makes: ['Ford'], browseHref: '/listings?make=Ford' } },
