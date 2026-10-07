@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireAdmin, hasRole } from '@/lib/admin';
 import { resolveDealerId } from '@/lib/dealerAuth';
+import { fetchAllRows } from '@/lib/db';
 
 // Buckets raw timestamps into a zero-filled daily series (oldest first), so
 // the trend chart shows a real flat 0 on quiet days instead of a gap.
@@ -153,11 +154,18 @@ export async function GET(request: NextRequest) {
   // Daily views/inquiries for the trend charts -- separate raw-timestamp fetches
   // (not reused from the count queries above, which only return a total) so the
   // Overview tab can show a day-by-day trend instead of a flat 30d snapshot.
-  const { data: viewRows } = await admin
-    .from('listing_views')
-    .select('viewed_at, listing_id')
-    .eq('dealer_id', dealerId)
-    .gte('viewed_at', thirtyDaysAgo);
+  // Paged past Supabase's 1000-row cap -- a busy dealer (Beverly Hills Car
+  // Club: ~2,500 views/30d) otherwise got only the oldest 1000 rows, so the
+  // chart went flat for the most recent weeks and Top listings ranked off
+  // stale views. Ordered by id so paging is deterministic (see fetchAllRows).
+  const viewRows = await fetchAllRows<{ viewed_at: string; listing_id: string }>((from, to) =>
+    admin
+      .from('listing_views')
+      .select('viewed_at, listing_id')
+      .eq('dealer_id', dealerId)
+      .gte('viewed_at', thirtyDaysAgo)
+      .order('id', { ascending: true })
+      .range(from, to));
   const viewsTrend = bucketByDay((viewRows ?? []).map(r => r.viewed_at), 30);
 
   const { data: clickRows } = await admin

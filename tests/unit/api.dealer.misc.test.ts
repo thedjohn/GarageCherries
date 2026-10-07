@@ -242,11 +242,11 @@ describe('GET /api/dealer/metrics', () => {
         if (listingViewsCall === 2) {
           return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ lt: vi.fn().mockResolvedValue({ count: 10 }) }) }) }) };
         }
-        // Call 3 (viewsTrend): .select('viewed_at').eq().gte() awaited directly, raw rows.
+        // Call 3 (viewsTrend): paged via fetchAllRows -- .select().eq().gte().order().range().
         const today = new Date().toISOString().slice(0, 10);
-        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockResolvedValue({ data: [
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ order: vi.fn().mockReturnValue({ range: vi.fn().mockResolvedValue({ data: [
           { viewed_at: `${today}T10:00:00Z` }, { viewed_at: `${today}T14:00:00Z` },
-        ] }) }) }) };
+        ] }) }) }) }) }) };
       }
       if (table === 'listings') {
         listingsCall++;
@@ -313,12 +313,53 @@ describe('GET /api/dealer/metrics', () => {
     expect(res._data.clicksTrend[29].count).toBe(1); // today's bucket -- 1 clicked_at row mocked for today
   });
 
+  it('pages views past the 1000-row cap, so recent days and top listings use every view', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const old = new Date(Date.now() - 20 * 86400000).toISOString();
+    const page1 = Array.from({ length: 1000 }, () => ({ viewed_at: old, listing_id: 'car-old' }));
+    const page2 = [{ viewed_at: `${today}T10:00:00Z`, listing_id: 'car-new' }, { viewed_at: `${today}T11:00:00Z`, listing_id: 'car-new' }];
+    const range = vi.fn().mockResolvedValueOnce({ data: page1 }).mockResolvedValueOnce({ data: page2 });
+    let listingsCall = 0;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'dealer-1' } }) }) }) };
+      if (table === 'listing_views') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({
+        lt: vi.fn().mockResolvedValue({ count: 0 }),
+        order: vi.fn().mockReturnValue({ range }),
+      }) }) }) };
+      if (table === 'listings') {
+        listingsCall++;
+        if (listingsCall === 1) return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [] }) }) };
+        return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: [
+          { id: 'car-old', title: 'Old', price: 1, condition: null, images: [], listed_at: old },
+          { id: 'car-new', title: 'New', price: 1, condition: null, images: [], listed_at: old },
+        ] }) }) }) }) };
+      }
+      if (table === 'dealer_link_clicks') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ count: 0 }) }),
+        gte: vi.fn().mockReturnValue({ lt: vi.fn().mockResolvedValue({ count: 0 }), then: (r: any) => Promise.resolve({ data: [] }).then(r) }),
+      }) }) };
+      if (table === 'dealer_members') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) };
+      return {};
+    });
+    const res: any = await metricsGet(makeGetRequest('https://x.com/api/dealer/metrics'));
+    expect(res._status).toBe(200);
+    expect(range).toHaveBeenNthCalledWith(1, 0, 999);
+    expect(range).toHaveBeenNthCalledWith(2, 1000, 1999);
+    expect(res._data.viewsTrend[29].count).toBe(2); // today's views live on page 2
+    expect(res._data.topListings.find((l: any) => l.id === 'car-new').views).toBe(2);
+    expect(res._data.topListings.find((l: any) => l.id === 'car-old').views).toBe(1000);
+  });
+
   it('returns null deltas and zero avgDaysOnMarket when there is no prior-period or listing data', async () => {
     let listingsCall = 0;
     let clicksCall = 0;
     mockFrom.mockImplementation((table: string) => {
       if (table === 'dealers') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'dealer-1' } }) }) }) };
-      if (table === 'listing_views') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({ lt: vi.fn().mockResolvedValue({ count: 0 }) }) }) }) };
+      // count queries end in .gte()/.lt(); the trend query adds .order().range() (paged).
+      if (table === 'listing_views') return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ gte: vi.fn().mockReturnValue({
+        lt: vi.fn().mockResolvedValue({ count: 0 }),
+        order: vi.fn().mockReturnValue({ range: vi.fn().mockResolvedValue({ data: [] }) }),
+      }) }) }) };
       if (table === 'listings') {
         listingsCall++;
         // Call 1: dealerListings — empty, so inquiries/conversations logic short-circuits entirely.
