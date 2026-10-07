@@ -1,3 +1,5 @@
+import { cache } from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -5,11 +7,9 @@ import { formatListingPrice, formatMileage, toSegment } from '@/lib/data';
 
 export const revalidate = 0;
 
-export const metadata = {
-  title: 'GarageCherry Pick of the Day',
-  description: 'A new classic, muscle, or collector car featured every day.',
-  alternates: { canonical: 'https://www.garagecherries.com/car-of-the-day' },
-};
+const PAGE_URL = 'https://www.garagecherries.com/car-of-the-day';
+const PAGE_TITLE = 'GarageCherry Pick of the Day';
+const PAGE_DESCRIPTION = 'A new classic, muscle, or collector car featured every day.';
 
 interface FeaturedListing {
   id: string; slug: string; title: string; year: number; make: string; model: string;
@@ -24,7 +24,8 @@ interface TodaysPick {
   listings: FeaturedListing | null;
 }
 
-export default async function CarOfTheDayPage() {
+// Shared by generateMetadata and the page (cache() dedupes it to one query per request).
+const getTodaysPick = cache(async (): Promise<TodaysPick | null> => {
   const admin = createAdminClient();
   const today = new Date().toISOString().slice(0, 10);
 
@@ -34,7 +35,32 @@ export default async function CarOfTheDayPage() {
     .eq('featured_date', today)
     .maybeSingle();
 
-  const pick = data as unknown as TodaysPick | null;
+  return data as unknown as TodaysPick | null;
+});
+
+// Without its own openGraph, this page inherited the layout's homepage preview
+// (og:url = homepage, generic banner), so shared links never showed the car.
+export async function generateMetadata(): Promise<Metadata> {
+  const car = (await getTodaysPick())?.listings ?? null;
+  const title = car ? `${PAGE_TITLE}: ${car.title}` : PAGE_TITLE;
+  const image = car?.images?.[0];
+  return {
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
+    alternates: { canonical: PAGE_URL },
+    openGraph: {
+      title,
+      description: PAGE_DESCRIPTION,
+      url: PAGE_URL,
+      type: 'website',
+      ...(image ? { images: [{ url: image, width: 1200, height: 800, alt: car!.title }] } : {}),
+    },
+    twitter: { card: 'summary_large_image', title, description: PAGE_DESCRIPTION, ...(image ? { images: [image] } : {}) },
+  };
+}
+
+export default async function CarOfTheDayPage() {
+  const pick = await getTodaysPick();
   const car = pick?.listings ?? null;
 
   return (
