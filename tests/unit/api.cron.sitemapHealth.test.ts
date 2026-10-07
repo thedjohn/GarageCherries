@@ -133,6 +133,24 @@ describe('GET /api/cron/sitemap-health', () => {
     expect(res._data.brokenCount).toBe(1);
   });
 
+  it('sends the x-gc-internal firewall header on the sitemap and page fetches', async () => {
+    process.env.CRON_SECRET = 'cron-secret';
+    mockFrom.mockImplementation(() => makeListingsBuilder([]));
+
+    const urls = [MAKE_URL];
+    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
+      if (url.endsWith('/sitemap.xml')) return { text: async () => sitemapXmlWithUrls(urls) } as any;
+      return { status: 200 } as any;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await GET(makeRequest('Bearer cron-secret'));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const [, init] of fetchMock.mock.calls) {
+      expect((init?.headers as Record<string, string>)['x-gc-internal']).toBe('cron-secret');
+    }
+  });
+
   it('does not flag make-only or make/model URLs as missing listings (only 4-segment detail URLs count)', async () => {
     process.env.CRON_SECRET = 'cron-secret';
     mockFrom.mockImplementation(() => makeListingsBuilder([]));

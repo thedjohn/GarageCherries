@@ -7,9 +7,16 @@ const log = createLogger('cron/sitemap-health');
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.garagecherries.com';
 const BATCH_SIZE = 15;
 
+// Identifies these self-requests to the Vercel Firewall, whose "x-gc-internal"
+// Bypass rule lets them skip Bot Protection (otherwise the check's own fetches
+// could be challenged and every page would look broken).
+function internalHeaders(): Record<string, string> {
+  return { 'x-gc-internal': process.env.CRON_SECRET ?? '' };
+}
+
 async function checkUrl(url: string): Promise<{ url: string; status: number }> {
   try {
-    const res = await fetch(url, { redirect: 'follow' });
+    const res = await fetch(url, { redirect: 'follow', headers: internalHeaders() });
     return { url, status: res.status };
   } catch {
     return { url, status: 0 };
@@ -35,7 +42,7 @@ export async function GET(request: NextRequest) {
   const [{ data: liveRows }, sitemapRes] = await Promise.all([
     admin.from('listings').select('id').eq('status', 'approved').eq('is_sold', false)
       .or(`expires_at.is.null,expires_at.gt.${now}`),
-    fetch(`${BASE_URL}/sitemap.xml`),
+    fetch(`${BASE_URL}/sitemap.xml`, { headers: internalHeaders() }),
   ]);
 
   const sitemapXml = await sitemapRes.text();
