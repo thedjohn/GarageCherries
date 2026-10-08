@@ -22,10 +22,30 @@ function amazonLink(asin: string) {
 
 const LINKS = [
   {
+    // Matches what Instagram posts/stories point people to, so a follower
+    // tapping the bio link from a Pick of the Day post lands on today's car.
+    label: "Today's Pick of the Day",
+    blurb: 'A new classic, muscle, or collector car featured every day.',
+    href: 'https://www.garagecherries.com/car-of-the-day?utm_source=instagram&utm_medium=bio&utm_content=pick_of_the_day',
+    emoji: '🍒',
+  },
+  {
     label: 'Browse Cars for Sale',
     blurb: 'Live listings from trusted dealers nationwide.',
     href: 'https://www.garagecherries.com/listings?utm_source=instagram&utm_medium=bio',
     emoji: '🚗',
+  },
+  {
+    label: 'Car Shows Near You',
+    blurb: 'Car shows, cruise nights, and swap meets in every state.',
+    href: 'https://www.garagecherries.com/events?utm_source=instagram&utm_medium=bio&utm_content=car_shows',
+    emoji: '🏁',
+  },
+  {
+    label: 'Sell Your Classic Free',
+    blurb: 'Free listings through the end of 2026 — private sellers and dealers.',
+    href: 'https://www.garagecherries.com/sell?utm_source=instagram&utm_medium=bio&utm_content=sell_free',
+    emoji: '💲',
   },
   {
     label: 'OBD2 Code Reader',
