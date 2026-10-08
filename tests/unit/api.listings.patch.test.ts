@@ -5,7 +5,7 @@ import type { NextRequest } from 'next/server';
 
 const {
   mockGetUser, mockFrom, mockSelect, mockSingle,
-  mockUpdate, mockEq, mockRpc, mockStorageRemove,
+  mockUpdate, mockEq, mockRpc, mockStorageRemove, mockSubmitToIndexNow,
 } = vi.hoisted(() => ({
   mockGetUser:  vi.fn(),
   mockFrom:     vi.fn(),
@@ -15,7 +15,10 @@ const {
   mockEq:       vi.fn(),
   mockRpc:      vi.fn(),
   mockStorageRemove: vi.fn(),
+  mockSubmitToIndexNow: vi.fn().mockResolvedValue(undefined),
 }));
+
+vi.mock('@/lib/indexNow', () => ({ submitToIndexNow: mockSubmitToIndexNow }));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({ auth: { getUser: mockGetUser } })),
@@ -422,7 +425,7 @@ describe('DELETE /api/listings/[id]', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'listings') {
         return {
-          select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { seller_id: 'user-1', images: ['https://x.supabase.co/storage/v1/object/public/listing-images/cars/private/a.jpg'] } }) }) }),
+          select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { seller_id: 'user-1', images: ['https://x.supabase.co/storage/v1/object/public/listing-images/cars/private/a.jpg'], make: 'Ford', model: 'Ranger', slug: '2019-ford-ranger-xlt' } }) }) }),
           delete: vi.fn().mockReturnValue({ eq: deleteEq }),
         };
       }
@@ -433,6 +436,7 @@ describe('DELETE /api/listings/[id]', () => {
     const res = getResponse();
     expect(mockStorageRemove).toHaveBeenCalled();
     expect(res._data.success).toBe(true);
+    expect(mockSubmitToIndexNow).toHaveBeenCalledWith(['https://www.garagecherries.com/listings/ford/ranger/listing-1/2019-ford-ranger-xlt']);
   });
 
   it('allows a dealer team member to delete their dealer\'s listing, without changing the private-seller path above', async () => {
@@ -494,5 +498,6 @@ describe('DELETE /api/listings/[id]', () => {
     await DELETE(makeRequest({}), makeParams('listing-1'));
     const res = getResponse();
     expect(res._status).toBe(500);
+    expect(mockSubmitToIndexNow).not.toHaveBeenCalled();
   });
 });

@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 const {
   mockGetUser, mockRequireAdmin, mockFrom, mockStorageRemove, mockRpc,
   mockSend, mockPostToFacebook, mockLoggerInfo, mockLoggerWarn, mockLoggerError, mockLoggerFlush,
-  mockRevalidatePath,
+  mockRevalidatePath, mockSubmitToIndexNow,
 } = vi.hoisted(() => ({
   mockGetUser:        vi.fn(),
   mockRequireAdmin:   vi.fn(),
@@ -18,6 +18,7 @@ const {
   mockLoggerError:    vi.fn(),
   mockLoggerFlush:    vi.fn().mockResolvedValue(undefined),
   mockRevalidatePath: vi.fn(),
+  mockSubmitToIndexNow: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -47,6 +48,7 @@ vi.mock('@/lib/facebook/postToPage', () => ({
 }));
 
 vi.mock('next/cache', () => ({ revalidatePath: mockRevalidatePath }));
+vi.mock('@/lib/indexNow', () => ({ submitToIndexNow: mockSubmitToIndexNow }));
 
 vi.mock('next/server', () => ({
   NextResponse: {
@@ -817,7 +819,7 @@ describe('DELETE /api/admin/listings', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'listings') {
         return {
-          select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { images: ['https://x.supabase.co/storage/v1/object/public/listing-images/cars/private/a.jpg'] } }) }) }),
+          select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { images: ['https://x.supabase.co/storage/v1/object/public/listing-images/cars/private/a.jpg'], make: 'Ford', model: 'Mustang GT', slug: '1967-ford-mustang-gt' } }) }) }),
           delete: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
         };
       }
@@ -827,6 +829,7 @@ describe('DELETE /api/admin/listings', () => {
     const res: any = await DELETE(makeJsonRequest({ id: 'l1' }));
     expect(mockStorageRemove).toHaveBeenCalled();
     expect(res._data.success).toBe(true);
+    expect(mockSubmitToIndexNow).toHaveBeenCalledWith(['https://www.garagecherries.com/listings/ford/mustang-gt/l1/1967-ford-mustang-gt']);
   });
 
   it('skips storage cleanup when the listing has no images', async () => {
@@ -862,5 +865,6 @@ describe('DELETE /api/admin/listings', () => {
 
     const res: any = await DELETE(makeJsonRequest({ id: 'l1' }));
     expect(res._status).toBe(500);
+    expect(mockSubmitToIndexNow).not.toHaveBeenCalled();
   });
 });

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { isAuthorizedForSeller } from '@/lib/dealerAuth';
 import { isValidListingImageUrl } from '@/lib/listingImages';
+import { submitToIndexNow } from '@/lib/indexNow';
+import { toSegment } from '@/lib/data';
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -133,7 +135,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { data: listing } = await admin
     .from('listings')
-    .select('seller_id, images')
+    .select('seller_id, images, make, model, slug')
     .eq('id', id)
     .single();
 
@@ -154,6 +156,11 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { error } = await admin.from('listings').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Tell Bing the page is gone so it drops it instead of serving a dead link -- fire and forget
+  if (listing.make && listing.model && listing.slug) {
+    submitToIndexNow([`https://www.garagecherries.com/listings/${toSegment(listing.make)}/${toSegment(listing.model)}/${id}/${listing.slug}`]).catch(() => {});
+  }
 
   return NextResponse.json({ success: true });
 }

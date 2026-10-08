@@ -410,10 +410,11 @@ export async function DELETE(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Fetch images before deleting so we can clean up storage
+  // Fetch images before deleting so we can clean up storage (and the URL
+  // parts, so IndexNow can be told the page is gone)
   const { data: listing } = await admin
     .from('listings')
-    .select('images')
+    .select('images, make, model, slug')
     .eq('id', id)
     .single();
 
@@ -440,6 +441,11 @@ export async function DELETE(req: NextRequest) {
   }
   log.info('Listing deleted', { listingId: id, adminEmail: user?.email });
   await log.flush();
+
+  // Tell Bing the page is gone so it drops it instead of serving a dead link -- fire and forget
+  if (listing?.make && listing.model && listing.slug) {
+    submitToIndexNow([`https://www.garagecherries.com/listings/${toSegment(listing.make)}/${toSegment(listing.model)}/${id}/${listing.slug}`]).catch(() => {});
+  }
 
   return NextResponse.json({ success: true });
 }
