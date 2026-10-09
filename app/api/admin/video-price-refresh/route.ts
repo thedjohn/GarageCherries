@@ -40,9 +40,10 @@ export function isDue(listing: Candidate, now: number): boolean {
   if (listing.video_refresh_last_attempted_at && new Date(listing.video_refresh_last_attempted_at).getTime() > debounceCutoff) {
     return false;
   }
+  // YouTube isn't refreshed on price drops (the original Short stays up),
+  // so a stale YouTube post alone doesn't make a listing due.
   return isPlatformStale(listing.reel_posted_at, listing.price_dropped_at)
-    || isPlatformStale(listing.instagram_posted_at, listing.price_dropped_at)
-    || isPlatformStale(listing.youtube_posted_at, listing.price_dropped_at);
+    || isPlatformStale(listing.instagram_posted_at, listing.price_dropped_at);
 }
 
 // GET /api/admin/video-price-refresh — scheduled (see

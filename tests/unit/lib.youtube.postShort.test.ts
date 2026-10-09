@@ -5,7 +5,7 @@ vi.mock('@/lib/logger', () => ({
   createLogger: () => ({ info: vi.fn(), warn: mockWarn, error: mockError, flush: vi.fn().mockResolvedValue(undefined) }),
 }));
 
-import { postListingReelToYouTube, deleteYouTubeVideo } from '@/lib/youtube/postShort';
+import { postListingReelToYouTube, deleteYouTubeVideo, buildYouTubeTitle, buildYouTubeDescription, validateYouTubeUpload, formatListingCode } from '@/lib/youtube/postShort';
 
 const LISTING = {
   id: 'listing-1',
@@ -329,5 +329,137 @@ describe('deleteYouTubeVideo', () => {
     (fetch as any).mockRejectedValueOnce(new Error('network down'));
     const result = await deleteYouTubeVideo('yt-video-1');
     expect(result).toBe(false);
+  });
+});
+
+describe('buildYouTubeTitle (hook titles)', () => {
+  const base = { ...LISTING, mileage: null, description: null, body_style: null, location: null, state: null };
+
+  it('leads with low mileage on a car new enough for a 6-digit odometer', () => {
+    expect(buildYouTubeTitle({ ...base, year: 1990, title: '1990 Dodge Dart', mileage: 37000 })).toBe('Just 37,000 Miles: 1990 Dodge Dart for $45,000');
+  });
+
+  it('does not lead with mileage on an older car whose odometer may have rolled over', () => {
+    expect(buildYouTubeTitle({ ...base, mileage: 27981 })).toBe('For Sale: 1969 Dodge Dart for $45,000');
+  });
+
+  it('leads with mileage on an older car when the seller says the miles are original', () => {
+    expect(buildYouTubeTitle({ ...base, mileage: 37000, description: '37,000 original miles.' })).toBe('Just 37,000 Miles: 1969 Dodge Dart for $45,000');
+  });
+
+  it('always says "Not Running" first for a car that does not run, even with low miles', () => {
+    expect(buildYouTubeTitle({ ...base, mileage: 20000, description: 'Barn find, does not run.' })).toBe('Not Running: 1969 Dodge Dart Project for $45,000');
+  });
+
+  it('uses seller-text hooks: numbers matching, frame-off, one owner', () => {
+    expect(buildYouTubeTitle({ ...base, description: 'Numbers matching 340.' })).toBe('Numbers-Matching 1969 Dodge Dart for $45,000');
+    expect(buildYouTubeTitle({ ...base, description: 'Rotisserie restoration in 2019.' })).toBe('Frame-Off Restored 1969 Dodge Dart for $45,000');
+    expect(buildYouTubeTitle({ ...base, description: 'One owner since new.' })).toBe('One-Owner 1969 Dodge Dart for $45,000');
+  });
+
+  it('uses a convertible hook, without repeating "Convertible" already in the model', () => {
+    expect(buildYouTubeTitle({ ...base, body_style: 'Convertible' })).toBe('Top-Down Ready: 1969 Dodge Dart Convertible for $45,000');
+    expect(buildYouTubeTitle({ ...base, model: 'Dart Convertible', body_style: 'Convertible' })).toBe('For Sale: 1969 Dodge Dart Convertible for $45,000');
+  });
+
+  it('falls back to location, then a plain hook', () => {
+    expect(buildYouTubeTitle({ ...base, location: 'Charlotte', state: 'NC' })).toBe('For Sale in Charlotte, NC: 1969 Dodge Dart for $45,000');
+    expect(buildYouTubeTitle(base)).toBe('For Sale: 1969 Dodge Dart for $45,000');
+  });
+
+  it('stays under 100 characters and keeps year and make for long names', () => {
+    const t = buildYouTubeTitle({ ...base, model: 'Dart Swinger 340 Special Edition Two-Door Hardtop With Very Long Trim Name Here', mileage: 12000 });
+    expect(t.length).toBeLessThanOrEqual(100);
+    expect(t).toContain('1969 Dodge');
+  });
+
+  it('keeps "Not Running" even when the hook is too long', () => {
+    const t = buildYouTubeTitle({ ...base, model: 'X'.repeat(70), description: 'Non-running project.' });
+    expect(t.startsWith('Not Running: ')).toBe(true);
+    expect(t.length).toBeLessThanOrEqual(100);
+  });
+});
+
+describe('buildYouTubeDescription', () => {
+  const NOW = new Date('2026-10-09T12:00:00Z').getTime();
+  const coded = { ...LISTING, listing_code: '7kq4m', description: 'Great driver. Call 618 336 5210 today.' };
+
+  it('puts price, location, the search code and the promo line in the first three lines', () => {
+    const lines = buildYouTubeDescription(coded, NOW).split('\n');
+    expect(lines[0]).toBe('1969 Dodge Dart — $45,000 · Charlotte, NC');
+    expect(lines[1]).toBe('See all photos and contact the seller: garagecherries.com — search code GC-7KQ4M');
+    expect(lines[2]).toBe('Selling a car? List it free through Dec 31: garagecherries.com/sell');
+  });
+
+  it('drops the promo line after the promotion ends', () => {
+    const d = buildYouTubeDescription(coded, new Date('2027-01-02T00:00:00Z').getTime());
+    expect(d).not.toContain('List it free');
+  });
+
+  it('omits the code wording when the listing has no code yet', () => {
+    expect(buildYouTubeDescription({ ...LISTING }, NOW).split('\n')[1]).toBe('See all photos and contact the seller: garagecherries.com');
+  });
+
+  it('cleans contact details out of the seller text', () => {
+    const d = buildYouTubeDescription(coded, NOW);
+    expect(d).toContain('Great driver.');
+    expect(d).not.toContain('618 336 5210');
+  });
+
+  it('ends with a tracked full-listing link and hashtags', () => {
+    const d = buildYouTubeDescription(coded, NOW);
+    expect(d).toContain('Full listing: https://www.garagecherries.com/listings/dodge/dart/listing-1/1969-dodge-dart-123?utm_source=youtube&utm_medium=shorts&utm_campaign=listing&utm_content=GC-7KQ4M');
+    expect(d.trim().split('\n').pop()).toMatch(/^#Shorts /);
+  });
+
+  it('never truncates the header or link, only the seller text, and stays under 5000 characters', () => {
+    const d = buildYouTubeDescription({ ...coded, description: 'word '.repeat(2000) }, NOW);
+    expect(d.length).toBeLessThan(5000);
+    expect(d).toContain('search code GC-7KQ4M');
+    expect(d).toContain('Full listing: https://www.garagecherries.com/');
+    expect(d).toContain('…');
+  });
+});
+
+describe('formatListingCode', () => {
+  it('formats a stored code for display', () => {
+    expect(formatListingCode('7kq4m')).toBe('GC-7KQ4M');
+    expect(formatListingCode(null)).toBeNull();
+  });
+});
+
+describe('validateYouTubeUpload', () => {
+  it('passes a normal live listing', () => {
+    expect(validateYouTubeUpload({ ...LISTING, status: 'approved', is_sold: false })).toBeNull();
+  });
+
+  it('blocks sold or non-live listings', () => {
+    expect(validateYouTubeUpload({ ...LISTING, is_sold: true })).toMatch(/sold/);
+    expect(validateYouTubeUpload({ ...LISTING, status: 'pending' })).toMatch(/no longer live/);
+  });
+
+  it('blocks a missing or zero price', () => {
+    expect(validateYouTubeUpload({ ...LISTING, price: 0 })).toMatch(/Price/);
+  });
+
+  it('blocks when the listing title year disagrees with the year field', () => {
+    expect(validateYouTubeUpload({ ...LISTING, title: '1975 Dodge Dart', year: 1976 })).toBe('Listing title says 1975 but the year field is 1976');
+  });
+
+  it('blocks when the seller text states a different model year', () => {
+    expect(validateYouTubeUpload({ ...LISTING, title: 'Dodge Dart', description: 'This 1968 Dodge Dart is clean.' })).toBe('Seller text says 1968 Dodge but the year field is 1969');
+  });
+
+  it('does not flag years that are not followed by the make', () => {
+    expect(validateYouTubeUpload({ ...LISTING, description: 'Repainted in 1985 and stored since 1999.' })).toBeNull();
+  });
+});
+
+describe('postListingReelToYouTube — pre-upload checks', () => {
+  it('does not upload, and warns, when the checks block the listing', async () => {
+    const result = await postListingReelToYouTube({ ...LISTING, price: 0 }, VIDEO_URL);
+    expect(result).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(mockWarn).toHaveBeenCalledWith('YouTube upload blocked by pre-upload checks', expect.objectContaining({ reason: 'Price is missing or zero' }));
   });
 });

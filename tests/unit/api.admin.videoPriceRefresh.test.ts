@@ -128,6 +128,18 @@ describe('isDue', () => {
     };
     expect(isDue(listing, now)).toBe(true);
   });
+
+  it('is not due when only YouTube is stale, since YouTube Shorts are never refreshed on a price drop', () => {
+    const listing = {
+      ...BASE,
+      price_dropped_at: new Date(now - 1 * DAY).toISOString(),
+      reel_posted_at: new Date(now - 1 * HOUR).toISOString(),
+      instagram_posted_at: new Date(now - 1 * HOUR).toISOString(),
+      youtube_posted_at: new Date(now - 40 * DAY).toISOString(),
+      video_refresh_last_attempted_at: null,
+    };
+    expect(isDue(listing, now)).toBe(false);
+  });
 });
 
 describe('GET /api/admin/video-price-refresh', () => {

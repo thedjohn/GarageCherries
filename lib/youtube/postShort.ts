@@ -1,8 +1,10 @@
 import { createLogger } from '@/lib/logger';
+import { cleanSellerText, findContactInfo } from '@/lib/youtube/cleanSellerText';
+import { YOUTUBE_SELL_PROMO } from '@/lib/youtube/config';
 
 const log = createLogger('lib/youtube');
 
-interface ListingPostInput {
+export interface ListingPostInput {
   id: string;
   title: string;
   make: string;
@@ -18,6 +20,9 @@ interface ListingPostInput {
   description_paragraphs?: string[] | null;
   hobby_segment?: string | null;
   body_style?: string | null;
+  listing_code?: string | null;
+  is_sold?: boolean | null;
+  status?: string | null;
 }
 
 // Checked in this order -- most-specific-signal-wins, so e.g. a "Challenger
@@ -77,35 +82,131 @@ function buildHashtags(listing: ListingPostInput): string {
   return Array.from(new Set(tags)).join(' ');
 }
 
-function buildTitle(listing: ListingPostInput): string {
-  return `${listing.year} ${listing.make} ${listing.model} — ${fmtPrice(listing.price)} | GarageCherries`.slice(0, 100);
+// Same fallback order the listing detail page uses: prefer the rich
+// paragraph version when present, otherwise the plain description.
+function sellerText(listing: ListingPostInput): string {
+  return (listing.description_paragraphs?.length
+    ? listing.description_paragraphs.join('\n\n')
+    : listing.description) ?? '';
 }
 
-function buildDescription(listing: ListingPostInput): string {
-  const details = [
-    listing.mileage ? `${listing.mileage.toLocaleString()} miles` : null,
-    listing.condition ? `${listing.condition} condition` : null,
-    listing.location && listing.state ? `${listing.location}, ${listing.state}` : null,
-  ].filter(Boolean).join(' · ');
+// "GC-7KQ4M" -- the human-typeable code viewers search on garagecherries.com
+// or visit at /c/<code> (links in Shorts descriptions aren't clickable).
+export function formatListingCode(code: string | null | undefined): string | null {
+  return code ? `GC-${code.toUpperCase()}` : null;
+}
 
-  // Same fallback order the listing detail page uses: prefer the rich
-  // paragraph version when present, otherwise the plain description.
-  const vehicleDescription = listing.description_paragraphs?.length
-    ? listing.description_paragraphs.join('\n\n')
-    : listing.description;
+const NOT_RUNNING = /\b(not running|non[- ]?running|does not run|doesn'?t run|won'?t (?:start|run)|no[- ]start)\b/i;
+const NUMBERS_MATCHING = /\bnumbers[- ]matching\b/i;
+const FRAME_OFF = /\b(frame[- ]off|rotisserie)\b/i;
+const ONE_OWNER = /\b(one[- ]owner|1[- ]owner|single[- ]owner)\b/i;
+const VERIFIED_MILES = /\b(original|actual|documented|genuine|true)\s+miles\b/i;
+// Cars from before ~1981 mostly had 5-digit odometers that roll over, and
+// street rods show miles since their build -- "Just 27,981 Miles" on a 1966
+// car is likely 127,981. Only lead with mileage when it's trustworthy.
+const SIX_DIGIT_ODOMETER_YEAR = 1981;
 
-  // YouTube caps descriptions at 5000 chars -- leave headroom for the
-  // fixed template around it (details, link, hashtags) rather than risk
-  // the API rejecting an over-length description.
-  const trimmedVehicleDescription = vehicleDescription
-    ? vehicleDescription.length > 3500 ? vehicleDescription.slice(0, 3500) + '…' : vehicleDescription
-    : null;
+// Hook-style titles (the format that tested better than the old
+// "Year Make Model — $Price | GarageCherries"), picked by simple rules from
+// the listing data -- year, make, model and price are always present.
+// Strongest signal wins; a car that doesn't run always says so up front.
+export function buildYouTubeTitle(listing: ListingPostInput): string {
+  const ymm = `${listing.year} ${listing.make} ${listing.model}`;
+  const price = fmtPrice(listing.price);
+  const text = `${listing.title} ${sellerText(listing)}`;
+  const place = listing.location && listing.state ? `${listing.location}, ${listing.state}` : null;
+  const isConvertible = listing.body_style === 'Convertible' && !/convertible/i.test(listing.model);
+  const notRunning = NOT_RUNNING.test(text);
 
-  return `${listing.year} ${listing.make} ${listing.model} — ${fmtPrice(listing.price)}`
-    + (details ? `\n${details}` : '')
-    + (trimmedVehicleDescription ? `\n\n${trimmedVehicleDescription}` : '')
-    + `\n\nSee full details & more photos: ${buildListingUrl(listing)}`
-    + `\n\n${buildHashtags(listing)}`;
+  const candidates: string[] = [];
+  if (notRunning) candidates.push(`Not Running: ${ymm} Project for ${price}`);
+  else {
+    const milesTrustworthy = listing.year >= SIX_DIGIT_ODOMETER_YEAR || VERIFIED_MILES.test(text);
+    if (milesTrustworthy && listing.mileage && listing.mileage > 0 && listing.mileage < 60000) {
+      candidates.push(`Just ${listing.mileage.toLocaleString('en-US')} Miles: ${ymm} for ${price}`);
+    }
+    if (NUMBERS_MATCHING.test(text)) candidates.push(`Numbers-Matching ${ymm} for ${price}`);
+    if (FRAME_OFF.test(text)) candidates.push(`Frame-Off Restored ${ymm} for ${price}`);
+    if (ONE_OWNER.test(text)) candidates.push(`One-Owner ${ymm} for ${price}`);
+    if (isConvertible) candidates.push(`Top-Down Ready: ${ymm} Convertible for ${price}`);
+    if (place) candidates.push(`For Sale in ${place}: ${ymm} for ${price}`);
+    candidates.push(`For Sale: ${ymm} for ${price}`);
+  }
+
+  const fitting = candidates.find(t => t.length <= 100);
+  if (fitting) return fitting;
+  // A car that doesn't run keeps "Not Running" even when too long for its hook.
+  return `${notRunning ? 'Not Running: ' : ''}${ymm} for ${price}`.slice(0, 100);
+}
+
+function trackedListingUrl(listing: ListingPostInput): string {
+  const params = new URLSearchParams({ utm_source: 'youtube', utm_medium: 'shorts', utm_campaign: 'listing' });
+  const code = formatListingCode(listing.listing_code);
+  if (code) params.set('utm_content', code);
+  return `${buildListingUrl(listing)}?${params.toString()}`;
+}
+
+function promoLine(now: number): string | null {
+  if (!YOUTUBE_SELL_PROMO.line) return null;
+  return now <= new Date(YOUTUBE_SELL_PROMO.expiresAt).getTime() ? YOUTUBE_SELL_PROMO.line : null;
+}
+
+const YOUTUBE_DESCRIPTION_LIMIT = 5000;
+// Leaves headroom under YouTube's limit for the fixed header/link/hashtags.
+const SELLER_TEXT_CAP = 3500;
+
+export function buildYouTubeDescription(listing: ListingPostInput, now: number = Date.now()): string {
+  const code = formatListingCode(listing.listing_code);
+  const place = listing.location && listing.state ? ` · ${listing.location}, ${listing.state}` : '';
+
+  const header = [
+    `${listing.year} ${listing.make} ${listing.model} — ${fmtPrice(listing.price)}${place}`,
+    code
+      ? `See all photos and contact the seller: garagecherries.com — search code ${code}`
+      : 'See all photos and contact the seller: garagecherries.com',
+    promoLine(now),
+  ].filter(Boolean).join('\n');
+  const footer = `Full listing: ${trackedListingUrl(listing)}\n\n${buildHashtags(listing)}`;
+
+  // The header and listing link are never cut -- only the seller's text is
+  // truncated to keep the whole description under YouTube's limit.
+  const room = Math.min(SELLER_TEXT_CAP, YOUTUBE_DESCRIPTION_LIMIT - header.length - footer.length - 10);
+  const cleaned = cleanSellerText(sellerText(listing)).text;
+  const body = cleaned.length > room ? cleaned.slice(0, Math.max(0, room - 1)).trimEnd() + '…' : cleaned;
+
+  return [header, body, footer].filter(Boolean).join('\n\n');
+}
+
+// A model year written right before the make (e.g. "1975 Chevrolet") near
+// the start of the seller's text -- used to catch listings whose year field
+// disagrees with what the seller wrote.
+function statedYears(text: string, make: string): number[] {
+  const escaped = make.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`\\b((?:19|20)\\d{2})\\s+${escaped}\\b`, 'gi');
+  return [...text.slice(0, 400).matchAll(re)].map(m => Number(m[1]));
+}
+
+// Pre-upload checks. Returns the reason the upload must be blocked (for a
+// human to review), or null when it's fine to upload. Never guesses a fix.
+export function validateYouTubeUpload(listing: ListingPostInput): string | null {
+  if (listing.is_sold || (listing.status && listing.status !== 'approved')) {
+    return 'Listing is sold or no longer live';
+  }
+  if (!listing.price || listing.price <= 0) return 'Price is missing or zero';
+
+  const titleYear = listing.title.match(/\b(?:19|20)\d{2}\b/)?.[0];
+  if (titleYear && Number(titleYear) !== listing.year) {
+    return `Listing title says ${titleYear} but the year field is ${listing.year}`;
+  }
+  const mismatch = statedYears(sellerText(listing), listing.make).find(y => y !== listing.year);
+  if (mismatch) {
+    return `Seller text says ${mismatch} ${listing.make} but the year field is ${listing.year}`;
+  }
+
+  const description = buildYouTubeDescription(listing).replace(/https:\/\/www\.garagecherries\.com\S*/g, '');
+  const leftover = findContactInfo(description);
+  if (leftover.length) return `Description still contains contact details: ${leftover.join(', ')}`;
+  return null;
 }
 
 async function getAccessToken(): Promise<string | null> {
@@ -147,6 +248,12 @@ export async function postListingReelToYouTube(
   privacyStatus: 'public' | 'unlisted' | 'private' = 'public'
 ): Promise<string | null> {
   try {
+    const blocked = validateYouTubeUpload(listing);
+    if (blocked) {
+      log.warn('YouTube upload blocked by pre-upload checks', { listingId: listing.id, reason: blocked });
+      return null;
+    }
+
     const accessToken = await getAccessToken();
     if (!accessToken) {
       log.info('YouTube upload skipped — YOUTUBE_CLIENT_ID/YOUTUBE_CLIENT_SECRET/YOUTUBE_REFRESH_TOKEN not configured');
@@ -170,8 +277,8 @@ export async function postListingReelToYouTube(
       },
       body: JSON.stringify({
         snippet: {
-          title: buildTitle(listing),
-          description: buildDescription(listing),
+          title: buildYouTubeTitle(listing),
+          description: buildYouTubeDescription(listing),
           categoryId: '2', // Autos & Vehicles
         },
         status: { privacyStatus, selfDeclaredMadeForKids: false },

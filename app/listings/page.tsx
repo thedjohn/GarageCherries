@@ -8,7 +8,9 @@ import SortSelect from '@/components/SortSelect';
 import SaveSearchButton from '@/components/SaveSearchButton';
 import TopSearchBar from '@/components/TopSearchBar';
 import NewsletterForm from '@/components/NewsletterForm';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { normalizeListingCode } from '@/lib/listingCode';
 import type { Car } from '@/lib/types';
 
 const PAGE_SIZE = 9; // 3 rows at the 3-column (xl) breakpoint
@@ -32,6 +34,21 @@ export default async function ListingsPage({ searchParams }: Props) {
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
 
   const supabase = await createClient();
+
+  // A YouTube Shorts listing code typed into search ("GC-7KQ4M" or "7KQ4M")
+  // opens that listing via /c/<code>, which tags the visit as YouTube
+  // traffic. Anything that isn't a real code falls through to normal search.
+  const searchedCode = normalizeListingCode(sp.q);
+  if (searchedCode) {
+    const { data: coded } = await supabase
+      .from('listings')
+      .select('id')
+      .eq('listing_code', searchedCode)
+      .eq('status', 'approved')
+      .maybeSingle();
+    if (coded) redirect(`/c/${searchedCode}`);
+  }
+
   let query = supabase
     .from('listings')
     .select('id,slug,title,year,make,model,price,mileage,location,state,condition,body_style,transmission,engine,color,images,description,seller_name,seller_phone,featured,listed_at', { count: 'exact' })

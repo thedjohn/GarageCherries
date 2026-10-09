@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { NextRequest } from 'next/server';
 
-const { mockSingle, mockEq, mockSelect, mockFrom, mockUpdateEq, mockUpdate, mockPostReelToFacebook, mockPostReelToInstagram, mockPostReelToYouTube, mockPostReelToTikTok, mockDeleteFacebookReel, mockDeleteInstagramMedia, mockDeleteYouTubeVideo, mockLoggerWarn } = vi.hoisted(() => ({
+const { mockSingle, mockEq, mockSelect, mockFrom, mockUpdateEq, mockUpdate, mockPostReelToFacebook, mockPostReelToInstagram, mockPostReelToYouTube, mockPostReelToTikTok, mockDeleteFacebookReel, mockDeleteInstagramMedia, mockDeleteYouTubeVideo, mockLoggerWarn, mockValidateYouTube } = vi.hoisted(() => ({
   mockSingle: vi.fn(),
   mockEq: vi.fn(),
   mockSelect: vi.fn(),
@@ -16,6 +16,7 @@ const { mockSingle, mockEq, mockSelect, mockFrom, mockUpdateEq, mockUpdate, mock
   mockDeleteInstagramMedia: vi.fn(),
   mockDeleteYouTubeVideo: vi.fn(),
   mockLoggerWarn: vi.fn(),
+  mockValidateYouTube: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -30,6 +31,7 @@ vi.mock('@/lib/facebook/postToPage', () => ({
 vi.mock('@/lib/youtube/postShort', () => ({
   postListingReelToYouTube: mockPostReelToYouTube,
   deleteYouTubeVideo: mockDeleteYouTubeVideo,
+  validateYouTubeUpload: mockValidateYouTube,
 }));
 vi.mock('@/lib/tiktok/postShort', () => ({
   postListingReelToTikTok: mockPostReelToTikTok,
@@ -75,6 +77,7 @@ beforeEach(() => {
   mockDeleteFacebookReel.mockResolvedValue(true);
   mockDeleteInstagramMedia.mockResolvedValue(true);
   mockDeleteYouTubeVideo.mockResolvedValue(true);
+  mockValidateYouTube.mockReturnValue(null);
 });
 
 describe('POST /api/video-pipeline/complete', () => {
@@ -252,7 +255,7 @@ describe('POST /api/video-pipeline/complete — refresh (per-platform staleness 
     price_dropped_at: '2026-08-16T00:00:00Z',
   };
 
-  it('force-reposts to Facebook/Instagram/YouTube when all three are stale', async () => {
+  it('force-reposts to Facebook/Instagram when stale, but leaves the original YouTube Short alone', async () => {
     mockSingle.mockResolvedValue({ data: REFRESH_LISTING });
     mockPostReelToFacebook.mockResolvedValue('new-fb-id');
     mockPostReelToInstagram.mockResolvedValue('new-ig-id');
@@ -262,7 +265,8 @@ describe('POST /api/video-pipeline/complete — refresh (per-platform staleness 
 
     expect(mockPostReelToFacebook).toHaveBeenCalledWith(REFRESH_LISTING, 'https://x/y.mp4');
     expect(mockPostReelToInstagram).toHaveBeenCalledWith(REFRESH_LISTING, 'https://x/y.mp4');
-    expect(mockPostReelToYouTube).toHaveBeenCalledWith(REFRESH_LISTING, 'https://x/y.mp4');
+    // YouTube is never refreshed on a price drop (decided 2026-10-09).
+    expect(mockPostReelToYouTube).not.toHaveBeenCalled();
     // TikTok was already posted and is never force-reposted (see the
     // "never force-reposts to TikTok" test below) -- it correctly reports
     // success without mockPostReelToTikTok being called again.
@@ -279,7 +283,7 @@ describe('POST /api/video-pipeline/complete — refresh (per-platform staleness 
 
     expect(mockDeleteFacebookReel).toHaveBeenCalledWith('old-fb-id');
     expect(mockDeleteInstagramMedia).toHaveBeenCalledWith('old-ig-id');
-    expect(mockDeleteYouTubeVideo).toHaveBeenCalledWith('old-yt-id');
+    expect(mockDeleteYouTubeVideo).not.toHaveBeenCalled();
   });
 
   it('stores the new IDs, overwriting the old ones', async () => {
@@ -292,7 +296,7 @@ describe('POST /api/video-pipeline/complete — refresh (per-platform staleness 
 
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ facebook_reel_id: 'new-fb-id' }));
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ instagram_media_id: 'new-ig-id' }));
-    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ youtube_video_id: 'new-yt-id' }));
+    expect(mockUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ youtube_video_id: 'new-yt-id' }));
   });
 
   it('does not force-repost a platform that already caught up (posted after the price drop)', async () => {
@@ -306,7 +310,7 @@ describe('POST /api/video-pipeline/complete — refresh (per-platform staleness 
     expect(mockPostReelToFacebook).not.toHaveBeenCalled();
     expect(mockDeleteFacebookReel).not.toHaveBeenCalled();
     expect(mockPostReelToInstagram).toHaveBeenCalled();
-    expect(mockPostReelToYouTube).toHaveBeenCalled();
+    expect(mockPostReelToYouTube).not.toHaveBeenCalled();
     // Facebook already-caught-up reports success without being touched again.
     expect(res._data).toEqual({ ok: true, fbSuccess: true, igSuccess: true, ytSuccess: true, ttSuccess: true });
   });
@@ -370,5 +374,26 @@ describe('POST /api/video-pipeline/complete — refresh (per-platform staleness 
     expect(mockPostReelToInstagram).not.toHaveBeenCalled();
     expect(mockPostReelToYouTube).not.toHaveBeenCalled();
     expect(res._data).toEqual({ ok: true, fbSuccess: true, igSuccess: true, ytSuccess: true, ttSuccess: true });
+  });
+});
+
+describe('POST /api/video-pipeline/complete — YouTube pre-upload checks', () => {
+  it('records the block reason and skips the upload when the checks fail', async () => {
+    mockValidateYouTube.mockReturnValue('Price is missing or zero');
+
+    const res: any = await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
+
+    expect(mockPostReelToYouTube).not.toHaveBeenCalled();
+    expect(mockUpdate).toHaveBeenCalledWith({ youtube_blocked_reason: 'Price is missing or zero' });
+    expect(mockLoggerWarn).toHaveBeenCalledWith('YouTube upload blocked for review', expect.objectContaining({ reason: 'Price is missing or zero' }));
+    expect(res._data.ytSuccess).toBe(false);
+  });
+
+  it('clears any earlier block reason when the upload succeeds', async () => {
+    mockPostReelToYouTube.mockResolvedValue('yt-video-1');
+
+    await POST(makeRequest({ listingId: 'l1', success: true, videoUrl: 'https://x/y.mp4' }, 'Bearer callback-secret'));
+
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ youtube_video_id: 'yt-video-1', youtube_blocked_reason: null }));
   });
 });

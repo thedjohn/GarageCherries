@@ -37,6 +37,8 @@ function makeRequest(authHeader?: string) {
 // ("TikTok-only stragglers") is reached via .not().not().not().is(...) --
 // each call to admin.from() must build an independent chain since the
 // route calls baseQuery() fresh per tier.
+let lastOrFilter: string | null = null;
+
 function makeSupabaseMock(tier1: typeof LISTING[], tier2: typeof LISTING[] = []) {
   mockFrom.mockImplementation((table: string) => {
     if (table !== 'listings') throw new Error(`Unexpected table: ${table}`);
@@ -45,7 +47,7 @@ function makeSupabaseMock(tier1: typeof LISTING[], tier2: typeof LISTING[] = [])
         eq: () => ({
           eq: () => ({
             not: () => ({
-              or: () => ({
+              or: (filter: string) => (lastOrFilter = filter, {
                 order: () => ({
                   limit: () => Promise.resolve({ data: tier1 }),
                 }),
@@ -109,6 +111,14 @@ describe('GET /api/admin/backfill-video-reels', () => {
     expect(mockTriggerListingVideo).toHaveBeenCalledWith(LISTING);
     expect(mockTriggerListingVideo).toHaveBeenCalledWith(listing2);
     expect(res._data).toEqual({ ok: true, triggered: 2 });
+  });
+
+  it('does not treat a YouTube upload blocked for review as missing YouTube', async () => {
+    makeSupabaseMock([LISTING]);
+
+    await GET(makeRequest('Bearer cron-secret'));
+
+    expect(lastOrFilter).toBe('reel_posted_at.is.null,instagram_posted_at.is.null,and(youtube_posted_at.is.null,youtube_blocked_reason.is.null)');
   });
 
   it('skips a listing debounced recently, but still triggers one attempted long enough ago', async () => {

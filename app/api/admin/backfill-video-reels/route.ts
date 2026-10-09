@@ -85,7 +85,10 @@ export async function GET(request: NextRequest) {
   let tiktokOnly: typeof needsCore = [];
   try {
     ({ data: needsCore } = await baseQuery()
-      .or('reel_posted_at.is.null,instagram_posted_at.is.null,youtube_posted_at.is.null')
+      // A listing whose YouTube upload was blocked for review
+      // (youtube_blocked_reason) doesn't count as missing YouTube -- otherwise
+      // it would be re-rendered every day just to be blocked again.
+      .or('reel_posted_at.is.null,instagram_posted_at.is.null,and(youtube_posted_at.is.null,youtube_blocked_reason.is.null)')
       .order('created_at', { ascending: true })
       .limit(POOL_SIZE));
     needsCore = (needsCore ?? []).filter(l => isBackfillDue(l, now)).slice(0, MAX_BATCH);

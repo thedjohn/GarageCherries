@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { postListingReelToFacebook, postListingReelToInstagram, deleteFacebookReel, deleteInstagramMedia } from '@/lib/facebook/postToPage';
-import { postListingReelToYouTube, deleteYouTubeVideo } from '@/lib/youtube/postShort';
+import { postListingReelToYouTube, validateYouTubeUpload } from '@/lib/youtube/postShort';
 import { postListingReelToTikTok } from '@/lib/tiktok/postShort';
 import { createLogger } from '@/lib/logger';
 
@@ -40,14 +40,16 @@ function isStale(postedAt: string | null, priceDroppedAt: string | null): boolea
 //
 // REFRESH: when listing.price_dropped_at is set (see the price-drop
 // detection in app/api/listings/[id]/route.ts and the dealer dashboard's
-// own price edit), Facebook/Instagram/YouTube are each independently
+// own price edit), Facebook/Instagram are each independently
 // checked via isStale() above -- a stale platform is force-reposted and its
 // previous post deleted afterward; a platform that's already caught up
 // (posted after the drop) is left alone. There is no "refresh done" flag to
 // clear: once every platform's *_posted_at is newer than price_dropped_at,
 // they simply stop comparing stale on their own, so the batch job
 // (app/api/admin/video-price-refresh) naturally stops selecting this
-// listing without any extra bookkeeping here. TikTok is deliberately
+// listing without any extra bookkeeping here. YouTube is excluded from
+// refresh (decided 2026-10-09: keep the original Short, save upload quota,
+// never delete videos). TikTok is deliberately
 // excluded from refresh entirely -- its posting doesn't reliably work yet
 // (pending TikTok's own Content Posting API audit) -- and keeps its normal
 // "post only if missing" behavior unconditionally.
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   const { data: listing } = await admin
     .from('listings')
-    .select('id, title, make, model, year, price, slug, images, mileage, condition, location, state, description, description_paragraphs, hobby_segment, body_style, reel_posted_at, instagram_posted_at, youtube_posted_at, youtube_video_id, tiktok_posted_at, facebook_reel_id, instagram_media_id, price_dropped_at')
+    .select('id, title, make, model, year, price, slug, images, mileage, condition, location, state, description, description_paragraphs, hobby_segment, body_style, listing_code, is_sold, status, reel_posted_at, instagram_posted_at, youtube_posted_at, youtube_video_id, tiktok_posted_at, facebook_reel_id, instagram_media_id, price_dropped_at')
     .eq('id', listingId)
     .single();
 
@@ -81,7 +83,6 @@ export async function POST(request: NextRequest) {
 
   const fbStale = isStale(listing.reel_posted_at, listing.price_dropped_at);
   const igStale = isStale(listing.instagram_posted_at, listing.price_dropped_at);
-  const ytStale = isStale(listing.youtube_posted_at, listing.price_dropped_at);
 
   let fbSuccess = Boolean(listing.reel_posted_at) && !fbStale;
   if (!listing.reel_posted_at || fbStale) {
@@ -112,14 +113,23 @@ export async function POST(request: NextRequest) {
     return Boolean(mediaId);
   };
 
+  // YouTube is never refreshed on a price drop: the original Short stays up
+  // (no delete + re-upload), which keeps the scarce daily upload quota for
+  // new listings. A listing gets at most one Short.
   const postAndRecordYouTube = async (): Promise<boolean> => {
-    if (listing.youtube_posted_at && !ytStale) return true;
+    if (listing.youtube_posted_at) return true;
+    // Pre-upload checks (sold, missing price, year mismatch, leftover contact
+    // details) -- recorded so the hourly backfill stops re-rendering this
+    // listing just to be blocked again, until someone fixes and clears it.
+    const blocked = validateYouTubeUpload(listing);
+    if (blocked) {
+      log.warn('YouTube upload blocked for review', { listingId, reason: blocked });
+      await admin.from('listings').update({ youtube_blocked_reason: blocked }).eq('id', listingId);
+      return false;
+    }
     const videoId = await postListingReelToYouTube(listing, videoUrl).catch(() => null);
     if (videoId) {
-      if (ytStale && listing.youtube_video_id) {
-        await deleteYouTubeVideo(listing.youtube_video_id).catch(() => {});
-      }
-      await admin.from('listings').update({ youtube_posted_at: new Date().toISOString(), youtube_video_id: videoId }).eq('id', listingId);
+      await admin.from('listings').update({ youtube_posted_at: new Date().toISOString(), youtube_video_id: videoId, youtube_blocked_reason: null }).eq('id', listingId);
     }
     return Boolean(videoId);
   };
