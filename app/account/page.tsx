@@ -183,6 +183,7 @@ function AccountPage() {
   const [myListingViews, setMyListingViews] = useState<Record<string, number>>({});
   const [myListingWatchers, setMyListingWatchers] = useState<Record<string, number>>({});
   const [editingListing, setEditingListing] = useState<MyListing | null>(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ year: '', make: '', model: '', body_style: '', condition: '', fuel_type: '', engine: '', transmission: '', color: '', interior_color: '', seat_material: '', city: '', state: '', price: '', mileage: '', description: '', resubmission_note: '' });
   const [editImages, setEditImages] = useState<{ preview: string; publicUrl: string | null; uploadState: 'done' | 'uploading' | 'error'; file?: File; progress: number }[]>([]);
   const [editSaving, setEditSaving] = useState(false);
@@ -571,6 +572,14 @@ function AccountPage() {
     const json = await res.json();
     if (!res.ok) { alert(json.error ?? 'Failed to renew listing.'); return; }
     setMyListings(prev => prev.map(l => l.id === id ? { ...l, expires_at: json.expiresAt } : l));
+  }
+
+  async function removeListing(id: string) {
+    setConfirmRemoveId(null);
+    const res = await fetch(`/api/listings/${id}/remove`, { method: 'POST' });
+    const json = await res.json();
+    if (!res.ok) { alert(json.error ?? 'Failed to remove listing.'); return; }
+    setMyListings(prev => prev.map(l => l.id === id ? { ...l, status: 'removed' } : l));
   }
 
   const removeFromWatchlist = async (watchId: string) => {
@@ -1548,6 +1557,26 @@ function AccountPage() {
                             className="text-xs font-semibold px-3 py-1.5 border border-zinc-200 rounded-lg text-zinc-600 hover:bg-zinc-50 transition-colors">
                             View Listing
                           </Link>
+                        )}
+                        {l.status !== 'removed' && !l.is_sold && (
+                          confirmRemoveId === l.id ? (
+                            <span className="flex items-center gap-2">
+                              <span className="text-xs text-zinc-600">Remove this listing?</span>
+                              <button onClick={() => removeListing(l.id)}
+                                className="text-xs font-semibold px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded-lg text-white transition-colors">
+                                Yes, remove
+                              </button>
+                              <button onClick={() => setConfirmRemoveId(null)}
+                                className="text-xs font-semibold px-3 py-1.5 border border-zinc-200 rounded-lg text-zinc-600 hover:bg-zinc-50 transition-colors">
+                                Cancel
+                              </button>
+                            </span>
+                          ) : (
+                            <button onClick={() => setConfirmRemoveId(l.id)}
+                              className="text-xs font-semibold px-3 py-1.5 border border-red-200 rounded-lg text-red-600 hover:bg-red-50 transition-colors">
+                              Remove listing
+                            </button>
+                          )
                         )}
                       </div>
                     </div>
